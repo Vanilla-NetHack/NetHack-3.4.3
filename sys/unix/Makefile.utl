@@ -1,0 +1,238 @@
+#	Makefile for NetHack's utility programs.
+#	SCCS Id: @(#)Makefile.utl	3.1	92/11/01
+
+# if you are using gcc as your compiler,
+#	uncomment the CC definition below if it's not in your environment
+# CC = gcc
+#
+#	For Bull DPX/2 systems at B.O.S. 2.0 or higher use the following:
+#
+# CC = gcc -ansi -D_BULL_SOURCE -D_XOPEN_SOURCE -D_POSIX_SOURCE
+# 
+#	If you are using GCC 2.2.2 or higher on a DPX/2, just use:
+#
+# CC = gcc -ansi
+#
+# if your make doesn't define a default SHELL properly, you may need
+#    the line below (Atari users will need a bourne work-alike)
+# SHELL = /bin/sh
+
+# flags may have to be changed as required
+# flags for 286 Xenix:
+# CFLAGS = -Ml2t16 -O -LARGE -I../include
+# LFLAGS = -Ml -F 4000 -SEG 512
+
+# flags for 286 Microport SysV-AT
+# CFLAGS = -DDUMB -Ml -I../include
+# LFLAGS = -Ml
+
+# flags for Atari GCC
+# CFLAGS = -O -I../include
+# LFLAGS = -s
+
+# flags for Apollos using their native cc
+# (as long as it claims to be __STDC__ but isn't)
+# CFLAGS = -DAPOLLO -O -I../include
+
+# flags for AIX 3.1 cc on IBM RS/6000 to define
+# a suitable subset of standard libraries
+# (note that there is more info regarding the "-qchars=signed"
+# switch in file Install.unx note 8)
+# CFLAGS = -D_NO_PROTO -D_XOPEN_SOURCE -O -I../include -qchars=signed
+
+# flags for A/UX 2.01 using native cc or c89
+# gcc predefines AUX so that's not needed there
+# CFLAGS = -ZS -D_POSIX_SOURCE -O -I../include -DAUX
+
+# flags for debugging:
+# CFLAGS = -g -I../include
+
+CFLAGS = -g -I../include
+LFLAGS =
+ 
+
+# yacc/lex programs to use to generate *_comp.h, *_lex.c, and *_yacc.c.
+# if, instead of yacc/lex you have bison/flex, comment/uncomment the following.
+YACC     = yacc
+LEX      = lex
+# YACC     = bison -y
+# LEX      = flex
+ 
+# these are the names of the output files from YACC/LEX. Under MS-DOS
+# and similar systems, they may differ
+YTABC = y.tab.c
+YTABH = y.tab.h
+LEXYYC = lex.yy.c
+# YTABC = y_tab.c
+# YTABH = y_tab.h
+# LEXYYC = lexyy.c
+
+# Nothing below this line should have to be changed.
+
+# utility .c files
+MAKESRC = makedefs.c
+SPLEVSRC = lev_yacc.c lev_lex.c lev_main.c panic.c
+DGNCOMPSRC = dgn_yacc.c dgn_lex.c dgn_main.c
+UTILSRCS = $(MAKESRC) $(SPLEVSRC) $(DGNCOMPSRC)
+
+# object files for makedefs
+MAKEOBJS = makedefs.o ../src/monst.o ../src/objects.o
+
+# object files for special levels compiler
+SPLEVOBJS = lev_yacc.o lev_lex.o lev_main.o panic.o \
+	../src/alloc.o ../src/drawing.o ../src/decl.o \
+	../src/monst.o ../src/objects.o
+
+# object files for dungeon compiler
+DGNCOMPOBJS = dgn_yacc.o dgn_lex.o dgn_main.o panic.o ../src/alloc.o
+
+# object files for recovery utility
+RECOVOBJS = recover.o
+
+
+#	dependencies for makedefs
+#
+makedefs:	$(MAKEOBJS)
+	$(CC) $(LFLAGS) -o makedefs $(MAKEOBJS)
+
+makedefs.o:  ../include/config.h ../include/permonst.h ../include/objclass.h \
+		../include/monsym.h ../include/artilist.h ../include/qtext.h
+
+../include/onames.h: makedefs
+	./makedefs -o
+../include/pm.h: makedefs
+	./makedefs -p
+../src/monstr.c: makedefs
+	./makedefs -m
+../include/vis_tab.h: makedefs
+	./makedefs -z
+../src/vis_tab.c: makedefs
+	./makedefs -z
+
+lintdefs:
+	@lint -axbh -I../include -DLINT $(MAKESRC) ../src/monst.c ../src/objects.c | sed '/_flsbuf/d'
+
+
+# the src Makefile is responsible for knowing when to call this, since
+# it knows all about the main src and include files
+../include/date.h::
+	./makedefs -v
+
+
+#	dependencies for lev_comp
+#
+lev_comp:  $(SPLEVOBJS)
+	$(CC) $(LFLAGS) -o lev_comp $(SPLEVOBJS)
+
+lev_yacc.o:  ../include/hack.h ../include/sp_lev.h
+lev_main.o:  ../include/hack.h ../include/sp_lev.h ../include/termcap.h
+panic.o:     ../include/config.h
+
+# see lev_comp.l for WEIRD_LEX discussion
+# egrep returns failure if it doesn't find anything, so we have to go to
+# some trouble to check for $(CC) failures
+lev_lex.o:   ../include/hack.h ../include/lev_comp.h ../include/sp_lev.h
+	-@rm lev_lex.o 2>/dev/null
+	@echo $(CC) -c $(CFLAGS) lev_lex.c
+	-@$(CC) -c $(CFLAGS) -DWEIRD_LEX=`egrep -c _cplusplus lev_lex.c` lev_lex.c
+	@test -r lev_lex.o
+
+../include/lev_comp.h: lev_yacc.c
+
+lev_yacc.c: lev_comp.y
+	$(YACC) -d lev_comp.y
+	mv $(YTABC) lev_yacc.c
+	mv $(YTABH) ../include/lev_comp.h
+
+lev_lex.c: lev_comp.l
+	$(LEX) lev_comp.l
+	mv $(LEXYYC) lev_lex.c
+
+# with all of extern.h's functions to complain about, we drown in
+# 'defined but not used' without -u
+lintlev:
+	@lint -axhu -I../include -DLINT $(SPLEVSRC) ../src/alloc.c ../src/monst.c ../src/objects.c | sed '/_flsbuf/d'
+
+
+#	dependencies for dgn_comp
+#
+dgn_comp:  $(DGNCOMPOBJS)
+	$(CC) $(LFLAGS) -o dgn_comp $(DGNCOMPOBJS)
+
+dgn_yacc.o:  ../include/config.h ../include/dgn_file.h
+dgn_main.o:  ../include/config.h
+
+# see dgn_comp.l for WEIRD_LEX discussion
+# egrep returns failure if it doesn't find anything, so we have to go to
+# some trouble to check for $(CC) failures
+dgn_lex.o:   ../include/config.h ../include/dgn_comp.h ../include/dgn_file.h
+	-@rm dgn_lex.o 2>/dev/null
+	@echo $(CC) -c $(CFLAGS) dgn_lex.c
+	-@$(CC) -c $(CFLAGS) -DWEIRD_LEX=`egrep -c _cplusplus dgn_lex.c` dgn_lex.c
+	@test -r dgn_lex.o
+
+
+../include/dgn_comp.h: dgn_yacc.c
+
+dgn_yacc.c: dgn_comp.y
+	$(YACC) -d dgn_comp.y
+	mv $(YTABC) dgn_yacc.c
+	mv $(YTABH) ../include/dgn_comp.h
+
+dgn_lex.c: dgn_comp.l
+	$(LEX) dgn_comp.l
+	mv $(LEXYYC) dgn_lex.c
+
+# with all of extern.h's functions to complain about, we drown in
+# 'defined but not used' without -u
+lintdgn:
+	@lint -axhu -I../include -DLINT $(DGNCOMPSRC) panic.c ../src/alloc.c | sed '/_flsbuf/d'
+
+
+#	dependencies for recover
+#
+recover: $(RECOVOBJS)
+	$(CC) $(LFLAGS) -o recover $(RECOVOBJS)
+
+recover.o: ../include/config.h
+
+
+
+# using dependencies like
+#	../src/foo::
+#		@( cd ../src ; $(MAKE) foo )
+# would always force foo to be up-to-date according to the src Makefile
+# when it's needed here.  unfortunately, some makes believe this syntax
+# means foo always changes, instead of foo should always be checked.
+# therefore, approximate via config.h dependencies, and hope that anybody
+# changing anything other than basic configuration also knows when not
+# to improvise things not in the instructions, like 'make makedefs' here
+# in util...
+
+# make sure object files from src are available when needed
+#
+../src/alloc.o: ../src/alloc.c ../include/config.h
+	@( cd ../src ; $(MAKE) alloc.o )
+../src/drawing.o: ../src/drawing.c ../include/config.h
+	@( cd ../src ; $(MAKE) drawing.o )
+../src/decl.o: ../src/decl.c ../include/config.h
+	@( cd ../src ; $(MAKE) decl.o )
+../src/monst.o: ../src/monst.c ../include/config.h
+	@( cd ../src ; $(MAKE) monst.o )
+../src/objects.o: ../src/objects.c ../include/config.h
+	@( cd ../src ; $(MAKE) objects.o )
+
+# make sure hack.h dependencies get transitive information
+../include/hack.h: ../include/config.h
+	@( cd ../src ; $(MAKE) ../include/hack.h )
+
+tags: $(UTILSRCS)
+	@ctags -tw $(UTILSRCS)
+
+clean:
+	rm -f *.o
+
+spotless: clean
+	rm -f lev_lex.c lev_yacc.c dgn_lex.c dgn_yacc.c
+	rm -f ../include/lev_comp.h ../include/dgn_comp.h
+	rm -f makedefs lev_comp dgn_comp recover

@@ -1,0 +1,58 @@
+	Splitter			[split.doc 93/01/08]
+
+Usage:
+	splitter [-Cc_prototype] [-Dd_prototype] [-ddir_prototype] binary
+
+Default prototypes:
+	d: %n.dir
+	C: %n.c%C
+	D: %n.d%D
+
+Prototypes:
+	%n	base file name
+	%C	current code file #
+	%D	current data file #
+
+Creates:
+	binary.dir		directions file
+	binary.d00		data files
+	binary.d01 ...
+	binary.c00		code files
+	binary.c01 ...
+
+Format of the directions file (subject to change):
+	Cbinary.c00
+	Cbinary.c01
+	Cbinary.c02
+	Dbinary.d00
+	Dbinary.d01
+The above entries may be edited to reflect the location of the various files
+if it is necessary for them to be moved by the user.  All C entries must
+preceed all D entries.
+
+Maximum output file size is 800K (819200 bytes) - this leaves just enough
+space on an empty floppy for a small icon.
+
+Code file contents:
+The first code file contains:
+	the (modified) HUNK_HEADER from the original binary
+	(followed by)
+All code files contain:
+	HUNK_CODE's from the original binary
+
+Data file contents:
+	HUNK_BSS's from the original binary
+	HUNK_DATA's from the original binary
+
+COMPILING
+	[SASC5]
+	lc -L splitter.c arg.c
+
+BUGS
+	The present system for generating multiple files is a hack -
+	multi.[ch] should be upgraded instead.
+
+	Many optimizations for minimizing the size of the output file
+	could/should/will be added.
+
+	Not tested with SASC 6.0 yet.

@@ -1,9 +1,7 @@
-/*	SCCS Id: @(#)extralev.c	3.0	88/04/11			*/
+/*	SCCS Id: @(#)extralev.c	3.1	92/05/27			*/
 /*	Copyright 1988, 1989 by Ken Arromdee				*/
 /* NetHack may be freely redistributed.  See license for details. */
 
-#define MONATTK_H	/* comment line for pre-compiled headers */
-/* block some unused #defines to avoid overloading some cpp's */
 #include "hack.h"
 
 #ifdef REINCARNATION
@@ -78,7 +76,6 @@ int x,y,dir;
 									fromy);
 			dodoor(fromx, fromy, &rooms[r[x][y].nroom]);
 			levl[fromx][fromy].doormask = D_NODOOR;
-			mnewsym(fromx,fromy);
 			fromy++;
 		}
 		if(y >= 2) {
@@ -98,7 +95,6 @@ int x,y,dir;
 				impossible("up: no wall at %d,%d?",tox,toy);
 			dodoor(tox, toy, &rooms[r[x][y].nroom]);
 			levl[tox][toy].doormask = D_NODOOR;
-			mnewsym(tox,toy);
 			toy--;
 		}
 		roguejoin(fromx, fromy, tox, toy, FALSE);
@@ -117,7 +113,6 @@ int x,y,dir;
 									fromy);
 			dodoor(fromx, fromy, &rooms[r[x][y].nroom]);
 			levl[fromx][fromy].doormask = D_NODOOR;
-			mnewsym(fromx,fromy);
 			fromx++;
 		}
 		if(x >= 2) {
@@ -137,7 +132,6 @@ int x,y,dir;
 				impossible("left: no wall at %d,%d?",tox,toy);
 			dodoor(tox, toy, &rooms[r[x][y].nroom]);
 			levl[tox][toy].doormask = D_NODOOR;
-			mnewsym(tox,toy);
 			tox--;
 		}
 		roguejoin(fromx, fromy, tox, toy, TRUE);
@@ -198,9 +192,7 @@ int x,y;
 
 void
 makeroguerooms() {
-	register struct mkroom *croom;
 	register int x,y;
-	int x2, y2;
 	/* Rogue levels are structured 3 by 3, with each section containing
 	 * a room or an intersection.  The minimum width is 2 each way.
 	 * One difference between these and "real" Rogue levels: real Rogue
@@ -247,59 +239,21 @@ makeroguerooms() {
 	nroom = 0;
 	for(y=0; y<3; y++) for(x=0; x<3; x++) {
 		if (here.real) { /* Make a room */
-			r[x][y].nroom = nroom;
-			croom = &rooms[nroom];
-			/* Illumination.  Strictly speaking, it should be lit
-			 * only if above level 10, but since Rogue rooms are
-			 * only encountered below level 10...
-			 */
-			if (!rn2(7)) {
-				for(x2 = 1+26*x+here.rlx-1;
-				    x2 <= 1+26*x+here.rlx+here.dx; x2++)
-				for(y2 = 7*y+here.rly-1;
-				    y2 <= 7*y+here.rly+here.dy; y2++)
-					levl[x2][y2].lit = 1;
-				croom->rlit = 1;
-			} else croom->rlit = 0;
-			croom->lx = 1 + 26*x + here.rlx;
-			croom->ly = 7*y + here.rly;
-			croom->hx = 1 + 26*x + here.rlx + here.dx - 1;
-			croom->hy = 7*y + here.rly + here.dy - 1;
-			/* Walls, doors, and floors. */
-#define lowx croom->lx
-#define lowy croom->ly
-#define hix croom->hx
-#define hiy croom->hy
-			for(x2 = lowx-1; x2 <= hix+1; x2++)
-			    for(y2 = lowy-1; y2 <= hiy+1; y2 += (hiy-lowy+2)) {
-				levl[x2][y2].scrsym = HWALL_SYM;
-				levl[x2][y2].typ = HWALL;
-			}
-			for(x2 = lowx-1; x2 <= hix+1; x2 += (hix-lowx+2))
-			    for(y2 = lowy; y2 <= hiy; y2++) {
-				levl[x2][y2].scrsym = VWALL_SYM;
-				levl[x2][y2].typ = VWALL;
-			}
-			for(x2 = lowx; x2 <= hix; x2++)
-			    for(y2 = lowy; y2 <= hiy; y2++) {
-				levl[x2][y2].scrsym = ROOM_SYM;
-				levl[x2][y2].typ = ROOM;
-			}
-			levl[lowx-1][lowy-1].typ = TLCORNER;
-			levl[hix+1][lowy-1].typ = TRCORNER;
-			levl[lowx-1][hiy+1].typ = BLCORNER;
-			levl[hix+1][hiy+1].typ = BRCORNER;
-			levl[lowx-1][lowy-1].scrsym = TLCORN_SYM;
-			levl[hix+1][lowy-1].scrsym = TRCORN_SYM;
-			levl[lowx-1][hiy+1].scrsym = BLCORN_SYM;
-			levl[hix+1][hiy+1].scrsym = BRCORN_SYM;
+			int lowx, lowy, hix, hiy;
 
-			/* Misc. */
+			r[x][y].nroom = nroom;
 			smeq[nroom] = nroom;
-			croom->rtype = OROOM;
-			croom++;
-			croom->hx = -1;
-			nroom++;
+
+			lowx = 1 + 26*x + here.rlx;
+			lowy = 7*y + here.rly;
+			hix = 1 + 26*x + here.rlx + here.dx - 1;
+			hiy = 7*y + here.rly + here.dy - 1;
+			/* Strictly speaking, it should be lit only if above
+			 * level 10, but since Rogue rooms are only
+			 * encountered below level 10, use !rn2(7).
+			 */
+
+			add_room(lowx, lowy, hix, hiy, !rn2(7), OROOM, FALSE);
 		}
 	}
 
@@ -322,10 +276,8 @@ int x, y;
 {
 	if (rn2(50)) {
 		levl[x][y].typ = CORR;
-		levl[x][y].scrsym = CORR_SYM;
 	} else {
 		levl[x][y].typ = SCORR;
-		levl[x][y].scrsym = ' ';	/* _not_ STONE_SYM */
 	}
 }
 
@@ -346,44 +298,45 @@ makerogueghost()
 	Strcpy((char *)ghost->mextra, roguename());
 
 	if (rn2(4)) {
-		ghostobj = mksobj_at(FOOD_RATION,x,y);
-		ghostobj->quan = rnd(7);
+		ghostobj = mksobj_at(FOOD_RATION,x,y,FALSE);
+		ghostobj->quan = (long) rnd(7);
 		ghostobj->owt = weight(ghostobj);
 	}
 	if (rn2(2)) {
-		ghostobj = mksobj_at(MACE,x,y);
+		ghostobj = mksobj_at(MACE,x,y,FALSE);
 		ghostobj->spe = rnd(3);
 		if (rn2(4)) curse(ghostobj);
 	} else {
-		ghostobj = mksobj_at(TWO_HANDED_SWORD,x,y);
+		ghostobj = mksobj_at(TWO_HANDED_SWORD,x,y,FALSE);
 		ghostobj->spe = rnd(5) - 2;
 		if (rn2(4)) curse(ghostobj);
 	}
-	ghostobj = mksobj_at(BOW,x,y);
+	ghostobj = mksobj_at(BOW,x,y,FALSE);
 	ghostobj->spe = 1;
 	if (rn2(4)) curse(ghostobj);
 
-	ghostobj = mksobj_at(ARROW,x,y);
+	ghostobj = mksobj_at(ARROW,x,y,FALSE);
 	ghostobj->spe = 0;
-	ghostobj->quan = rn1(10,25);
+	ghostobj->quan = (long) rn1(10,25);
 	ghostobj->owt = weight(ghostobj);
 	if (rn2(4)) curse(ghostobj);
 
 	if (rn2(2)) {
-		ghostobj = mksobj_at(RING_MAIL,x,y);
+		ghostobj = mksobj_at(RING_MAIL,x,y,FALSE);
 		ghostobj->spe = rn2(3);
-		if (!rn2(3)) ghostobj->rustfree = 1;
+		if (!rn2(3)) ghostobj->oerodeproof = TRUE;
 		if (rn2(4)) curse(ghostobj);
 	} else {
-		ghostobj = mksobj_at(PLATE_MAIL,x,y);
+		ghostobj = mksobj_at(PLATE_MAIL,x,y,FALSE);
 		ghostobj->spe = rnd(5) - 2;
-		if (!rn2(3)) ghostobj->rustfree = 1;
+		if (!rn2(3)) ghostobj->oerodeproof = TRUE;
 		if (rn2(4)) curse(ghostobj);
 	}
 	if (rn2(2)) {
-		ghostobj = mksobj_at(AMULET_OF_YENDOR,x,y);
-		ghostobj->spe = -1;
+		ghostobj = mksobj_at(FAKE_AMULET_OF_YENDOR,x,y,TRUE);
 		ghostobj->known = TRUE;
 	}
 }
 #endif /* REINCARNATION /**/
+
+/*extralev.c*/

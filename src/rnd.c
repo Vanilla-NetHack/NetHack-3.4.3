@@ -1,11 +1,10 @@
-/*	SCCS Id: @(#)rnd.c	3.0	87/07/06
- */
+/*	SCCS Id: @(#)rnd.c	3.1	90/22/02
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include	"hack.h"
 
 #if defined(LINT) && defined(UNIX)	/* rand() is long... */
-extern int rand();
+extern int NDECL(rand);
 #define RND(x)	(rand() % x)
 #else /* LINT */
 /* rand() is either random() or lrand48() - see config.h. */
@@ -17,16 +16,6 @@ extern int rand();
 #endif
 #endif /* LINT */
 
-#ifdef OVL2
-
-int
-rn1(x,y)	/* y <= rn1(x,y) < (y+x) */
-register int x, y;
-{
-	return(RND(x)+y);
-}
-
-#endif /* OVL2 */
 #ifdef OVL0
 
 int
@@ -49,7 +38,15 @@ int
 rnl(x)		/* 0 <= rnl(x) < x; sometimes subtracting Luck */
 register int x;	/* good luck approaches 0, bad luck approaches (x-1) */
 {
-	register int i = RND(x);
+	register int i;
+
+#ifdef DEBUG
+	if (x == 0) {
+		impossible("rnl(0) attempted");
+		return(0);
+	}
+#endif
+	i = RND(x);
 
 	if (Luck && rn2(50 - Luck)) {
 	    i -= (x <= 15 && Luck >= -5 ? Luck/3 : Luck);
@@ -85,8 +82,14 @@ register int n, x;
 {
 	register int tmp = n;
 
+#ifdef DEBUG
+	if (x == 0) {
+		impossible("d(n,0) attempted");
+		return(1);
+	}
+#endif
 	while(n--) tmp += RND(x);
-	return(tmp);
+	return(tmp); /* Alea iacta est. -- J.C. */
 }
 
 #endif /* OVL1 */
@@ -101,24 +104,24 @@ register int x;
 	return(min(tmp,(u.ulevel < 15) ? 5 : (int)u.ulevel/3));
 }
 
-#ifdef THEOLOGY
 int
 rnz(i)
 int i;
 {
-# ifdef LINT
+#ifdef LINT
 	int x = i;
 	int tmp = 1000;
-# else
+#else
 	register long x = i;
 	register long tmp = 1000;
-# endif
+#endif
 	tmp += rn2(1000);
 	tmp *= rne(4);
 	if (rn2(2)) { x *= tmp; x /= 1000; }
 	else { x *= 1000; x /= tmp; }
 	return((int)x);
 }
-#endif
 
 #endif /* OVLB */
+
+/*rnd.c*/

@@ -1,64 +1,38 @@
-/*	SCCS Id: @(#)bones.c	3.0	88/04/13
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/*	SCCS Id: @(#)bones.c	3.1	93/01/07	*/
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985,1993. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
+#include "lev.h"
 
-#define OMASK	0
-
-#ifdef DGK
-char bones[FILENAME];
+#ifdef MFLOPPY
+extern char bones[];	/* from files.c */
 extern long bytes_counted;
-#else
-char bones[] = "bones.xxxx";
 #endif
 
-#ifdef COMPRESS
-static char cmd[60], proxy[20];
-
-static void NDECL(compress_bones);
-#endif
-static boolean FDECL(no_bones_level, (int));
-static void FDECL(resetobjs,(struct obj *,BOOLEAN_P));
+static boolean FDECL(no_bones_level, (d_level *));
 #ifdef TUTTI_FRUTTI
 static void FDECL(goodfruit, (int));
 #endif
-
-#ifdef COMPRESS
-static void
-compress_bones()
-{
-	Strcpy(cmd, COMPRESS);
-	Strcat(cmd, " ");
-# ifdef COMPRESS_OPTIONS
-	Strcat(cmd, COMPRESS_OPTIONS);
-	Strcat(cmd, " ");
-# endif
-	Strcat(cmd, bones);
-	(void) system(cmd);
-}
-#endif /* COMPRESS */
+static void FDECL(resetobjs,(struct obj *,BOOLEAN_P));
+static void FDECL(drop_upon_death, (struct monst *, struct obj *));
 
 static boolean
 no_bones_level(lev)
-int lev;
+d_level *lev;
 {
-	extern int save_dlevel;		/* in do.c */
+	extern d_level save_dlevel;		/* in do.c */
+	s_level *sptr;
 
-	if (save_dlevel) lev = save_dlevel;
+	if (ledger_no(&save_dlevel)) assign_level(lev, &save_dlevel);
 
-	return (lev == medusa_level ||
-		lev == wiz_level
-#ifdef REINCARNATION
-		|| lev == rogue_level
-#endif
-#ifdef STRONGHOLD
-		|| lev == stronghold_level ||
-		(lev >= tower_level && lev <= tower_level+2)
-#endif
-#ifdef ENDGAME
-		|| lev == ENDLEVEL
-#endif
+	return (((sptr = Is_special(lev)) && !sptr->boneid)
+		|| !dungeons[lev->dnum].boneid
+		   /* no bones on the last or multiway branch levels */
+		   /* in any dungeon (level 1 isn't multiway).       */
+		|| Is_botlevel(lev) || (Is_branchlev(lev) && lev->dlevel > 1)
+		   /* no bones in the invocation level               */
+		|| (In_hell(lev) && lev->dlevel == dunlevs_in_dungeon(lev) - 1)
 		);
 }
 
@@ -86,20 +60,18 @@ boolean restore;
 	struct obj *otmp;
 
 	for (otmp = ochain; otmp; otmp = otmp->nobj) {
-		if (((otmp->otyp != CORPSE && otmp->otyp != STATUE)
-			|| otmp->corpsenm < PM_ARCHEOLOGIST)
-#ifdef NAMED_ITEMS
-			&& (!is_artifact(otmp) ||
-			    (exist_artifact(otmp,ONAME(otmp)) && restore))
-#endif
-		) {
+		if (otmp->cobj)
+		    resetobjs(otmp->cobj,restore);
+
+		if (((otmp->otyp != CORPSE || otmp->corpsenm < PM_ARCHEOLOGIST)
+			&& otmp->otyp != STATUE)
+			&& (!otmp->oartifact ||
+			    (exist_artifact(otmp->otyp,ONAME(otmp)) && restore))) {
+			otmp->oartifact = 0;
 			otmp->onamelth = 0;
 			*ONAME(otmp) = '\0';
-		}
-#ifdef NAMED_ITEMS
-		else if (is_artifact(otmp) && restore)
+		} else if (otmp->oartifact && restore)
 			artifact_exists(otmp,ONAME(otmp),TRUE);
-#endif
 		if (!restore) {
 			/* resetting the o_id's after getlev has carefully
 			 * created proper new ones via restobjchn is a Bad
@@ -107,6 +79,7 @@ boolean restore;
 			otmp->o_id = 0;
 			if(objects[otmp->otyp].oc_uses_known) otmp->known = 0;
 			otmp->dknown = otmp->bknown = 0;
+			otmp->rknown = 0;
 			otmp->invlet = 0;
 #ifdef TUTTI_FRUTTI
 			if(otmp->otyp == SLIME_MOLD) goodfruit(otmp->spe);
@@ -117,29 +90,82 @@ boolean restore;
 #ifdef POLYSELF
 			if (otmp->otyp == EGG) otmp->spe = 0;
 #endif
-			if(otmp->otyp == AMULET_OF_YENDOR && !otmp->spe) {
-				otmp->spe = -1;
+			if(otmp->otyp == AMULET_OF_YENDOR) {
 				/* no longer the actual amulet */
+				otmp->otyp = FAKE_AMULET_OF_YENDOR;
 				curse(otmp);
+			}
+			if(otmp->otyp == CANDELABRUM_OF_INVOCATION) {
+			    if(otmp->spe > 0) { /* leave candles, if any */
+			        otmp->otyp = WAX_CANDLE;
+				otmp->age = 50L;  /* assume used */
+				otmp->quan = (long)otmp->spe;
+				otmp->lamplit = 0;
+				otmp->spe = 0;
+			    } else obfree(otmp, (struct obj *)0);
+			}
+			if(otmp->otyp == BELL_OF_OPENING) otmp->otyp = BELL;
+			if(otmp->otyp == SPE_BOOK_OF_THE_DEAD) {
+			    otmp->otyp = SPE_MAGIC_MISSILE +
+			                    rn2(SPE_BLANK_PAPER -
+						  SPE_MAGIC_MISSILE + 1);
+			    curse(otmp);
 			}
 		}
 	}			
 }
 
+static void
+drop_upon_death(mtmp, cont)
+struct monst *mtmp;
+struct obj *cont;
+{
+	struct obj *otmp = invent;
+	while(otmp) {
+		otmp->owornmask = 0;
+		otmp->lamplit = 0;
+#ifdef TUTTI_FRUTTI
+		if(otmp->otyp == SLIME_MOLD) goodfruit(otmp->spe);
+#endif
+		if(rn2(5)) curse(otmp);
+		if(!mtmp && !cont) place_object(otmp, u.ux, u.uy);
+		if(!otmp->nobj) {
+			if (mtmp) {
+				otmp->nobj = mtmp->minvent;
+				mtmp->minvent = invent;
+			} else if (cont) {
+				otmp->nobj = cont->cobj;
+				cont->cobj = invent;
+			} else {
+				otmp->nobj = fobj;
+				fobj = invent;
+			}
+			invent = 0;	/* superfluous */
+			break;
+		}
+		otmp = otmp->nobj;
+	}
+	if(u.ugold) {
+		if (mtmp) mtmp->mgold = u.ugold;
+		else mkgold(u.ugold, u.ux, u.uy);
+	}
+}
+
 /* save bones and possessions of a deceased adventurer */
 void
-savebones(){
+savebones()
+{
 	register int fd, x, y;
-	register struct obj *otmp;
 	register struct trap *ttmp;
 	register struct monst *mtmp, *mtmp2;
 #ifdef TUTTI_FRUTTI
 	struct fruit *f;
 #endif
+	char *bonesid;
 
-	if(dlevel <= 0 || dlevel > MAXLEVEL) return;
-	if(no_bones_level(dlevel)) return; /* no bones for specific levels */
-	if(!rn2(1 + (dlevel>>2)) /* not so many ghosts on low levels */
+	if(ledger_no(&u.uz) <= 0 || ledger_no(&u.uz) > maxledgerno()) return;
+	if(no_bones_level(&u.uz)) return; /* no bones for specific levels */
+	if(!rn2(1 + (depth(&u.uz)>>2)) /* fewer ghosts on low levels */
 #ifdef WIZARD
 		&& !wizard
 #endif
@@ -150,22 +176,17 @@ savebones(){
 	if(discover) return;
 #endif
 
-	name_file(bones, dlevel);
-#ifdef COMPRESS
-	Strcpy(proxy, bones);
-	Strcat(proxy, ".Z");
-
-	if((fd = open(proxy, OMASK)) >= 0) {
-#else
-	if((fd = open(bones, OMASK)) >= 0) {
-#endif
+	fd = open_bonesfile(&u.uz, &bonesid);
+	if (fd >= 0) {
 		(void) close(fd);
+		compress_bonesfile();
 #ifdef WIZARD
 		if(wizard)
 			pline("Bones file already exists.");
 #endif
 		return;
 	}
+
 #ifdef WALKIES
 	unleash_all();
 #endif
@@ -173,10 +194,7 @@ savebones(){
 	mtmp2 = fmon;
 	while((mtmp = mtmp2)) {
 		mtmp2 = mtmp->nmon;
-		if(mtmp->iswiz) mongone(mtmp);
-#ifdef MEDUSA
-		if(mtmp->data == &mons[PM_MEDUSA]) mongone(mtmp);
-#endif
+		if(mtmp->iswiz || mtmp->data == &mons[PM_MEDUSA]) mongone(mtmp);
 	}
 #ifdef TUTTI_FRUTTI
 	/* mark all fruits as nonexistent; when we come to them we'll mark
@@ -188,103 +206,89 @@ savebones(){
 	/* check iron balls separately--maybe they're not carrying it */
 	if (uball) uball->owornmask = uchain->owornmask = 0;
 
-	/* drop everything; the corpse's possessions are usually cursed */
-	otmp = invent;
-	while(otmp) {
-		place_object(otmp, u.ux, u.uy);
-		otmp->owornmask = 0;
-#ifdef TUTTI_FRUTTI
-		if(otmp->otyp == SLIME_MOLD) goodfruit(otmp->spe);
+	/* dispose of your possessions, usually cursed */
+	if (u.ugrave_arise == -2) {
+		struct obj *otmp;
+
+		/* embed your possessions in your statue */
+		otmp = mk_named_object(STATUE,
+#ifdef POLYSELF
+					u.mtimedone ? uasmon :
 #endif
-		if(rn2(5)) curse(otmp);
-		if(!otmp->nobj){
-			otmp->nobj = fobj;
-			fobj = invent;
-			invent = 0;	/* superfluous */
-			break;
-		}
-		otmp = otmp->nobj;
-	}
-	in_mklev = TRUE;
-	/* tricks makemon() into allowing monster creation on your square */
-	if (u.ugrave_arise == -1) {
+					player_mon(), 
+					u.ux, u.uy, plname,
+					(int)strlen(plname));
+		if (!otmp) return;
+		drop_upon_death(mtmp = (struct monst *)0, otmp);
+	} else if (u.ugrave_arise == -1) {
+		/* drop everything */
+		drop_upon_death((struct monst *)0, (struct obj *)0);
+		/* trick makemon() into allowing monster creation
+		 * on your location
+		 */
+		in_mklev = TRUE;
 		mtmp = makemon(&mons[PM_GHOST], u.ux, u.uy);
 		in_mklev = FALSE;
 		if (!mtmp) return;
 		Strcpy((char *) mtmp->mextra, plname);
 	} else {
+		/* give your possessions to the monster you become */
+		in_mklev = TRUE;
 		mtmp = makemon(&mons[u.ugrave_arise], u.ux, u.uy);
 		in_mklev = FALSE;
 		if (!mtmp) return;
 		mtmp = christen_monst(mtmp, plname);
-		atl(u.ux, u.uy, mtmp->data->mlet);
+		newsym(u.ux, u.uy);
 		Your("body rises from the dead as %s...",
 			an(mons[u.ugrave_arise].mname));
-		more();
+		display_nhwindow(WIN_MESSAGE, FALSE);
+		drop_upon_death(mtmp, (struct obj *)0);
+#ifdef MUSE
+		m_dowear(mtmp, TRUE);
+#endif
 	}
-	mtmp->m_lev = (u.ulevel ? u.ulevel : 1);
-	mtmp->mhp = mtmp->mhpmax = u.uhpmax;
-	mtmp->msleep = 1;
-	if(u.ugold) mkgold(u.ugold, u.ux, u.uy);
-	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon){
+	if (mtmp) {
+		mtmp->m_lev = (u.ulevel ? u.ulevel : 1);
+		mtmp->mhp = mtmp->mhpmax = u.uhpmax;
+		mtmp->msleep = 1;
+	}
+	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
 		resetobjs(mtmp->minvent,FALSE);
 		mtmp->m_id = 0;
 		mtmp->mlstmv = 0L;
 		if(mtmp->mtame) mtmp->mtame = mtmp->mpeaceful = 0;
-		if(mtmp->mdispl) unpmon(mtmp);
 	}
-	for(ttmp = ftrap; ttmp; ttmp = ttmp->ntrap)
+	for(ttmp = ftrap; ttmp; ttmp = ttmp->ntrap) {
+	        if(ttmp->ttyp == MAGIC_PORTAL) deltrap(ttmp);
 		ttmp->tseen = 0;
-
-	resetobjs(fobj,FALSE);
-	/* let's (not) forget about these - KCD, 10/21/89 */
-	resetobjs(fcobj,FALSE);
-
-	for(x=0; x<COLNO; x++) for(y=0; y<ROWNO; y++)
-		levl[x][y].seen = levl[x][y].new = levl[x][y].scrsym = 0;
-
-#ifdef MSDOS
-	fd = open(bones, O_WRONLY | O_BINARY | O_CREAT | O_TRUNC, FCMASK);
-#else
-# ifdef MACOS
-	{
-		Str255	fileName;
-		OSErr	er;
-		struct term_info	*t;
-		extern WindowPtr	HackWindow;
-		short	oldvolume;
-		
-		t = (term_info *)GetWRefCon(HackWindow);
-		(void)GetVol(&fileName,&oldvolume);
-		(void)SetVol(0L, t->recordVRefNum);
-		fileName[0] = (uchar)strlen(bones);
-		Strcpy((char *)&fileName[1],bones);
-		
-		if (er = Create(&fileName,0,CREATOR,BONES_TYPE))
-			SysBeep(1);
-		fd = open(bones,
-			O_WRONLY | O_BINARY | O_TRUNC | ((er) ? O_CREAT : 0));
-		(void)SetVol(0L, oldvolume);
 	}
-# else
-	fd = creat(bones, FCMASK);
-# endif /* MACOS */
-#endif
+	resetobjs(fobj,FALSE);
+
+	/* Clear all memory from the level. */
+	for(x=0; x<COLNO; x++) for(y=0; y<ROWNO; y++) {
+	    levl[x][y].seen = levl[x][y].waslit = 0;
+	    levl[x][y].glyph = cmap_to_glyph(S_stone);
+	}
+
+	fd = create_bonesfile(&u.uz, &bonesid);
 	if(fd < 0) {
 #ifdef WIZARD
 		if(wizard)
-			pline("Cannot create bones file - creat failed");
+			pline("Cannot create bones file - create failed");
 #endif
 		return;
 	}
 
-#if defined(DGK)	/* check whether there is room */
-	count_only = TRUE;
+	bufon(fd);
+#ifdef MFLOPPY  /* check whether there is room */
+	savelev(fd, ledger_no(&u.uz), COUNT_SAVE);
 # ifdef TUTTI_FRUTTI
-	savefruitchn(fd);
-# endif
-	savelev(fd, dlevel, COUNT);
-# ifdef ZEROCOMP
+	/* this is in the opposite order from the real save, but savelev()
+	 * initializes bytes_counted to 0, so doing savefruitchn() first is
+	 * useless; the extra bflush() at the end of savelev() may increase
+	 * bytes_counted by a couple over what the real usage will be
+	 */
+	savefruitchn(fd, COUNT_SAVE);
 	bflush(fd);
 # endif
 	if (bytes_counted > freediskspace(bones)) {	/* not enough room */
@@ -292,69 +296,29 @@ savebones(){
 		if (wizard)
 			pline("Insufficient space to create bones file.");
 # endif
-		unlink(bones);
+		(void) close(fd);
+		delete_bonesfile(&u.uz);
 		return;
 	}
-	count_only = FALSE;
-#endif /* DGK */
+	co_false();	/* make sure bonesid and savefruitchn get written */
+#endif /* MFLOPPY */
 
+	bwrite(fd, (genericptr_t) bonesid, 7);	/* DD.nnn */
 #ifdef TUTTI_FRUTTI
-	savefruitchn(fd);
+	savefruitchn(fd, WRITE_SAVE | FREE_SAVE);
 #endif
-#if defined(DGK)
-	savelev(fd, dlevel, WRITE);
-#else
-	savelev(fd,dlevel);
-#endif
-#ifdef ZEROCOMP
-	bflush(fd);
-#endif
-	(void) close(fd);
-#if defined(VMS) && !defined(SECURE)
-	/*
-	   Re-protect bones file with world:read+write+execute+delete access.
-	   umask() doesn't seem very reliable; also, vaxcrtl won't let us set
-	   delete access without write access, which is what's really wanted.
-	 */
-	(void) chmod(bones, FCMASK | 007);  /* allow other users full access */
-#endif
-#ifdef MACOS
-	{
-		FInfo	fndrInfo;
-		Str255	name;
-		term_info	*t;
-		short	oldVol, error;
-		
-		t = (term_info *)GetWRefCon(HackWindow);
-		GetVol(name, &oldVol);
-		SetVol(0L, t->recordVRefNum);  
-		Strcpy((char *)name, bones);
-		CtoPstr((char *)name);
-		error = GetFInfo(name, (short)0, &fndrInfo);
-		fndrInfo.fdCreator = CREATOR;
-		fndrInfo.fdType = BONES_TYPE;
-		if (error == noErr)
-			SetFInfo(name, (short)0, &fndrInfo);
-		SetVol(0L, oldVol);
-	}
-#endif /* MACOS */
-#ifdef COMPRESS
-	compress_bones();
-#endif
+	savelev(fd, ledger_no(&u.uz), WRITE_SAVE | FREE_SAVE);
+	bclose(fd);
+	compress_bonesfile();
 }
 
 int
-getbones() {
+getbones()
+{
 	register int fd;
 	register int ok;
-#ifdef MACOS
-	Str255	name;
-	short	oldVol;
-	term_info *t;
-	extern WindowPtr	HackWindow;
-	
-	t = (term_info *)GetWRefCon(HackWindow);
-#endif
+	char *bonesid, oldbonesid[7];
+
 #ifdef EXPLORE_MODE
 	if(discover)		/* save bones files for real games */
 		return(0);
@@ -365,120 +329,57 @@ getbones() {
 		&& !wizard
 #endif
 		) return(0);
-	if(no_bones_level(dlevel)) return(0);
-	name_file(bones, dlevel);
-#ifdef MACOS
-	GetVol(name, &oldVol);
-	SetVol(0L, t->recordVRefNum);
-#endif
-#ifdef COMPRESS
-	if((fd = open(bones, OMASK)) >= 0) goto gotbones;
-	Strcpy(proxy, bones);
-	Strcat(proxy, ".Z");
-	if((fd = open(proxy, OMASK)) < 0) return(0);
-	else {
-	    (void) close(fd);
-	    Strcpy(cmd, COMPRESS);
-	    Strcat(cmd, " -d ");	/* uncompress */
-# ifdef COMPRESS_OPTIONS
-	    Strcat(cmd, COMPRESS_OPTIONS);
-	    Strcat(cmd, " ");
-# endif
-	    Strcat(cmd,proxy);
-	    (void) system(cmd);
-	}
-#endif
-	if((fd = open(bones, OMASK)) < 0) {
-#ifdef MACOS
-		SetVol(0L, oldVol);
-#endif
-		return(0);
-	}
-#ifdef MACOS
-	SetVol(0L, oldVol);
-#endif
-#ifdef COMPRESS
-gotbones:
-#endif
+	if(no_bones_level(&u.uz)) return(0);
+	fd = open_bonesfile(&u.uz, &bonesid);
+	if (fd < 0) return(0);
+
 	if((ok = uptodate(fd)) != 0){
 #ifdef WIZARD
 		if(wizard)  {
-			pline("Get bones? ");
-			if(yn() == 'n') {
+			if(yn("Get bones?") == 'n') {
 				(void) close(fd);
-# ifdef COMPRESS
-				compress_bones();
-# endif
+				compress_bonesfile();
 				return(0);
 			}
 		}
 #endif
-#ifdef ZEROCOMP
-		minit();
+		minit();	/* ZEROCOMP */
+		mread(fd, (genericptr_t) oldbonesid, 7);	/* DD.nnn */
+		if (strcmp(bonesid, oldbonesid)) {
+#ifdef WIZARD
+			if (wizard) {
+				pline("This is bones level '%s', not '%s'!",
+					oldbonesid, bonesid);
+				ok = FALSE;	/* won't die of trickery */
+			}
 #endif
-		getlev(fd, 0, dlevel, TRUE);
+			trickery();
+		} else {
+			register struct monst *mtmp;
+
+			getlev(fd, 0, 0, TRUE);
+
+			/* to correctly reset named artifacts on the level */
+			for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
+				resetobjs(mtmp->minvent,TRUE);
+			resetobjs(fobj,TRUE);
+		}
 	}
 	(void) close(fd);
-#ifdef NAMED_ITEMS
-	/* to correctly reset named artifacts on the level */
-	{
-		register struct monst *mtmp;
 
-		for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
-			resetobjs(mtmp->minvent,TRUE);
-		resetobjs(fobj,TRUE);
-		resetobjs(fcobj,TRUE);
-	}
-#endif
 #ifdef WIZARD
 	if(wizard) {
-		pline("Unlink bones? ");
-		if(yn() == 'n') {
-# ifdef COMPRESS
-			compress_bones();
-# endif
+		if(yn("Unlink bones?") == 'n') {
+			compress_bonesfile();
 			return(ok);
 		}
 	}
 #endif
-#ifdef MACOS
-	GetVol(name, &oldVol);
-	SetVol(0L, t->recordVRefNum);
-#endif
-	if(unlink(bones) < 0){
-		pline("Cannot unlink %s.", bones);
-#ifdef MACOS
-		SetVol(0L, oldVol);
-#endif
+	if (!delete_bonesfile(&u.uz)) {
+		pline("Cannot unlink bones.");
 		return(0);
 	}
-#ifdef MACOS
-	SetVol(0L, oldVol);
-#endif
 	return(ok);
 }
 
-/* construct the string  file.level 
- * This assumes there is space on the end of 'file' to append
- * a two digit number.  This is true for 'bones' and 'level'
- * but be careful if you use it for other things -dgk
- */
-void
-name_file(file, lev)
-char *file;
-int lev;
-{
-	char *tf;
-
-	if (tf = rindex(file, '.'))
-#ifdef VMS
-	    Sprintf(tf+1, "%d;1", lev);
-#else
-  	    Sprintf(tf+1, "%d", lev);
-#endif
-#ifdef MSDOS /* for glo() */
-	else if (tf = eos(file))
-	    Sprintf(tf, ".%d", lev);
-#endif
-	return;
-}
+/*bones.c*/

@@ -1,0 +1,114 @@
+/*	SCCS Id: @(#)os2conf.h	3.1	93/01/18 */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* Copyright (c) Timo Hakulinen, 1990, 1991, 1992, 1993. */
+/* NetHack may be freely redistributed.  See license for details. */
+
+#ifdef OS2
+#ifndef OS2CONF_H
+#define OS2CONF_H
+
+/*
+ * Compiler configuration.  Compiler may be
+ * selected either here or in Makefile.os2.
+ */
+
+/* #define OS2_MSC		/* Microsoft C 5.1 and 6.0 */
+/* #define OS2_GCC		/* GCC emx 0.8f */
+/* #define OS2_CSET2		/* IBM C Set/2 (courtesy Jeff Urlwin) */
+
+/*
+ * System configuration.
+ */
+
+#define OS2_USESYSHEADERS	/* use compiler's own system headers */
+
+#if defined(OS2_GCC) || defined(OS2_CSET2)
+# define OS2_32BITAPI		/* enable for compilation in OS/2 2.0 */
+#endif
+
+/*
+ * Other configurable options.  Generally no
+ * reason to touch the defaults, I think.
+ */
+
+#define MFLOPPY			/* floppy and ramdisk support */
+#define RANDOM			/* Berkeley random(3) */
+#define SHELL			/* shell escape */
+/* #define TERMLIB		/* use termcap file */
+#define ANSI_DEFAULT		/* allows NetHack to run without termcap file */
+#define TEXTCOLOR		/* allow color */
+
+/*
+ * The remaining code shouldn't need modification.
+ */
+
+#ifdef MSDOS
+# undef MSDOS			/* MSC autodefines this but we don't want it */
+#endif
+
+#ifndef MICRO
+# define MICRO			/* must be defined to allow some inclusions */
+#endif
+
+#if !defined(TERMLIB) && !defined(ANSI_DEFAULT)
+# define ANSI_DEFAULT	/* have to have one or the other */
+#endif
+
+#define PATHLEN 	260	/* maximum pathlength (HPFS) */
+#define FILENAME	260	/* maximum filename length (HPFS) */
+#ifndef MICRO_H
+#include "micro.h"		/* necessary externs for [os_name].c */
+#endif
+
+#ifdef MFLOPPY
+
+# define FROMPERM	1	/* for ramdisk use */
+# define TOPERM		2	/* - " - */
+# define ACTIVE		1
+# define SWAPPED	2
+
+struct finfo {
+	int  where;
+	long time;
+	long size;
+};
+extern struct finfo fileinfo[];
+# define ZFINFO { 0, 0L, 0L }
+
+#endif /* MFLOPPY */
+
+#ifndef SYSTEM_H
+# include "system.h"
+#endif
+
+#define index	strchr
+#define rindex	strrchr
+
+#include <time.h>
+
+/* the high quality random number routines */
+
+#ifdef RANDOM
+# define Rand()	random()
+#else
+# define Rand()	rand()
+#endif
+
+/* file creation mask */
+
+#include <sys\types.h>
+#include <sys\stat.h>
+
+#define FCMASK	(S_IREAD | S_IWRITE)
+
+#include <fcntl.h>
+
+#define exit	msexit		/* do chdir first */
+
+#ifndef REDO
+# undef	Getchar
+# define Getchar nhgetch
+#endif
+
+#endif /* OS2CONF_H */
+#endif /* OS2 */

@@ -1,0 +1,393 @@
+    SCCS Id: @(#)ovlmgr.doc		 3.1		91/02/02
+    Copyright (c) 1989, 1990, 1991, 1992, 1993 Pierre G Martineau and
+    Stephen P Spackman.  All Rights Reserved.
+    NetHack may be freely redistributed.  See license for details.
+		 ====================================
+		 Brief notes about ovlmgr.asm [v30a0]
+		 ====================================
+		       (revised 1991february02)
+
+OVLMGR.ASM is a multiple-residency overlay manager for use with the
+Microsoft Overlay Linker.  It is functionally compatible with the one
+in the MSC library _except_:
+
+- it usually accesses the disk less often and is a lot faster in some
+  applications.
+- it permits overlays to be stored in the .EXE file and/or in separate
+  .OVL files.
+- it has different tuning characteristics.
+- you must (of course) link OVLMGR.OBJ into the root overlay (that is,
+  outside any parentheses in the link command).
+
+See also the notes below.
+
+	As with other Microsoft-compatible overlay handlers you must
+be *very* careful never to call a function in an overlay through a
+pointer, unless the initiator of the call resides in the *same*
+physical overlay as the target (This is, of course, *not* the same
+thing as the called function being declared static, since the static
+declaration affects only the visibility of the name of the function,
+not the distribution of pointers to it.) (1).  Furthermore, setjmp()
+and longjmp() are not supported.
+
+	Unlike the Microsoft system, most of the available memory is
+used to hold overlays.	Care must be taken to ensure that enough space
+is reserved for the C heap.  This can be accomplished through
+information stored in the .EXE file (currently the minalloc parameter,
+as described below).
+
+	Furthermore, expanded memory support (EMS) is now an integral
+part of the overlay manager.  LIM EMS versions 3.2 and 4.0 are
+supported.  Note that the page frame must be 4 pages long (64K bytes) to
+be able to operate correctly (most drivers allocate a 64K frame by
+default).  The overlay manager will use as much EMS as is necessary in
+64K chunks, up to a limit of 16 chunks (1 Meg).  Both hardware and
+software EMS drivers have been tested and found to be completely
+compatible.
+
+	Starting with version 30a0, overlays are not restricted to
+being stored in the main .EXE files (as they are with Microsoft's
+overlay manager).  Using the utility EXESMURF arbitrary contiguous
+sequences of overlays can be unloaded into external overlay files.
+Although EXESMURF provides some flexibility in naming these files,
+OVLMGR presently only supports its default option, whereby the
+overlays of a programme PROGRAM.EXE must match the pattern
+PROGRAM?.OVL (if the basename had eight characters, as FILENAME.EXE,
+then the last character is replaced: FILENAM?.EXE) and reside in the
+*same* directory as the .EXE (not even a path search is performed).
+This mechanism permits large applications to be represented with small
+files, resulting in a slight performance improvement (due to less and
+shorter disk seeking) and easier transfer with floppy disks, at the
+cost of a heavier demand for file-handles.
+
+				~ * ~
+
+	OVLMGR.ASM currently has three assembly-time options, which are
+specified with the assembler's /D<symbol> option (or compatible).  They
+are:
+
+	/DNOEMS   Disable EMS support.
+		  OVLMGR normally detects the presence of EMS memory
+		  and makes use of it whenever it is present.  This
+		  flag instructs ovlmgr to ignore EMS and operate only
+		  out of conventional memory.  It should be used when
+		  overlaying programmes which expect to use EMS
+		  themselves.
+
+	/Di386	  Use 80386-specific instruction sequences.
+		  Use of this flag will make ovlmgr perform better on
+		  machines with 80386 processors.  However, the
+		  resulting programme will not run at all on machines
+		  with less capable CPUs.  Use this option with
+		  caution, especially in the case of distribution
+		  code.
+
+	/DNOSPLIT Do not provide for external .OVL files.
+		  If this flag is NOT set, OVLMGR will look for
+		  overlays for the programme PROGRAM.EXE in all files
+		  matching the pattern PROGRAM?.OVL, as well as in the
+		  .EXE file itself.  This arrangement may be slightly
+		  faster and will result in more, smaller files, but
+		  is obviously less robust, since mismatched .OVL
+		  files can cause mayhem.  .OVL files can be generated
+		  with our EXESMURF .EXE file manipulation utility.
+
+				~ * ~
+
+	Although using the overlay manager is in essence much like using
+Microsoft's, they operate on a slightly different principle, and tuning
+for them is rather different.  Technical part begins.
+
+	When overlay linking is requested (see your linker manual), the
+MS overlay linker changes all far calls into overlays from the (normal,
+8086) format:
+
+	offset	contents
+	------	--------
+	:0000	CALL
+	:0001	target-offset
+	:0003	target-segment
+
+to this:
+	:0000	INT
+	:0001	int#	target-mod#
+	:0003	target-offset
+
+(note that here we are looking at the actual layout of the machine
+code, not at the assembly code as such) and relocates the code parts
+of all the different overlays into the *same* physical area.  The
+overlaid code is all actually placed at the end of the .EXE file,
+after the 'normal' executable image, along with all its administrative
+data (fixups etc.).
+
+	When this altered 'call' is executed, of course, the interrupt
+handler int# is invoked.  Its job is to ensure that the target overlay
+module is in memory (reading it from the tail of the .EXE file if it
+isn't already loaded) and then transfer to the given offset within it,
+'faking up' the effect of the 'real' far call that would normally have
+occurred.  Something similar must be done when the call returns, to
+ensure that the thing being returned *into* is still (or is once more)
+loaded.
+
+	The Microsoft linker, as we have said, relocates all the
+overlays to the same load address; and, in fact, it allocates am empty
+block of memory there that is at least as large as the largest
+overlay.  Into this area all the overlays are loaded without further
+change; thus, there can only ever be one overlay in memory at one
+time.  Transferring from one overlay to another causes one overlay to
+replace the other in the allocated overlay swap area.
+
+	Our overlay manager does not use the space allocated by the
+linker in the same way.  Rather, it allocates almost all of the memory
+available from MS-DOS (including the original overlay area and any high
+DOS memory) as well as EMS memory if some is available and that option
+is being used.	As overlays are needed, they are loaded wherever they
+will fit, and dynamically relocated to that address.  Thus, many more
+than one overlay may be loaded at any given time, greatly increasing
+potential performance.	Management of space is more or less according to
+an LRU policy - once all of memory is full, the least recently used
+overlay is selected as the most likely candidate for replacement.
+
+	The implications of this difference are as follows:  while with
+the conventional (default) overlay manager, the best strategy is to
+group object modules together in an overlay whenever they are known to
+be used in rapid succession, to make each overlay as big as possible
+(all things being equal) in order to take advantage of all available
+memory, and to make as few overlays as possible (to reduce the amount of
+disk access), the best strategy with our overlay manager is almost the
+reverse.  Having a lot of small overlays will increase the amount of
+useful stuff that can be resident in memory at the same time; all of
+memory will automatically be employed; and there is no advantage at all
+to uniformity of size (except perhaps in the unlikely case of *exact*
+uniformity!).
+
+	Although ovlmgr allocates all available memory while it is
+active, you will find that the DOS exec() call works normally.	The
+memory that is allocated for administering the overlay system is freed
+before the exec call is made and reallocated afterwards (we trap the DOS
+function request vector to do this, which isn't very nice as a
+programming practise but makes the existence of the overlay manager far
+more transparent).  There is, however, one circumstance under which this
+can be problematic:  if you use the exec() call to load a TSR
+application, thereby causing memory that the overlay manager was using
+to become unavailable, you may make it impossible for the overlaid
+application to proceed.  This is because code that is nominally
+'running' (i.e. is currently on the stack) cannot be relocated and must
+be reloaded at the *same address* that previously held it.  If another
+process now owns that area of memory, there is nothing we can do.  We
+believe that this should not be a serious concern in normal use.
+
+				~ * ~
+
+	Since all available memory is potentially used by ovlmgr, there
+is one additional concern in using it with C programmes:  the allocation
+of sufficient space for the C heap (2).  While previous versions of
+ovlmgr.asm required the change of an internal constant and re-assembly
+of ovlmgr to change the amount of space pre-allocated for this purpose,
+the current version uses the DOS minalloc parameter in the executable
+file to hold the size of the desired heap area.  This parameter can be
+set at any time after the link process with either Microsoft's exemod
+utility or with the supplied utility, exesmurf.
+
+				~ * ~
+
+NOTA BENE: This is an early version of the overlay manager, but by now
+it should be fairly well debugged. If you are considering upgrading it
+please be aware that the following improvements are planned for the
+next version (though who knows when delivery will occur):
+
+      - compatible versions of setjmp() and longjmp()
+      - integral malloc() to eliminate the heap size guesswork
+      - support for swapped data areas (read-only and read/write)
+      - improved performance through dynamic link-loading (maybe)
+      - interlocking to permit floppy disk juggling use
+      - XMS support and improved EMS support
+      - support for divergent-functionality overlays (such as
+	  hardware-specific modules)
+      - enabling the overlay locking code
+      - more flexibility in naming and locating external overlay files
+      - Major code revamping
+
+Swap On!
+
+------------------------------------------------------------------------
+MESSAGES
+
+OVLMGR: EMS memory manager error.
+
+	An error occurred during an EMS access.  Either the hardware has
+	reported a bug, the software driver has detected an anomaly or
+	the page frame is not 64K bytes in length.
+
+OVLMGR: Executable or overlay header missing or damaged.
+
+	The end of a file was reached unexpectedly during
+	initialisation, while trying to locate the overlays.  This is a
+	very bad sign (though I am concerned that it might be triggered
+	spuriously by debug information or other non-executable tails on
+	files).
+
+OVLMGR: File I/O error.
+
+	An error occurred while trying to load an overlay.  We don't
+	want this.
+
+OVLMGR: Inaccessible EXE file. Can't load overlays.
+
+	For some reason ovlmgr could not locate or read the original
+	.EXE file in which the overlays reside.  This could be due to
+	your attempting to use a very old version of DOS,
+	an abject shortage of file handles, some strange event causing
+	the file to be deleted, a disk error, or the diskette that
+	contained the executable being removed.
+
+OVLMGR: Inaccessible OVL file. Can't load overlays.
+
+	An error was reported while attempting to open an .OVL file
+	which was expected (from its name) to contain external overlays.
+	The possible causes are similar to those of the previous
+	message.
+
+OVLMGR: Incomplete executable.  OVL files missing?
+
+	OVLMGR was unable to locate all of its overlays for some reason.
+	This could be due to I/O errors on the disk drive, but is more
+	likely caused by an external .OVL file not being present in the
+	same directory as the .EXE.
+
+OVLMGR: Incorrect DOS version. Must be 3.00 or later.
+
+	The current version of ovlmgr does not support versions of DOS
+	prior to 3.0 because of the difficulty of locating the
+	executable file (and hence the overlays) at runtime.
+
+OVLMGR: Internal memory allocation failure.
+
+	Either an internal error has occurred in ovlmgr or the
+	application programme, or some event has caused memory that
+	ovlmgr believed it could count on becoming unavailable.  A
+	typical example of the latter would be the result of
+	attempting to load a TSR while an overlaid application is
+	running.
+
+OVLMGR: Not enough free memory left to run this program.
+
+	Although DOS successfully loaded the programme, it proved
+	impossible to allocate enough additional contiguous memory to
+	load one or more of the overlays.  Either reduce the
+	RAM-loading of the application by reducing the size of either
+	the root or the largest overlays, or increase the amount of
+	memory available by unloading TSRs and/or simplifying your
+	CONFIG.SYS.
+
+OVLMGR: Unable to resolve overlay file names.
+
+	Apparently the name reported to OVLMGR as being that of the
+	executable file is ill-formed, and it is thus not possible to
+	intuit what external overlay files would be called.  It is
+	possible that this indicates that DOS has gone bonkers, but more
+	likely (I guess) that the .EXE was not invoked by DOS as we know
+	it.  Either way, you have entered the Twilight Zone....
+
+(xxxx:xxxx:xxxx:xxxx)
+
+	This is a diagnostic code composed of the following fields:
+		- error code
+		- version number
+		- available conventional memory
+		- EMS memory usage
+	Please note it in any bug reports or correspondence with the
+	development team.
+
+------------------------------------------------------------------------
+KNOWN BUGS
+
+The present version cannot always be used as a direct replacement for
+Microsoft's overlay manager (even granted the documented differences)
+because the minimum size required for an overlaid programme to run is at
+least the size of the root plus TWICE the size of the largest overlay.
+If a programme has previously had its overlay structure tuned to take
+best advantage of Microsoft overlays, this may well cause a problem.
+The overlays themselves will need to be split up.
+
+When the MicroSoft linker discovers that an overlay as requested
+contains NO instructions at all (this can happen by mistake if you give
+a source file that winds up holding only data declarations its own
+overlay), it does not emit an overlay record for it at all - there is
+simply a gap in the overlay sequence in the file.  The current version
+of OVLMGR detects this as an error, since it assumes that such a gap
+should have been filled by an external .OVL file.  It is presently your
+responsibility to ensure that this does not occur.
+
+Files containing overlays are kept open all the time the application
+is running.  Particularly if multiple external .OVL files are used,
+this can result in less file handles being available to the user
+programme than would otherwise be expected.
+
+ALL files that match the pattern for potential overlay files are
+opened, regardless of whether they actually contain overlays.
+
+The names of external overlay files have a very restricted form, and
+they must reside in the same directory with the .EXE.  These
+limitations cause them to be useful for little else besides making
+distribution easier.
+
+Transfers between overlays are very slow in machine terms, even if both
+overlays happen to reside in memory at the time (still significantly
+faster than Microsoft's, though).  This means that overlay patterns
+must be chosen on the basis of more than just logical dependency.
+
+Locking overlays into memory is not really implemented even though
+reading the source code might make you think it was.  Actually, reading
+the source code itself isn't very well implemented right now.  Comments
+and stuff would help.  Yup, yup.
+
+Due to limitations in the LIM EMS standard (to 4.0), programmes that
+themselves use EMS memory cannot be overlaid with ovlmgr unless ovlmgr's
+own EMS support is disabled.  This is accomplished by assembling with
+the /DNOEMS flag.
+
+------------------------------------------------------------------------
+BUG ALERT
+
+To repeat a point made above, if you ever try to call a function in an
+overlay through a pointer, you *may* die with the Microsoft overlay
+manager.  If you ever try to call a function in an overlay through a
+pointer, you *will* die with ours.  Nothing in an overlay ever ends up
+in the same segment as the linker anticipated.	You have been warned!
+
+------------------------------------------------------------------------
+FOOTNOTES
+
+(1) This problem can be circumvented through the use of surrogate
+'trampoline' functions:  functions that reside in the root overlay and
+simply pass right through to the 'real', overlaid, implementations.
+This can even be made transparent to the source code through the use
+of the C macro preprocessor, with a locution of the form
+	#define foo(x) foo_(x)
+visible everywhere except at the actual definition point of the
+trampoline.  This method was implemented in NetHack 3.0, and remains today.
+
+(2) If you should get a message to the effect that NetHack can't
+allocate 28000 and some bytes when entering a maze level, that
+isn't our problem!  In all probability you forgot to rebuild your
+special level files when you changed the compiler flags.  We got
+that one, too, at one point.  The same applies to similar messages when
+reading bones files or saved games:  it is more likely that you forgot
+to discard them after recompiling your game than that the memory
+allowance is so greatly incorrect.
+
+----------------------------------------------------------------------
+NOTICE
+
+OVLMGR.ASM is brought to you by Pierre Martineau and Stephen Spackman.
+It, and this document, are copyright.  They are, however, provided as
+part of NetHack and may be freely distributed as described in the
+NetHack license.
+
+----------------------------------------------------------------------
+Stephen P Spackman			     stephen@tira.uchicago.edu
+Pierre G Martineau		   pierre%ozrout.uucp@altitude.cam.org
+----------------------------------------------------------------------
+    Copyright (c) 1989, 1990 Pierre G Martineau and Stephen P Spackman
+    All Rights Reserved.

@@ -9,49 +9,88 @@
 # remove the comment from the configuration you want.
 
 # Some options to set personal preferences.  If several people are to
-# use it, options like these should not be set.
+# use it, options like these should not be set here - use the command line
+# (if playing from CLI) or ToolTypes (if playing from WorkBench)
 #OPTIONS=name:Janet-V,female,dogname:Fido,fruit:apricot
-#OPTIONS=packorder:")[%?+/=!(*0_`,endgame:10t/2a,noverbose
+#OPTIONS=packorder:")[%?+/=!(*0_`,scores:10t/2a,noverbose
 
 # Other general options
 #OPTIONS=time,rest_on_space,nopickup
 
 # The search path for files like record, help, opthelp, etc.
-PATH=NetHack:
+#PATH=NetHack:
+PATH=NetHack:playground
 
 # My own setup
-OPTIONS=name:Rhialto,catname:Killie,time,nopickup
+#OPTIONS=name:Rhialto,catname:Killie,time,nopickup
 
 # A hard disk configuration.
 #
 #HACKDIR=DH0:/games/hack
 # The ";n" means don't prompt to insert a disk.
 #SAVE=;n
-#RAMDISK=Ram:
 #LEVELS=DH0:games/hack/bones
 #SAVE=DH0:/games/hack/bones;n
 
-# A 2-floppy configuration.
+# A development HD configuration
 #
-HACKDIR=NetHack:
-LEVELS=df1:
-SAVE=df1:save
-RAMDISK=Ram:
+#HACKDIR=NetHack:
+#LEVELS=NetHack:levels
+#SAVE=NetHack:save;n
 
-# The 32 GRAPHICS characters (0-31) are:
-# stone, vertical wall, horizontal wall, top left corner, top right corner, 
-# bottom left corner, bottom right corner, crosswall, up T wall, down T wall, 
-# left T wall, right T wall, vertical beam, horizontal beam, left slant, right
-# slant, no door, vertical open door, horizontal open door, closed door,
-# floor, corridor, up stairs, down stairs, trap, web, pool,
-# fountain, sink, throne, altar, up ladder, down ladder, vertical drawbridge
-# wall, horizontal drawbridge wall 
+# A 2-floppy, 2-megabyte configuration.
 #
-# If you specify less that 32 ASCII values, the remaining characters will be
-# set to their respective defaults.
+#HACKDIR=NetHack:
+#LEVELS=df1:
+#SAVE=df1:save
+
+# A minimal configuration
+HACKDIR=NetHack:
+LEVELS=Nethack:levels
+SAVE=Nethack:save
+
+# *** CHARACTER GRAPHICS ***
+#
+# The 69 GRAPHICS characters (0-68) are:
+#
+# stone,
+# walls: vertical, horizontal,
+#	 4 corners: top left, top right, bottom left, bottom right,
+#	 cross wall,
+#	 4 T walls: upward, downward, left, right,
+# doors: no door,
+#	 open doors: vertical, horizontal,
+#	 closed doors: vertical, horizontal,
+# floor,
+# corridors: unlit, lit,
+# stairs up, stairs down, ladder up, ladder down,
+# trap, web, altar, throne, sink, fountain, pool/moat, ice, lava,
+# lowered drawbridge: vertical, horizontal,
+# raised drawbridge: vertical, horizontal,
+# air, cloud, water,
+# 4 beams: vertical, horizontal, left slant, right slant,
+# digging beam, camera flash beam, left boomerang, right boomerang,
+# 4 magic shield display symbols,
+# 8 swallowed: top left/middle/right, mid left/right, bottom left/mid/right,
+# 9 explosion: [3 rows (top, middle, bottom) of 3 characters]
+#
+# If you specify fewer than 69 ASCII values, the remaining characters will be
+# set to their respective defaults:
+#	   ' '  |   -   -   -   -   -   -   -   -
+#           |   |   .   -   |   +   +   .   #   #
+#	    <   >   <   >   ^   "   _   \   #   {
+#	    }   .   }   .   .   #   #  ' '  #   }
+#	    |   -   \   /   *   !   )   (   0   #
+#	    @   *   /   -   \   |   |   \   -   /
+#	    /   -   \   |  ' '  |   \   -   /
 #
 # Note that the hack.font has special graphics characters from 192 on.
 
 # An example using the hack.font graphics character set:
-#	   ' '  |   -   .   .   `   '   -   -   -   -   -   |   -   \   /   .   -   |   +   .   #   <   >   ^   "   }   {   #   \   _   <   >   #   #
-GRAPHICS = 032 192 193 194 195 196 197 198 216 214 215 213 192 193 092 047 046 193 192 198 046 035 060 062 094 034 125 123 035 092 095 060 062 035 035
+GRAPHICS = 032 192 193 194 195 196 197 198 216 214 \
+	   215 213 046 193 192 198 198 046 229 035 \
+	   060 062 060 062 094 034 095 092 035 123 \
+	   125 042 125 042 042 035 035 046 035 125 \
+	   192 193 092 047 042 033 123 125 064 038 \
+	   042 035 047 201 092 200 200 092 201 047 \
+	   230 234 231 236 212 237 232 235 233

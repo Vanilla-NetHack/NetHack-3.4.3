@@ -1,422 +1,103 @@
-Macintosh NetHack 3.0 (Patchlevel 10) Installation Guide
-last modified: January 27th, 1991
-(A fixed width font is recommended for this document, Courier 10)
-
-
-Acknowledgements
-================
-Original credit for porting NetHack 3.0 to the Macintosh goes to Johnny
-Lee and Michael Sokolov.  David Hairston, Kevin Sitze, Andy Swanson, Jon
-Watte and Tom West helped polish this port in later versions.
-
-
-Preliminary Notes
-================
-These instructions are optimized for the Think C 4.0 compiler.  Other
-Macintosh compilers should be okay however some work will be needed to
-complete the build.  For other compilers that use "make", you can use the
-various Makefiles and your compiler errors as guides in building the game.
-
-You should maintain the file/folder structure given in the distribution
-file "Files".  These notes assume that file structure which is outlined
-below. Place the "top" folder appropriately in your compilers development
-folder.  You'll need ~6MB disk space for Macintosh only development,
-however you will use less space by cleaning up after each phase of the
-build detailed below.
-
-
-Distribution File Structure (Think C 4.0)
-================
-top {folder, appropriately placed in Think C 4.0 development tree}
-    Files
-    Install.mac
-    Makefile.top        {if you need Makefiles, Think C 4.0 doesn't}
-    auxil {folder}
-        all auxiliary support files.
-    include {folder}
-        all header files.
-    mac {folder}
-        all Macintosh specific files.
-    others {folder}
-        pcconf.c, pcmain.c, pctty.c & random.c only.
-        **** remove this copy of lev_lex.c! ****
-    src {folder}
-        all source files.
-        **** keep this copy of lev_lex.c! ****
-
-
-Non-Think C 4.0 Users
-================
-If your compiler doesn't handle subfolders you'll need to place all the
-inter-related source (*.c) and header (*.h) files in a common folder. It
-will require some work but you should be able to follow the dependencies
-in the Makefiles to build the game.
-
-If your compiler utilizes the make/Makefile facilities, then remove the
-tags from the Makefiles (auxil, src and top) and edit appropriately.
-
-
-Getting Started
-================
-Users of Think C 4.0 should decode the 5 BinHex 4.0 encoded *.hqx files in
-the mac folder, thus creating 3 Think C project files and 2 associated
-ResEdit resource files.  There are various BinHex 4.0 decoders which can
-do this, including the applications BinHex 4.0 and Stuffit and the desk
-accessory BinHqx DA 1.02.  Move the 5 extracted files (makedefs.proj,
-makedefs.proj.rsrc, sp_lev.proj, nethack.proj and nethack.proj.rsrc) to
-the "top" folder.
-
-Use your favorite text editor to create an empty file of type "TEXT".
-Name this file "news" and save it in the auxil folder. If you decide to
-use the NEWS compile option (recommended) then write a message in the
-"news" file which may get displayed at the start of every game.
-
-Create a folder called "Dungeon" in the "top" folder. This is where we'll
-place the files needed to run NetHack.
-
-Finally, Think C 4.0 users should have no problem compiling the NetHack
-sources, as distributed.  If you make changes to the sources then consider
-backing up your disk to prevent problems.  Also, trash (or alter the
-creator signature of) older versions of NetHack 3.0 to avoid conflicts.
-
-Okay, let's get started.  We're going to make 3 applications, in order:
-(1) makedefs, to create customized files for the game, (2) spec_lev, to
-create special challenging maze-like levels and (3) nethack!  The full
-build from scratch takes about an hour using Think C 4.0 .
-
-
-Macintosh Configuration
-================
-Edit the header file "config.h" (in the include folder) as follows.  The
-changes below occur sequentially.  Scan forward to find:
-
- * Section 1:	OS selection.
-
-Comment out: #define UNIX
-Uncomment  : #define MACOS {bottom of the ifdef __MSDOS__ else clause}.
-
-Scan forward to the segment:
-
-#ifdef MACOS
-#define THINKC4		/* for the Think C 4.0 compiler */
-
-Note that marginal support has been provided for other compilers but it
-will take some work to complete the build using those compilers.  This
-segment is configured properly for Think C 4.0 users, by default.  If your
-compiler doesn't handle the "defined(x)" compiler directive then you
-should define "KR1ED", this is done automatically here for LSC and AZTEC.
-
-Scan forward to:
-
- * Section 2:	Some global parameters and filenames.
-
-Change "izchak" to a suitable wizard id.  A good choice is "wizard".
-This is the name that needs to appear in the NetHack "Set Options..."
-dialog in order to enable the selection of wizard (debug) mode.
-
-Comment out: #define LOGFILE "logfile"
-
-Scan forward to:
-
- * Section 3:	Definitions that may vary with system type.
-
-The configuration here is okay for THINKC4, LSC and AZTEC.
-     
-Scan forward to:
-
- * Section 4:  THE FUN STUFF!!!
-
-The defines here default to configuring a full-featured game.  If you want
-a current indicator of your score during play (recommended) then
-
-Uncomment:   #define SCORE_ON_BOTL
-
-Save the config.h file.
-
-If you customize the game then look at the header files macconf.h and
-system.h. This isn't necessary for simply building the default game.
-
-
-Building Makedefs
-================
-Makedefs depends on the source files:
-    alloc.c  macfile.c  makedefs.c  monst.c  objects.c  panic.c
-
-Think C 4.0 users should open the project file "makedefs.proj".  Others
-should refer to Makefile.src for help.
-
-We need to re-configure for makedefs so Open the header file "config.h".
-Scan forward (in Section 1) to:
-
-#ifdef MACOS
-
-Comment out: #define CUSTOM_IO .
-Uncomment  : #define MAKEDEFS_C .
-
-Close and save the config.h file.
-
-Build the makedefs application. The Think C 4.0 project uses resources
-from the "makedefs.proj.rsrc" file.
-
-Save the application in the "top" folder and Close the project.
-
-Run the makedefs application, sequentially choosing all seven options.
-This will require re-launching each time.  You've now created additional
-auxiliary files for the game and added icons and signatures to these 12
-files (in the auxil folder): cmdhelp, data, help, hh, history, license,
-MacHelp, news, opthelp, oracles, record, and rumors. These files should be
-copied into the "Dungeon" folder.
-
-If you decide to change features in the game, remember to always rebuild
-makedefs first to setup the needed data structures and so on for the game.
-
-
-Building Spec_levs
-================
-This application depends on the source files:
-    alloc.c      lev_comp.c  lev_lex.c   lev_main.c
-    macfile.c    monst.c     objects.c   panic.c
-
-If you copied the alternate file others:lev_lex.c, you should remove it
-now to avoid problems with src:lev_lex.c.
-
-Think C 4.0 users should open the project file "spec_lev.proj".  Others
-should refer to Makefile.src for help.
-
-The changes needed to build this application are more complicated than
-before, however the checklist provided below should cover all the bases.
-We need to re-configure for spec_levs (and subsequently for NetHack) so
-Open the header file "config.h".
-
-Scan forward (in Section 1) to:
-
-#ifdef MACOS
-
-Comment out: #define MAKEDEFS_C
-
-Close and save the header file "config.h".
-
-Open the source file (in the src folder) "lev_lex.c".  Make the following
-changes, which appear sequentially:
-    Find                                    Replace with
-    {... near the beginning ...}
-    int yyleng; extern char yytext[];       int yyleng; extern char *yytext;
-    int yymorfg;                            int yymorfg;
-    extern char *yysptr, yysbuf[];          extern char *yysptr, *yysbuf;
-    int yytchar;                            int yytchar;
-    FILE *yyin ={stdin}, *yyout ={stdout};  FILE *yyin =stdin, *yyout =stdout;
-    {... near the end ...}
-    {... If you're using LSC or THINKC4 comment out: ...}
-    {... #define NLSTATE yyprevious=YYNEWLINE ...}
-    char yytext[YYLMAX];                    char *yytext;
-    {... Skip a line ...}
-    char yysbuf[YYLMAX];                    char *yysbuf;
-    char *yysptr = yysbuf;                  char *yysptr;
-
-Scan backward (near the beginning) to:
-
-#define MONDATA_H	/* comment this line for pre-compiled headers */
-#define MONFLAG_H	/* comment this line for pre-compiled headers */
-
-Comment out: #define MONDATA_H and MONFLAG_H
-
-Cut the line:
-
-#include "hack.h"
-
-and Paste it back in again at the very beginning of the file!
-
-Save the changes to lev_lex.c and close the file.
-
-Open the source file, "lev_comp.c".
-
-Scan forward to:
-
-#define MONDATA_H	/* comment this line for pre-compiled headers */
-#define MONFLAG_H	/* comment this line for pre-compiled headers */
-
-Comment out: #define MONDATA_H and MONFLAG_H
-
-Cut the line:
-
-#include "hack.h"
-
-and Paste it back in again at the very beginning of the file!
-
-Scan forward (near the middle of the file) and make this change:
-    Find                                    Replace with
-    #endif not lint                         #endif /* not lint */
-
-Save the changes to lev_comp.c and close the file.
-
-Finally, we need to block some compiler directives in the source files
-"alloc.c" and "panic.c" in order to use pre-compiled headers.
-
-Open the source file "alloc.c".
-
-Comment out: #define ALLOC_C and EXTERN_H
-
-Save the changes to alloc.c and close the file.
-
-Open the source file "panic.c".
-
-Comment out: #define NEED_VARARGS
-
-Save the changes to panic.c and close the file.
-
-Now we need to prepare the pre-compiled header files "hack.h"
-and "config.h".  We'll do this again in the NetHack project.
-
-Shell out to the Finder and _copy_ the files hack.h and config.h
-to pre_hack.h and pre_config.h, respectively.  Be careful not to
-lose these files as you'll need them to complete the build.  Switch
-back to the compiler.
-
-Open the file "pre_hack.h".  Choose the Source menu option Precompile
-and save the resulting file as "hack.h" (overwriting the old hack.h).
-Open the file "pre_config.h" and Precompile it saving the result as
-"config.h" (again overwrite the old config.h).
-
-Build the spec_lev application and save it into the "top" folder.  Close
-the spec_lev project.
-
-Before running the spec_lev application let's restore the pre-compiled
-header files.  Trash "hack.h" and "config.h".  Now rename "pre_hack.h" and
-"pre_config.h" to "hack.h" and "config.h", respectively.
-
-Run the spec_lev application, it will show you what file it is currently
-working on and create the 5 special levels: castle, endgame, tower1,
-tower2 and tower3 in the top folder. These 5 files should be moved into
-the Dungeon folder.
-
-If you're motivated to create customized special levels it should be
-possible to modify the special level compiler to accommodate your efforts.
-You'll also want to edit the "descrip[]" and "argc" variables, in
-lev_main.c within the ifdef MACOS segments, to get the compiler to
-recognize your custom levels.  You probably won't bother (no one has)!
-
-If you decide to change features in the game, remember to always rebuild
-spec_levs to reflect those changes in the special level files.
-
-
-Building NetHack
-================
-This is what you've been waiting for!  The file "Segments.mac" shows the
-source dependencies for this application and suggests a workable scheme
-for creating properly sized segments.
-
-Think C 4.0 users should open the project file "nethack.proj".  Others
-should refer to the various Makefiles for help.
-
-The checklist below indicates the changes needed to build the game.
-
-Open the header file "config.h".
-
-Scan forward (in Section 1) to:
-
-#ifdef MACOS
-
-Uncomment:   #define CUSTOM_IO
-
-Save the changes to config.h and close the file.
-
-Open the source file, "topten.c".
-
-Scan forward to:
-
-#define MONATTK_H	/* comment line for pre-compiled headers */
-#define MONFLAG_H	/* comment line for pre-compiled headers */
-
-Comment out: #define MONATTK_H and MONFLAG_H
-
-Scan forward to:
-
-#define	POINTSMIN	1	/* must be > 0 */
-#define	ENTRYMAX	100	/* must be >= 10 */
-
-Change POINTSMIN to 51 and ENTRYMAX to 50 to reduce the size and
-clutter in the record file.
-
-Comment out: #define PERS_IS_UID
-
-Close topten.c and save the changes.
-
-Think C 4.0 users are going to, again, use pre-compiled headers and
-this requires a minor lexical change to the files listed below.  We'll
-use a feature from the Search menu to make this operation easier.
-
-Files needing a lexical change for pre-compiled headers:
-apply.c     end.c       extralev.c  mkroom.c    mon.c       monmove.c
-pager.c     pctty.c     pri.c       priest.c    save.c      shk.c
-sounds.c    termcap.c   topl.c
-
-Invoke the "Find" command from the "Search" menu. Enter these fields:
-    Search For:                            Replace with:
-    ^\(#.*pre-compiled headers \*\/\)      /*\1
-
-Check the "Grep" and "Multi-File Search" check boxes (you'll be
-looking in all .c files) then click the "Don't Find" button.
-
-Now repeat this sequence:
-1) Select "Find in Next File" from the "Search" menu.
-2) When it finally makes a match, Select "Replace All".
-3) Click the "Okay" button in the ensuing alert and then close and save
-    the file.  Now go back to (1), until there are no more matches.
-
-Shell out to the Finder and then _copy_ the files hack.h and config.h to
-pre_hack.h. and pre_config.h, respectively.  Switch back to the compiler.
-
-Open the file "pre_hack.h" and Precompile it, saving the result as "hack.h"
-(overwriting the old hack.h).  Open the file "pre_config.h" and Precompile
-it, saving the result as "config.h" (overwriting the old config.h).
-
-Open the "Options" dialog (under the Edit menu) and choose the
-"Code Generation" radio button.  Look to be sure that "MacHeaders" is
-_not_ being automatically being included in the project (unchecked).
-Also, make sure that the other options here are set to your liking.
-
-Build the application, this make take a few minutes. Save the game into
-the dungeon folder. Close the nethack project and you're ready to play the
-game (I hope all went well).
-
-
-Miscellaneous Notes
-================
-Low Memory:
-If you are attempting to build NetHack 3.0 on a 1M Macintosh using Think C
-4.0, then memory may be a problem.  It is suggested that you turn off
-debugging info for monst.c and objects.c .  Also, if for some reason,
-compilation stops in the segment containing these two files after they
-have been compiled, then you should drag these two files into a separate
-segment, finish compiling the files of the original segment and then
-restore these two files to the original segment.  Alternatively, you may
-decide to "Kompile" monst.c and objects.c separately while preserving the
-given segmentation scheme.
-
-Cleanup:
-It's a good idea to always rebuild the makedefs and spec_lev applications
-from scratch.  Therefore you can trash these applications and also remove
-the objects from their respective projects (Think C compilers) to conserve
-disk space.  The same can be done for your nethack project. Consider the
-changes outlined above and undo them as needed to rebuild the project, if
-you decide to modify the game.  If you're satisfied with the "default"
-game you can trash all the files for a real saving!
-
-Compatibility:
-You should trash bones and save files from previous versions since they
-will not work with this version.  The single exception is that pl9 bones
-and saves work with pl10.  Generally, record files will always work however
-new scores may have a different format.  It may be more convenient to start
-fresh with a new scoreboard (record file) for each patchlevel.
-
-Extra Memory:
-If you can afford the RAM space you might consider giving the game a 1M
-partition in Multifinder instead of the default 750k.
-
-Support:
-Bug reports should be submitted to the InterNet e-mail address:
-nethack-bugs@linc.cis.upenn.edu
-
-We, the members of the Macintosh NetHack Development Team, hope you enjoy
-the game. We've worked hard at porting and polishing it to make it behave
-in the Macintosh way!
+How to make Mac NetHack 3.1 using MPW
+Copyright (c) 1992-11-23 Jon W{tte
+
+
+Please read these instructions through carefully before starting to
+build NetHack for the Macintosh.  Most important is the part about
+keeping the folder structure intact, and how to move a few files
+around.
+
+For me, having done this a few times, steps 1-7 take less than five
+minutes.  Add to that an average compilation time of 25 minutes
+(without VISION_TABLES, see below) and a full build of NetHack from
+scratch doesn't take more than a lunch break.
+
+0)	Requirements:
+	- MPW C 3.2
+	- Mac with 68020 or better CPU (this is required to run MPW 3.2)
+	- 10 MB free disk (at least)
+	- 8 MB memory (using System 6, or a slimmed System 7)
+	  More is quite preferable.
+	- About 7 minutes of time on a Quadra with a RAM disk that fits
+	  the entire compilation.  Less than an hour for an SE/30 with
+	  standard hard disk.
+	- Do NOT use virtual memory, or the compilation will quite possibly
+	  take the whole weekend.  We're serious.
+
+1)	Move all source files onto your hard disk.  Make sure to keep the
+	folder structure the way it is.  You can skip the "tty" "X11" "amiga"
+	"msdos" "os2" and "vms" folders if you are hard pressed for space.
+	Also make sure the files are in native mac text format (i.e. ASCII
+	13 is used for newlines).
+
+2)	De-binhex the file :sys:mac:NHmake.hqx using Stuffit, Compact Pro,
+	tickle, or any other de-binhexer.  Move the resulting file
+	(Nethack.make) into the "top" folder (the one containing the
+	folders "src" "include" etc).
+
+3)	De-binhex the files :sys:mac:NHrez.hqx, :sys:mac:NHrsrc.hqx and
+	:sys:mac:NHsound.hqx. If there is no sound file, or you do not
+	want the sounds (they take up 200K in the final binary) you must
+	create an empty resource file called "Sounds.rsrc" in the folder
+	:sys:mac, using ResEdit.
+	The resulting files should be left in :sys:mac:
+
+4)	Edit the make file Nethack.make to set the Top variable.  If your top
+	folder is called "nh31" and is in the MPW folder, this is not needed.
+
+5)	Create two new folders in the top folder, named "Dungeon" and "Obj".
+
+6)	You may want to edit some of the options in :include:config.h to suit
+	your tastes.  However, using MPW, this file will self-configure for
+	the default Mac distribution.
+
+	NOTE: The make file defines VISION_TABLES, and macconf.h sets
+	the option BRACES to match, so you should not concern yourself
+	with that option in config.h. However, compiling with the option
+	VISION_TABLES will generate a faster binary, at the expense of
+	the size of the application, and compilation time.
+
+	Your MPW shell will need at least 7000K REAL MEMORY (TempMem
+	won't do) for this compile to work. If you don't have it, you
+	can try removing the VISION_TABLES option in the make file,
+	you will however still need around 3000K for the MPW shell.
+
+7)	Use BuildProgram on the make file. This is Cmd-B for most folks.
+	Sit back and relax. The linker will spew out a lot of warnings
+	about global data size (Error 34) but that's OK. If you don't
+	want the warnings, turn on -model far in the make file; this will
+	make a slightly less efficient program but gives no warnings.
+
+8)	When the build is done, a short melody is played, and the results are
+	in the Dungeon folder.  Enjoy!
+
+9)	If you want to make any changes to the dungeon compiler or the special
+	level compiler, you will need to edit the makefile to remove the
+	dependencies for dgn_comp.h and lev_comp.h.  You should then add 
+	dependencies for dgn_lex.c and lev_lex.c (output by lex) You
+	will also need dependencies for dgn_yacc.c and lev_yacc.c (Output
+	of yacc).  All four of these files should end up in the Top:sys:share
+	folder.  Finally, the y.tab.h output from yacc should end up in
+	the include folder as dgn_comp.h/lev_comp.h.
+	
+
+10)	If, heaven forbid, you experience any configuration problems or make
+	errors, try to fix it yourself (there are several READMEs and the
+	like you can check), but be sure to save a copy of the original files
+	if you change anything.  There should be no problems if you use the
+	correct versions etc. as per step 0 but you never know.  As always,
+	turn off all INITs and re-boot if you have any problems, and they
+	might go away.
+
+	If you experience any bugs, please mail them to the bug report address
+	nethack-bugs@linc.cis.upenn.edu
+	Be sure to include what computer you use, how it is configured, what
+	version of MPW and C and the headers you use, where you got the
+	NetHack code etc. etc.
+
+11)	This code is provided "as is" free of charge, and no warranty of any
+	kind can or will cover it.  Use at your own risk.  This code is
+	protected under copyright law, and may only be re-distributed under
+	the terms of the NetHack license also found in this package, or
+	otherwise with the authors' permission.  (If the license is missing,
+	mail the bug report address for a copy.)

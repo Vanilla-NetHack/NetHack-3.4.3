@@ -1,24 +1,26 @@
-/*	SCCS Id: @(#)topten.c	3.0	91/01/20
+/*	SCCS Id: @(#)topten.c	3.1	92/11/20	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
-#define MONATTK_H	/* comment line for pre-compiled headers */
-#define MONFLAG_H	/* comment line for pre-compiled headers */
-/* block some unused #defines to avoid overloading some cpp's */
 #include "hack.h"
 
-#if defined(UNIX) || defined(VMS)
-#include <errno.h>	/* George Barbanis */
-extern int errno;
-# if defined(NO_FILE_LINKS) && !defined(O_WRONLY)
-#include <fcntl.h>	/* Ralf Brown */
-# endif
-#endif	/* UNIX || VMS */
-#include <ctype.h>
+#ifdef VMS
+ /* We don't want to rewrite the whole file, because that entails	 */
+ /* creating a new version which requires that the old one be deletable. */
+# define UPDATE_RECORD_IN_PLACE
+#endif
 
-#ifdef MACOS
-extern short macflags;
-extern WindowPtr	HackWindow;
+/*
+ * Updating in place can leave junk at the end of the file in some
+ * circumstances (if it shrinks and the O.S. doesn't have a straightforward
+ * way to truncate it).  The trailing junk is harmless and the code
+ * which reads the scores will ignore it.
+ */
+#ifdef UPDATE_RECORD_IN_PLACE
+# ifndef SEEK_SET
+#  define SEEK_SET 0
+# endif
+static long final_fpos;
 #endif
 
 #ifdef NO_SCAN_BRACK
@@ -27,19 +29,24 @@ static void FDECL(nsb_unmung_line,(char*));
 #endif
 
 #define newttentry() (struct toptenentry *) alloc(sizeof(struct toptenentry))
+#define dealloc_ttentry(ttent) free((genericptr_t) (ttent))
 #define	NAMSZ	10
 #define	DTHSZ	60
 #define	PERSMAX	 3		/* entries per name/uid per char. allowed */
 #define	POINTSMIN	1	/* must be > 0 */
 #define	ENTRYMAX	100	/* must be >= 10 */
 
-#ifndef MSDOS
+#ifndef MICRO
 #define	PERS_IS_UID		/* delete for PERSMAX per name; now per uid */
 #endif
 struct toptenentry {
 	struct toptenentry *tt_next;
-	long int points;
-	int level,maxlvl,hp,maxhp;
+#ifdef UPDATE_RECORD_IN_PLACE
+	long fpos;
+#endif
+	long points;
+	int deathdnum, deathlev;
+	int maxlvl,hp,maxhp;
 	int uid;
 	char plchar;
 	char sex;
@@ -48,17 +55,14 @@ struct toptenentry {
 	char date[7];		/* yymmdd */
 } *tt_head;
 
-static char *FDECL(itoa, (int));
-static const char *FDECL(ordin, (int));
 static void NDECL(outheader);
 static int FDECL(outentry, (int,struct toptenentry *,int));
 static void FDECL(readentry, (FILE *,struct toptenentry *));
 static void FDECL(writeentry, (FILE *,struct toptenentry *));
 static int FDECL(classmon, (CHAR_P,BOOLEAN_P));
-static boolean FDECL(onlyspace, (const char *));
 
 /* must fit with end.c */
-static const char NEARDATA *killed_by_prefix[] = {
+const char NEARDATA *killed_by_prefix[] = {
 	"killed by ", "choked on ", "poisoned by ", "", "drowned in ",
 	"", "crushed to death by ", "petrified by ", "",
 	"", "",
@@ -69,30 +73,36 @@ readentry(rfile,tt)
 FILE *rfile;
 struct toptenentry *tt;
 {
-# ifdef NO_SCAN_BRACK
-	if(fscanf(rfile,"%6s %d %d %d %d %d %ld%*c%c%c %s %s",
-#  define TTFIELDS 12
-# else
-	if(fscanf(rfile, "%6s %d %d %d %d %d %ld %c%c %[^,],%[^\n]",
-#  define TTFIELDS 11
-# endif
-		tt->date, &tt->uid,
-		&tt->level,
-		&tt->maxlvl, &tt->hp, &tt->maxhp, &tt->points,
-		&tt->plchar, &tt->sex,
-#ifdef LATTICE	/* return value is broken also, sigh */
-		tt->name, tt->death) < 1)
+#ifdef UPDATE_RECORD_IN_PLACE
+	/* note: fscanf() below must read the record's terminating newline */
+	final_fpos = tt->fpos = ftell(rfile);
+#endif
+#ifdef NO_SCAN_BRACK
+	if(fscanf(rfile,"%6s %d %d %d %d %d %d %ld%*c%c%c %s %s%*c",
+#  define TTFIELDS 13
 #else
-		tt->name, tt->death) != TTFIELDS)
+	if(fscanf(rfile, "%6s %d %d %d %d %d %d %ld %c%c %[^,],%[^\n]%*c",
+#  define TTFIELDS 12
+#endif
+			tt->date, &tt->uid,
+			&tt->deathdnum, &tt->deathlev,
+			&tt->maxlvl, &tt->hp, &tt->maxhp, &tt->points,
+			&tt->plchar, &tt->sex,
+#ifdef LATTICE	/* return value is broken also, sigh */
+			tt->name, tt->death) < 1)
+#else
+			tt->name, tt->death) != TTFIELDS)
 #endif
 #undef TTFIELDS
-			tt->points = 0;
+		tt->points = 0;
+	else {
 #ifdef NO_SCAN_BRACK
-	if(tt->points > 0) {
-		nsb_unmung_line(tt->name);
-		nsb_unmung_line(tt->death);
-	}
+		if(tt->points > 0) {
+			nsb_unmung_line(tt->name);
+			nsb_unmung_line(tt->death);
+		}
 #endif
+	}
 }
 
 static void
@@ -103,14 +113,12 @@ struct toptenentry *tt;
 #ifdef NO_SCAN_BRACK
 	nsb_mung_line(tt->name);
 	nsb_mung_line(tt->death);
+	(void) fprintf(rfile,"%6s %d %d %d %d %d %d %ld %c%c %s %s\n",
+#else
+	(void) fprintf(rfile,"%6s %d %d %d %d %d %d %ld %c%c %s,%s\n",
 #endif
-# ifdef NO_SCAN_BRACK
-	(void) fprintf(rfile,"%6s %d %d %d %d %d %ld %c%c %s %s\n",
-# else
-	(void) fprintf(rfile,"%6s %d %d %d %d %d %ld %c%c %s,%s\n",
-# endif
 		tt->date, tt->uid,
-		tt->level,
+		tt->deathdnum, tt->deathlev,
 		tt->maxlvl, tt->hp, tt->maxhp, tt->points,
 		tt->plchar, tt->sex,
 		onlyspace(tt->name) ? "_" : tt->name, tt->death);
@@ -118,14 +126,6 @@ struct toptenentry *tt;
 	nsb_unmung_line(tt->name);
 	nsb_unmung_line(tt->death);
 #endif
-}
-
-static boolean
-onlyspace(s)
-const char *s;
-{
-	for (;*s;s++) if (!isspace(*s)) return(FALSE);
-	return(TRUE);
 }
 
 void
@@ -136,51 +136,29 @@ int how;
 	int rank, rank0 = -1, rank1 = 0;
 	int occ_cnt = PERSMAX;
 	register struct toptenentry *t0, *tprev;
-	register struct toptenentry *t1;
-#ifdef UNIX
-	char *reclock = "record_lock";
-# ifdef NO_FILE_LINKS
-	int lockfd ;
-# endif
-#endif /* UNIX */
-#ifdef VMS
-	const char *reclock = "record.lock;1";
-	char recfile[] = RECORD;
-#else
-	const char *recfile = RECORD;
-#endif
-#if defined(UNIX) || defined(VMS)
-	int sleepct = 100;
-#endif
+	struct toptenentry *t1;
 	FILE *rfile;
 	register int flg = 0;
 #ifdef LOGFILE
-	char *lgfile = LOGFILE;
 	FILE *lfile;
-# ifdef UNIX
-	char *loglock = "logfile_lock";
-# endif /* UNIX */
-# ifdef VMS
-	const char *loglock = "logfile.lock;1";
-# endif /* VMS */
-# if defined(UNIX) || defined(VMS)
-	int sleeplgct = 30;
-# endif /* UNIX or VMS */
 #endif /* LOGFILE */
 
-#if defined(MSDOS) || defined(MACOS)
+#if defined(MICRO)
 #define HUP
 #else
 #define	HUP	if(!done_hup)
 #endif
-#ifdef MACOS
-	macflags &= ~fDoUpdate;
-	uid = TickCount();
-#endif
 	/* create a new 'topten' entry */
 	t0 = newttentry();
-	t0->level = dlevel;
-	t0->maxlvl = maxdlevel;
+	/* deepest_lev_reached() is in terms of depth(), and reporting the
+	 * deepest level reached in the dungeon death occurred in doesn't
+	 * seem right, so we have to report the death level in depth() terms
+	 * as well (which also seems reasonable since that's all the player
+	 * sees on the screen anyway)
+	 */
+	t0->deathdnum = u.uz.dnum;
+	t0->deathlev = depth(&u.uz);
+	t0->maxlvl = deepest_lev_reached(TRUE);
 	t0->hp = u.uhp;
 	t0->maxhp = u.uhpmax;
 	t0->points = u.urexp;
@@ -188,120 +166,65 @@ int how;
 	t0->sex = (flags.female ? 'F' : 'M');
 	t0->uid = uid;
 	(void) strncpy(t0->name, plname, NAMSZ);
-	(t0->name)[NAMSZ] = 0;
-	(t0->death)[0] = 0;
+	t0->name[NAMSZ] = '\0';
+	t0->death[0] = '\0';
 	switch (killer_format) {
 		default: impossible("bad killer format?");
 		case KILLED_BY_AN:
-			Strcat(t0->death, killed_by_prefix[how]),
+			Strcat(t0->death, killed_by_prefix[how]);
 			(void) strncat(t0->death, an(killer), DTHSZ);
 			break;
 		case KILLED_BY:
-			Strcat(t0->death, killed_by_prefix[how]),
+			Strcat(t0->death, killed_by_prefix[how]);
 			(void) strncat(t0->death, killer, DTHSZ);
 			break;
 		case NO_KILLER_PREFIX:
 			(void) strncat(t0->death, killer, DTHSZ);
 			break;
 	}
-	Strcpy(t0->date, getdate());
+	Strcpy(t0->date, get_date());
+	t0->tt_next = 0;
+#ifdef UPDATE_RECORD_IN_PLACE
+	t0->fpos = -1L;
+#endif
 
 #ifdef LOGFILE		/* used for debugging (who dies of what, where) */
-# if defined(UNIX) || defined(VMS)
-#  ifdef NO_FILE_LINKS
-	loglock = (char *)alloc(sizeof(LOCKDIR)+1+strlen(lgfile)+6);
-	Strcpy(loglock,LOCKDIR) ;
-	Strcat(loglock,"/") ;
-	Strcat(loglock,lgfile) ;
-	Strcat(loglock,"_lock") ;
-	while ((lockfd = open(loglock,O_RDWR|O_CREAT|O_EXCL,0666)) == -1) {
-#  else
-	while(link(lgfile, loglock) == -1) {
-#  endif /* NO_FILE_LINKS */
-		if (errno == ENOENT) /* If no such file, do not keep log */
-			goto lgend;  /* George Barbanis */
-		HUP perror(loglock);
-		if(!sleeplgct--) {
-			HUP (void) puts("I give up.  Sorry.");
-			HUP (void) puts("Perhaps there is an old logfile_lock around?");
-			goto lgend;
-		}
-		HUP Printf("Waiting for access to log file. (%d)\n",
- 			sleeplgct);
-		HUP (void) fflush(stdout);
-#  if defined(SYSV) || defined(ULTRIX) || defined(VMS)
-		(void)
-#  endif
-		    sleep(1);
+	if (lock_file(LOGFILE, 10)) {
+	    if(!(lfile = fopen_datafile(LOGFILE,"a"))) {
+		HUP raw_print("Cannot open log file!");
+	    } else {
+		writeentry(lfile, t0);
+		(void) fclose(lfile);
+	    }
+	    unlock_file(LOGFILE);
 	}
-# endif /* UNIX or VMS */
-	if(!(lfile = fopen(lgfile,"a"))){
-		HUP (void) puts("Cannot open log file!");
-		goto lgend;
-	}
-	writeentry(lfile, t0);
-	(void) fclose(lfile);
-# if defined(UNIX) || defined(VMS)
-	(void) unlink(loglock);
-# endif /* UNIX or VMS */
- lgend: ;
-# ifdef NO_FILE_LINKS
-	(void) close(lockfd) ;
-	free((genericptr_t) loglock) ;
-# endif
 #endif /* LOGFILE */
 
 #if defined(WIZARD) || defined(EXPLORE_MODE)
 	if (wizard || discover) {
- Printf("\nSince you were in %s mode, the score list will not be checked.\n",
-	wizard ? "wizard" : "discover");
-		return;
+	    raw_print("");
+	    raw_printf(
+	      "Since you were in %s mode, the score list will not be checked.",
+		    wizard ? "wizard" : "discover");
+	    return;
 	}
 #endif
 
-#if defined(UNIX) || defined(VMS)
-# ifdef NO_FILE_LINKS
-	reclock = (char *)alloc(sizeof(LOCKDIR)+1+strlen(recfile)+7);
-	Strcpy(reclock,LOCKDIR) ;
-	Strcat(reclock,"/") ;
-	Strcat(reclock,recfile) ;
-	Strcat(reclock,"_lock") ;
-	while ((lockfd = open(reclock,O_RDWR|O_CREAT|O_EXCL,0666)) == -1) {
-# else
-	while(link(recfile, reclock) == -1) {
-# endif /* NO_FILE_LINKS */
-		HUP perror(reclock);
-		if(!sleepct--) {
-			HUP (void) puts("I give up.  Sorry.");
-			HUP (void) puts("Perhaps there is an old record_lock around?");
-			return;
-		}
-		HUP Printf("Waiting for access to record file. (%d)\n",
-			sleepct);
-		HUP (void) fflush(stdout);
-# if defined(SYSV) || defined(ULTRIX) || defined(VMS)
-		(void)
-# endif
-		    sleep(1);
-	}
-#endif /* UNIX or VMS */
-#ifdef MACOS
-	{
-		term_info	*t;
-		
-		t = (term_info *)GetWRefCon(HackWindow);
-		SetVol((StringPtr)0L, t->recordVRefNum);
-		if (!(rfile = fopen(recfile,"r")))
-			rfile = openFile(recfile,"r");
-	}
-	if (!rfile) {
+	if (!lock_file(RECORD, 60)) return;
+
+#ifdef UPDATE_RECORD_IN_PLACE
+	rfile = fopen_datafile(RECORD, "r+");
 #else
-	if(!(rfile = fopen(recfile,"r"))){
+	rfile = fopen_datafile(RECORD, "r");
 #endif
-		HUP (void) puts("Cannot open record file!");
-		goto unlock;
+
+	if (!rfile) {
+		HUP raw_print("Cannot open record file!");
+		unlock_file(RECORD);
+		return;
 	}
-	HUP (void) putchar('\n');
+
+	HUP raw_print("");
 
 	/* assure minimum number of points */
 	if(t0->points < POINTSMIN) t0->points = 0;
@@ -319,6 +242,9 @@ int how;
 		else
 			tprev->tt_next = t0;
 		t0->tt_next = t1;
+#ifdef UPDATE_RECORD_IN_PLACE
+		t0->fpos = t1->fpos;	/* insert here */
+#endif
 		occ_cnt--;
 		flg++;		/* ask for a rewrite */
 	    } else tprev = t1;
@@ -334,8 +260,12 @@ int how;
 		    if(rank0 < 0) {
 			rank0 = 0;
 			rank1 = rank;
-	HUP Printf("You didn't beat your previous score of %ld points.\n\n",
-				t1->points);
+			HUP {
+			    raw_printf(
+			  "You didn't beat your previous score of %ld points.",
+				    t1->points);
+			    raw_print("");
+			}
 		    }
 		    if(occ_cnt < 0) {
 			flg++;
@@ -352,23 +282,26 @@ int how;
 	    }
 	}
 	if(flg) {	/* rewrite record file */
+#ifdef UPDATE_RECORD_IN_PLACE
+		(void) fseek(rfile, (t0->fpos >= 0 ?
+				     t0->fpos : final_fpos), SEEK_SET);
+#else
 		(void) fclose(rfile);
-#ifdef VMS
-	    {	char *semi_colon = rindex(recfile, ';');
-		if (semi_colon) *semi_colon = '\0';
-	    }
-#endif
-		if(!(rfile = fopen(recfile,"w"))){
-			HUP (void) puts("Cannot write record file\n");
-			goto unlock;
+		if(!(rfile = fopen_datafile(RECORD,"w"))){
+			HUP raw_print("Cannot write record file");
+			unlock_file(RECORD);
+			return;
 		}
-
+#endif	/* UPDATE_RECORD_IN_PLACE */
 		if(!done_stopprint) if(rank0 > 0){
 		    if(rank0 <= 10)
-			(void) puts("You made the top ten list!\n");
-		    else
-		Printf("You reached the %d%s place on the top %d list.\n\n",
-			rank0, ordin(rank0), ENTRYMAX);
+			raw_print("You made the top ten list!");
+		    else {
+			raw_printf(
+			  "You reached the %d%s place on the top %d list.",
+				rank0, ordin(rank0), ENTRYMAX);
+		    }
+		    raw_print("");
 		}
 	}
 	if(rank0 == 0) rank0 = rank1;
@@ -376,7 +309,11 @@ int how;
 	if(!done_stopprint) outheader();
 	t1 = tt_head;
 	for(rank = 1; t1->points != 0; rank++, t1 = t1->tt_next) {
-	    if(flg) writeentry(rfile, t1);
+	    if(flg
+#ifdef UPDATE_RECORD_IN_PLACE
+		    && rank >= rank0
+#endif
+		) writeentry(rfile, t1);
 	    if(done_stopprint) continue;
 	    if(rank > flags.end_top &&
 	      (rank < rank0-flags.end_around || rank > rank0+flags.end_around)
@@ -390,7 +327,7 @@ int how;
 	    if(rank == rank0-flags.end_around &&
 	       rank0 > flags.end_top+flags.end_around+1 &&
 	       !flags.end_own)
-		(void) putchar('\n');
+	  	raw_print("");
 	    if(rank != rank0)
 		(void) outentry(rank, t1, 0);
 	    else if(!rank1)
@@ -404,42 +341,26 @@ int how;
 	}
 	if(rank0 >= rank) if(!done_stopprint)
 		(void) outentry(0, t0, 1);
-	(void) fclose(rfile);
-#ifdef MACOS
-	{
-		Str255	name;
-		FInfo	fndrInfo;
-		term_info	*t;
-		short	oldVol, error;
-		
-		t = (term_info *)GetWRefCon(HackWindow);
-		GetVol(name, &oldVol);
-		SetVol(0L, t->recordVRefNum);
-		Strcpy((char *)name,recfile);
-		CtoPstr((char *)name);
-		error = GetFInfo(name, (short)0, &fndrInfo);
-		fndrInfo.fdCreator = CREATOR;
-		if (error == noErr)
-			SetFInfo(name, (short)0, &fndrInfo);
-		SetVol(0L, oldVol);
-	}
-#endif
-#ifdef VMS
+#ifdef UPDATE_RECORD_IN_PLACE
 	if (flg) {
-		delete(RECORD);
-		rename(recfile, RECORD);
+# ifdef TRUNCATE_FILE
+		/* if a reasonable way to truncate a file exists, use it */
+		truncate_file(rfile);
+# else
+		/* use sentinel record rather than relying on truncation */
+		t0->points = 0L;	/* terminates file when read back in */
+		t0->uid = t0->deathdnum = t0->deathlev = 0;
+		t0->maxlvl = t0->hp = t0->maxhp = 0;
+		t0->plchar = t0->sex = '-';
+		Strcpy(t0->name, "@");
+		Strcpy(t0->death, "<eod>\n");
+		writeentry(rfile, t0);
+		(void) fflush(rfile);
+# endif	/* TRUNCATE_FILE */
 	}
-# undef unlink
-#endif
-unlock:	;
-#if defined(UNIX) || defined(VMS)
-	if (unlink(reclock) < 0)
-		Printf("Can't unlink %s\n",reclock) ;
-# ifdef NO_FILE_LINKS
-	(void) close(lockfd) ;
-	free((genericptr_t) reclock) ;
-# endif
-#endif
+#endif	/* UPDATE_RECORD_IN_PLACE */
+	(void) fclose(rfile);
+	unlock_file(RECORD);
 }
 
 static void
@@ -451,10 +372,7 @@ outheader() {
 	bp = eos(linebuf);
 	while(bp < linebuf + COLNO - 9) *bp++ = ' ';
 	Strcpy(bp, "Hp [max]");
-	(void) puts(linebuf);
-#ifdef MACOS
-	putchar('\n');
-#endif
+	raw_print(linebuf);
 }
 
 /* so>0: standout line; so=0: ordinary line; so<0: no output, return lth */
@@ -464,9 +382,9 @@ register struct toptenentry *t1;
 register int rank, so;
 {
 	register boolean second_line = TRUE;
-	char linebuf[BUFSZ], linebuf2[BUFSZ];
+	char linebuf[BUFSZ], linebuf2[BUFSZ], linebuf3[BUFSZ], pbuf[BUFSZ];
 
-	linebuf[0] = linebuf2[0] = 0;
+	linebuf[0] = linebuf2[0] = linebuf3[0] = 0;
 	if(rank) Sprintf(eos(linebuf), "%3d", rank);
 	else Strcat(linebuf, "   ");
 
@@ -479,13 +397,11 @@ register int rank, so;
 	  else
 	    Sprintf(eos(linebuf), "escaped the dungeon [max level %d]",
 	      t1->maxlvl);
-#ifdef ENDGAME
 	} else if(!strncmp("ascended", t1->death, 8)) {
 	   Strcat(linebuf, "ascended to demigod");
 	   if (t1->sex == 'F') Strcat(linebuf, "dess");
 	   Strcat(linebuf, "-hood");
 	   second_line = FALSE;
-#endif
 	} else {
 	  if(!strncmp(t1->death,"quit",4)) {
 		Strcat(linebuf, "quit");
@@ -503,35 +419,44 @@ register int rank, so;
 	  } else if(!strncmp(t1->death, "petrified by ",13)) {
 		Strcat(linebuf, "turned to stone");
 	  } else Strcat(linebuf, "died");
-#ifdef ENDLEVEL
-	  if (t1->level == ENDLEVEL)
-		Strcat(linebuf, " in the endgame");
+
+	  if (t1->deathdnum == astral_level.dnum)
+		Strcpy(linebuf3, " in the endgame");
 	  else
-#endif
-	    Sprintf(eos(linebuf), " on dungeon level %d", t1->level);
-	  if(t1->maxlvl != t1->level)
-	    Sprintf(eos(linebuf), " [max %d]", t1->maxlvl);
-	/* kludge for "quit while already on Charon's boat" */
+		Sprintf(linebuf3, " in %s on level %d",
+		    dungeons[t1->deathdnum].dname, t1->deathlev);
+	  if(t1->deathlev != t1->maxlvl)
+		Sprintf(eos(linebuf3), " [max %d]", t1->maxlvl);
+	  /* kludge for "quit while already on Charon's boat" */
 	  if(!strncmp(t1->death, "quit ", 5))
-	    Strcat(linebuf, t1->death + 4);
+		Strcat(linebuf3, t1->death + 4);
 	}
-	Strcat(linebuf, ".");
+	Strcat(linebuf3, ".");
 
 	if(t1->maxhp) {
-	  register char *bp = eos(linebuf);
+	  register char *bp;
 	  char hpbuf[10];
 	  int hppos;
-	  int lngr = strlen(linebuf);
-	  Strcpy(hpbuf, (t1->hp > 0) ? itoa(t1->hp) : "-");
-	  hppos = COLNO - 7 - strlen(hpbuf);
-	  if (lngr >= hppos) hppos = (2*COLNO) - 7 - strlen(hpbuf);
+	  int lngr = strlen(linebuf) + strlen(linebuf3);
+	  if (t1->hp <= 0) hpbuf[0] = '-', hpbuf[1] = '\0';
+	  else Sprintf(hpbuf, "%d", t1->hp);
+	  hppos = COLNO - 7 - (int)strlen(hpbuf);
+	  if (lngr >= hppos) {
+	      if(so > 0) {
+		  bp = eos(linebuf);
+		  while(bp < linebuf + (COLNO-1)) *bp++ = ' ';
+		  *bp = 0;
+		  raw_print_bold(linebuf);
+	      } else if(so == 0)
+		  raw_print(linebuf);
+	      Strcpy(linebuf, "               ");
+	  }
+	  Strcat(linebuf, linebuf3);
+	  bp = eos(linebuf);
+
 	  if(bp <= linebuf + hppos) {
 	    /* pad any necessary blanks to the hit point entry */
-#ifdef MACOS
-	    while(bp <= linebuf + hppos) *bp++ = ' ';
-#else
 	    while(bp < linebuf + hppos) *bp++ = ' ';
-#endif
 	    Strcpy(bp, hpbuf);
 	    if(t1->maxhp < 10)
 		 Sprintf(eos(bp), "   [%d]", t1->maxhp);
@@ -546,52 +471,26 @@ register int rank, so;
 	/* Quit, starved, ascended, and escaped contain no second line */
 	if (second_line) {
 		Strcpy(linebuf2, t1->death);
-		if (islower(*linebuf2)) *linebuf2 = toupper(*linebuf2);
+		*linebuf2 = highc(*linebuf2);
 		Strcat(linebuf2, ".");
 	}
 
 	if(so == 0) {
-	  (void) puts(linebuf);
-	  if (second_line)
-		(void) Printf("                %s\n", linebuf2);
+	    raw_print(linebuf);
+	    if (second_line)
+		raw_printf("                %s", linebuf2);
 	} else if(so > 0) {
 	  register char *bp = eos(linebuf);
 	  if(so >= COLNO) so = COLNO-1;
 	  while(bp < linebuf + so) *bp++ = ' ';
 	  *bp = 0;
-	  standoutbeg();
-	  (void) puts(linebuf);
-	  if(second_line)
-		(void) Printf("                %s", linebuf2);
-	  standoutend();
-	  if(second_line)
-		(void) putchar('\n');
+	  raw_print_bold(linebuf);
+	  if(second_line) {
+	      Sprintf(pbuf, "                %s", linebuf2);
+	      raw_print_bold(pbuf);
+	  }
 	}
-	return(strlen(linebuf)+strlen(linebuf2));
-}
-
-static char *
-itoa(a) int a; {
-#ifdef LINT	/* static char buf[12]; */
-char buf[12];
-#else
-static char buf[12];
-#endif
-	Sprintf(buf,"%d",a);
-	return(buf);
-}
-
-static const char *
-ordin(n)
-int n; {
-	register int dd = n%10;
-
-#if ENTRYMAX > 110
-	return((dd==0 || dd>3 || (n/10)%10==1) ? "th" :
-#else
-	return((dd==0 || dd>3 || n/10==1) ? "th" :
-#endif
-	       (dd==1) ? "st" : (dd==2) ? "nd" : "rd");
+	return((int)strlen(linebuf)+(int)strlen(linebuf2));
 }
 
 /*
@@ -608,9 +507,9 @@ char **argv;
 	int playerct;
 	int rank;
 	register struct toptenentry *t1, *t2;
-	const char *recfile = RECORD;
 	FILE *rfile;
 	register int flg = 0, i;
+	char pbuf[BUFSZ];
 #ifdef nonsense
 	long total_score = 0L;
 	char totchars[10];
@@ -622,16 +521,15 @@ char **argv;
 #else
 	const char *player0;
 #endif
-#ifdef MACOS
-	if(!(rfile = fopen(recfile,"r")))
-		rfile = openFile(recfile,"r");
+	rfile = fopen_datafile(RECORD, "r");
 	if (!rfile) {
-#else
-	if(!(rfile = fopen(recfile,"r"))){
-#endif
-		(void) puts("Cannot open record file!");
+		raw_print("Cannot open record file!");
 		return;
 	}
+
+	/* If the score list isn't after a game, we never went through */
+	/* init_dungeons() */
+	if (wiz1_level.dlevel == 0) init_dungeons();
 
 	if(argc > 1 && !strncmp(argv[1], "-s", 2)){
 		if(!argv[1][2]){
@@ -646,6 +544,9 @@ char **argv;
 #ifdef PERS_IS_UID
 		uid = getuid();
 		playerct = 0;
+#  if defined(LINT) || defined(GCC_WARN)
+		players = 0;
+#  endif
 #else
 		player0 = plname;
 		if(!*player0)
@@ -657,7 +558,7 @@ char **argv;
 		playerct = --argc;
 		players = (const char **)++argv;
 	}
-	if(outflg) (void) putchar('\n');
+	if(outflg) raw_print("");
 
 	t1 = tt_head = newttentry();
 	for(rank = 1; ; rank++) {
@@ -682,13 +583,17 @@ char **argv;
 	(void) fclose(rfile);
 	if(!flg) {
 	    if(outflg) {
-		Printf("Cannot find any entries for ");
-		if(playerct < 1) Printf("you.\n");
+		Strcpy(pbuf, "Cannot find any entries for ");
+		if(playerct < 1) Strcat(pbuf, "you.");
 		else {
-		  if(playerct > 1) Printf("any of ");
-		  for(i=0; i<playerct; i++)
-			Printf("%s%s", players[i], (i<playerct-1)?", ":".\n");
-		  Printf("Call is: %s -s [-role] [maxrank] [playernames]\n", hname);
+		  if(playerct > 1) Strcat(pbuf, "any of ");
+		  for(i=0; i<playerct; i++) {
+		      Strcat(pbuf, players[i]);
+		      if(i<playerct-1) Strcat(pbuf, ":");
+		  }
+		  raw_print(pbuf);
+		  raw_printf("Call is: %s -s [-role] [maxrank] [playernames]",
+			     hname);
 		}
 	    }
 	    return;
@@ -723,14 +628,14 @@ char **argv;
 				break;
 			}
 		}
-		free((genericptr_t) t1);
+		dealloc_ttentry(t1);
 	}
 #ifdef nonsense
 	totchars[totcharct] = 0;
 
-	/* We would like to determine whether he is experienced. However,
+	/* We would like to determine whether you're experienced.  However,
 	   the information collected here only tells about the scores/roles
-	   that got into the topten (top 100?). We should maintain a
+	   that got into the topten (top 100?).  We should maintain a
 	   .hacklog or something in his home directory. */
 	flags.beginner = (total_score < 6000);
 	for(i=0; i<6; i++)
@@ -740,9 +645,6 @@ char **argv;
 		break;
 	}
 #endif /* nonsense /**/
-#ifdef MACOS
-	more();
-#endif
 }
 
 static int
@@ -762,7 +664,11 @@ boolean fem;
 		case 'R': return PM_ROGUE;
 		case 'N':	/* accept old Ninja class */
 		case 'S': return PM_SAMURAI;
+#ifdef TOURIST
 		case 'T': return PM_TOURIST;
+#else
+		case 'T': return PM_HUMAN;
+#endif
 		case 'V': return PM_VALKYRIE;
 		case 'W': return PM_WIZARD;
 		default: impossible("What weird class is this? (%c)", plch);
@@ -781,18 +687,12 @@ struct obj *otmp;
 	int rank;
 	register int i;
 	register struct toptenentry *tt;
-	const char *recfile = RECORD;
 	FILE *rfile;
 
 	if (!otmp) return((struct obj *) 0);
 
-#ifdef MACOS
-	if(!(rfile = fopen(recfile,"r")))
-		rfile = openFile(recfile, "r");
+	rfile = fopen_datafile(RECORD, "r");
 	if (!rfile) {
-#else
-	if(!(rfile = fopen(recfile,"r"))){
-#endif
 		panic("Cannot open record file!");
 	}
 
@@ -807,9 +707,10 @@ pickentry:
 	if(tt->points == 0) {
 		if(rank > 1) {
 			rank = 1;
+			rewind(rfile);
 			goto pickentry;
 		}
-		free((genericptr_t) tt);
+		dealloc_ttentry(tt);
 		otmp = (struct obj *) 0;
 	} else {
 		otmp->corpsenm = classmon(tt->plchar, (tt->sex == 'F'));
@@ -818,7 +719,7 @@ pickentry:
 		otmp = oname(otmp, tt->name, 0);
 		fobj = otmp;
 		level.objects[otmp->ox][otmp->oy] = otmp;
-		free((genericptr_t) tt);
+		dealloc_ttentry(tt);
 	}
 
 	(void) fclose(rfile);
@@ -829,14 +730,19 @@ pickentry:
 /* Lattice scanf isn't up to reading the scorefile.  What */
 /* follows deals with that; I admit it's ugly. (KL) */
 /* Now generally available (KL) */
-static void nsb_mung_line(p)
+static void
+nsb_mung_line(p)
 	char *p;
 	{
-	while(p=strchr(p,' '))*p='|';
+	while(p=index(p,' '))*p='|';
 }
-static void nsb_unmung_line(p)
+
+static void
+nsb_unmung_line(p)
 	char *p;
 	{
-	while(p=strchr(p,'|'))*p=' ';
+	while(p=index(p,'|'))*p=' ';
 }
 #endif
+
+/*topten.c*/

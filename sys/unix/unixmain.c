@@ -1,6 +1,7 @@
-/*	SCCS Id: @(#)unixmain.c	3.0	89/01/13
+/*	SCCS Id: @(#)unixmain.c	3.1	92/12/04	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
+
 /* main.c - Unix NetHack */
 
 #include "hack.h"
@@ -11,53 +12,36 @@
 #include <fcntl.h>
 #endif
 
-char SAVEF[PL_NSIZ + 11] = "save/";	/* save/99999player */
-
-const char *hname = 0;		/* name of the game (argv[0] of call) */
-char obuf[BUFSIZ];	/* BUFSIZ is defined in stdio.h */
-int hackpid = 0;				/* current pid */
-int locknum = 0;				/* max num of players */
-#ifdef DEF_PAGER
-char *catmore = 0;				/* default pager */
+#if !defined(_BULL_SOURCE) && !defined(sgi)
+# if defined(POSIX_TYPES) || defined(SVR4)
+extern struct passwd *FDECL(getpwuid,(uid_t));
+# else
+extern struct passwd *FDECL(getpwuid,(int));
+# endif
 #endif
-
-extern struct passwd *getpwnam(), *getpwuid();
+extern struct passwd *FDECL(getpwnam,(const char *));
 #ifdef CHDIR
 static void chdirx();
 #endif /* CHDIR */
-static void whoami();
+static boolean whoami();
+static void FDECL(process_options, (int, char **));
 
 int
 main(argc,argv)
 int argc;
 char *argv[];
 {
-	extern int x_maze_max, y_maze_max;
 	register int fd;
 #ifdef CHDIR
 	register char *dir;
 #endif
-#ifdef COMPRESS
-	char	cmd[80], old[80];
-#endif
+	boolean exact_username;
 
 	hname = argv[0];
 	hackpid = getpid();
 	(void) umask(0);
 
-	/*
-	 *  Remember tty modes, to be restored on exit.
-	 *
-	 *  gettty() must be called before startup()
-	 *    due to ordering of LI/CO settings
-	 *  startup() must be called before initoptions()
-	 *    due to ordering of graphics settings
-	 */
-	gettty();
-	setbuf(stdout,obuf);
-	startup();
-	initoptions();
-	whoami();
+	choose_windows(DEFAULT_WINDOW_SYS);
 
 #ifdef CHDIR			/* otherwise no chdir() */
 	/*
@@ -67,7 +51,8 @@ char *argv[];
 	 * The environment variable HACKDIR is overridden by a
 	 *  -d command line option (must be the first option given)
 	 */
-	dir = getenv("HACKDIR");
+	dir = getenv("NETHACKDIR");
+	if (!dir) dir = getenv("HACKDIR");
 #endif
 	if(argc > 1) {
 #ifdef CHDIR
@@ -98,19 +83,19 @@ char *argv[];
 		chdirx(dir,0);
 #endif
 		prscore(argc, argv);
-		if(isatty(1)) getret();
-		settty(NULL);
 		exit(0);
 	    }
 	}
+
+	initoptions();
+	init_nhwindows();
+	exact_username = whoami();
 
 	/*
 	 * It seems you really want to play.
 	 */
 	setrandom();
-	cls();
 	u.uhp = 1;	/* prevent RIP on early quits */
-	u.ux = FAR;	/* prevent nscr() */
 	(void) signal(SIGHUP, (SIG_RET_TYPE) hangup);
 #ifdef SIGXCPU
 	(void) signal(SIGXCPU, (SIG_RET_TYPE) hangup);
@@ -129,6 +114,147 @@ char *argv[];
 	chdirx(dir,1);
 #endif
 
+	process_options(argc, argv);	/* command line options */
+
+#ifdef DEF_PAGER
+	if(!(catmore = getenv("HACKPAGER")) && !(catmore = getenv("PAGER")))
+		catmore = DEF_PAGER;
+#endif
+#ifdef MAIL
+	getmailstatus();
+#endif
+#ifdef WIZARD
+	if (wizard)
+		Strcpy(plname, "wizard");
+	else
+#endif
+	if(!*plname || !strncmp(plname, "player", 4)
+		    || !strncmp(plname, "games", 4)) {
+		exact_username = FALSE;
+		askname();
+	}
+	if (!exact_username) /* what if their LOGNAME looks suffixed-like? */
+		plnamesuffix();	/* strip suffix from name; calls askname() */
+				/* again if suffix was whole name */
+				/* accepts any suffix */
+#ifdef WIZARD
+	if(!wizard) {
+#endif
+		/*
+		 * check for multiple games under the same name
+		 * (if !locknum) or check max nr of players (otherwise)
+		 */
+		(void) signal(SIGQUIT,SIG_IGN);
+		(void) signal(SIGINT,SIG_IGN);
+		if(!locknum)
+			Sprintf(lock, "%d%s", (int)getuid(), plname);
+		getlock();
+#ifdef WIZARD
+	} else {
+		Sprintf(lock, "%d%s", (int)getuid(), plname);
+		getlock();
+	}
+#endif /* WIZARD /**/
+
+	/*
+	 * Initialisation of the boundaries of the mazes
+	 * Both boundaries have to be even.
+	 */
+
+	x_maze_max = COLNO-1;
+	if (x_maze_max % 2)
+		x_maze_max--;
+	y_maze_max = ROWNO-1;
+	if (y_maze_max % 2)
+		y_maze_max--;
+
+	/*
+	 *  Initialize the vision system.  This must be before mklev() on a
+	 *  new game or before a level restore on a saved game.
+	 */
+	vision_init();
+
+	display_gamewindows();
+
+	set_savefile_name();
+	uncompress(SAVEF);
+
+	if((fd = open_savefile()) >= 0 &&
+	   /* if not up-to-date, quietly delete file via false condition */
+	   (uptodate(fd) || delete_savefile())) {
+#ifdef WIZARD
+		/* Since wizard is actually flags.debug, restoring might
+		 * overwrite it.
+		 */
+		boolean remember_wiz_mode = wizard;
+#endif
+		(void) chmod(SAVEF,0);	/* disallow parallel restores */
+		(void) signal(SIGINT, (SIG_RET_TYPE) done1);
+#ifdef NEWS
+		if(flags.news) display_file(NEWS, FALSE);
+#endif
+		pline("Restoring save file...");
+		mark_synch();	/* flush output */
+		if(!dorecover(fd))
+			goto not_recovered;
+#ifdef WIZARD
+		if(!wizard && remember_wiz_mode) wizard = TRUE;
+#endif
+		pline("Hello %s, welcome back to NetHack!", plname);
+		check_special_room(FALSE);
+#ifdef EXPLORE_MODE
+		if (discover)
+			You("are in non-scoring discovery mode.");
+#endif
+#if defined(EXPLORE_MODE) || defined(WIZARD)
+		if (discover || wizard) {
+			if(yn("Do you want to keep the save file?") == 'n')
+			    (void) delete_savefile();
+			else {
+			    (void) chmod(SAVEF,FCMASK); /* back to readable */
+			    compress(SAVEF);
+			}
+		}
+#endif
+		flags.move = 0;
+	} else {
+not_recovered:
+		player_selection();
+		newgame();
+		/* give welcome message before pickup messages */
+		pline("Hello %s, welcome to NetHack!", plname);
+#ifdef EXPLORE_MODE
+		if (discover)
+			You("are in non-scoring discovery mode.");
+#endif
+		flags.move = 0;
+		set_wear();
+		pickup(1);
+	}
+
+	flags.moonphase = phase_of_the_moon();
+	if(flags.moonphase == FULL_MOON) {
+		You("are lucky!  Full moon tonight.");
+		change_luck(1);
+	} else if(flags.moonphase == NEW_MOON) {
+		pline("Be careful!  New moon tonight.");
+	}
+	if(flags.friday13 = friday_13th()) {
+		pline("Watch out!  Bad things can happen on Friday the 13th.");
+		change_luck(-1);
+	}
+
+	initrack();
+
+	moveloop();
+	return(0);
+}
+
+static void
+process_options(argc, argv)
+int argc;
+char *argv[];
+{
 	/*
 	 * Process options.
 	 */
@@ -178,7 +304,7 @@ char *argv[];
 #endif
 #ifdef NEWS
 		case 'n':
-			flags.nonews = TRUE;
+			flags.news = FALSE;
 			break;
 #endif
 		case 'u':
@@ -189,20 +315,25 @@ char *argv[];
 			  argv++;
 			  (void) strncpy(plname, argv[0], sizeof(plname)-1);
 			} else
-				Printf("Player name expected after -u\n");
+				raw_print("Player name expected after -u");
+			plnamesuffix();
 			break;
+		case 'I':
 		case 'i':
-			if(!strcmp(argv[0]+1, "ibm")) assign_ibm_graphics();
+			if (!strncmpi(argv[0]+1, "IBM", 3))
+				switch_graphics(IBM_GRAPHICS);
 			break;
+	    /*  case 'D': */
 		case 'd':
-			if(!strcmp(argv[0]+1, "dec")) assign_dec_graphics();
+			if (!strncmpi(argv[0]+1, "DEC", 3))
+				switch_graphics(DEC_GRAPHICS);
 			break;
 		default:
 			/* allow -T for Tourist, etc. */
 			(void) strncpy(pl_character, argv[0]+1,
 				sizeof(pl_character)-1);
 
-			/* Printf("Unknown option: %s\n", *argv); */
+			/* raw_printf("Unknown option: %s", *argv); */
 		}
 	}
 
@@ -212,194 +343,12 @@ char *argv[];
 	if(!locknum || locknum > MAX_NR_OF_PLAYERS)
 		locknum = MAX_NR_OF_PLAYERS;
 #endif
-#ifdef DEF_PAGER
-	if(!(catmore = getenv("HACKPAGER")) && !(catmore = getenv("PAGER")))
-		catmore = DEF_PAGER;
-#endif
-#ifdef MAIL
-	getmailstatus();
-#endif
-#ifdef WIZARD
-	if (wizard)
-		Strcpy(plname, "wizard");
-	else
-#endif
-	if(!*plname || !strncmp(plname, "player", 4)
-		    || !strncmp(plname, "games", 4))
-		askname();
-	plnamesuffix();		/* strip suffix from name; calls askname() */
-				/* again if suffix was whole name */
-				/* accepts any suffix */
-#ifdef WIZARD
-	if(!wizard) {
-#endif
-		/*
-		 * check for multiple games under the same name
-		 * (if !locknum) or check max nr of players (otherwise)
-		 */
-		(void) signal(SIGQUIT,SIG_IGN);
-		(void) signal(SIGINT,SIG_IGN);
-		if(!locknum)
-			Sprintf(lock, "%d%s", getuid(), plname);
-		getlock();	/* sets lock if locknum != 0 */
-#ifdef WIZARD
-	} else
-		Sprintf(lock, "%d%s", getuid(), plname);
-#endif /* WIZARD /**/
-	setftty();
-
-	/*
-	 * Initialisation of the boundaries of the mazes
-	 * Both boundaries have to be even.
-	 */
-
-	x_maze_max = COLNO-1;
-	if (x_maze_max % 2)
-		x_maze_max--;
-	y_maze_max = ROWNO-1;
-	if (y_maze_max % 2)
-		y_maze_max--;
-
-	/* initialize static monster strength array */
-	init_monstr();
-
-	Sprintf(SAVEF, "save/%d%s", getuid(), plname);
-	regularize(SAVEF+5);		/* avoid . or / in name */
-#ifdef COMPRESS
-	Strcpy(old,SAVEF);
-	Strcat(SAVEF,".Z");
-	if((fd = open(SAVEF,O_RDONLY)) >= 0) {
- 	    (void) close(fd);
-	    Strcpy(cmd, COMPRESS);
-	    Strcat(cmd, " -d ");	/* uncompress */
-# ifdef COMPRESS_OPTIONS
-	    Strcat(cmd, COMPRESS_OPTIONS);
-	    Strcat(cmd, " ");
-# endif
-	    Strcat(cmd,SAVEF);
-	    (void) system(cmd);
-	}
-	Strcpy(SAVEF,old);
-#endif
-	if((fd = open(SAVEF,O_RDONLY)) >= 0 &&
-	   /* if not up-to-date, quietly unlink file via false condition */
-	   (uptodate(fd) || unlink(SAVEF) == 666)) {
-#ifdef WIZARD
-		/* Since wizard is actually flags.debug, restoring might
-		 * overwrite it.
-		 */
-		boolean remember_wiz_mode = wizard;
-#endif
-		(void) chmod(SAVEF,0);	/* disallow parallel restores */
-		(void) signal(SIGINT, (SIG_RET_TYPE) done1);
-		pline("Restoring save file...");
-		(void) fflush(stdout);
-		if(!dorecover(fd))
-			goto not_recovered;
-#ifdef WIZARD
-		if(!wizard && remember_wiz_mode) wizard = TRUE;
-#endif
-		pline("Hello %s, welcome to NetHack!", plname);
-		/* get shopkeeper set properly if restore is in shop */
-		(void) inshop();
-#ifdef EXPLORE_MODE
-		if (discover)
-			You("are in non-scoring discovery mode.");
-#endif
-#if defined(EXPLORE_MODE) || defined(WIZARD)
-		if (discover || wizard) {
-			pline("Do you want to keep the save file? ");
-			if(yn() == 'n')
-				(void) unlink(SAVEF);
-			else {
-			    (void) chmod(SAVEF,FCMASK); /* back to readable */
-# ifdef COMPRESS
-			    Strcpy(cmd, COMPRESS);
-			    Strcat(cmd, " ");
-#  ifdef COMPRESS_OPTIONS
-			    Strcat(cmd, COMPRESS_OPTIONS);
-			    Strcat(cmd, " ");
-#  endif
-			    Strcat(cmd,SAVEF);
-			    (void) system(cmd);
-# endif
-			}
-		}
-#endif
-		flags.move = 0;
-	} else {
-not_recovered:
-		newgame();
-		/* give welcome message before pickup messages */
-		pline("Hello %s, welcome to NetHack!", plname);
-#ifdef EXPLORE_MODE
-		if (discover)
-			You("are in non-scoring discovery mode.");
-#endif
-		flags.move = 0;
-		set_wear();
-		pickup(1);
-		read_engr_at(u.ux,u.uy);
-	}
-
-	flags.moonphase = phase_of_the_moon();
-	if(flags.moonphase == FULL_MOON) {
-		You("are lucky!  Full moon tonight.");
-		change_luck(1);
-	} else if(flags.moonphase == NEW_MOON) {
-		pline("Be careful!  New moon tonight.");
-	}
-
-	initrack();
-
-	moveloop();
-	return(0);
-}
-
-void
-glo(foo)
-register int foo;
-{
-	/* construct the string  xlock.n  */
-	register char *tf;
-
-	tf = lock;
-	while(*tf && *tf != '.') tf++;
-	Sprintf(tf, ".%d", foo);
-}
-
-/*
- * plname is filled either by an option (-u Player  or  -uPlayer) or
- * explicitly (by being the wizard) or by askname.
- * It may still contain a suffix denoting pl_character.
- */
-void
-askname() {
-	register int c, ct;
-
-	Printf("\nWho are you? ");
-	(void) fflush(stdout);
-	ct = 0;
-	while((c = Getchar()) != '\n') {
-		if(c == EOF) error("End of input\n");
-		/* some people get confused when their erase char is not ^H */
-		if(c == '\010') {
-			if(ct) ct--;
-			continue;
-		}
-		if(c != '-')
-		if(c < 'A' || (c > 'Z' && c < 'a') || c > 'z') c = '_';
-		if(ct < sizeof(plname)-1)
-			plname[ct++] = c;
-	}
-	plname[ct] = 0;
-	if(ct == 0) askname();
 }
 
 #ifdef CHDIR
 static void
 chdirx(dir, wr)
-char *dir;
+const char *dir;
 boolean wr;
 {
 
@@ -426,25 +375,12 @@ boolean wr;
 
 	/* warn the player if we can't write the record file */
 	/* perhaps we should also test whether . is writable */
-	/* unfortunately the access systemcall is worthless */
-	if(wr) {
-	    register int fd;
-
-	    if(dir == NULL)
-		dir = ".";
-	    if((fd = open(RECORD, O_RDWR)) < 0) {
-		if((fd = open(RECORD, O_CREAT|O_RDWR, FCMASK)) < 0) {
-		    Printf("Warning: cannot write %s/%s", dir, RECORD);
-		    getret();
-		} else
-		    (void) close(fd);
-	    } else
-		(void) close(fd);
-	}
+	/* unfortunately the access system-call is worthless */
+	if (wr) check_recordfile(dir);
 }
 #endif /* CHDIR /**/
 
-static void
+static boolean
 whoami() {
 	/*
 	 * Who am i? Algorithm: 1. Use name as specified in NETHACKOPTIONS
@@ -459,10 +395,26 @@ whoami() {
 	 */
 	register char *s;
 
-	if(!*plname && (s = getenv("USER")))
+	if (*plname) return FALSE;
+	if(/* !*plname && */ (s = getenv("USER")))
 		(void) strncpy(plname, s, sizeof(plname)-1);
 	if(!*plname && (s = getenv("LOGNAME")))
 		(void) strncpy(plname, s, sizeof(plname)-1);
 	if(!*plname && (s = getlogin()))
 		(void) strncpy(plname, s, sizeof(plname)-1);
+	return TRUE;
 }
+
+#ifdef PORT_HELP
+void
+port_help()
+{
+    /*
+     * Display unix-specific help.   Just show contents of the helpfile
+     * named by PORT_HELP.
+     */
+    display_file(PORT_HELP, TRUE);
+}
+#endif
+
+/*unixmain.c*/

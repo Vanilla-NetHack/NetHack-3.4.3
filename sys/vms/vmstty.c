@@ -1,87 +1,83 @@
-/*	SCCS Id: @(#)vmstty.c	3.0	88/05/03
+/*	SCCS Id: @(#)vmstty.c	3.1	92/11/24	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 /* tty.c - (VMS) version */
 
 #define NEED_VARARGS
 #include "hack.h"
+#include "wintty.h"
+#include "termcap.h"
 
-#include	<descrip.h>
-#include	<iodef.h>
+#include <descrip.h>
+#include <iodef.h>
 #ifndef __GNUC__
-#include	<smgdef.h>
-#include	<ttdef.h>
+#include <smgdef.h>
+#include <ttdef.h>
+#include <tt2def.h>
 #else	/* values needed from missing include files */
 # define SMG$K_TRM_UP	 274
 # define SMG$K_TRM_DOWN  275
 # define SMG$K_TRM_LEFT  276
 # define SMG$K_TRM_RIGHT 277
-# define TT$M_MECHTAB	 0x00000100
-# define TT$M_MECHFORM	 0x00080000
+# define TT$M_MECHTAB	 0x00000100	/* hardware tab support */
+# define TT$M_MECHFORM	 0x00080000	/* hardware form-feed support */
+# define TT$M_NOBRDCST	 0x00020000	/* disable broadcast messages, but  */
+# define TT2$M_BRDCSTMBX 0x00000010	/* catch them in associated mailbox */
 #endif /* __GNUC__ */
+#ifdef USE_QIO_INPUT
+#include <ssdef.h>
+#endif
 #include <errno.h>
+#include <signal.h>
+
+unsigned long LIB$DISABLE_CTRL(), LIB$ENABLE_CTRL();
+unsigned long SYS$ASSIGN(), SYS$DASSGN(), SYS$QIOW();
+#ifndef USE_QIO_INPUT
+unsigned long SMG$CREATE_VIRTUAL_KEYBOARD(), SMG$DELETE_VIRTUAL_KEYBOARD(),
+	      SMG$READ_KEYSTROKE(), SMG$CANCEL_INPUT();
+#else
+static short FDECL(parse_function_key, (int));
+#endif
+static void NDECL(setctty);
+static void NDECL(resettty);
 
 #define vms_ok(sts) ((sts)&1)
-#define META(c)  ((c)|0x80)	/*(Same as DOS's M(c).)*/
+#define META(c)  ((c)|0x80)	/* 8th bit */
 #define CTRL(c)  ((c)&0x1F)
 #define CMASK(c) (1<<CTRL(c))
 #define LIB$M_CLI_CTRLT CMASK('T')	/* 0x00100000 */
 #define LIB$M_CLI_CTRLY CMASK('Y')	/* 0x02000000 */
+#define ESC '\033'
+#define CSI META(ESC)		/* '\233' */
+#define SS3 META(CTRL('O'))	/* '\217' */
 
 extern short ospeed;
 char erase_char, intr_char, kill_char;
 static boolean settty_needed = FALSE,  bombing = FALSE;
-#ifndef MAIL
-static	    /* else global ('extern' in mail.c) */
-#endif
-       unsigned long pasteboard_id = 0; /* for AST & broadcast-msg handling */
 static unsigned long kb = 0;
+#ifdef USE_QIO_INPUT
+static char inputbuf[15+1], *inp = 0;
+static int  inc = 0;
+#endif
 
-int
-vms_getchar()
-{
-    static volatile int recurse = 0;	/* SMG is not AST re-entrant! */
-    short key;
-
-    if (recurse++ == 0 && kb != 0) {
-	SMG$READ_KEYSTROKE(&kb, &key);
-	switch (key)
-	{
-	  case SMG$K_TRM_UP:
-	    key = 'k';
-	    break;
-	  case SMG$K_TRM_DOWN:
-	    key = 'j';
-	    break;
-	  case SMG$K_TRM_LEFT:
-	    key = 'h';
-	    break;
-	  case SMG$K_TRM_RIGHT:
-	    key = 'l';
-	    break;
-	  case '\r':
-	    key = '\n';
-	    break;
-	  default:
-	    if (key == '\007' || key == '\032' || key > 255)
-		key = '\033';
-	    break;
-	}
-    } else {
-	/* abnormal input--either SMG didn't initialize properly or
-	   vms_getchar() has been called recursively (via SIGINT handler).
-	 */
-	if (kb != 0)			/* must have been a recursive call */
-	    SMG$CANCEL_INPUT(&kb);	/*  from an interrupt handler	   */
-	key = getchar();
-    }
-    --recurse;
-    return (int)key;
-}
-
-#define TT_SPECIAL_HANDLING (TT$M_MECHTAB|TT$M_MECHFORM)
+#define QIO_FUNC	IO$_TTYREADALL|IO$M_NOECHO|IO$M_TRMNOECHO
+#ifdef MAIL
+#define TT_SPECIAL_HANDLING  (TT$M_MECHTAB|TT$M_MECHFORM|TT$M_NOBRDCST)
+#define TT2_SPECIAL_HANDLING (TT2$M_BRDCSTMBX)
+#else
+#define TT_SPECIAL_HANDLING  (TT$M_MECHTAB|TT$M_MECHFORM)
+#define TT2_SPECIAL_HANDLING (0)
+#endif
 #define Uword unsigned short
 #define Ubyte unsigned char
+struct _rd_iosb {		/* i/o status block for read */
+	Uword	status,  trm_offset;
+	Uword	terminator,  trm_siz;
+};
+struct _wr_iosb {		/* i/o status block for write */
+	Uword	status,  byte_cnt;
+	unsigned   : 32;
+};
 struct _sm_iosb {		/* i/o status block for sense-mode qio */
 	Uword	  status;
 	Ubyte	  xmt_speed,  rcv_speed;
@@ -92,27 +88,210 @@ struct _sm_bufr {		/* sense-mode characteristics buffer */
 	Ubyte	  class,  type;		/* class==DC$_TERM, type==(various) */
 	Uword	  buf_siz;		/* aka page width */
 #define page_width buf_siz		/* number of columns */
-	unsigned  tt_char  : 24;	/* primary characteristics */
-	Ubyte	  page_length;		/* number of lines */
-	unsigned  tt2_char : 32;	/* secondary characteristics */
+	      unsigned  tt_char	: 24;	/* primary characteristics */
+	      unsigned  page_length	:  8;	/* number of lines */
+	      unsigned  tt2_char	: 32;	/* secondary characteristics */
 };
 static struct {
     struct _sm_iosb io;
     struct _sm_bufr sm;
 } sg = {{0},{0}};
 static unsigned short tt_chan = 0;
-static unsigned long  tt_char_restore = 0, tt_char_active = 0;
+static unsigned long  tt_char_restore = 0, tt_char_active = 0,
+		      tt2_char_restore = 0, tt2_char_active = 0;
 static unsigned long  ctrl_mask = 0;
 
+int
+vms_getchar()
+{
+    short key;
+
+#ifdef USE_QIO_INPUT
+    struct _rd_iosb iosb;
+    unsigned long sts;
+    unsigned char kb_buf;
+
+    if (inc > 0) {
+	/* we have buffered character(s) from previous read */
+	kb_buf = *inp++;
+	--inc;
+	sts = SS$_NORMAL;
+    } else {
+	sts = SYS$QIOW(0, tt_chan, QIO_FUNC, &iosb, (void(*)())0, 0,
+		       &kb_buf, sizeof kb_buf, 0, 0, 0, 0);
+    }
+    if (vms_ok(sts)) {
+	if (kb_buf == CTRL('C')) {
+	    if (intr_char) gsignal(SIGINT);
+	    key = (short)kb_buf;
+	} else if (kb_buf == '\r') {	/* <return> */
+	    key = (short)'\n';
+	} else if (kb_buf == ESC || kb_buf == CSI || kb_buf == SS3) {
+	    switch(parse_function_key((int)kb_buf)) {
+	      case SMG$K_TRM_UP:    key = flags.num_pad ? '8' : 'k';  break;
+	      case SMG$K_TRM_DOWN:  key = flags.num_pad ? '2' : 'j';  break;
+	      case SMG$K_TRM_LEFT:  key = flags.num_pad ? '4' : 'h';  break;
+	      case SMG$K_TRM_RIGHT: key = flags.num_pad ? '6' : 'l';  break;
+	      default:		    key = ESC;	break;
+	    }
+	} else {
+	    key = (short)kb_buf;
+	}
+    } else if (sts == SS$_HANGUP || iosb.status == SS$_HANGUP) {
+	gsignal(SIGHUP);
+	key = ESC;
+    } else			/*(this should never happen)*/
+	key = getchar();
+
+#else   /*!USE_QIO_INPUT*/
+    static volatile int recurse = 0;	/* SMG is not AST re-entrant! */
+
+    if (recurse++ == 0 && kb != 0) {
+	SMG$READ_KEYSTROKE(&kb, &key);
+	switch (key) {
+	  case SMG$K_TRM_UP:	flags.num_pad ? '8' : key = 'k';  break;
+	  case SMG$K_TRM_DOWN:	flags.num_pad ? '2' : key = 'j';  break;
+	  case SMG$K_TRM_LEFT:	flags.num_pad ? '4' : key = 'h';  break;
+	  case SMG$K_TRM_RIGHT: flags.num_pad ? '6' : key = 'l';  break;
+	  case '\r':		key = '\n'; break;
+	  default:		if (key > 255)	key = ESC;
+				break;
+	}
+    } else {
+	/* abnormal input--either SMG didn't initialize properly or
+	   vms_getchar() has been called recursively (via SIGINT handler).
+	 */
+	if (kb != 0)			/* must have been a recursive call */
+	    SMG$CANCEL_INPUT(&kb);	/*  from an interrupt handler	   */
+	key = getchar();
+    }
+    --recurse;
+#endif	/* USE_QIO_INPUT */
+
+    return (int)key;
+}
+
+#ifdef USE_QIO_INPUT
+       /*
+	* We've just gotten an <escape> character.  Do a timed read to
+	* get any other characters, then try to parse them as an escape
+	* sequence.  This isn't perfect, since there's no guarantee
+	* that a full escape sequence will be available, or even if one
+	* is, it might actually by regular input from a fast typist or
+	* a stalled input connection.  {For packetized environments,
+	* cross plural(body_part(FINGER)) and hope for best. :-}
+	*
+	* This is needed to preserve compatability with SMG interface
+	* for two reasons:
+	*    1) retain support for arrow keys, and
+	*    2) treat other VTxxx function keys as <esc> for aborting
+	*	various NetHack prompts.
+	* The second reason is compelling; otherwise remaining chars of
+	* an escape sequence get treated as inappropriate user commands.
+	*
+	* SMG code values for these key sequences fall in the range of
+	* 256 thru 3xx.  The assignments are not particularly intuitive.
+	*/
+/*=
+     -- Summary of VTxxx-style keyboards and transmitted escape sequences. --
+Keypad codes are prefixed by 7 bit (\033 O) or 8 bit SS3:
+	keypad:  PF1 PF2 PF3 PF4       codes:	P   Q	R   S
+		  7   8   9   -			w   x	y   m
+		  4   5   6   .			t   u	v   n
+		  1   2   3  :en-:		q   r	s  : :
+		 ...0...  ,  :ter:	       ...p...	l  :M:
+Arrows are prefixed by either SS3 or CSI (either 7 or 8 bit), depending on
+whether the terminal is in application or numeric mode (ditto for PF keys):
+	arrows: <up> <dwn> <lft> <rgt>		A   B	D   C
+Additional function keys (vk201/vk401) generate CSI nn ~ (nn is 1 or 2 digits):
+    vk201 keys:  F6 F7 F8 F9 F10   F11 F12 F13 F14  Help Do   F17 F18 F19 F20
+   'nn' digits:  17 18 19 20 21    23  24  25  26    28  29   31  32  33  34
+     alternate:  ^C		   ^[  ^H  ^J		(when in VT100 mode)
+   edit keypad: <fnd> <ins> <rmv>     digits:	1   2	3
+		<sel> <prv> <nxt>		4   5	6
+VT52 mode:  arrows and PF keys send ESCx where x is in A-D or P-S.
+=*/
+
+static const char *arrow_or_PF = "ABCDPQRS",	/* suffix char */
+		  *smg_keypad_codes = "PQRSpqrstuvwxyMmlnABDC";
+	/* PF1..PF4,KP0..KP9,enter,dash,comma,dot,up-arrow,down,left,right */
+	/* Ultimate return value is (index into smg_keypad_codes[] + 256). */
+
+static short
+parse_function_key(c)
+register int c;
+{
+    struct _rd_iosb iosb;
+    unsigned long sts;
+    char seq_buf[15+1];		/* plenty room for escape sequence + slop */
+    short result = ESC;		/* translate to <escape> by default */
+
+    /*
+     * Read whatever we can from type-ahead buffer (1 second timeout).
+     * If the user typed an actual <escape> to deliberately abort
+     * something, he or she should be able to tolerate the necessary
+     * restriction of a negligible pause before typing anything else.
+     * We might already have [at least some of] an escape sequence from a
+     * previous read, particularly if user holds down the arrow keys...
+     */
+    if (inc > 0) strncpy(seq_buf, inp, inc);
+    if (inc < sizeof seq_buf - 1) {
+	sts = SYS$QIOW(0, tt_chan, QIO_FUNC|IO$M_TIMED, &iosb, (void(*)())0, 0,
+		       seq_buf + inc, sizeof seq_buf - 1 - inc, 1, 0, 0, 0);
+	if (vms_ok(sts))  sts = iosb.status;
+    } else
+	sts = SS$_NORMAL;
+    if (vms_ok(sts) || sts == SS$_TIMEOUT) {
+	register int cnt = iosb.trm_offset + iosb.trm_siz + inc;
+	register char *p = seq_buf;
+	if (c == ESC)	/* check for 7-bit vt100/ANSI, or vt52 */
+	    if (*p == '[' || *p == 'O') c = META(CTRL(*p++)),  cnt--;
+	    else if (strchr(arrow_or_PF, *p)) c = SS3; /*CSI*/
+	if (cnt > 0 && (c == SS3 || (c == CSI && strchr(arrow_or_PF, *p)))) {
+	    register char *q = strchr(smg_keypad_codes, *p);
+	    if (q) result = 256 + (q - smg_keypad_codes);
+	    p++,  --cnt;	/* one more char consumed */
+	} else if (cnt > 1 && c == CSI) {
+	    static short	/* "CSI nn ~" -> F_keys[nn] */
+		F_keys[35] = {	ESC,				/*(filler)*/
+				311, 312, 313, 314, 315, 316,	/* E1-E6 */
+				ESC, ESC, ESC, ESC,	   /*(more filler)*/
+				281, 282, 283, 284, 285, ESC,	/* F1-F5 */
+				286, 287, 288, 289, 290, ESC,	/* F6-F10*/
+				291, 292, 293, 294, ESC,	/*F11-F14*/
+				295, 296, ESC, /*<help>,<do>, aka F15,F16*/
+				297, 298, 299, 300		/*F17-F20*/
+		};  /* note: there are several missing nn in CSI nn ~ values */
+	    int nn;  char *q;
+	    *(p + cnt) = '\0';	/* terminate string */
+	    q = strchr(p, '~');
+	    if (q && sscanf(p, "%d~", &nn) == 1) {
+		if (nn > 0 && nn < SIZE(F_keys)) result = F_keys[nn];
+		cnt -= (++q - p);
+		p = q;
+	    }
+	}
+	if (cnt > 0) strncpy((inp = inputbuf), p, (inc = cnt));
+	else	     inc = 0,  inp = 0;
+    }
+    return result;
+}
+#endif	/* USE_QIO_INPUT */
+
 static void
-setctty(){
+setctty()
+{
     struct _sm_iosb iosb;
-    long status = SYS$QIOW(0, tt_chan, IO$_SETMODE, &iosb, (void(*)())0, 0,
-			   &sg.sm, sizeof sg.sm, 0, 0, 0, 0);
+    unsigned long status;
+
+    status = SYS$QIOW(0, tt_chan, IO$_SETMODE, &iosb, (void(*)())0, 0,
+		      &sg.sm, sizeof sg.sm, 0, 0, 0, 0);
     if (vms_ok(status))  status = iosb.status;
     if (!vms_ok(status)) {
+	raw_print("");
 	errno = EVMSERR,  vaxc$errno = status;
-	perror("NetHack (setctty: setmode)");
+	perror("NetHack(setctty: setmode)");
+	wait_synch();
     }
 }
 
@@ -128,19 +307,23 @@ resettty(){			/* atexit() routine */
 /*
  * Get initial state of terminal, set ospeed (for termcap routines)
  * and switch off tab expansion if necessary.
- * Called by startup() in termcap.c and after returning from ! or ^Z
+ * Called by init_nhwindows() and resume_nhwindows() in wintty.c
+ * (for initial startup and for returning from '!' or ^Z).
  */
 void
-gettty(){
-    long status;
-    $DESCRIPTOR(input_dsc, "TT");
-    unsigned long zero = 0;
+gettty()
+{
+    static $DESCRIPTOR(tty_dsc, "TT:");
+    int err = 0;
+    unsigned long status, zero = 0;
 
     if (tt_chan == 0) {		/* do this stuff once only */
-	status = SYS$ASSIGN(&input_dsc, &tt_chan, 0, 0);
+	flags.cbreak = OFF,  flags.echo = ON;	/* until setup is complete */
+	status = SYS$ASSIGN(&tty_dsc, &tt_chan, 0, 0);
 	if (!vms_ok(status)) {
+	    raw_print(""),  err++;
 	    errno = EVMSERR,  vaxc$errno = status;
-	    perror("NetHack (gettty: $assign)");
+	    perror("NetHack(gettty: $assign)");
 	}
 	atexit(resettty);   /* register an exit handler to reset things */
     }
@@ -148,8 +331,9 @@ gettty(){
 		      &sg.sm, sizeof sg.sm, 0, 0, 0, 0);
     if (vms_ok(status))  status = sg.io.status;
     if (!vms_ok(status)) {
+	raw_print(""),  err++;
 	errno = EVMSERR,  vaxc$errno = status;
-	perror("NetHack (gettty: sensemode)");
+	perror("NetHack(gettty: sensemode)");
     }
     ospeed = sg.io.xmt_speed;
     erase_char = '\177';	/* <rubout>, aka <delete> */
@@ -163,85 +347,95 @@ gettty(){
 	CO = sg.sm.page_width;
     /* Determine whether TTDRIVER is doing tab and/or form-feed expansion;
        if so, we want to suppress that but also restore it at final exit. */
-    if ((sg.sm.tt_char & TT_SPECIAL_HANDLING) != TT_SPECIAL_HANDLING) {
-	tt_char_restore = sg.sm.tt_char;
-	tt_char_active	= sg.sm.tt_char |= TT_SPECIAL_HANDLING;
+    if ((sg.sm.tt_char & TT_SPECIAL_HANDLING) != TT_SPECIAL_HANDLING
+     && (sg.sm.tt2_char & TT2_SPECIAL_HANDLING) != TT2_SPECIAL_HANDLING) {
+	tt_char_restore  = sg.sm.tt_char;
+	tt_char_active	 = sg.sm.tt_char |= TT_SPECIAL_HANDLING;
+	tt2_char_restore = sg.sm.tt2_char;
+	tt2_char_active  = sg.sm.tt2_char |= TT2_SPECIAL_HANDLING;
 #if 0		/*[ defer until setftty() ]*/
 	setctty();
-#endif 0
+#endif
     } else	/* no need to take any action */
-	tt_char_restore = tt_char_active = 0;
+	tt_char_restore = tt_char_active = 0,
+	tt2_char_restore = tt2_char_active = 0;
+    if (err) wait_synch();
 }
 
 /* reset terminal to original state */
 void
 settty(s)
-char *s;
+const char *s;
 {
 	if (!bombing) {
 	    end_screen();
-	    if(s) Printf(s);
-	    (void) fflush(stdout);
+	    if (s) raw_print(s);
 	}
-#ifdef MAIL	/* this is essential, or lib$spawn & lib$attach will fail */
-	SMG$DISABLE_BROADCAST_TRAPPING(&pasteboard_id);
-#endif
+	disable_broadcast_trapping();
 #if 0		/* let SMG's exit handler do the cleanup (as per doc) */
-	SMG$DELETE_PASTEBOARD(&pasteboard_id);
-	SMG$DELETE_VIRTUAL_KEYBOARD(&kb),  kb = 0;
-#endif 0
+/* #ifndef USE_QIO_INPUT */
+	if (kb)  SMG$DELETE_VIRTUAL_KEYBOARD(&kb),  kb = 0;
+#endif	/* 0 (!USE_QIO_INPUT) */
 	if (ctrl_mask)
 	    (void) LIB$ENABLE_CTRL(&ctrl_mask, 0);
 	flags.echo = ON;
 	flags.cbreak = OFF;
-	if (tt_char_restore != 0) {
-	    sg.sm.tt_char = tt_char_restore;
+	if (tt_char_restore != 0 || tt2_char_restore != 0) {
+	    sg.sm.tt_char  = tt_char_restore;
+	    sg.sm.tt2_char = tt2_char_restore;
 	    setctty();
 	}
 	settty_needed = FALSE;
 }
 
-#ifdef MAIL
-static void
-broadcast_ast(dummy)
+/* same as settty, with no clearing of the screen */
+void
+shuttty(s)
+const char *s;
 {
-	extern volatile int broadcasts;
-
-	broadcasts++;
+	if(s) raw_print(s);
+	bombing = TRUE;
+	settty(s);
+	bombing = FALSE;
 }
-#endif
 
 void
-setftty(){
-	unsigned int mask = LIB$M_CLI_CTRLT | LIB$M_CLI_CTRLY;
+setftty()
+{
+	unsigned long mask = LIB$M_CLI_CTRLT | LIB$M_CLI_CTRLY;
 
-	flags.cbreak = ON;
-	flags.echo = OFF;
 	(void) LIB$DISABLE_CTRL(&mask, 0);
 	if (kb == 0) {		/* do this stuff once only */
-	SMG$CREATE_VIRTUAL_KEYBOARD(&kb);
-	SMG$CREATE_PASTEBOARD(&pasteboard_id, 0, 0, 0, 0);
+#ifdef USE_QIO_INPUT
+	    kb = tt_chan;
+#else   /*!USE_QIO_INPUT*/
+	    SMG$CREATE_VIRTUAL_KEYBOARD(&kb);
+#endif  /*USE_QIO_INPUT*/
+	    init_broadcast_trapping();
 	}
-#ifdef MAIL
-	/* note side effect: also intercepts hangup notification */
-	SMG$SET_BROADCAST_TRAPPING(&pasteboard_id, broadcast_ast, 0);
-#endif
+	enable_broadcast_trapping();	/* no-op if !defined(MAIL) */
+	flags.cbreak = (kb != 0) ? ON : OFF;
+	flags.echo   = (kb != 0) ? OFF : ON;
 	/* disable tab & form-feed expansion */
-	if (tt_char_active != 0) {
-	    sg.sm.tt_char = tt_char_active;
+	if (tt_char_active != 0 || tt2_char_active != 0) {
+	    sg.sm.tt_char  = tt_char_active;
+	    sg.sm.tt2_char = tt2_char_active;
 	    setctty();
 	}
 	start_screen();
 	settty_needed = TRUE;
 }
 
-
 void
-intron() {		/* enable kbd interupts if enabled when game started */
+intron()		/* enable kbd interupts if enabled when game started */
+{
+	intr_char = CTRL('C');
 }
 
 void
-introff() {		/* disable kbd interrupts if required*/
+introff()		/* disable kbd interrupts if required*/
+{
+	intr_char = 0;
 }
 
 

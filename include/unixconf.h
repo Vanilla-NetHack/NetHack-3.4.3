@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)unixconf.h	3.0	88/07/21
+/*	SCCS Id: @(#)unixconf.h	3.1	90/22/02	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -8,7 +8,7 @@
 
 /*
  * Some include files are in a different place under SYSV
- * 	BSD		   SYSV
+ *	BSD		   SYSV
  * <sys/time.h>		<time.h>
  * <sgtty.h>		<termio.h>
  *
@@ -18,10 +18,10 @@
  *
  */
 
-/* define one of the following */
-/* #define BSD		/* define for 4.n BSD  */
+/* define exactly one of the following four choices */
+#define BSD		/* define for 4.n BSD  */
 			/* also for relatives like SunOS and DG/UX */
-#define ULTRIX		/* define for Ultrix v3.0 or higher (but not lower) */
+/* #define ULTRIX	/* define for Ultrix v3.0 or higher (but not lower) */
 			/* Use BSD for < v3.0 */
 			/* "ULTRIX" not to be confused with "ultrix" */
 /* #define SYSV		/* define for System V */
@@ -30,18 +30,26 @@
 
 
 /* define any of the following that are appropriate */
-/* #define NETWORK	/* if running on a networked system */
+/* #define SVR4		/* use in addition to SYSV for System V Release 4 */
+#define NETWORK	/* if running on a networked system */
 			/* e.g. Suns sharing a playground through NFS */
+#define SUNOS4	/* SunOS 4.x */
 /* #define GENIX	/* Yet Another Unix Clone */
 /* #define HISX		/* Bull Unix for XPS Machines */
+/* #define BOS		/* Bull Open Software - Unix for DPX/2 Machines */
 /* #define UNIXPC	/* use in addition to SYSV for AT&T 7300/3B1 */
-			/* also note that the stock cpp qualifies as a
-			   STUPID_CPP for config.h */
 /* #define AIX_31	/* In AIX 3.1 (IBM RS/6000) use BSD ioctl's to gain
 			   job control (note that AIX is SYSV otherwise) */
+/* #define TEXTCOLOR	/* Use System V r3.2 terminfo color support */
+			/* or ANSI color support on termcap systems */
+			/* or X11 color	*/
+/* #define POSIX_JOB_CONTROL	/* use System V POSIX job control */
+/* #define POSIX_TYPES	/* use POSIX types for system calls and termios */
 
-/* #define PYRAMID_BUG 	/* avoid a bug on the Pyramid */
-/* #define APOLLO	/* same for the Apollo */
+
+/* #define OPENWINBUG	/* avoid a problem using OpenWindows 3.0 for X11
+			   on SunOS 4.1.x, x>= 2 */
+/* #define PYRAMID_BUG	/* avoid a bug on the Pyramid */
 /* #define BSD_43_BUG	/* for real 4.3BSD cc's without schain botch fix */
 /* #define MICROPORT_BUG /* problems with large arrays in structs */
 /* #define MICROPORT_286_BUG /* Changes needed in termcap.c to get it to
@@ -51,7 +59,9 @@
 
 /* #define RANDOM	/* if neither random/srandom nor lrand48/srand48
 			   is available from your system */
-/* #define TEXTCOLOR	/* Use System V r3.2 terminfo color support */
+
+/* #define SYSV386MUSIC	/* Play real music through speaker on systems with
+			   music driver installed */
 
 
 /*
@@ -77,6 +87,14 @@
 
 
 /*
+ * Define PORT_HELP to be the name of the port-specfic help file.
+ * This file is found in HACKDIR. 
+ * Normally, you shouldn't need to change this.
+ * There is currently no port-specific help for Unix systems.
+ */
+/* #define PORT_HELP "Unixhelp" */
+
+/*
  * If you define MAIL, then the player will be notified of new mail
  * when it arrives.  If you also define DEF_MAILREADER then this will
  * be the default mail reader, and can be overridden by the environment
@@ -87,9 +105,9 @@
 #define MAIL			/* Deliver mail during the game */
 
 /* The Andrew Message System does mail a little differently from normal
- * UNIX.  Mail is deposited in the user's own directory in ~/Mailbox 
- * (another directory).  MAILBOX is the element that will be added on to 
- * the user's home directory path to generate the Mailbox path - just in 
+ * UNIX.  Mail is deposited in the user's own directory in ~/Mailbox
+ * (another directory).  MAILBOX is the element that will be added on to
+ * the user's home directory path to generate the Mailbox path - just in
  * case other Andrew sites do it differently from CMU.
  *
  *		dan lovinger
@@ -99,34 +117,34 @@
 /* #define AMS			/* use Andrew message system for mail */
 
 /* NO_MAILREADER is for kerberos authentcating filesystems where it is
- * essentially impossible to securely exec child proccesses, like mail
+ * essentially impossible to securely exec child processes, like mail
  * readers, when the game is running under a special token.
  *
  *             dan
  */
 
-/* #define NO_MAILREADER 	/* have mail daemon just tell player of mail */
+/* #define NO_MAILREADER	/* have mail daemon just tell player of mail */
 
 #ifdef	MAIL
 # if defined(BSD) || defined(ULTRIX)
 #  ifdef AMS
 #define AMS_MAILBOX	"/Mailbox"
 #  else
-#define	DEF_MAILREADER	"/usr/ucb/Mail"
+#define DEF_MAILREADER	"/usr/ucb/Mail"
 #  endif
 #else
 # if defined(SYSV) || defined(DGUX) || defined(HPUX)
 #  ifdef M_XENIX
-#define	DEF_MAILREADER	"/usr/bin/mail"
+#define DEF_MAILREADER	"/usr/bin/mail"
 #  else
-#define	DEF_MAILREADER	"/usr/bin/mailx"
+#define DEF_MAILREADER	"/usr/bin/mailx"
 #  endif
 # else
-#define	DEF_MAILREADER	"/bin/mail"
+#define DEF_MAILREADER	"/bin/mail"
 # endif
 #endif
 
-#define	MAILCKFREQ	50
+#define MAILCKFREQ	50
 #endif	/* MAIL */
 
 
@@ -140,22 +158,44 @@
 /* #define COMPRESS_OPTIONS	"-q"	/* */
 #endif
 
-#define	FCMASK	0660	/* file creation mask */
+#define FCMASK	0660	/* file creation mask */
 
 
 /*
  * The remainder of the file should not need to be changed.
  */
 
+#ifdef _AUX_SOURCE
+# ifdef AUX /* gcc ? */
+#  define _SYSV_SOURCE
+#  define _BSD_SOURCE
+#else
+#  define AUX
+# endif
+#endif /* _AUX_SOURCE */
+
 /*
  * BSD/ULTRIX systems are normally the only ones that can suspend processes.
  * Suspending NetHack processes cleanly should be easy to add to other systems
- * that have SIGTSTP.  Currently the only such systems known to work are HPUX
- * and AIX 3.1; other systems will probably require tweaks to unixtty.c and
- * ioctl.c.
+ * that have SIGTSTP in the Berkeley sense.  Currently the only such systems
+ * known to work are HPUX and AIX 3.1; other systems will probably require
+ * tweaks to unixtty.c and ioctl.c.
+ *
+ * POSIX defines a slightly different type of job control, which should be
+ * equivalent for NetHack's purposes.  POSIX_JOB_CONTROL should work on
+ * various recent SYSV versions (with possibly tweaks to unixtty.c again).
  */
-#if defined(BSD) || defined(ULTRIX) || defined (HPUX) || defined(AIX_31)
-#define	SUSPEND		/* let ^Z suspend the game */
+#ifndef POSIX_JOB_CONTROL
+# if defined(BSD) || defined(ULTRIX) || defined(HPUX) || defined(AIX_31)
+#  define BSD_JOB_CONTROL
+# else
+#  if defined(SVR4)
+#   define POSIX_JOB_CONTROL
+#  endif
+# endif
+#endif
+#if defined(BSD_JOB_CONTROL) || defined(POSIX_JOB_CONTROL) || defined(AUX)
+#define SUSPEND		/* let ^Z suspend the game */
 #endif
 
 
@@ -165,21 +205,19 @@
 #include	<time.h>
 #endif
 
-#define	HLOCK	"perm"	/* an empty file used for locking purposes */
-#define LLOCK	"safelock"	/* link to previous */
+#define HLOCK	"perm"	/* an empty file used for locking purposes */
 
 #ifndef REDO
-#define Getchar getchar
-#else
-#define tgetch getchar
+#define Getchar nhgetch
 #endif
+#define tgetch getchar
 
 #define SHELL		/* do not delete the '!' command */
 
 #include "system.h"
 
 #if defined(BSD) || defined(ULTRIX)
-# ifndef DGUX
+# if !defined(DGUX) && !defined(SUNOS4)
 #define memcpy(d, s, n)		bcopy(s, d, n)
 #define memcmp(s1, s2, n)	bcmp(s2, s1, n)
 # endif
@@ -188,13 +226,18 @@
 #define rindex	strrchr
 #endif
 
+/* A safety check for BOS and AUX */
+#if (defined(BOS) || defined(AUX)) && defined(NHSTDC)
+# if defined(VISION_TABLES) && defined(BRACES)
+#  undef BRACES
+# endif
+#endif
+
 /* Use the high quality random number routines. */
 #if defined(BSD) || defined(ULTRIX) || defined(RANDOM)
 #define Rand()	random()
-#define Srand(seed) srandom(seed)
 #else
 #define Rand()	lrand48()
-#define Srand(seed) srand48(seed)
 #endif
 
 #ifdef hc	/* older versions of the MetaWare High-C compiler define this */
@@ -205,5 +248,5 @@
 # undef hc
 #endif
 
-#endif /* UNIXCONF_H /* */
-#endif /* UNIX /* */
+#endif /* UNIXCONF_H */
+#endif /* UNIX */

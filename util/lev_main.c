@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)lev_main.c	3.0	89/07/02
+/*	SCCS Id: @(#)lev_main.c	3.1	92/12/11	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -8,98 +8,222 @@
  */
 
 #include "hack.h"
+#include "sp_lev.h"
+#ifdef STRICT_REF_DEF
+#include "termcap.h"
+#endif
 
-#ifdef MSDOS
+#ifdef MAC
+# ifdef applec
+#  define MPWTOOL
+#  include <CursorCtl.h>
+# endif
+#endif
+
+#ifndef MPWTOOL
+# define SpinCursor(x)
+#endif
+
+#ifndef O_WRONLY
+# include <fcntl.h>
+#endif
+#ifndef O_CREAT	/* some older BSD systems do not define O_CREAT in <fcntl.h> */
+# include <sys/file.h>
+#endif
+#ifndef O_BINARY	/* used for micros, no-op for others */
+# define O_BINARY 0
+#endif
+
+#define NEWLINE	10	/* under Mac MPW C '\n' is 13 so don't use it. */
+
+#define ERR		(-1)
+
+#define NewTab(type, size)	(type **) alloc(sizeof(type *) * size)
+#define Free(ptr)		if(ptr) free((genericptr_t) (ptr))
+#define Write(fd, item, size)	(void) write(fd, (genericptr_t)(item), size)
+
+#ifdef MICRO
 # undef exit
 # ifndef AMIGA
 extern void FDECL(exit, (int));
 # endif
 #endif
-#ifdef LATTICE
-long *alloc(unsigned int);
-# ifdef exit
-#  undef exit
-# endif
-#include <stdlib.h>
-#endif
 
 #define MAX_ERRORS	25
 
-extern int line_number;
+extern int  NDECL (yyparse);
+extern void FDECL (init_yyin, (FILE *));
+extern void FDECL (init_yyout, (FILE *));
+
+int  FDECL (main, (int, char **));
+void FDECL (yyerror, (char *));
+void FDECL (yywarning, (char *));
+int  NDECL (yywrap);
+char *FDECL(dup_string,(const char *));
+int FDECL(get_floor_type, (CHAR_P));
+int FDECL(get_room_type, (char *));
+int FDECL(get_trap_type, (char *));
+int FDECL(get_monster_id, (char *, CHAR_P));
+int FDECL(get_object_id, (char *));
+boolean FDECL(check_monster_char, (CHAR_P));
+boolean FDECL(check_object_char, (CHAR_P));
+char FDECL(what_map_char, (CHAR_P));
+void FDECL(scan_map, (char *));
+void NDECL(wallify_map);
+boolean NDECL(check_subrooms);
+void FDECL(check_coord, (int, int, char *));
+void NDECL(store_part);
+void NDECL(store_room);
+static void FDECL(write_common_data, (int,int,lev_init *,long));
+void FDECL(write_maze, (int, specialmaze *));
+void FDECL(write_lev, (int, splev *));
+void FDECL(free_rooms, (room **, int));
+
+static struct {
+	const char *name;
+	short type;
+} trap_types[TRAPNUM] = {
+	{ "arrow",	ARROW_TRAP },
+	{ "dart",	DART_TRAP },
+	{ "falling rock", ROCKTRAP },
+	{ "board",	SQKY_BOARD },
+	{ "bear",	BEAR_TRAP },
+	{ "land mine",	LANDMINE },
+	{ "sleep gas",	SLP_GAS_TRAP },
+	{ "rust",	RUST_TRAP },
+	{ "fire",	FIRE_TRAP },
+	{ "pit",	PIT },
+	{ "spiked pit",	SPIKED_PIT },
+	{ "trapdoor",	TRAPDOOR },
+	{ "teleport",	TELEP_TRAP },
+	{ "level teleport", LEVEL_TELEP },
+	{ "magic portal",   MAGIC_PORTAL },
+	{ "web",	WEB },
+	{ "statue",	STATUE_TRAP },
+	{ "magic",	MAGIC_TRAP },
+	{ "anti magic",	ANTI_MAGIC },
+#ifdef POLYSELF
+	{ "polymorph",	POLY_TRAP },
+#endif
+	{ 0, 0 }
+};
+
+static struct {
+	char *name;
+	int type;
+} room_types[] = {
+	/* for historical reasons, room types are not contiguous numbers */
+	/* (type 1 is skipped) */
+	{ "ordinary",	 OROOM },
+	{ "throne",	 COURT },
+	{ "swamp",	 SWAMP },
+	{ "vault",	 VAULT },
+	{ "beehive",	 BEEHIVE },
+	{ "morgue",	 MORGUE },
+#ifdef ARMY
+	{ "barracks",	 BARRACKS },
+#endif
+	{ "zoo",	 ZOO },
+	{ "delphi",	 DELPHI },
+	{ "temple",	 TEMPLE },
+	{ "shop",	 SHOPBASE },
+	{ "armor shop",	 ARMORSHOP },
+	{ "scroll shop", SCROLLSHOP },
+	{ "potion shop", POTIONSHOP },
+	{ "weapon shop", WEAPONSHOP },
+	{ "food shop",	 FOODSHOP },
+	{ "ring shop",	 RINGSHOP },
+	{ "wand shop",	 WANDSHOP },
+	{ "tool shop",	 TOOLSHOP },
+	{ "book shop",	 BOOKSHOP },
+	{ "candle shop", CANDLESHOP },
+	{ 0, 0 }
+};
+
 char *fname = "(stdin)";
 int fatal_error = 0;
+int want_warnings = 0;
 
 /* Flex 2.3 bug work around */
 int yy_more_len = 0;
 
-int  FDECL (main, (int, char **));
-int  NDECL (yyparse);
-void FDECL (yyerror, (char *));
-void FDECL (yywarning, (char *));
-int  NDECL (yywrap);
-void FDECL (init_yyin, (FILE *));
-void FDECL (init_yyout, (FILE *));
+extern char tmpmessage[];
+extern altar *tmpaltar[];
+extern lad *tmplad[];
+extern stair *tmpstair[];
+extern digpos *tmpdig[];
+extern char *tmpmap[];
+extern region *tmpreg[];
+extern lev_region *tmplreg[];
+extern door *tmpdoor[];
+extern room_door *tmprdoor[];
+extern trap *tmptrap[];
+extern monster *tmpmonst[];
+extern object *tmpobj[];
+extern drawbridge *tmpdb[];
+extern walk *tmpwalk[];
+extern gold *tmpgold[];
+extern fountain *tmpfountain[];
+extern sink *tmpsink[];
+extern pool *tmppool[];
+extern engraving *tmpengraving[];
+extern mazepart *tmppart[];
+extern room *tmproom[];
+extern corridor *tmpcor[];
 
-#ifdef LSC
-# define main _main
-#endif
+extern int n_olist, n_mlist, n_plist;
+
+extern unsigned int nlreg, nreg, ndoor, ntrap, nmons, nobj;
+extern unsigned int ndb, nwalk, npart, ndig, nlad, nstair;
+extern unsigned int naltar, ncorridor, nrooms, ngold, nengraving;
+extern unsigned int nfountain, npool, nsink;
+
+extern unsigned int max_x_map, max_y_map;
+
+extern int line_number, colon_line_number;
+
+int
 main(argc, argv)
 int argc;
 char **argv;
 {
 	FILE *fin;
 	int i;
+#ifdef MAC_THINKC5
+	static char *mac_argv[] = {	"lev_comp",	/* dummy argv[0] */
+				":dat:Arch.des",
+				":dat:Barb.des",
+				":dat:Caveman.des",
+				":dat:Elf.des",
+				":dat:Healer.des",
+				":dat:Knight.des",
+				":dat:Priest.des",
+				":dat:Rogue.des",
+				":dat:Samurai.des",
+				":dat:Tourist.des",
+				":dat:Valkyrie.des",
+				":dat:Wizard.des",
+				":dat:bigroom.des",
+				":dat:castle.des",
+				":dat:endgame.des",
+				":dat:gehennom.des",
+				":dat:knox.des",
+				":dat:medusa.des",
+				":dat:mines.des",
+				":dat:oracle.des",
+				":dat:tower.des",
+				":dat:yendor.des"
+				};
 
-#if defined(MACOS) && defined(SMALLDATA)
-# ifdef THINKC4
-#include <console.h>
-# endif
-#define YYLMAX	2048
-	extern char	*yysbuf, *yytext, *yysptr;
-	Handle temp;
-	Str255 name;
-	long	j;
-	extern struct permonst *mons;
-	extern struct objclass *objects;
-	/* 3 special level description files */
-	char *descrip[] = {"lev_comp", ":auxil:castle.des",
-			":auxil:endgame.des", ":auxil:tower.des"};
-
-	/* sub in the Nethack resource filename */
-	Strcpy((char *)name, "\021nethack.proj.rsrc");
-	yysbuf = (char *)alloc(YYLMAX);
-	yysptr = yysbuf;
-	yytext = (char *)alloc(YYLMAX);
-
-	(void)OpenResFile(name);
-	temp = GetResource(HACK_DATA, MONST_DATA);
-	if (temp) {
-		DetachResource(temp);
-		MoveHHi(temp);
-		HLock(temp);
-		i = GetHandleSize(temp);
-		mons = (struct permonst *)(*temp);
-	} else {
-		panic("Can't get MONST resource data.");
-	}
-	
-	temp = GetResource(HACK_DATA, OBJECT_DATA);
-	if (temp) {
-		DetachResource(temp);
-		MoveHHi(temp);
-		HLock(temp);
-		i = GetHandleSize(temp);
-		objects = (struct objclass *)(*temp);
-		for (j = 0; j< NROFOBJECTS+1; j++) {
-			objects[j].oc_name = sm_obj[j].oc_name;
-			objects[j].oc_descr = sm_obj[j].oc_descr;
-		}
-	} else {
-		panic("Can't get OBJECT resource data.");
-	}
-    argc = 4;    /* argv[0] is irrelevant, argv[i] = descrip[i] */
-    argv = descrip;
-#endif  /* !MACOS || !SMALLDATA */
+	argc = SIZE(mac_argv);
+	argv = mac_argv;
+#endif
+	/* Note:  these initializers don't do anything except guarantee that
+		we're linked properly.
+	*/
+	monst_init();
+	objects_init();
+	decl_init();
 
 	init_yyout(stdout);
 	if (argc == 1) {		/* Read standard input */
@@ -108,12 +232,14 @@ char **argv;
 	} else {			/* Otherwise every argument is a filename */
 	    for(i=1; i<argc; i++) {
 		    fname = argv[i];
-#ifdef MACOS
-		    fprintf(stdout, "Working on %s\n", fname);
-#endif
+		    if(!strcmp(fname, "-w")) {
+			want_warnings++;
+			continue;
+		    }
 		    fin = freopen(fname, "r", stdin);
 		    if (!fin) {
-			fprintf(stderr,"Can't open \"%s\" for input.\n", fname);
+			(void) fprintf(stderr,"Can't open \"%s\" for input.\n",
+						fname);
 			perror(fname);
 		    } else {
 			init_yyin(fin);
@@ -130,33 +256,1133 @@ char **argv;
 #endif /*VMS*/
 }
 
-/* 
+/*
  * Each time the parser detects an error, it uses this function.
  * Here we take count of the errors. To continue farther than
  * MAX_ERRORS wouldn't be reasonable.
+ * Assume that explicit calls from lev_comp.y have the 1st letter
+ * capitalized, to allow printing of the line containing the start of
+ * the current declaration, instead of the beginning of the next declaration.
  */
 
-void yyerror(s)
+void
+yyerror(s)
 char *s;
 {
-	fprintf(stderr,"%s : line %d : %s\n",fname,line_number, s);
+	(void) fprintf(stderr, "%s: line %d : %s\n", fname,
+		(*s >= 'A' && *s <= 'Z') ? colon_line_number : line_number, s);
 	if (++fatal_error > MAX_ERRORS) {
-		fprintf(stderr,"Too many errors, good bye!\n");
+		(void) fprintf(stderr,"Too many errors, good bye!\n");
 		exit(1);
 	}
 }
 
-/* 
+/*
  * Just display a warning (that is : a non fatal error)
  */
 
-void yywarning(s)
+void
+yywarning(s)
 char *s;
 {
-	fprintf(stderr,"%s : line %d : WARNING : %s\n",fname,line_number,s);
+	(void) fprintf(stderr, "%s: line %d : WARNING : %s\n",
+				fname, colon_line_number, s);
 }
 
+int
 yywrap()
 {
-       return 1;
+	return 1;
 }
+
+/*
+ * Duplicate a string.
+ */
+
+char *
+dup_string(s)
+const char *s;
+{
+	char *news;
+
+	if (!s)
+	    return (char *) 0;
+	news = (char *) alloc(strlen(s)+1);
+	Strcpy(news, s);
+	return news;
+}
+
+/*
+ * Find the type of floor, knowing its char representation.
+ */
+
+int
+get_floor_type(c)
+char c;
+{
+	int val;
+
+	SpinCursor(3);
+	val = what_map_char(c);
+	if(val == INVALID_TYPE) {
+	    val = ERR;
+	    yywarning("Invalid fill character in MAZE declaration");
+	}
+	return val;
+}
+
+/*
+ * Find the type of a room in the table, knowing its name.
+ */
+
+int
+get_room_type(s)
+char *s;
+{
+	register int i;
+
+	SpinCursor(3);
+	for(i=0; room_types[i].name; i++)
+	    if (!strcmp(s, room_types[i].name))
+		return ((int) room_types[i].type);
+	return ERR;
+}
+
+/*
+ * Find the type of a trap in the table, knowing its name.
+ */
+
+int
+get_trap_type(s)
+char *s;
+{
+	register int i;
+
+	SpinCursor(3);
+	for(i=0; i < TRAPNUM - 1; i++)
+	    if(!strcmp(s,trap_types[i].name))
+		return((int)trap_types[i].type);
+	return ERR;
+}
+
+/*
+ * Find the index of a monster in the table, knowing its name.
+ */
+int
+get_monster_id(s, c)
+char *s;
+char c;
+{
+	register int i, class;
+
+	SpinCursor(3);
+	class = def_char_to_monclass(c);
+	if (c && class == MAXMCLASSES) return ERR;
+
+	for(i = 0; i < NUMMONS; i++)
+	    if(!strncmp(s, mons[i].mname, strlen(mons[i].mname))
+	       && (!c || class == mons[i].mlet))
+		return i;
+	return ERR;
+}
+
+/*
+ * Find the index of an object in the table, knowing its name.
+ */
+int
+get_object_id(s)
+char *s;
+{
+	register int i;
+	register const char *objname;
+
+	SpinCursor(3);
+	for (i=0; i<=NROFOBJECTS; i++)
+	    if ((objname = obj_descr[i].oc_name)
+	       && !strncmp(s, objname, strlen(objname)))
+		return i;
+	return ERR;
+}
+
+/*
+ * Is the character 'c' a valid monster class ?
+ */
+boolean
+check_monster_char(c)
+char c;
+{
+	return (def_char_to_monclass(c) != MAXMCLASSES);
+}
+
+/*
+ * Is the character 'c' a valid object class ?
+ */
+boolean
+check_object_char(c)
+char c;
+{
+	return (def_char_to_objclass(c) != MAXOCLASSES);
+}
+
+char
+what_map_char(c)
+
+     char	c;
+{
+	SpinCursor(3);
+	switch(c) {
+		  case ' '  : return(STONE);
+		  case '#'  : return(CORR);
+		  case '.'  : return(ROOM);
+		  case '-'  : return(HWALL);
+		  case '|'  : return(VWALL);
+		  case '+'  : return(DOOR);
+		  case 'A'  : return(AIR);
+		  case 'B'  : return(CROSSWALL); /* hack: boundary location */
+		  case 'C'  : return(CLOUD);
+		  case 'S'  : return(SDOOR);
+		  case '{'  : return(FOUNTAIN);
+		  case '\\' : return(THRONE);
+		  case 'K'  :
+#ifdef SINKS
+		      return(SINK);
+#else
+		      yywarning("Sinks are not allowed in this version!  Ignoring...");
+		      return(ROOM);
+#endif
+		  case '}'  : return(MOAT);
+		  case 'P'  : return(POOL);
+		  case 'L'  : return(LAVAPOOL);
+		  case 'I'  : return(ICE);
+		  case 'W'  : return(WATER);
+	    }
+	return(INVALID_TYPE);
+}
+
+/*
+ * Yep! LEX gives us the map in a raw mode.
+ * Just analyze it here.
+ */
+
+void
+scan_map(map)
+char *map;
+{
+	register int i, len;
+	register char *s1, *s2;
+	int max_len = 0;
+	int max_hig = 0;
+	char msg[256];
+
+	/* First : find the max width of the map */
+
+	s1 = map;
+	while (s1 && *s1) {
+		s2 = index(s1, NEWLINE);
+		if (s2) {
+			if (s2-s1 > max_len)
+			    max_len = s2-s1;
+			s1 = s2 + 1;
+		} else {
+			if (strlen(s1) > max_len)
+			    max_len = strlen(s1);
+			s1 = (char *) 0;
+		}
+	}
+
+	/* Then parse it now */
+
+	while (map && *map) {
+		tmpmap[max_hig] = (char *) alloc(max_len);
+		s1 = index(map, NEWLINE);
+		if (s1) {
+			len = s1 - map;
+			s1++;
+		} else {
+			len = strlen(map);
+			s1 = map + len;
+		}
+		for(i=0; i<len; i++)
+		  if((tmpmap[max_hig][i] = what_map_char(map[i])) == INVALID_TYPE) {
+		      Sprintf(msg,
+			 "Invalid character @ (%d, %d) - replacing with stone",
+			      max_hig, i);
+		      yywarning(msg);
+		      tmpmap[max_hig][i] = STONE;
+		    }
+		while(i < max_len)
+		    tmpmap[max_hig][i++] = STONE;
+		map = s1;
+		max_hig++;
+	}
+
+	/* Memorize boundaries */
+
+	max_x_map = max_len - 1;
+	max_y_map = max_hig - 1;
+
+	/* Store the map into the mazepart structure */
+
+	if(max_len > MAP_X_LIM || max_hig > MAP_Y_LIM) {
+	    Sprintf(msg, "Map too large! (max %d x %d)", MAP_X_LIM, MAP_Y_LIM);
+	    yyerror(msg);
+	}
+
+	tmppart[npart]->xsize = max_len;
+	tmppart[npart]->ysize = max_hig;
+	tmppart[npart]->map = (char **) alloc(max_hig*sizeof(char *));
+	for(i = 0; i< max_hig; i++)
+	    tmppart[npart]->map[i] = tmpmap[i];
+}
+
+/*
+ *	If we have drawn a map without walls, this allows us to
+ *	auto-magically wallify it.
+ */
+#define Map_point(x,y) *(tmppart[npart]->map[y] + x)
+#define Valid_point(x,y) ((x >= 0 && x <= max_x_map) && \
+			  (y >= 0 && y <= max_y_map))
+void
+wallify_map()
+{
+
+	int x, y, xx, yy;
+
+	for(y = 0; y <= max_y_map; y++) {
+	  SpinCursor(3);
+	  for(x = 0; x <= max_x_map; x++)
+
+	    if(Map_point(x,y) == STONE) {
+
+	      for(yy = y - 1; yy <= y+1 && Map_point(x,y) == STONE; yy++)
+		for(xx = x - 1; xx <= x+1 && Map_point(x,y) == STONE; xx++)
+
+		  if(Valid_point(xx,yy) &&
+		     (IS_ROOM(Map_point(xx,yy)) ||
+		      Map_point(xx,yy) == CROSSWALL)) {
+
+		    if(yy != y)	Map_point(x,y) = HWALL;
+		    else	Map_point(x,y) = VWALL;
+		  }
+	    }
+	}
+}
+
+/*
+ * We need to check the subrooms apartenance to an existing room.
+ */
+
+boolean
+check_subrooms()
+{
+	short i,j;
+	boolean found, ok = TRUE;
+	char msg[256];
+
+	for (i = 0; i < nrooms; i++)
+	    if (tmproom[i]->parent) {
+		    found = FALSE;
+		    for(j = 0; j < nrooms; j++)
+			if (tmproom[j]->name && !strcmp(tmproom[i]->parent,
+							tmproom[j]->name)) {
+				found = TRUE;
+				break;
+			}
+		    if (!found) {
+			    Sprintf(msg,"Subroom error : parent room '%s' not found!", tmproom[i]->parent);
+			    yyerror(msg);
+			    ok = FALSE;
+		    }
+	    }
+	return ok;
+}
+
+/*
+ * Check that coordinates (x,y) are roomlike locations.
+ * Print warning "str" if they aren't.
+ */
+
+void
+check_coord(x, y, str)
+int x, y;
+char *str;
+{
+    char ebuf[60];
+
+    if (x >= 0 && y >= 0 && x <= max_x_map && y <= max_y_map &&
+	(IS_ROCK(tmpmap[y][x]) || IS_DOOR(tmpmap[y][x]))) {
+	Sprintf(ebuf, "%s placed in wall at (%02d,%02d)?!", str, x, y);
+	yywarning(ebuf);
+    }
+}
+
+/*
+ * Here we want to store the maze part we just got.
+ */
+
+void
+store_part()
+{
+	register int i;
+
+	/* Ok, We got the whole part, now we store it. */
+
+	/* The Regions */
+
+	if ((tmppart[npart]->nreg = nreg) != 0) {
+		tmppart[npart]->regions = NewTab(region, nreg);
+		for(i=0;i<nreg;i++)
+		    tmppart[npart]->regions[i] = tmpreg[i];
+	}
+	nreg = 0;
+
+	/* The Level Regions */
+
+	if ((tmppart[npart]->nlreg = nlreg) != 0) {
+		tmppart[npart]->lregions = NewTab(lev_region, nlreg);
+		for(i=0;i<nlreg;i++)
+		    tmppart[npart]->lregions[i] = tmplreg[i];
+	}
+	nlreg = 0;
+
+	/* the doors */
+
+	if ((tmppart[npart]->ndoor = ndoor) != 0) {
+		tmppart[npart]->doors = NewTab(door, ndoor);
+		for(i=0;i<ndoor;i++)
+		    tmppart[npart]->doors[i] = tmpdoor[i];
+	}
+	ndoor = 0;
+
+	/* the traps */
+
+	if ((tmppart[npart]->ntrap = ntrap) != 0) {
+		tmppart[npart]->traps = NewTab(trap, ntrap);
+		for(i=0;i<ntrap;i++)
+		    tmppart[npart]->traps[i] = tmptrap[i];
+	}
+	ntrap = 0;
+
+	/* the monsters */
+
+	if ((tmppart[npart]->nmonster = nmons) != 0) {
+		tmppart[npart]->monsters = NewTab(monster, nmons);
+		for(i=0;i<nmons;i++)
+		    tmppart[npart]->monsters[i] = tmpmonst[i];
+	}
+	nmons = 0;
+
+	/* the objects */
+
+	if ((tmppart[npart]->nobject = nobj) != 0) {
+		tmppart[npart]->objects = NewTab(object, nobj);
+		for(i=0;i<nobj;i++)
+		    tmppart[npart]->objects[i] = tmpobj[i];
+	}
+	nobj = 0;
+
+	/* the drawbridges */
+
+	if ((tmppart[npart]->ndrawbridge = ndb) != 0) {
+		tmppart[npart]->drawbridges = NewTab(drawbridge, ndb);
+		for(i=0;i<ndb;i++)
+		    tmppart[npart]->drawbridges[i] = tmpdb[i];
+	}
+	ndb = 0;
+
+	/* The walkmaze directives */
+
+	if ((tmppart[npart]->nwalk = nwalk) != 0) {
+		tmppart[npart]->walks = NewTab(walk, nwalk);
+		for(i=0;i<nwalk;i++)
+		    tmppart[npart]->walks[i] = tmpwalk[i];
+	}
+	nwalk = 0;
+
+	/* The non_diggable directives */
+
+	if ((tmppart[npart]->ndig = ndig) != 0) {
+		tmppart[npart]->digs = NewTab(digpos, ndig);
+		for(i=0;i<ndig;i++)
+		    tmppart[npart]->digs[i] = tmpdig[i];
+	}
+	ndig = 0;
+
+	/* The ladders */
+
+	if ((tmppart[npart]->nlad = nlad) != 0) {
+		tmppart[npart]->lads = NewTab(lad, nlad);
+		for(i=0;i<nlad;i++)
+		    tmppart[npart]->lads[i] = tmplad[i];
+	}
+	nlad = 0;
+
+	/* The stairs */
+
+	if ((tmppart[npart]->nstair = nstair) != 0) {
+		tmppart[npart]->stairs = NewTab(stair, nstair);
+		for(i=0;i<nstair;i++)
+		    tmppart[npart]->stairs[i] = tmpstair[i];
+	}
+	nstair = 0;
+
+	/* The altars */
+	if ((tmppart[npart]->naltar = naltar) != 0) {
+		tmppart[npart]->altars = NewTab(altar, naltar);
+		for(i=0;i<naltar;i++)
+		    tmppart[npart]->altars[i] = tmpaltar[i];
+	}
+	naltar = 0;
+
+	/* The gold piles */
+
+	if ((tmppart[npart]->ngold = ngold) != 0) {
+		tmppart[npart]->golds = NewTab(gold, ngold);
+		for(i=0;i<ngold;i++)
+		    tmppart[npart]->golds[i] = tmpgold[i];
+	}
+	ngold = 0;
+
+	/* The engravings */
+
+	if ((tmppart[npart]->nengraving = nengraving) != 0) {
+		tmppart[npart]->engravings = NewTab(engraving, nengraving);
+		for(i=0;i<nengraving;i++)
+		    tmppart[npart]->engravings[i] = tmpengraving[i];
+	}
+	nengraving = 0;
+
+	/* The fountains */
+
+	if ((tmppart[npart]->nfountain = nfountain) != 0) {
+		tmppart[npart]->fountains = NewTab(fountain, nfountain);
+		for(i=0;i<nfountain;i++)
+		    tmppart[npart]->fountains[i] = tmpfountain[i];
+	}
+	nfountain = 0;
+
+	npart++;
+	n_plist = n_mlist = n_olist = 0;
+}
+
+/*
+ * Here we want to store the room part we just got.
+ */
+
+void
+store_room()
+{
+	register int i;
+
+	/* Ok, We got the whole room, now we store it. */
+
+	/* the doors */
+
+	if ((tmproom[nrooms]->ndoor = ndoor) != 0) {
+		tmproom[nrooms]->doors = NewTab(room_door, ndoor);
+		for(i=0;i<ndoor;i++)
+		    tmproom[nrooms]->doors[i] = tmprdoor[i];
+	}
+	ndoor = 0;
+
+	/* the traps */
+
+	if ((tmproom[nrooms]->ntrap = ntrap) != 0) {
+		tmproom[nrooms]->traps = NewTab(trap, ntrap);
+		for(i=0;i<ntrap;i++)
+		    tmproom[nrooms]->traps[i] = tmptrap[i];
+	}
+	ntrap = 0;
+
+	/* the monsters */
+
+	if ((tmproom[nrooms]->nmonster = nmons) != 0) {
+		tmproom[nrooms]->monsters = NewTab(monster, nmons);
+		for(i=0;i<nmons;i++)
+		    tmproom[nrooms]->monsters[i] = tmpmonst[i];
+	}
+	nmons = 0;
+
+	/* the objects */
+
+	if ((tmproom[nrooms]->nobject = nobj) != 0) {
+		tmproom[nrooms]->objects = NewTab(object, nobj);
+		for(i=0;i<nobj;i++)
+		    tmproom[nrooms]->objects[i] = tmpobj[i];
+	}
+	nobj = 0;
+
+	/* The stairs */
+
+	if ((tmproom[nrooms]->nstair = nstair) != 0) {
+		tmproom[nrooms]->stairs = NewTab(stair, nstair);
+		for(i=0;i<nstair;i++)
+		    tmproom[nrooms]->stairs[i] = tmpstair[i];
+	}
+	nstair = 0;
+
+	/* The altars */
+	if ((tmproom[nrooms]->naltar = naltar) != 0) {
+		tmproom[nrooms]->altars = NewTab(altar, naltar);
+		for(i=0;i<naltar;i++)
+		    tmproom[nrooms]->altars[i] = tmpaltar[i];
+	}
+	naltar = 0;
+
+	/* The gold piles */
+
+	if ((tmproom[nrooms]->ngold = ngold) != 0) {
+		tmproom[nrooms]->golds = NewTab(gold, ngold);
+		for(i=0;i<ngold;i++)
+		    tmproom[nrooms]->golds[i] = tmpgold[i];
+	}
+	ngold = 0;
+
+	/* The engravings */
+
+	if ((tmproom[nrooms]->nengraving = nengraving) != 0) {
+		tmproom[nrooms]->engravings = NewTab(engraving, nengraving);
+		for(i=0;i<nengraving;i++)
+		    tmproom[nrooms]->engravings[i] = tmpengraving[i];
+	}
+	nengraving = 0;
+
+	/* The fountains */
+
+	if ((tmproom[nrooms]->nfountain = nfountain) != 0) {
+		tmproom[nrooms]->fountains = NewTab(fountain, nfountain);
+		for(i=0;i<nfountain;i++)
+		    tmproom[nrooms]->fountains[i] = tmpfountain[i];
+	}
+	nfountain = 0;
+
+	/* The sinks */
+
+	if ((tmproom[nrooms]->nsink = nsink) != 0) {
+		tmproom[nrooms]->sinks = NewTab(sink, nsink);
+		for(i=0;i<nsink;i++)
+		    tmproom[nrooms]->sinks[i] = tmpsink[i];
+	}
+	nsink = 0;
+
+	/* The pools */
+
+	if ((tmproom[nrooms]->npool = npool) != 0) {
+		tmproom[nrooms]->pools = NewTab(pool, npool);
+		for(i=0;i<npool;i++)
+		    tmproom[nrooms]->pools[i] = tmppool[i];
+	}
+	npool = 0;
+
+	nrooms++;
+}
+
+/* some info common to all special levels */
+static void
+write_common_data(fd, typ, init, flgs)
+int fd, typ;
+lev_init *init;
+long flgs;
+{
+	char c;
+	uchar len;
+
+	c = typ;
+	Write(fd, &c, sizeof(c));	/* 1 byte header */
+	Write(fd, init, sizeof(lev_init));
+	Write(fd, &flgs, sizeof flgs);
+
+	len = strlen(tmpmessage);
+	Write(fd, &len, sizeof len);
+	if (len) Write(fd, tmpmessage, (int) len);
+	tmpmessage[0] = '\0';
+}
+
+/*
+ * Here we write the structure of the maze in the specified file (fd).
+ * Also, we have to free the memory allocated via alloc()
+ */
+
+void
+write_maze(fd, maze)
+int fd;
+specialmaze *maze;
+{
+	short i,j;
+	mazepart *pt;
+
+	write_common_data(fd, SP_LEV_MAZE, &(maze->init_lev), maze->flags);
+
+	Write(fd, &(maze->filling), sizeof(maze->filling));
+	Write(fd, &(maze->numpart), sizeof(maze->numpart));
+					 /* Number of parts */
+	for(i=0;i<maze->numpart;i++) {
+	    pt = maze->parts[i];
+
+	    /* First, write the map */
+
+	    Write(fd, &(pt->halign), sizeof(pt->halign));
+	    Write(fd, &(pt->valign), sizeof(pt->valign));
+	    Write(fd, &(pt->xsize), sizeof(pt->xsize));
+	    Write(fd, &(pt->ysize), sizeof(pt->ysize));
+	    for(j=0;j<pt->ysize;j++) {
+		if(!maze->init_lev.init_present ||
+		   pt->xsize > 1 || pt->ysize > 1)
+		    Write(fd, pt->map[j], sizeof(*(pt->map[j])) * pt->xsize);
+		Free(pt->map[j]);
+	    }
+	    Free(pt->map);
+
+	    /* level region stuff */
+	    Write(fd, &(pt->nlreg), sizeof(pt->nlreg));
+	    for(j=0;j<pt->nlreg;j++) {
+		    Write(fd, pt->lregions[j], sizeof(lev_region));
+		    if(pt->lregions[j]->rname) {
+			    char c = strlen(pt->lregions[j]->rname);
+			    Write(fd, &c, sizeof(c));
+			    Write(fd, pt->lregions[j]->rname, (int)c);
+		    }
+		    Free(pt->lregions[j]);
+	    }
+	    if(pt->nlreg > 0)
+		    Free(pt->lregions);
+
+	    /* The random registers */
+	    Write(fd, &(pt->nrobjects), sizeof(pt->nrobjects));
+	    if(pt->nrobjects) {
+		    Write(fd, pt->robjects, pt->nrobjects);
+		    Free(pt->robjects);
+	    }
+	    Write(fd, &(pt->nloc), sizeof(pt->nloc));
+	    if(pt->nloc) {
+		    Write(fd, pt->rloc_x, pt->nloc);
+		    Write(fd, pt->rloc_y, pt->nloc);
+		    Free(pt->rloc_x);
+		    Free(pt->rloc_y);
+	    }
+	    Write(fd, &(pt->nrmonst), sizeof(pt->nrmonst));
+	    if(pt->nrmonst) {
+		    Write(fd, pt->rmonst, pt->nrmonst);
+		    Free(pt->rmonst);
+	    }
+
+	    /* subrooms */
+	    Write(fd, &(pt->nreg), sizeof(pt->nreg));
+	    for(j=0;j<pt->nreg;j++) {
+		    Write(fd, pt->regions[j], sizeof(region));
+		    Free(pt->regions[j]);
+	    }
+	    if(pt->nreg > 0)
+		    Free(pt->regions);
+
+	    /* the doors */
+	    Write(fd, &(pt->ndoor), sizeof(pt->ndoor));
+	    for(j=0;j<pt->ndoor;j++) {
+		    Write(fd, pt->doors[j], sizeof(door));
+		    Free(pt->doors[j]);
+	    }
+	    if (pt->ndoor > 0)
+		    Free(pt->doors);
+
+	    /* The traps */
+	    Write(fd, &(pt->ntrap), sizeof(pt->ntrap));
+	    for(j=0;j<pt->ntrap;j++) {
+		    Write(fd, pt->traps[j], sizeof(trap));
+		    Free(pt->traps[j]);
+	    }
+	    if (pt->ntrap)
+		    Free(pt->traps);
+
+	    /* The monsters */
+	    Write(fd, &(pt->nmonster), sizeof(pt->nmonster));
+	    for(j=0;j<pt->nmonster;j++) {
+		    short size;
+		    monster *m = pt->monsters[j];
+		    Write(fd, m, sizeof(monster));
+		    size = m->name ? strlen(m->name) : 0;
+		    Write(fd, &size, sizeof(size));
+		    if (size) {
+			    Write(fd, m->name, size);
+			    Free(m->name);
+		    }
+		    size = m->appear_as ? strlen(m->appear_as) : 0;
+		    Write(fd, &size, sizeof(size));
+		    if (size) {
+			    Write(fd, m->appear_as, size);
+			    Free(m->appear_as);
+		    }
+		    Free(pt->monsters[j]);
+	    }
+	    if (pt->nmonster > 0)
+		    Free(pt->monsters);
+
+	    /* The objects */
+	    Write(fd, &(pt->nobject), sizeof(pt->nobject));
+	    for(j=0;j<pt->nobject;j++) {
+		    short size;
+		    object *o = pt->objects[j];
+		    Write(fd, o, sizeof(object));
+		    size = o->name ? strlen(o->name) : 0;
+		    Write(fd, &size, sizeof(size));
+		    if (size) {
+			    Write(fd, o->name, size);
+			    Free(o->name);
+		    }
+		    Free(pt->objects[j]);
+	    }
+	    if(pt->nobject > 0)
+		    Free(pt->objects);
+
+	    /* The drawbridges */
+	    Write(fd, &(pt->ndrawbridge), sizeof(pt->ndrawbridge));
+	    for(j=0;j<pt->ndrawbridge;j++) {
+		    Write(fd, pt->drawbridges[j], sizeof(drawbridge));
+		    Free(pt->drawbridges[j]);
+	    }
+	    if(pt->ndrawbridge > 0)
+		    Free(pt->drawbridges);
+
+	    /* The mazewalk directives */
+	    Write(fd, &(pt->nwalk), sizeof(pt->nwalk));
+	    for(j=0; j<pt->nwalk; j++) {
+		    Write(fd, pt->walks[j], sizeof(walk));
+		    Free(pt->walks[j]);
+	    }
+	    if (pt->nwalk > 0)
+		    Free(pt->walks);
+
+	    /* The non_diggable directives */
+	    Write(fd, &(pt->ndig), sizeof(pt->ndig));
+	    for(j=0;j<pt->ndig;j++) {
+		    Write(fd, pt->digs[j], sizeof(digpos));
+		    Free(pt->digs[j]);
+	    }
+	    if (pt->ndig > 0)
+		    Free(pt->digs);
+
+	    /* The ladders */
+	    Write(fd, &(pt->nlad), sizeof(pt->nlad));
+	    for(j=0;j<pt->nlad;j++) {
+		    Write(fd, pt->lads[j], sizeof(lad));
+		    Free(pt->lads[j]);
+	    }
+	    if (pt->nlad > 0)
+		    Free(pt->lads);
+
+	    /* The stairs */
+	    Write(fd, &(pt->nstair), sizeof(pt->nstair));
+	    for(j=0;j<pt->nstair;j++) {
+		    Write(fd, pt->stairs[j], sizeof(stair));
+		    Free(pt->stairs[j]);
+	    }
+	    if (pt->nstair > 0)
+		    Free(pt->stairs);
+
+	    /* The altars */
+	    Write(fd, &(pt->naltar), sizeof(pt->naltar));
+	    for(j=0;j<pt->naltar;j++) {
+		    Write(fd, pt->altars[j], sizeof(altar));
+		    Free(pt->altars[j]);
+	    }
+	    if (pt->naltar > 0)
+		    Free(pt->altars);
+
+	    /* The gold piles */
+	    Write(fd, &(pt->ngold), sizeof(pt->naltar));
+	    for(j=0;j<pt->ngold;j++) {
+		    Write(fd, pt->golds[j], sizeof(gold));
+		    Free(pt->golds[j]);
+	    }
+	    if (pt->ngold > 0)
+		    Free(pt->golds);
+
+	    /* The engravings */
+	    Write(fd, &(pt->nengraving), sizeof(pt->nengraving));
+	    for(j=0;j<pt->nengraving;j++) {
+		    char *txt;
+		    int size;
+		    txt = pt->engravings[j]->e.text;
+		    size = pt->engravings[j]->e.length = strlen(txt);
+		    Write(fd, pt->engravings[j], sizeof *pt->engravings[j]);
+		    Write(fd, txt, size);
+		    Free(txt);
+		    Free(pt->engravings[j]);
+	    }
+	    if (pt->nengraving > 0)
+		    Free(pt->engravings);
+
+	    /* The fountains */
+	    Write(fd, &(pt->nfountain), sizeof(pt->nfountain));
+	    for(j=0;j<pt->nfountain;j++) {
+		Write(fd, pt->fountains[j], sizeof(fountain));
+		Free(pt->fountains[j]);
+	    }
+	    if (pt->nfountain > 0)
+		    Free(pt->fountains);
+
+	    Free(pt);
+	}
+}
+
+/*
+ * Here we write the structure of the room level in the specified file (fd).
+ */
+
+void
+write_lev(fd, lev)
+int fd;
+splev *lev;
+{
+	short i,j, size;
+	room *pt;
+
+	write_common_data(fd, SP_LEV_ROOMS, &(lev->init_lev), lev->flags);
+
+	/* Random registers */
+
+	Write(fd, &lev->nrobjects, sizeof(lev->nrobjects));
+	if (lev->nrobjects) {
+		Write(fd, lev->robjects, lev->nrobjects);
+		Free (lev->robjects);
+	}
+	Write(fd, &lev->nrmonst, sizeof(lev->nrmonst));
+	if (lev->nrmonst) {
+		Write(fd, lev->rmonst, lev->nrmonst);
+		Free (lev->rmonst);
+	}
+
+	Write(fd, &(lev->nroom), sizeof(lev->nroom));
+							/* Number of rooms */
+	for(i=0;i<lev->nroom;i++) {
+		pt = lev->rooms[i];
+
+		/* Room characteristics */
+
+		if (pt->name)
+			size = strlen(pt->name);
+		else
+			size = 0;
+		Write(fd, &size, sizeof(size));
+		if (size)
+			Write(fd, pt->name, size);
+
+		if (pt->parent)
+			size = strlen(pt->parent);
+		else
+			size = 0;
+		Write(fd, &size, sizeof(size));
+		if (size)
+			Write(fd, pt->parent, size);
+
+		Write(fd, &(pt->x), sizeof(pt->x));
+		Write(fd, &(pt->y), sizeof(pt->y));
+		Write(fd, &(pt->w), sizeof(pt->w));
+		Write(fd, &(pt->h), sizeof(pt->h));
+		Write(fd, &(pt->xalign), sizeof(pt->xalign));
+		Write(fd, &(pt->yalign), sizeof(pt->yalign));
+		Write(fd, &(pt->rtype), sizeof(pt->rtype));
+		Write(fd, &(pt->chance), sizeof(pt->chance));
+		Write(fd, &(pt->rlit), sizeof(pt->rlit));
+		Write(fd, &(pt->filled), sizeof(pt->filled));
+
+		/* the doors */
+		Write(fd, &(pt->ndoor), sizeof(pt->ndoor));
+		for(j=0;j<pt->ndoor;j++)
+			Write(fd, pt->doors[j], sizeof(room_door));
+		/* The traps */
+		Write(fd, &(pt->ntrap), sizeof(pt->ntrap));
+		for(j=0;j<pt->ntrap;j++)
+			Write(fd, pt->traps[j], sizeof(trap));
+
+		/* The monsters */
+		Write(fd, &(pt->nmonster), sizeof(pt->nmonster));
+		for(j=0;j<pt->nmonster;j++) {
+			monster *m = pt->monsters[j];
+			Write(fd, m, sizeof(monster));
+			size = m->name ? strlen(m->name) : 0;
+			Write(fd, &size, sizeof(size));
+			if (size)
+				Write(fd, m->name, size);
+			size = m->appear_as ? strlen(m->appear_as) : 0;
+			Write(fd, &size, sizeof(size));
+			if (size)
+				Write(fd, m->appear_as, size);
+		}
+
+		/* The objects */
+		Write(fd, &(pt->nobject), sizeof(pt->nobject));
+		for(j=0;j<pt->nobject;j++) {
+			object *o = pt->objects[j];
+			Write(fd, o, sizeof(object));
+			size = o->name ? strlen(o->name) : 0;
+			Write(fd, &size, sizeof(size));
+			if (size)
+				Write(fd,  o->name, size);
+		}
+
+		/* The stairs */
+		Write(fd, &(pt->nstair), sizeof(pt->nstair));
+		for(j=0;j<pt->nstair;j++)
+			Write(fd, pt->stairs[j], sizeof(stair));
+
+		/* The altars */
+		Write(fd, &(pt->naltar), sizeof(pt->naltar));
+		for(j=0;j<pt->naltar;j++)
+			Write(fd, pt->altars[j], sizeof(altar));
+
+		/* The gold piles */
+		Write(fd, &(pt->ngold), sizeof(pt->ngold));
+		for(j=0;j<pt->ngold;j++)
+			Write(fd, pt->golds[j], sizeof(gold));
+
+		/* The engravings */
+		Write(fd, &(pt->nengraving), sizeof(pt->nengraving));
+		for(j=0;j<pt->nengraving;j++) {
+			char *txt;
+			txt = pt->engravings[j]->e.text;
+			size = pt->engravings[j]->e.length = strlen(txt);
+			Write(fd, pt->engravings[j],
+			      sizeof *pt->engravings[j]);
+			Write(fd, txt, size);
+		}
+
+		/* The fountains */
+		Write(fd, &(pt->nfountain), sizeof(pt->nfountain));
+		for(j=0;j<pt->nfountain;j++)
+			Write(fd, pt->fountains[j], sizeof(fountain));
+
+		/* The sinks */
+		Write(fd, &(pt->nsink), sizeof(pt->nsink));
+		for(j=0;j<pt->nsink;j++)
+			Write(fd, pt->sinks[j], sizeof(sink));
+
+		/* The pools */
+		Write(fd, &(pt->npool), sizeof(pt->npool));
+		for(j=0;j<pt->npool;j++)
+			Write(fd, pt->pools[j], sizeof(pool));
+	}
+
+	/* The corridors */
+	Write(fd, &ncorridor, sizeof(ncorridor));
+	for (i=0; i<ncorridor; i++) {
+		Write(fd, tmpcor[i], sizeof(corridor));
+		Free(tmpcor[i]);
+	}
+	ncorridor = 0;
+}
+
+void
+free_rooms(ro, n)
+room **ro;
+int n;
+{
+	short j;
+	room *r;
+
+	while(n--) {
+		r = ro[n];
+		Free(r->name);
+		Free(r->parent);
+		if ((j = r->ndoor) != 0) {
+			while(j--)
+				Free(r->doors[j]);
+			Free(r->doors);
+		}
+		if ((j = r->ntrap) != 0) {
+			while (j--)
+				Free(r->traps[j]);
+			Free(r->traps);
+		}
+		if ((j = r->nmonster) != 0) {
+			while (j--) {
+				Free(r->monsters[j]->name);
+				Free(r->monsters[j]->appear_as);
+				Free(r->monsters[j]);
+			}
+			Free(r->monsters);
+		}
+		if ((j = r->nobject) != 0) {
+			while(j--) {
+				Free(r->objects[j]->name);
+				Free(r->objects[j]);
+			}
+			Free(r->objects);
+		}
+		if ((j = r->nstair) != 0) {
+			while(j--)
+				Free(r->stairs[j]);
+			Free(r->stairs);
+		}
+		if ((j = r->naltar) != 0) {
+			while (j--)
+				Free(r->altars[j]);
+			Free(r->altars);
+		}
+		if ((j = r->ngold) != 0) {
+			while(j--)
+				Free(r->golds[j]);
+			Free(r->golds);
+		}
+		if ((j = r->nengraving) != 0) {
+			while(j--) {
+				Free(r->engravings[j]->e.text);
+				Free(r->engravings[j]);
+			}
+			Free(r->engravings);
+		}
+		if ((j = r->nfountain) != 0) {
+			while(j--)
+				Free(r->fountains[j]);
+			Free(r->fountains);
+		}
+		if ((j = r->nsink) != 0) {
+			while(j--)
+				Free(r->sinks[j]);
+			Free(r->sinks);
+		}
+		if ((j = r->npool) != 0) {
+			while(j--)
+				Free(r->pools[j]);
+			Free(r->pools);
+		}
+		Free(r);
+	}
+}
+
+#ifdef STRICT_REF_DEF
+/*
+ * Any globals declared in hack.h and descendents which aren't defined
+ * in the modules linked into lev_comp should be defined here.  These
+ * definitions can be dummies:  their sizes shouldn't matter as long as
+ * as their types are correct; actual values are irrelevant.
+ */
+#define ARBITRARY_SIZE 1
+/* attrib.c */
+struct attribs attrmax, attrmin;
+/* files.c */
+const char *configfile;
+char lock[ARBITRARY_SIZE];
+char SAVEF[ARBITRARY_SIZE];
+# ifdef MICRO
+char SAVEP[ARBITRARY_SIZE];
+# endif
+/* termcap.c */
+struct tc_lcl_data tc_lcl_data;
+# ifdef TEXTCOLOR
+#  ifdef TOS
+const char *hilites[MAXCOLORS];
+#  else
+char NEARDATA *hilites[MAXCOLORS];
+#  endif
+# endif
+/* trap.c */
+const char *traps[TRAPNUM];
+/* window.c */
+struct window_procs windowprocs;
+/* xxxtty.c */
+# ifdef DEFINE_OSPEED
+short ospeed;
+# endif
+#endif	/* STRICT_REF_DEF */
+
+/*lev_main.c*/

@@ -1,95 +1,196 @@
-This is a listing of all files in a full NetHack 3.0 distribution, organized
-in their standard manner on a UNIX system.  It indicates which files are 
+This is a listing of all files in a full NetHack 3.1 distribution, organized
+in their standard manner on a UNIX system.  It indicates which files are
 necessary for which versions, so that you can tell which files may be deleted
 from or not transferred to your system if you wish.
 
 
 (files in top directory)
-Files           Install.ami     Install.dos     Install.mac     Install.ovl
-Install.unix    Install.vms     Makefile.top    Porting         README
+Files           Porting         README
 
-amiga:
-(files for Amiga version)
-GBinfo.uu       Makefile.ami    NHScore.uu      NHinfo.uu       NetHack.cnf
-NewGame.uu      ami.lnk         amidos.c        amifont.uu      amifont8.uu
-amimenu.c       amitcap.c       amitty.c        amiunix.c       amiwbench.c
-amiwind.c       compact.lat     dflticon.uu
-
-auxil:
+dat:
 (files for all versions)
-Guidebook.mn    Guidebook.mss   Guidebook.tex   castle.des      cmdhelp
-data.base       endgame.des     help            hh              history
-license         opthelp         oracles         rumors.fal      rumors.tru
-tower.des
-(files for UNIX versions)
-Makefile.auxil  lev_comp.6      nethack.6       nethack.sh
-(file for Macintosh version)
-MacHelp
+Arch.des        Barb.des        Caveman.des     Elf.des         Healer.des
+Knight.des      Priest.des      Rogue.des       Samurai.des     Tourist.des
+Valkyrie.des    Wizard.des      bigroom.des     castle.des      cmdhelp
+data.base       dungeon.def     endgame.des     gehennom.des    help
+hh              history         knox.des        license         medusa.des
+mines.des       opthelp         oracle.des      oracles.txt     quest.txt
+rumors.fal      rumors.tru      tower.des       wizhelp         yendor.des
+
+doc:
+(files for all versions)
+Guidebook.mn    Guidebook.tex   Guidebook.txt   dgn_comp.6      lev_comp.6
+nethack.6       recover.6       tmac.n          window.doc
 
 include:
 (files for all versions)
-MacAlert.h      amiconf.h       artifact.h      attrib.h        color.h
-config.h        coord.h         decl.h          def_os2.h       edog.h
-epri.h          eshk.h          extern.h        flag.h          func_tab.h
-global.h        gold.h          hack.h          lev.h           macconf.h
-mfndpos.h       mkroom.h        monattk.h       mondata.h       monflag.h
-monst.h         monsym.h        msdos.h         obj.h           objclass.h
-patchlevel.h    pcconf.h        permonst.h      prop.h          rm.h
+align.h         amiconf.h       artifact.h      artilist.h      attrib.h
+color.h         config.h        coord.h         decl.h          def_os2.h
+dgn_file.h      display.h       dungeon.h       edog.h          emin.h
+engrave.h       epri.h          eshk.h          extern.h        flag.h
+func_tab.h      global.h        hack.h          lev.h           macconf.h
+mail.h          mfndpos.h       micro.h         mkroom.h        monattk.h
+mondata.h       monflag.h       monst.h         monsym.h        obj.h
+objclass.h      os2conf.h       patchlevel.h    pcconf.h        permonst.h
+prop.h          qtext.h         quest.h         rect.h          rm.h
 sp_lev.h        spell.h         system.h        termcap.h       tosconf.h
 tradstdc.h      trampoli.h      trap.h          unixconf.h      vault.h
-vmsconf.h       wseg.h          you.h           youprop.h
-(file for special level compiler (STRONGHOLD option))
-lev_comp.h
-
-mac:
-(files for Macintosh version)
-MD.proj.hqx     MD.rsrc.hqx     MacAlert.c      NH.proj.hqx     NH.rsrc.hqx
-SL.proj.hqx     Segments.mac    mac.c           macfile.c       macinit.c
-
-others:
-(files for MSDOS (and OS/2) version)
-Makefile.lib    Makefile.msc    Makefile.os2    Makefile.ovl    Makefile.pc
-Makefile.tcc    NetHack.cnf     exesmurf.c      exesmurf.doc    maintain.ovl
-ovlmgr.asm      ovlmgr.doc      ovlmgr.uu       termcap.uu      trampoli.c
-(file for MSDOS and VMS versions)
-termcap
-(files for MSDOS, Amiga, and Atari versions)
-lev_lex.c       pcmain.c
-(files for MSDOS and Atari versions)
-msdos.c         pctty.c         pcunix.c
-(files for Atari version)
-Makefile.st     atari.cnf       atarifnt.uue
-(Berkeley random number file, which may be included in any version)
-random.c
+vision.h        vmsconf.h       winami.h        winprocs.h      wintype.h
+you.h           youprop.h
+(file for tty versions)
+wintty.h
+(files for X versions)
+Window.h        WindowP.h       winX.h
 
 src:
 (files for all versions)
 allmain.c       alloc.c         apply.c         artifact.c      attrib.c
-bones.c         cmd.c           dbridge.c       decl.c          demon.c
-do.c            do_name.c       do_wear.c       dog.c           dogmove.c
-dokick.c        dothrow.c       eat.c           end.c           engrave.c
-exper.c         extralev.c      fountain.c      getline.c       hack.c
-invent.c        ioctl.c         lock.c          mail.c          makedefs.c
-makemon.c       mcastu.c        mhitm.c         mhitu.c         mklev.c
-mkmaze.c        mkobj.c         mkroom.c        mon.c           mondata.c
-monmove.c       monst.c         mthrowu.c       music.c         o_init.c
-objects.c       objnam.c        options.c       pager.c         panic.c
-pickup.c        polyself.c      potion.c        pray.c          pri.c
-priest.c        prisym.c        read.c          restore.c       rip.c
-rnd.c           rumors.c        save.c          search.c        shk.c
-shknam.c        sit.c           sounds.c        sp_lev.c        spell.c
-steal.c         termcap.c       timeout.c       topl.c          topten.c
-track.c         trap.c          u_init.c        uhitm.c         vault.c
-version.c       weapon.c        were.c          wield.c         wizard.c
-worm.c          worn.c          write.c         zap.c
-(files for special level compiler (STRONGHOLD option))
-lev_comp.c      lev_comp.l      lev_comp.y      lev_lex.c       lev_main.c
-(files for UNIX versions)
-Makefile.src    unixmain.c      unixtty.c       unixunix.c
+ball.c          bones.c         botl.c          cmd.c           dbridge.c
+decl.c          detect.c        display.c       do.c            do_name.c
+do_wear.c       dog.c           dogmove.c       dokick.c        dothrow.c
+drawing.c       dungeon.c       eat.c           end.c           engrave.c
+exper.c         explode.c       extralev.c      files.c         fountain.c
+hack.c          hacklib.c       invent.c        lock.c          mail.c
+makemon.c       mcastu.c        mhitm.c         mhitu.c         minion.c
+mklev.c         mkmap.c         mkmaze.c        mkobj.c         mkroom.c
+mon.c           mondata.c       monmove.c       monst.c         mplayer.c
+mthrowu.c       muse.c          music.c         o_init.c        objects.c
+objnam.c        options.c       pager.c         pickup.c        pline.c
+polyself.c      potion.c        pray.c          priest.c        quest.c
+questpgr.c      read.c          rect.c          restore.c       rip.c
+rnd.c           rumors.c        save.c          shk.c           shknam.c
+sit.c           sounds.c        sp_lev.c        spell.c         steal.c
+timeout.c       topten.c        track.c         trap.c          u_init.c
+uhitm.c         vault.c         version.c       vision.c        weapon.c
+were.c          wield.c         windows.c       wizard.c        worm.c
+worn.c          write.c         zap.c
 
-vms:
+sys/amiga:
+(files for Amiga version)
+HackWB.uu       Install.ami     Makefile.ami    NHinfo.uu       NetHack.cnf
+NewGame.uu      amidos.c        amidos.p        amifont.uu      amifont8.uu
+amigst.c        amii.hlp        amimenu.c       amirip.c        amiwbench.c
+amiwind.c       amiwind.p       ask.uu          char.c          charwin.uu
+colors.uu       colorwin.c      dflticon.uu     hackwb.hlp      ifchange
+randwin.c       randwin.uu      scroll.uu       string.uu       wb.c
+wbcli.c         wbdata.c        wbdefs.h        wbprotos.h      wbstruct.h
+wbwin.c         wbwin.uu        winami.c        winami.p
+
+sys/amiga/splitter:
+(more files for Amiga version)
+amiout.h        arg.c           arg.h           loader.c        multi.c
+multi.h         split.doc       split.h         splitter.c
+
+sys/atari:
+(files for Atari version)
+Install.tos     Makefile.utl    atari.cnf       atarifnt.uue    nethack.mnu
+setup.g         tos.c
+
+sys/mac:
+(files for Macintosh version)
+Install.mpw     MacHelp         NHmake.hqx      NHrez.hqx       NHrsrc.hqx
+NHsound.hqx     News            hack.h          maccurs.c       macerrs.c
+macfile.c       macmain.c       macsnd.c        mactopl.c       macunix.c
+macwin.c        mgetline.c      mhdump.c        mmodal.c        mstring.c
+
+sys/msdos:
+(files for MSDOS versions)
+Install.dos     MakeGCC.src     MakeGCC.utl     MakeMSC.src     MakeMSC.utl
+Makefile.dat    exesmurf.c      exesmurf.doc    maintovl.doc    msdos.c
+ovlmgr.asm      ovlmgr.doc      ovlmgr.uu       setup.bat       trampoli.c
+(files for running MSDOS binary under Windows)
+nhico.uu        nhpif.uu
+
+sys/os2:
+(files for OS/2 version)
+Install.os2     Makefile.os2    nhpmico.uu      os2.c
+
+sys/share:
+(files for MSDOS and OS/2 versions)
+Makefile.lib    NetHack.cnf     termcap.uu
+(file for MSDOS, OS/2, Amiga, and Atari versions)
+pcmain.c
+(files for MSDOS, OS/2 and Atari versions)
+pcsys.c         pctty.c         pcunix.c
+(Berkeley random number file, which may be included in any version)
+random.c
+(file for MSDOS, OS/2 and VMS versions)
+termcap
+(lex/yacc output for special level and dungeon compilers)
+dgn_comp.h      dgn_lex.c       dgn_yacc.c      lev_comp.h      lev_lex.c
+lev_yacc.c
+
+sys/unix:
+(files for UNIX versions)
+Install.unx     Makefile.dat    Makefile.doc    Makefile.src    Makefile.top
+Makefile.utl    ioctl.c         nethack.sh      setup.sh        unixmain.c
+unixtty.c       unixunix.c
+(files for replacement cpp, apparently only needed by some UNIX systems)
+cpp1.shr        cpp2.shr        cpp3.shr
+(file for sound driver for 386 UNIX)
+snd86unx.shr
+
+sys/vms:
 (files for VMS version)
-install.com     lev_lex.h       oldcrtl.c       spec_lev.com    vmsbuild.com
-vmsmain.c       vmsmisc.c       vmstty.c        vmsunix.c
+Install.vms     Makefile.dat    Makefile.doc    Makefile.src    Makefile.top
+Makefile.utl    install.com     lev_lex.h       nethack.com     oldcrtl.c
+spec_lev.com    vmsbuild.com    vmsfiles.c      vmsmail.c       vmsmain.c
+vmsmisc.c       vmstty.c        vmsunix.c
 (GNU termcap files that support VMS version)
-vmstermcap.c    vmstparam.c
+gnutermcap.c    gnutparam.c
+
+util:
+(files for all versions)
+dgn_main.c      lev_main.c      makedefs.c      panic.c         recover.c
+(lex/yacc input for special level and dungeon compilers)
+dgn_comp.l      dgn_comp.y      lev_comp.l      lev_comp.y
+
+win/tty:
+(files for tty versions)
+getline.c       termcap.c       topl.c          wintty.c
+
+win/X11:
+(files for X versions)
+Install.X11     NetHack.ad      Window.c        dialogs.c       ibm.bdf
+nethack.rc      nh10.bdf        nh32icon        nh56icon        nh72icon
+winX.c          winmap.c        winmenu.c       winmesg.c       winmisc.c
+winstat.c       wintext.c       winval.c
+
+
+
+This is a list of files produced by auxiliary programs.  They can all be
+regenerated from the files in the distribution.
+
+dat:
+(files generated by makedefs at playground creation time)
+data            dungeon.pdf     options         oracles         quest.dat
+rumors
+(file generated by dgn_comp at playground creation time)
+dungeon
+(files generated by lev_comp at playground creation time)
+A-filla.lev     A-fillb.lev     A-goal.lev      A-locate.lev    A-start.lev
+B-filla.lev     B-fillb.lev     B-goal.lev      B-locate.lev    B-start.lev
+C-filla.lev     C-fillb.lev     C-goal.lev      C-locate.lev    C-start.lev
+E-filla.lev     E-fillb.lev     E-goal.lev      E-locate.lev    E-start.lev
+H-filla.lev     H-fillb.lev     H-goal.lev      H-locate.lev    H-start.lev
+K-filla.lev     K-fillb.lev     K-goal.lev      K-locate.lev    K-start.lev
+P-filla.lev     P-fillb.lev     P-goal.lev      P-locate.lev    P-start.lev
+R-filla.lev     R-fillb.lev     R-goal.lev      R-locate.lev    R-start.lev
+S-filla.lev     S-fillb.lev     S-goal.lev      S-locate.lev    S-start.lev
+T-filla.lev     T-fillb.lev     T-goal.lev      T-locate.lev    T-start.lev
+V-filla.lev     V-fillb.lev     V-goal.lev      V-locate.lev    V-start.lev
+W-filla.lev     W-fillb.lev     W-goal.lev      W-locate.lev    W-start.lev
+air.lev         asmodeus.lev    astral.lev      baalz.lev       bigroom.lev
+castle.lev      earth.lev       fakewiz1.lev    fakewiz2.lev    fire.lev
+juiblex.lev     knox.lev        medusa-1.lev    medusa-2.lev    mine_end.lev
+minefill.lev    minetown.lev    oracle.lev      orcus.lev       sanctum.lev
+tower1.lev      tower2.lev      tower3.lev      valley.lev      water.lev
+wizard1.lev     wizard2.lev     wizard3.lev
+
+include:
+(files generated by makedefs at compile time)
+date.h          onames.h        pm.h            vis_tab.h
+
+src:
+(files generated by makedefs at compile time)
+monstr.c        vis_tab.c

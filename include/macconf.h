@@ -1,228 +1,288 @@
-/*	SCCS Id: @(#)macconf.h	3.0	88/07/21 */
+/*	SCCS Id: @(#)macconf.h	3.1	91/07/14	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* Copyright (c) Johnny Lee, 1989 		*/
 /* NetHack may be freely redistributed.  See license for details. */
-#ifdef MACOS
-#ifndef MACCONF_H
-#define MACCONF_H
+
+#ifdef MAC
+# ifndef MACCONF_H
+#  define MACCONF_H
 
 /*
- *  The following options are configurable:
+ * Select your compiler...
+ * This could probably be automagic later on - I believe there's
+ * a unique symbol for MPW at least (it's "macintosh")
  */
+#  define MAC_MPW32		/* Headers, and for avoiding a bug */
+/* #  define MAC_THINKC5	/* Maybe supported now ... */
 
-#define RANDOM		/* have Berkeley random(3) */
+#  define RANDOM
+#  define NO_SIGNAL	/* You wouldn't believe our signals ... */
+#  define FILENAME 256
 
-#define PATHLEN	220	/* maximum pathlength */
-#define FILENAME	31	/* maximum filename length (conservative) */
+#  include "system.h"
 
-#define glo(x)	name_file(lock, x)	/* name_file used for bones */
-#include "msdos.h"	/* contains necessary externs for [os_name].c */
-extern char *configfile;
-#define NO_SIGNAL
-#define	perror(x)
+typedef long off_t ;
 
 /*
- *  The remaining code shouldn't need modification.
+ * Try and keep the number of files here to an ABSOLUTE minimum !
+ * include the relevant files in the relevant .c files instead !
  */
+#  include <segload.h>
+#  include <stdlib.h>
+#  include <windows.h>
+#  include <memory.h>
+#  include <quickdraw.h>
+#  include <events.h>
+#  include <controls.h>
+#  include <dialogs.h>
+#  include <fonts.h>
 
-#ifndef SYSTEM_H
-#include "system.h"
-#endif
+/*
+ * We could use the PSN under sys 7 here ...
+ */
+#  define getpid() 1
+#  define getuid() 1
+#  define index strchr
+#  define rindex strrchr
 
+#  define Rand random
 
-#ifdef RANDOM
-/* Use the high quality random number routines. */
-#define Rand()	random()
-#define Srand(seed)	srandom(seed)
-#else
-#define Rand()	rand()
-#define Srand(seed)	srand(seed)
-#endif /* RANDOM */
+#  define error progerror
 
-#ifndef REDO
-#undef	Getchar
-#define Getchar tgetch
-#endif
-
-#ifdef THINK_C
-
-#define index	strchr
-#define rindex	strrchr
-#include <time.h>
-#define	FCMASK	O_WRONLY | O_BINARY | O_CREAT	/* file creation mask */
-
-#ifdef LSC
-#include	<types.h>
-#include	<io.h>
-#define	memcpy(x,y,j)	movmem(y,x,j)
-#define memset(x,y,j)	setmem(x,j,y)
-extern char *malloc();
-extern char	*calloc();
-#else
-#include	<Fcntl.h>
-#include	<Stddef.h>
-#include	<Stdlib.h>
-#include	<String.h>
-#undef getuid
-#ifdef CUSTOM_IO
-#ifdef stdout
-#undef stdout
-#define stdout (FILE *)NULL
-#endif
-#endif
-#endif
-
-#include	<pascal.h>
-#include	<Quickdraw.h>
-#include	<FontMgr.h>
-#include	<EventMgr.h>
-#include	<WindowMgr.h>
-#include	<MenuMgr.h>
-#include	<StdFilePkg.h>
-#include	<SegmentLdr.h>
-#include	<ToolboxUtil.h>
-#include	<OSUtil.h>
-#include	<DialogMgr.h>
-#include	<FileMgr.h>
-#include	<HFS.h>
-#include	<Color.h>
-#include	<ResourceMgr.h>
-
-#ifdef fflush
-#undef	fflush
-#define	fflush(x)
-#endif
-
-/* these two defines for variables in decl.c; they conflict with */
-/* variables in Quickdraw.h - the Quickdraw variables are never used in NH */
-#define	black	Black
-#define	white	White
-
-
-#else	/* Aztec and MPW */
-
-#ifdef AZTEC
-#include	<utime.h>	/* AZTEC 3.6c */
-#define	curs(x,y)	tcurs(x,y)
-#include	<Types.h>
-#define	CtoPstr	ctop
-#define	PtoCstr	ptoc
-#else
-#include	<Time.h>	/* MPW 3.0 */
-#include	<Strings.h>
-#define	CtoPstr	c2pstr
-#define	PtoCstr	p2cstr
-#endif
-
-
-#include	<Quickdraw.h>
-#include	<Fonts.h>
-#include	<Events.h>
-#include	<Windows.h>
-#include	<Menus.h>
-#include	<Packages.h>
-#include	<SegLoad.h>
-#include	<ToolUtils.h>
-#include	<OSUtils.h>
-#include	<Dialogs.h>
-#include	<Files.h>
-#include	<Resources.h>
-#ifdef MPW
-#include	<Script.h>
-#include	<SysEqu.h>
-#endif
-#include	<Signal.h>
-#include	<String.h>
-#include	<FCntl.h>
-#define	FCMASK	O_WRONLY | O_CREAT	/* file creation mask */
-#endif
-
-/* typdef and defines for special custom termcap routines */
-typedef struct term_info {
-	short	tcur_x,tcur_y;
-	short	fontNum,fontSize;
-	short	ascent,descent,height,charWidth;
-	short	maxRow,maxCol;
-	char	**screen;
-	char	**scrAttr;
-	char	curHilite;
-	char	curAttr;
-	short	inColor;
-	short	auxFileVRefNum;
-	short	recordVRefNum;
-	SysEnvRec	system;
-	char	*keyMap;
-	short	color[8];
-	CursHandle	cursor[9];  /* self-contained cursors */
-	Handle	shortMBarHandle,
-			fullMBarHandle;
-} term_info;
-
-#define TEXTCOLOR
-
-#define	appleMenu	101
-#define	fileMenu	102
-#define	editMenu	103
-#define	inventMenu	104
-#define actionMenu	105
-#define prepMenu	106
-#define	moveMenu	107
-#define extendMenu	108
-
-#ifdef THINK_C
-#define MAINGRAFPORT	thePort
-#define	ARROW_CURSOR	arrow
-#define	SCREEN_BITS	screenBits
-#else
-#define MAINGRAFPORT	qd.thePort
-#define	ARROW_CURSOR	qd.arrow
-#define	SCREEN_BITS	qd.screenBits
-#endif
-
-/* used in mac.c */
-#define Screen_Border	4
-#define	TOP_OFFSET		30
-#define	LEFT_OFFSET	10
-
-/* for macflags variable */
-#define	fMoveWRTMouse		0x400
-#define	fZoomOnContextSwitch		0x200
-#define	fUseCustomFont		0x100
-#define	fToggleNumPad		0x80
-#define	fInvertedScreen		0x40
-#define	fExtCmdSeq1			0x20
-#define	fExtCmdSeq2			0x10
-#define	fExtCmdSeq3			0x08
-#define	fDoNonKeyEvt		0x06
-#define	fDoMenus		0x02
-#define	fDoUpdate			0x01
-
-
-#define	CREATOR	'nh30'
-#define	EXPLORE_TYPE	'XPLR'
-#define	SAVE_TYPE	'SAVE'
-#define	BONES_TYPE	'BONE'
-#define	LEVEL_TYPE	'LEVL'
-#define	HACK_DATA	'HDTA'
-#define AUXIL_TYPE	'AUXL'
-#define TEXT_TYPE	'TEXT'
-#define MONST_DATA	101
-#define OBJECT_DATA	104
-#define	DEFAULT_DATA	100
-
-#define SEG_ZAP		0x0020
-#define SEG_SPELL	0x0010
-#define SEG_POTION	0x0008
-#define SEG_EAT		0x0004
-#define SEG_DO		0x0002
-#define SEG_APPLY	0x0001
-extern long segments;	/* defined in mac.c */
-
-#include "extern.h"
-
-# ifndef MACALERT_H
-#  include "MacAlert.h"
+# if defined(VISION_TABLES) && defined(BRACES)
+#  undef BRACES
 # endif
 
-#endif /* MACCONF_H /* */
-#endif /* MACOS / */
+/*
+ * macfile.c
+ * MAC file I/O routines
+ */
+
+extern int maccreat ( const char * name , long fileType ) ;
+extern int macopen ( const char * name , int flags , long fileType ) ;
+extern int macclose ( int fd ) ;
+extern int macread ( int fd , void * ptr , unsigned ) ;
+extern int macwrite ( int fd , void * ptr , unsigned ) ;
+extern long macseek ( int fd , long pos , short whence ) ;
+
+
+# if !defined(O_WRONLY)
+#  include <fcntl.h>
+# endif
+
+#if !defined(SPEC_LEV) && !defined(DGN_COMP)
+# define creat maccreat
+# define open macopen
+# define close macclose
+# define read macread
+# define write macwrite
+# define lseek macseek
+#endif
+
+# define TEXT_TYPE 'TEXT'
+# define LEVL_TYPE 'LEVL'
+# define BONE_TYPE 'BONE'
+# define SAVE_TYPE 'SAVE'
+# define PREF_TYPE 'PREF'
+# define DATA_TYPE 'DATA'
+# define MAC_CREATOR 'nh31' /* Registered with DTS ! */
+
+typedef struct macdirs {
+	Str32		dataName ;
+	short		dataRefNum ;
+	long		dataDirID ;
+
+	Str32		saveName ;
+	short		saveRefNum ;
+	long		saveDirID ;
+
+	Str32		levelName ;
+	short		levelRefNum ;
+	long		levelDirID ;
+} MacDirs ;
+
+typedef struct macflags {
+	Bitfield ( processes , 1 ) ;
+	Bitfield ( color , 1 ) ;
+	Bitfield ( folders , 1 ) ;
+	Bitfield ( tempMem , 1 ) ;
+	Bitfield ( help , 1 ) ;
+	Bitfield ( fsSpec , 1 ) ;
+	Bitfield ( trueType , 1 ) ;
+	Bitfield ( aux , 1 ) ;
+	Bitfield ( alias , 1 ) ;
+	Bitfield ( standardFile , 1 ) ;
+} MacFlags ;
+
+extern MacDirs theDirs ;
+extern MacFlags macFlags ;
+
+/*
+ * Mac windows
+ */
+#define NUM_MACWINDOWS 15
+#define TEXT_BLOCK 512L
+#define WIN_BASE_RES 128
+#define WIN_BASE_KIND 128
+#define NUM_MENU_ITEMS 60 /* We've run out of letters by then ... */
+#define CHAR_ENTER ((char)3)
+#define CHAR_BS ((char)8)
+#define CHAR_LF ((char)10)
+#define CHAR_CR ((char)13)
+#define CHAR_ESC ((char)27)
+#define CHAR_BLANK ((char)32)
+#define CHAR_DELETE ((char)127)
+
+#define MAC_GRAPHICS_ENV
+
+/* Window constants */
+#define kMapWindow 0
+#define kStatusWindow 1
+#define kMessageWindow 2
+#define kTextWindow 3
+#define kMenuWindow 4
+#define kLastWindowKind kMenuWindow
+
+extern Boolean RetrievePosition ( short , short * , short * ) ;
+extern Boolean RetrieveSize ( short , short , short , short * , short * ) ;
+extern void SavePosition ( short , short , short ) ;
+extern void SaveSize ( short , short , short ) ;
+extern void SaveWindowPos ( WindowPtr ) ;
+extern void SaveWindowSize ( WindowPtr ) ;
+
+/*
+ * This determines the minimum logical line length in text windows
+ * That is; even if physical width is less, this is where line breaks
+ * go at the minimum. 350 is about right for score lines with a
+ * geneva 10 pt font.
+ */
+#define MIN_RIGHT 350
+
+#define NUM_CANCEL_ITEMS 10
+
+typedef struct NhWindow {
+	WindowPtr		theWindow ;
+	short			kind ;
+	void			( * keyFunc ) ( EventRecord * , WindowPtr ) ;
+	void			( * clickFunc ) ( EventRecord * , WindowPtr ) ;
+	void			( * updateFunc ) ( EventRecord * , WindowPtr ) ;
+	void			( * cursorFunc ) ( EventRecord * , WindowPtr , RgnHandle ) ;
+	Handle			windowText ;
+	long			windowTextLen ;
+	long			textBase ;
+	Point			cursor ;		/* In CHARS / LINES */
+	short			leading ;
+	short			charHeight ;
+	short			charWidth ;
+	short			fontNum ;
+	short			fontSize ;
+	short			lin ;			/* Used by menus */
+	short			wid ;			/* Used by menus */
+	char			itemChars [ NUM_MENU_ITEMS ] ;
+	char			cancelStr [ NUM_CANCEL_ITEMS ] ;
+	char			cancelChar ;
+	char			clear ;
+	char			cursorDrawn ;
+	short			scrollPos ;
+	ControlHandle	scrollBar ;
+} NhWindow ;
+
+#define NUM_STAT_ROWS 2
+#define NUM_ROWS 22
+#define NUM_COLS 81 /* We shouldn't use column 0 */
+
+typedef struct MapData {
+	char		map [ NUM_ROWS ] [ NUM_COLS ] ;
+} MapData ;
+
+typedef struct StatusData {
+	char		map [ NUM_STAT_ROWS ] [ NUM_COLS ] ;
+} StatusData ;
+
+extern NhWindow * theWindows ;
+
+extern struct window_procs mac_procs ;
+
+extern short text_wind_font;
+#define set_text_wind_font(fnt) (text_wind_font = fnt)
+#define mono_font()	set_text_wind_font(monaco)
+#define normal_font()	set_text_wind_font(geneva)
+
+#define E extern
+
+/*
+ * Define PORT_HELP to be the name of the port-specfic help file.
+ * This file is included into the resource fork of the application. 
+ */
+#define PORT_HELP "MacHelp"
+
+E void NDECL(port_help);
+
+E void NDECL(mac_init_nhwindows);
+E void NDECL(mac_player_selection);
+E void NDECL(mac_askname);
+E void NDECL(mac_get_nh_event) ;
+E void FDECL(mac_exit_nhwindows, (const char *));
+E void FDECL(mac_suspend_nhwindows, (const char *));
+E void NDECL(mac_resume_nhwindows);
+E winid FDECL(mac_create_nhwindow, (int));
+E void FDECL(mac_clear_nhwindow, (winid));
+E void FDECL(mac_display_nhwindow, (winid, BOOLEAN_P));
+E void FDECL(mac_destroy_nhwindow, (winid));
+E void FDECL(mac_curs, (winid,int,int));
+E void FDECL(mac_putstr, (winid, int, const char *));
+E void FDECL(mac_display_file, (const char *, BOOLEAN_P));
+E void FDECL(mac_start_menu, (winid));
+E void FDECL(mac_add_menu, (winid, CHAR_P, int, const char *));
+E void FDECL(mac_end_menu, (winid, CHAR_P, const char *, const char *));
+E char FDECL(mac_select_menu, (winid));
+E void NDECL(mac_update_inventory);
+E void NDECL(mac_mark_synch);
+E void NDECL(mac_wait_synch);
+#ifdef CLIPPING
+E void FDECL(mac_cliparound, (int, int));
+#endif
+E void FDECL(mac_print_glyph, (winid,XCHAR_P,XCHAR_P,int));
+E void FDECL(mac_raw_print, (const char *));
+E void FDECL(mac_raw_print_bold, (const char *));
+E int NDECL(mac_nhgetch);
+E int FDECL(mac_nh_poskey, (int *, int *, int *));
+E void NDECL(mac_nhbell);
+E int NDECL(mac_doprev_message);
+E char FDECL(mac_yn_function, (const char *, const char *, CHAR_P));
+E void FDECL(mac_getlin, (const char *,char *));
+#ifdef COM_COMPL
+E void FDECL(mac_get_ext_cmd, (char *));
+#endif /* COM_COMPL */
+E void FDECL(mac_number_pad, (int));
+E void NDECL(mac_delay_output);
+
+/* defined in macwin.c and exported for used in mmodal.c */
+E void		FDECL(HandleEvent, (EventRecord *));
+
+/* defined in mmodal.c */
+E DialogPtr FDECL(mv_get_new_dialog, (short));
+E void		FDECL(mv_close_dialog, (DialogPtr));
+E void		FDECL(mv_modal_dialog, (ModalFilterProcPtr, short *));
+
+#undef E
+
+extern void DimMenuBar ( void ) ;
+extern void UndimMenuBar ( void ) ;
+extern int SanePositions ( void ) ;
+
+#define NHW_BASE 0
+extern winid BASE_WINDOW , WIN_MAP , WIN_MESSAGE , WIN_INVEN , WIN_STATUS ;
+
+extern Boolean itworked( short );
+extern void mustwork( short );
+extern void VDECL(progerror, (const char *,...));
+extern void attemptingto( char *  );
+extern void pushattemptingto( char *  );
+extern void popattempt( void );
+extern void UnloadAllSegments( void );
+extern void InitSegMgmt( void * );
+extern void IsResident ( void * );
+extern void NotResident ( void * );
+
+# endif /* ! MACCONF_H */
+#endif /* MAC */

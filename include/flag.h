@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)flag.h	3.0	89/02/02
+/*	SCCS Id: @(#)flag.h	3.1	90/22/02	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -6,70 +6,90 @@
 #define FLAG_H
 
 struct flag {
-	unsigned ident;		/* social security number for each monster */
-	boolean  debug;		/* in debugging mode */
-#define	wizard	flags.debug
-	boolean  explore;	/* in exploration mode */
-#define	discover	flags.explore
-	unsigned toplin;	/* a top line (message) has been printed */
-				/* 0: top line empty; 2: no --More-- reqd. */
-	boolean  cbreak;	/* in cbreak mode, rogue format */
-	boolean  standout;	/* use standout for --More-- */
-	boolean  nonull;	/* avoid sending nulls to the terminal */
-	boolean  ignintr;	/* ignore interrupts */
-	boolean  time;		/* display elapsed 'time' */
-	boolean  nonews;	/* suppress news printing */
-	boolean  notombstone;
-	unsigned end_top, end_around;	/* describe desired score list */
-	boolean  end_own;		/* idem (list all own scores) */
-	boolean  no_rest_on_space;	/* spaces are ignored */
+#ifdef AMIFLUSH
+	boolean  amiflush;	/* kill typeahead */
+#endif
 	boolean  beginner;
-	boolean  female;
-	boolean  invlet_constant;	/* let objects keep their
-					   inventory symbol */
-	boolean  move;
-	boolean  mv;
-	unsigned run;		/* 0: h (etc), 1: H (etc), 2: fh (etc) */
-				/* 3: FH, 4: ff+, 5: ff-, 6: FF+, 7: FF- */
-	boolean  nopick;	/* do not pickup objects (as when running) */
-	boolean  echo;		/* 1 to echo characters */
+#ifdef MICRO
+	boolean  BIOS;		/* use IBM or ST BIOS calls when appropriate */
+#endif
 	boolean  botl;		/* partially redo status line */
 	boolean  botlx;		/* print an entirely new bottom line */
-	boolean  nscrinh;	/* inhibit nscr() in pline(); */
-	boolean  made_amulet;
-	unsigned no_of_wizards;	/* 0, 1 or 2 (wizard and his shadow) */
-				/* reset from 2 to 1, but never to 0 */
-	unsigned moonphase;
-#define	NEW_MOON	0
-#define	FULL_MOON	4
-
-	boolean  sortpack;	/* sorted inventory */
+	boolean  cbreak;	/* in cbreak mode, rogue format */
 	boolean  confirm;	/* confirm before hitting tame monsters */
-	boolean  safe_dog;	/* give complete protection to the dog */
-	boolean  soundok;	/* ok to tell about sounds heard */
-	boolean  verbose;	/* max battle info */
-	boolean  silent;	/* whether the bell rings or not */
-	boolean  pickup;	/* whether you pickup or move and look */
-	boolean  num_pad;	/* use numbers for movement commands */
+	boolean  debug;		/* in debugging mode */
+#define wizard	 flags.debug
+	boolean  DECgraphics;	/* use DEC VT-xxx extended character set */
+	boolean  echo;		/* 1 to echo characters */
+	boolean  end_disclose;	/* identify inv and props upon exit */
+	boolean  end_own;	/* list all own scores */
+	boolean  explore;	/* in exploration mode */
+#define discover flags.explore
+	boolean  female;
+	boolean  friday13;	/* it's Friday the 13th */
 	boolean  help;		/* look in data file for info about stuff */
 	boolean  IBMgraphics;	/* use IBM extended character set */
-	boolean  DECgraphics;	/* use DEC VT-xxx extended character set */
-#ifdef TEXTCOLOR
-	boolean  use_color;	/* use color graphics */
+	boolean  ignintr;	/* ignore interrupts */
+#ifdef INSURANCE
+	boolean  ins_chkpt;	/* checkpoint as appropriate */
 #endif
-#ifdef AMIFLUSH
-	boolean amiflush;	/* kill typeahead */
+	boolean  invlet_constant; /* let objects keep their inventory symbol */
+	boolean  legacy;	/* print game entry "story" */
+	boolean  lit_corridor;	/* show a dark corr as lit if it is in sight */
+	boolean  made_amulet;
+	boolean  move;
+	boolean  mv;
+	boolean  news;		/* print news */
+	boolean  nopick;	/* do not pickup objects (as when running) */
+	boolean  null;		/* OK to send nulls to the terminal */
+	boolean  num_pad;	/* use numbers for movement commands */
+	boolean  pickup;	/* whether you pickup or move and look */
+#ifdef MAC
+	boolean  popup_dialog;	/* put queries in pop up dialogs instead of
+				   in the message window */
 #endif
-#ifdef DGK
-	boolean  IBMBIOS;	/* whether we can use a BIOS call for
-				 * redrawing the screen and character input */
+#ifdef MICRO
 	boolean  rawio;		/* Whether can use rawio (IOCTL call) */
 #endif
-#ifdef MACOS
-	boolean  wantspace;		/* Waiting for a space (as in --More--) */
+	boolean  rest_on_space;	/* space means rest */
+	boolean  safe_dog;	/* give complete protection to the dog */
+#ifdef EXP_ON_BOTL
+	boolean  showexp;	/* show experience points */
+#endif
+#ifdef SCORE_ON_BOTL
+	boolean  showscore;	/* show score */
+#endif
+	boolean  silent;	/* whether the bell rings or not */
+	boolean  sortpack;	/* sorted inventory */
+	boolean  soundok;	/* ok to tell about sounds heard */
+	boolean  standout;	/* use standout for --More-- */
+	boolean  time;		/* display elapsed 'time' */
+	boolean  tombstone;	/* print tombstone */
+#ifdef TEXTCOLOR
+	boolean  use_color;	/* use color graphics */
+	boolean  hilite_pet;	/* hilight pets on monochome displays */
+#endif
+	boolean  verbose;	/* max battle info */
+
+	boolean  window_inited;	/* true if init_nhwindows() completed */
+	unsigned end_top, end_around;	/* describe desired score list */
+	unsigned ident;		/* social security number for each monster */
+	unsigned moonphase;
+#define NEW_MOON	0
+#define FULL_MOON	4
+	unsigned msg_history;	/* hint: # of top lines to save */
+	unsigned no_of_wizards;	/* 0, 1 or 2 (wizard and his shadow) */
+				/* reset from 2 to 1, but never to 0 */
+	unsigned run;		/* 0: h (etc), 1: H (etc), 2: fh (etc) */
+				/* 3: FH, 4: ff+, 5: ff-, 6: FF+, 7: FF- */
+#ifdef MAC_GRAPHICS_ENV
+	boolean  large_font;	/* draw in larger fonts (say, 12pt instead
+				   of 9pt) */
+	boolean  MACgraphics;	/* use Macintosh extended character set, as
+				   as defined in the special font HackFont */
 #endif
 };
 
-extern struct flag flags;
+extern struct flag NEARDATA flags;
 
-#endif /* FLAG_H /**/
+#endif /* FLAG_H */

@@ -1,4 +1,4 @@
-/*       SCCS Id: @(#)oldcrtl.c   3.0      90/05/24
+/*       SCCS Id: @(#)oldcrtl.c   3.1      90/05/24
 /*   	 Pat Rankin  May'90                                       */
 /* VMS NetHack support, not needed for vms 4.6,4.7,or 5.x.        */
 
@@ -15,6 +15,7 @@
  *
  */
 #define REG register
+#define const
 
 #ifndef SUPPRESS_MEM_FUNCS
 /* note: hand optimized for VAX (hardware pre-decrement & post-increment) */
@@ -34,10 +35,23 @@ REG int   cnt;
 
 /* void *memcpy(void *, const void *, size_t) -- copy chunk of memory.
 */
-char *memcpy( dst, src, cnt )       /*[functionally equivalent to memmove()]*/
-REG char *dst;
-REG char *src;
-REG int   cnt;
+char *memcpy( dst, src, cnt )
+REG char       *dst;
+REG const char *src;
+REG int		cnt;
+{
+    char *dst_p = dst;
+    while ( --cnt >= 0 )
+	*dst++ = *src++;
+    return dst_p;
+}
+
+/* void *memmove(void *, const void *, size_t) -- copy possibly overlapping mem.
+*/
+char *memmove( dst, src, cnt )
+REG char       *dst;
+REG const char *src;
+REG int		cnt;
 {
     char *dst_p = dst;
     if ( src == dst || cnt <= 0 ) {
@@ -56,22 +70,22 @@ REG int   cnt;
 /* void *memchr(const void *, int, size_t) -- search for a byte.
 */
 char *memchr( buf, byt, len )
-REG char *buf;
-REG char  byt;
-REG int   len;
+REG const char *buf;
+REG char		byt;
+REG int		len;
 {
     while ( --len >= 0 )
 	if ( *buf++ == byt )    /* found */
-	    return --buf;
+	    return (char *)--buf;
     return (char *)0;       /* not found */
 }
 
 /* int memcmp(const void *, const void *, size_t) -- compare two chunks.
 */
 int memcmp( buf1, buf2, len )
-REG char *buf1;
-REG char *buf2;
-REG int   len;
+REG const char *buf1;
+REG const char *buf2;
+REG int		len;
 {
     while ( --len >= 0 )
 	if ( *buf1++ != *buf2++ )
@@ -96,7 +110,7 @@ int atexit( function )
     if ( ex_cnt < MAX_EXIT_FUNCS ) {
 	ex_data[ex_cnt].dummy_arg = 0;  /* ultimately receives exit reason */
 	ex_data[ex_cnt].handler.reserved  = 0;
-	ex_data[ex_cnt].handler.routine   = function;
+	ex_data[ex_cnt].handler.routine   = (long (*)()) function;
 	ex_data[ex_cnt].handler.arg_count = 1;          /*(required)*/
 	ex_data[ex_cnt].handler.arg1_addr = &ex_data[ex_cnt].dummy_arg;
 	SYS$DCLEXH( &ex_data[ex_cnt].handler);  /* declare exit handler */
@@ -116,10 +130,10 @@ int atexit( function )
 #endif
 
 int rename( old_name, new_name )
-    char *old_name;
-    char *new_name;
+    const char *old_name;
+    const char *new_name;
 {
-    struct _dsc { int len; char *adr; } old_dsc, new_dsc;
+    struct _dsc { int len; const char *adr; } old_dsc, new_dsc;
     unsigned long status, LIB$RENAME_FILE();
 
     /* put strings into descriptors and call run-time library routine */

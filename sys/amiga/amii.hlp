@@ -1,0 +1,47 @@
+            Amiga specific help file for NetHack 3.1
+
+The Amiga port of NetHack supports a number of additional commands
+and facilities specific to the Amiga.  Listed below are the things
+which are either specific to the Amiga port or might not appear
+in other ports.
+
+While playing NetHack you can press:
+
+        ALT-HELP                To activate the palette editing
+                                requester.  Saved games include
+                                these settings of the pens to allow
+                                the game to be resumed with the
+                                same palette at a later date.
+
+Amiga-specific run-time option:
+        flush                   throw away keyboard type-ahead
+
+Recognized ToolTypes entries include the following:
+
+        NAME=                   Character name.
+        SCORES                  Scores for all players.
+        SCORE=                  Scores for specified players.
+        CHARACTER=              Class of player (e.g. Rogue).
+        PENS=xxx,xxx,...        8 pen settings for game palette.
+        PATH=                   PATH for locating files.
+        OPTIONS=                Comma separated list of options.
+        HACKDIR=                Directory to play game in.
+        LEVELS=                 Where to store/create per level
+                                data files.
+        SAVE=                   Where to save games.
+        SCREEN=LACE|NOLACE      Whether or not to play on
+                                an interlaced screen.
+        CMDLINE=                CLI command line options
+                                can be specified here.
+
+Command line options recognized are
+
+        -n                      No News at game startup.
+        -X                      Play in discovery mode.
+        -W                      Play as wizard.
+        -L                      Interlaced screen.
+        -l                      Never Interlaced screen.
+        -u                      Play as player given as
+                                an argument.
+        -?                      Gives command line usage.
+

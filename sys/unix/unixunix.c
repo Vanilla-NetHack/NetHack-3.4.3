@@ -1,21 +1,9 @@
-/*	SCCS Id: @(#)unixunix.c	3.0	88/04/13
+/*	SCCS Id: @(#)unixunix.c	3.1	90/22/02
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
-/* This file collects some Unix dependencies; pager.c contains some more */
+/* This file collects some Unix dependencies */
 
-/*
- * The time is used for:
- *	- seed for rand()
- *	- year on tombstone and yymmdd in record file
- *	- phase of the moon (various monsters react to NEW_MOON or FULL_MOON)
- *	- night and midnight (the undead are dangerous at midnight)
- *	- determination of what files are "very old"
- */
-
-/* block some unused #defines to avoid overloading some cpp's */
-#define MONATTK_H
-#define MONFLAG_H
 #include "hack.h"	/* mainly for index() which depends on BSD */
 
 #include <errno.h>
@@ -23,91 +11,10 @@
 #ifdef NO_FILE_LINKS
 #include <fcntl.h>
 #endif
-
-void
-setrandom()
-{
-#if defined(SYSV) || defined(DGUX)
-	(void) Srand((long) time ((time_t *) 0));
-#else
-#ifdef ULTRIX
-	Srand((int)time((time_t *)0));
-#else
-	(void) Srand((int) time ((long *) 0));
-#endif /* ULTRIX */
-#endif /* SYSV */
-
-}
-
-static struct tm *
-getlt()
-{
-	time_t date;
-
-#ifdef BSD
-	(void) time((long *)(&date));
-#else
-	(void) time(&date);
+#include <signal.h>
+#if defined(BSD) || defined(ULTRIX)
+#include <sys/wait.h>
 #endif
-#if defined(ULTRIX) || defined(BSD)
-	return(localtime((long *)(&date)));
-#else
-	return(localtime(&date));
-#endif /* ULTRIX */
-}
-
-int
-getyear()
-{
-	return(1900 + getlt()->tm_year);
-}
-
-char *
-getdate()
-{
-#ifdef LINT	/* static char datestr[7]; */
-	char datestr[7];
-#else
-	static char datestr[7];
-#endif
-	register struct tm *lt = getlt();
-
-	Sprintf(datestr, "%2d%2d%2d",
-		lt->tm_year, lt->tm_mon + 1, lt->tm_mday);
-	if(datestr[2] == ' ') datestr[2] = '0';
-	if(datestr[4] == ' ') datestr[4] = '0';
-	return(datestr);
-}
-
-int
-phase_of_the_moon()			/* 0-7, with 0: new, 4: full */
-{					/* moon period: 29.5306 days */
-					/* year: 365.2422 days */
-	register struct tm *lt = getlt();
-	register int epact, diy, goldn;
-
-	diy = lt->tm_yday;
-	goldn = (lt->tm_year % 19) + 1;
-	epact = (11 * goldn + 18) % 30;
-	if ((epact == 25 && goldn > 11) || epact == 24)
-		epact++;
-
-	return( (((((diy + epact) * 6) + 11) % 177) / 22) & 7 );
-}
-
-int
-night()
-{
-	register int hour = getlt()->tm_hour;
-
-	return(hour < 6 || hour > 21);
-}
-
-int
-midnight()
-{
-	return(getlt()->tm_hour == 0);
-}
 
 static struct stat buf, hbuf;
 
@@ -130,7 +37,7 @@ gethdate(name) const char *name; {
  */
 #define		MAXPATHLEN	1024
 
-register char *np, *path;
+register const char *np, *path;
 char filename[MAXPATHLEN+1];
 	if (index(name, '/') != NULL || (path = getenv("PATH")) == NULL)
 		path = "";
@@ -151,8 +58,18 @@ char filename[MAXPATHLEN+1];
 			break;
 		path = np + 1;
 	}
+#if defined(BOS) && defined(NHSTDC)
+/*
+ *	This one is really **STUPID**.  I don't know why it's happening
+ *	as similar constructs work elsewhere, but...
+ */
+	if((np = rindex(name, '/')))
+	     error("Cannot get status of %s.", np+1);
+	else error("Cannot get status of %s.", name);
+#else
 	error("Cannot get status of %s.",
 		(np = rindex(name, '/')) ? np+1 : name);
+#endif
 }
 
 int
@@ -161,10 +78,12 @@ int fd;
 {
 	if(fstat(fd, &buf)) {
 		pline("Cannot get status of saved level? ");
+		wait_synch();
 		return(0);
 	}
 	if(buf.st_mtime < hbuf.st_mtime) {
 		pline("Saved level is out of date. ");
+		wait_synch();
 		return(0);
 	}
 	return(1);
@@ -178,17 +97,21 @@ int fd;
 	time_t date;
 
 	if(fstat(fd, &buf)) return(0);			/* cannot get status */
+#ifndef INSURANCE
 	if(buf.st_size != sizeof(int)) return(0);	/* not an xlock file */
+#endif
 #ifdef BSD
 	(void) time((long *)(&date));
 #else
 	(void) time(&date);
 #endif
 	if(date - buf.st_mtime < 3L*24L*60L*60L) {	/* recent */
+#ifndef NETWORK
 		extern int errno;
+#endif
 		int lockedpid;	/* should be the same size as hackpid */
 
-		if(read(fd, (char *)&lockedpid, sizeof(lockedpid)) !=
+		if(read(fd, (genericptr_t)&lockedpid, sizeof(lockedpid)) !=
 			sizeof(lockedpid))
 			/* strange ... */
 			return(0);
@@ -212,11 +135,16 @@ eraseoldlocks()
 {
 	register int i;
 
-	for(i = 1; i <= MAXLEVEL+1; i++) {		/* try to remove all */
-		glo(i);
+	/* cannot use maxledgerno() here, because we need to find a lock name
+	 * before starting everything (including the dungeon initialization
+	 * that sets astral_level, needed for maxledgerno()) up
+	 */
+	for(i = 1; i <= MAXDUNGEON*MAXLEVEL + 1; i++) {
+		/* try to remove all */
+		set_levelfile_name(lock, i);
 		(void) unlink(lock);
 	}
-	glo(0);
+	set_levelfile_name(lock, 0);
 	if(unlink(lock)) return(0);			/* cannot remove it */
 	return(1);					/* success! */
 }
@@ -226,12 +154,7 @@ getlock()
 {
 	extern int errno;
 	register int i = 0, fd, c;
-#ifdef NO_FILE_LINKS
-	int hlockfd ;
-	int sleepct = 20 ;
-#endif
 
-#ifdef HARD
 	/* idea from rpick%ucqais@uccba.uc.edu
 	 * prevent automated rerolling of characters
 	 * test input (fd0) so that tee'ing output to get a screen dump still
@@ -240,55 +163,15 @@ getlock()
 	 */
 	if (!isatty(0))
 		error("You must play from a terminal.");
-#endif
-
-	(void) fflush(stdout);
 
 	/* we ignore QUIT and INT at this point */
-#ifdef NO_FILE_LINKS
-	while ((hlockfd = open(LLOCK,O_RDONLY|O_CREAT|O_EXCL,0644)) == -1) {
-	    if (--sleepct) {
-		Printf( "Lock file in use.  %d retries left.\n",sleepct);
-		(void) fflush(stdout);
-# if defined(SYSV) || defined(ULTRIX)
-		(void)
-# endif
-		    sleep(1);
-	    } else {
-		Printf("I give up!  Try again later.\n");
-		getret();
+	if (!lock_file(HLOCK, 10)) {
+		wait_synch();
 		error("");
-	    }
 	}
-	(void) close(hlockfd);
-
-#else	/* NO_FILE_LINKS */
-	if (link(HLOCK, LLOCK) == -1) {
-		register int errnosv = errno;
-
-		perror(HLOCK);
-		Printf("Cannot link %s to %s\n", LLOCK, HLOCK);
-		switch(errnosv) {
-		case ENOENT:
-		    Printf("Perhaps there is no (empty) file %s ?\n", HLOCK);
-		    break;
-		case EACCES:
-		    Printf("It seems you don't have write permission here.\n");
-		    break;
-		case EEXIST:
-		    Printf("(Try again or rm %s.)\n", LLOCK);
-		    break;
-		default:
-		    Printf("I don't know what is wrong.");
-		}
-		getret();
-		error("");
-		/*NOTREACHED*/
-	}
-#endif /* NO_FILE_LINKS */
 
 	regularize(lock);
-	glo(0);
+	set_levelfile_name(lock, 0);
 
 	if(locknum) {
 		if(locknum > 25) locknum = 25;
@@ -299,7 +182,7 @@ getlock()
 			if((fd = open(lock, 0)) == -1) {
 			    if(errno == ENOENT) goto gotlock; /* no such file */
 			    perror(lock);
-			    (void) unlink(LLOCK);
+			    unlock_file(HLOCK);
 			    error("Cannot open %s", lock);
 			}
 
@@ -309,13 +192,13 @@ getlock()
 			(void) close(fd);
 		} while(i < locknum);
 
-		(void) unlink(LLOCK);
+		unlock_file(HLOCK);
 		error("Too many hacks running now.");
 	} else {
 		if((fd = open(lock, 0)) == -1) {
 			if(errno == ENOENT) goto gotlock;    /* no such file */
 			perror(lock);
-			(void) unlink(LLOCK);
+			unlock_file(HLOCK);
 			error("Cannot open %s", lock);
 		}
 
@@ -323,31 +206,37 @@ getlock()
 			goto gotlock;
 		(void) close(fd);
 
-		Printf("\nThere is already a game in progress under your name.");
-		Printf("\nDestroy old game? [yn] ");
-		(void) fflush(stdout);
-		c = Getchar();
-		while (Getchar() != '\n') ; /* eat rest of line and newline */
+		if(flags.window_inited) {
+		    c = yn("There is already a game in progress under your name.  Destroy old game?");
+		} else {
+		    (void) printf("\nThere is already a game in progress under your name.");
+		    (void) printf("  Destroy old game? [yn] ");
+		    (void) fflush(stdout);
+		    c = getchar();
+		    (void) putchar(c);
+		    (void) fflush(stdout);
+		    while (getchar() != '\n') ; /* eat rest of line and newline */
+		}
 		if(c == 'y' || c == 'Y')
 			if(eraseoldlocks())
 				goto gotlock;
 			else {
-				(void) unlink(LLOCK);
+				unlock_file(HLOCK);
 				error("Couldn't destroy old game.");
 			}
 		else {
-			(void) unlink(LLOCK);
+			unlock_file(HLOCK);
 			error("");
 		}
 	}
+
 gotlock:
 	fd = creat(lock, FCMASK);
-	if(unlink(LLOCK) == -1)
-		error("Cannot unlink %s.", LLOCK);
+	unlock_file(HLOCK);
 	if(fd == -1) {
 		error("cannot creat lock file.");
 	} else {
-		if(write(fd, (char *) &hackpid, sizeof(hackpid))
+		if(write(fd, (genericptr_t) &hackpid, sizeof(hackpid))
 		    != sizeof(hackpid)){
 			error("cannot write lock");
 		}
@@ -365,7 +254,7 @@ register char *s;
 
 	while((lp=index(s, '.')) || (lp=index(s, '/')) || (lp=index(s,' ')))
 		*lp = '_';
-#ifdef SYSV
+#if defined(SYSV) && !defined(AIX_31)
 	/* avoid problems with 14 character file name limit */
 # ifdef COMPRESS
 	if(strlen(s) > 10)
@@ -379,3 +268,56 @@ register char *s;
 # endif
 #endif
 }
+
+#ifdef SHELL
+int
+dosh()
+{
+	register char *str;
+	if(child(0)) {
+		if(str = getenv("SHELL"))
+			(void) execl(str, str, NULL);
+		else
+			(void) execl("/bin/sh", "sh", NULL);
+		raw_print("sh: cannot execute.");
+		exit(1);
+	}
+	return 0;
+}
+#endif /* SHELL /**/
+
+#if defined(SHELL) || defined(DEF_PAGER) || defined(DEF_MAILREADER)
+int
+child(wt)
+int wt;
+{
+	register int f;
+	suspend_nhwindows(NULL);	/* also calls end_screen() */
+	if((f = fork()) == 0){		/* child */
+		(void) setgid(getgid());
+		(void) setuid(getuid());
+#ifdef CHDIR
+		(void) chdir(getenv("HOME"));
+#endif
+		return(1);
+	}
+	if(f == -1) {	/* cannot fork */
+		pline("Fork failed.  Try again.");
+		return(0);
+	}
+	/* fork succeeded; wait for child to exit */
+	(void) signal(SIGINT,SIG_IGN);
+	(void) signal(SIGQUIT,SIG_IGN);
+	(void) wait( (int *) 0);
+	(void) signal(SIGINT, (SIG_RET_TYPE) done1);
+#ifdef WIZARD
+	if(wizard) (void) signal(SIGQUIT,SIG_DFL);
+#endif
+	if(wt) {
+		raw_print("");
+		wait_synch();
+	}
+	resume_nhwindows();
+	return(0);
+}
+#endif

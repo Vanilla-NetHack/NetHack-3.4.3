@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)vmsconf.h	3.0	88/07/21
+/*	SCCS Id: @(#)vmsconf.h	3.1	92/12/11	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -12,9 +12,11 @@
  *   is done by leaving it as a username that doesn't exist at your site.
  * HACKDIR can be overridden at run-time with the logical name HACKDIR, as in
  *   $ define hackdir disk$users:[games.nethack]
+ * Trailing NULs are present in the default values in order to make some
+ *   extra room for patching longer values into an existing executable.
  */
-#define Local_WIZARD    "GENTZEL"               /*(must be uppercase)*/
-#define Local_HACKDIR   "USR$ROOT0:[GENTZEL.NHDIR]"
+#define Local_WIZARD	"NHWIZARD\0\0\0\0"
+#define Local_HACKDIR	"DISK$USERS:[GAMES.NETHACK.3-1-0.PLAY]\0\0\0\0\0\0"
 
 /*
  * This section cleans up the stuff done in config.h so that it
@@ -49,7 +51,6 @@
 #define LOGFILE	"logfile;0"	/* optional file (records all games) */
 
 #define HLOCK	"perm;1"	/* an empty file used for locking purposes */
-#define LLOCK	"perm.lock;1"	/* temporary link to previous */
 
 /* want compression--for level & save files--performed within NetHack itself */
 #ifdef COMPRESS
@@ -57,6 +58,18 @@
 #endif
 #ifndef ZEROCOMP
 # define ZEROCOMP
+#endif
+
+/* vision algorithm */
+#ifdef VISION_TABLES
+# if defined(VAXC) && defined(BRACES)
+#  undef BRACES
+# endif
+# if defined(__GNUC__) && !defined(BRACES)
+#  define BRACES		/* put braces around rows of 2d arrays */
+# endif
+#else	/* not VISION_TABLES */
+# define MACRO_CPATH	/* use clear_path macro instead of function */
 #endif
 
 /*
@@ -68,38 +81,63 @@
 /* #define SECURE /**/
 
 /*
- * If you define MAIL, then the player will be notified of new broadcasts
- * when they arrive.
+ * You may define TEXTCOLOR if your system has any terminals that recognize
+ * ANSI color sequences of the form ``<ESCAPE>[#;#m'', where the first # is
+ * a number between 40 and 47 represented background color, and the second
+ * # is a number between 30 and 37 representing the foreground color.
+ * GIGI terminals and DECterm windows on color VAXstations support these
+ * color escape sequences, as do some 3rd party terminals and many micro
+ * computers.
  */
-#define MAIL
+/* #define TEXTCOLOR /**/
 
-#define RANDOM		/* use others/random.c instead of vaxcrtl rand/srand */
+/*
+ * If you define USE_QIO_INPUT, then you'll get raw characters from the
+ * keyboard, not unlike those of the unix version of Nethack.  This will
+ * allow you to use the Escape key in normal gameplay, and the appropriate
+ * control characters in Wizard mode.  It will work most like the unix version.
+ * It will also avoid "<interrupt>" being displayed when ^Y is pressed.
+ *
+ * Otherwise, the VMS SMG calls will be used.  These calls block use of
+ * the escape key, as well as certain control keys, so gameplay is not
+ * the same, although the differences are fairly negligible.  You must
+ * then use a VTxxx function key or two <escape>s to give an ESC response.
+ */
+#define USE_QIO_INPUT	/* use SYS$QIOW instead of SMG$READ_KEYSTROKE */
+
+/*
+ * If you define MAIL, then NetHack will capture incoming broadcast
+ * messages such as "New mail from so-and-so" and "Print job completed,"
+ * and then deliver them to the player.  For mail and phone broadcasts
+ * a scroll of mail will be created, which when read will cause NetHack
+ * to prompt the player for a command to spawn in order to respond.  The
+ * latter capability will not be available if SHELL is disabled below.
+ * If you undefine MAIL, broadcasts will go straight to the terminal,
+ * resulting in disruption of the screen display; use <ctrl/R> to redraw.
+ */
+#define MAIL		/* enable broadcast trapping */
+
+/*
+ * SHELL enables the player to 'escape' into a spawned subprocess via
+ * the '!' command.  Logout or attach back to the parent to resume play.
+ * If the player attaches back to NetHack, then a subsequent escape will
+ * re-attach to the existing subprocess.  Any such subprocess left over
+ * at game exit will be deleted by an exit handler.
+ * SUSPEND enables someone running NetHack in a subprocess to reconnect
+ * to the parent process with the <ctrl/Z> command; this is not very
+ * close to Unix job control, but it's better than nothing.
+ */
+#define SHELL		/* do not delete the '!' command */
+#define SUSPEND		/* don't delete the ^Z command, such as it is */
+
+#define RANDOM		/* use sys/share/random.c instead of vaxcrtl rand */
 
 #define FCMASK	0660	/* file creation mask */
-
-/* vaxcrtl object library is not available on MicroVMS (4.4 thru 4.6(.7?))
-   unless it's retreived from a full VMS system or leftover from a really
-   ancient version of VAXC.  #define no_c$$translate and also create a
-   linker options file called vaxcrtl.opt containing one line
-sys$share:vaxcrtl/shareable
-   to link against the vaxcrtl shareable image.  Then include ',vaxcrtl/opt'
-   on the link command instead of either ',sys$library:vaxcrtl/lib' or
-   '$ define lnk$library sys$library:vaxcrtl'
-   Linking against the vaxcrtl sharable image is encouraged and will result
-   in significantly smaller .EXE files.  The routine C$$TRANSLATE (used in
-   vmsunix.c) is not available from the sharable image version of vaxcrtl.
- */
-/* #define no_c$$translate /**/
 
 /*
  * The remainder of the file should not need to be changed.
  */
 
-/* GCC 1.36 (or maybe GAS) for VMS has a bug with extern const declarations.
-   Until it is fixed, eliminate const. */
-#ifdef __GNUC__
-# define const
-#endif
 #if defined(VAXC) && !defined(ANCIENT_VAXC)
 # ifdef volatile
 #  undef volatile
@@ -109,23 +147,36 @@ sys$share:vaxcrtl/shareable
 # endif
 #endif
 
+#ifdef __DECC
+# define STRICT_REF_DEF	/* used in lev_main.c */
+#endif
+#ifdef STRICT_REF_DEF
+# define DEFINE_OSPEED
+#endif
+
+#ifndef alloca
+	/* bison generated foo_yacc.c might try to use alloca() */
+# ifdef __GNUC__
+#  define alloca __builtin_alloca
+# else
+#  define ALLOCA_HACK	/* used in util/panic.c */
+# endif
+#endif
+
 #include <time.h>
-#ifndef __GNUC__
+#if 0	/* <file.h> is missing for old gcc versions; skip it to save time */
 #include <file.h>
 #else	/* values needed from missing include file */
 # define O_RDONLY 0
 # define O_WRONLY 1
 # define O_RDWR   2
 # define O_CREAT 0x200
-#endif /* __GNUC__ */
-
-#ifndef REDO
-# define Getchar vms_getchar
-#else
-# define tgetch vms_getchar
 #endif
 
-#define SHELL		/* do not delete the '!' command */
+#ifndef REDO
+# define Getchar nhgetch
+#endif
+#define tgetch vms_getchar
 
 #include "system.h"
 
@@ -135,21 +186,33 @@ sys$share:vaxcrtl/shareable
 /* Use the high quality random number routines. */
 #if defined(RANDOM)
 #define Rand()	random()
-#define Srand(seed) srandom(seed)
 #else
 #define Rand()	rand()
-#define Srand(seed) srand(seed)
 #endif
 
-#define bcopy(s1,s2,sz) memcpy(s2,s1,sz)
-#define unlink(x) delete(x)
-#define exit(x) vms_exit(x)
-#define getuid() vms_getuid()
-#define abort() vms_abort()
-#define creat(f,m) vms_creat(f,m)
+#ifndef __GNUC__
+#define bcopy(s,d,n)	memcpy((d),(s),(n))	/* vaxcrtl */
+#endif
+#define abort()		vms_abort()		/* vmsmisc.c */
+#define creat(f,m)	vms_creat(f,m)		/* vmsfiles.c */
+#define exit(sts)	vms_exit(sts)		/* vmsmisc.c */
+#define getuid()	vms_getuid()		/* vmsunix.c */
+#define link(f1,f2)	vms_link(f1,f2)		/* vmsfiles.c */
+#define open(f,k,m)	vms_open(f,k,m)		/* vmsfiles.c */
+/* #define unlink(f0)	vms_unlink(f0)		/* vmsfiles.c */
+#ifdef VERYOLD_VMS
+#define unlink(f0)	delete(f0)		/* vaxcrtl */
+#else
+#define unlink(f0)	remove(f0)		/* vaxcrtl, decc$shr */
+#endif
+#define C$$TRANSLATE(n)	c__translate(n)	/* vmsfiles.c */
 
 /* VMS global names are case insensitive... */
 #define An vms_an
+#define The vms_the
 
-#endif
-#endif /* VMS /* */
+/* used in several files which don't #include "extern.h" */
+extern void FDECL(vms_exit, (int));
+
+#endif	/* VMSCONF_H */
+#endif	/* VMS */

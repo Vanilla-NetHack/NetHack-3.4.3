@@ -111,4 +111,27 @@
  *  remove more small insects
  */
 
-#define PATCHLEVEL	10
+/* #define PATCHLEVEL	10 */
+
+/* END Version 3.0, BEGIN Version 3.1 */
+
+/*
+ *  NetHack 3.1, January 25, 1993
+ *  many, many changes and bugfixes -- some of the highlights include:
+ *  display rewrite using line-of-sight vision
+ *  general window interface, with the ability to use multiple interfaces
+ *	in the same executable
+ *  intelligent monsters
+ *  enhanced dungeon mythology
+ *  branching dungeons with more special levels, quest dungeons, and
+ *	multi-level endgame
+ *  more artifacts and more uses for artifacts
+ *  generalization to multiple shops with damage repair
+ *  X11 interface
+ *  ability to recover crashed games
+ *  full rewrite of Macintosh port
+ *  Amiga splitter
+ *  directory rearrangement (dat, doc, sys, win, util)
+ */
+
+#define PATCHLEVEL	0

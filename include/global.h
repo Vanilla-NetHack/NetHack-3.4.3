@@ -1,33 +1,34 @@
-/*	SCCS Id: @(#)global.h	3.0	89/11/08
+/*	SCCS Id: @(#)global.h	3.1	92/01/04	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #ifndef GLOBAL_H
-#define	GLOBAL_H
+#define GLOBAL_H
 
 #include <stdio.h>
 
 
-/* #define BETA		/* if a beta-test copy  [MRS] */
-#define VERSION "3.0j"  /* version number. */
+/*#define BETA		/* if a beta-test copy  [MRS] */
+#define VERSION "3.1"	/* version number. */
 
 /*
  * Files expected to exist in the playground directory.
  */
 
 #define RECORD		"record"  /* a file containing list of topscorers */
-#define	HELP		"help"	  /* a file containing command descriptions */
-#define	SHELP		"hh"	  	/* abbreviated form of the same */
-#define	RUMORFILE	"rumors"	/* a file with fortune cookies */
+#define HELP		"help"	  /* a file containing command descriptions */
+#define SHELP		"hh"		/* abbreviated form of the same */
+#define DEBUGHELP	"wizhelp"	/* a file containing debug mode cmds */
+#define RUMORFILE	"rumors"	/* a file with fortune cookies */
 #define ORACLEFILE	"oracles"	/* a file with oracular information */
-#define	DATAFILE	"data"	/* a file giving the meaning of symbols used */
+#define DATAFILE	"data"	/* a file giving the meaning of symbols used */
 #define CMDHELPFILE	"cmdhelp"	/* file telling what commands do */
 #define HISTORY		"history"	/* a file giving nethack's history */
 #define LICENSE		"license"	/* file with license information */
 #define OPTIONFILE	"opthelp"	/* a file explaining runtime options */
-#ifdef MACOS
-#define MACHELP		"MacHelp"	/* file with Macintosh information */
-#endif
+#define OPTIONS_USED	"options"	/* compile-time options, for #version */
+
+#define LEV_EXT	".lev"		/* extension for special level files */
 
 
 /* Assorted definitions that may depend on selections in config.h. */
@@ -44,9 +45,6 @@
 #ifndef STUPID
 #define STUPID
 #endif
-#ifndef STUPID_CPP
-#define STUPID_CPP
-#endif
 #endif	/* DUMB */
 
 /*
@@ -55,61 +53,79 @@
  * since otherwise comparisons with signed quantities are done incorrectly
  */
 typedef schar	xchar;
-typedef	xchar	boolean;		/* 0 or 1 */
+typedef xchar	boolean;		/* 0 or 1 */
 
-#ifndef MACOS
 #ifndef TRUE		/* defined in some systems' native include files */
-#define	TRUE	((boolean)1)
-#define	FALSE	((boolean)0)
+#define TRUE	((boolean)1)
+#define FALSE	((boolean)0)
 #endif
+
+#ifndef STRNCMPI
+# define strcmpi(a,b) strncmpi((a),(b),-1)
 #endif
+
+/* comment out to test effects of each #define -- these will probably
+ * disappear eventually
+ */
+#ifdef INTERNAL_COMP
+# define RLECOMP	/* run-length compression of levl array - JLee */
+# define ZEROCOMP	/* zero-run compression of everything - Olaf Seibert */
+#endif
+
+/* #define SPECIALIZATION	/* do "specialized" version of new topology */
+
 
 #ifdef BITFIELDS
-#define	Bitfield(x,n)	unsigned x:n
+#define Bitfield(x,n)	unsigned x:n
 #else
-#define	Bitfield(x,n)	uchar x
+#define Bitfield(x,n)	uchar x
 #endif
 
-/*
- * According to ANSI, prototypes for old-style declarations must widen the
- * arguments to int.  However, the MSDOS compilers accept shorter arguments
- * (char, short, etc.) in prototypes and do typechecking with them.  Therefore
- * this mess to allow the better typechecking while also allowing some
- * prototypes for the ANSI compilers so people quit trying to fix the prototypes
- * to match the standard and thus lose the typechecking.
- */
-#if (defined(MSDOS) && !defined(TOS)) || defined (AMIGA) || defined(THINKC4) || defined(VAXC)
+#ifdef UNWIDENED_PROTOTYPES
 # define CHAR_P char
 # define SCHAR_P schar
 # define UCHAR_P uchar
 # define XCHAR_P xchar
+# define SHORT_P short
 # define BOOLEAN_P boolean
+# define ALIGNTYP_P aligntyp
 #else
-# ifdef __STDC__
+# ifdef WIDENED_PROTOTYPES
 #  define CHAR_P int
 #  define SCHAR_P int
 #  define UCHAR_P int
 #  define XCHAR_P int
+#  define SHORT_P int
 #  define BOOLEAN_P int
+#  define ALIGNTYP_P int
 # endif
 #endif
-
-
-#define	SIZE(x)	(int)(sizeof(x) / sizeof(x[0]))
-
-/* (No, LARGEST_INT doesn't have to correspond to the largest integer on
- * a particular machine.)
+#if defined(ULTRIX_PROTO) && !defined(__GNUC__)
+/* The ultrix 2.0 and 2.1 compilers (on Ultrix 4.0 and 4.2 respectively) can't
+ * handle "struct obj *" constructs in prototypes.  Their bugs are different,
+ * but both seem to work if we put "void*" in the prototype instead.  This
+ * gives us minimal prototype checking but avoids the compiler bugs.
+ *
+ * OBJ_P and MONST_P should _only_ be used for declaring function pointers.
  */
-#define LARGEST_INT	((1 << 15) - 1)
-
-
-#ifdef STRONGHOLD
-# ifdef ALTARS
-#  ifdef THEOLOGY
-#define ENDGAME
-#  endif
-# endif
+#define OBJ_P void*
+#define MONST_P void*
+#else
+#define OBJ_P struct obj*
+#define MONST_P struct monst*
 #endif
+
+#define SIZE(x)	(int)(sizeof(x) / sizeof(x[0]))
+
+typedef int winid;		/* a window identifier */
+
+/* A limit for some NetHack int variables.  It need not, and for comparable
+ * scoring should not, depend on the actual limit on integers for a
+ * particular machine, although it is set to the minimum required maximum
+ * signed integer for C (2^15 -1).
+ */
+#define LARGEST_INT	32767
+
 
 #ifdef REDO
 #define Getchar pgetchar
@@ -132,6 +148,10 @@ typedef	xchar	boolean;		/* 0 or 1 */
 # include "unixconf.h"
 #endif
 
+#if defined(OS2) && !defined(OS2CONF_H)
+# include "os2conf.h"
+#endif
+
 #if defined(MSDOS) && !defined(PCCONF_H)
 # include "pcconf.h"
 #endif
@@ -144,10 +164,34 @@ typedef	xchar	boolean;		/* 0 or 1 */
 # include "amiconf.h"
 #endif
 
-#if defined(MACOS) && !defined(MACCONF_H)
+#if defined(MAC) && ! defined(MACCONF_H)
 # include "macconf.h"
 #endif
 
+/* Displayable name of this port; don't redefine if defined in *conf.h */
+#ifndef PORT_ID
+# ifdef AMIGA
+#  define PORT_ID	"Amiga"
+# endif
+# ifdef MAC
+#  define PORT_ID	"Mac"
+# endif
+# ifdef MSDOS
+#  define PORT_ID	"PC"
+# endif
+# ifdef OS2
+#  define PORT_ID	"OS/2"
+# endif
+# ifdef TOS
+#  define PORT_ID	"ST"
+# endif
+# ifdef UNIX
+#  define PORT_ID	"Unix"
+# endif
+# ifdef VMS
+#  define PORT_ID	"VMS"
+# endif
+#endif
 
 /*
  * Configurable internal parameters.
@@ -158,26 +202,28 @@ typedef	xchar	boolean;		/* 0 or 1 */
  */
 
 /* size of terminal screen is (at least) (ROWNO+3) by COLNO */
-#define	COLNO	80
-#define	ROWNO	21
+#define COLNO	80
+#define ROWNO	21
 
-#define	MAXNROFROOMS	20	/* max number of rooms per level */
-#define	DOORMAX		120	/* max number of doors per level */
+#define MAXNROFROOMS	20	/* max number of rooms per level */
+#define MAX_SUBROOMS	16	/* max # of subrooms in a given room */
+#define DOORMAX		120	/* max number of doors per level */
 
-#define	BUFSZ		256	/* for getlin buffers */
+#define BUFSZ		256	/* for getlin buffers */
+#define QBUFSZ		128	/* for building question text */
 
-#define	PL_NSIZ		32	/* name of player, ghost, shopkeeper */
-#define	PL_CSIZ		20	/* sizeof pl_character */
+#define PL_NSIZ		32	/* name of player, ghost, shopkeeper */
+#define PL_CSIZ		20	/* sizeof pl_character */
 #define PL_FSIZ		32	/* fruit name */
 
-#define	MAXLEVEL	50	/* max number of levels in the dungeon */
-#ifdef ENDGAME
-#define ENDLEVEL (MAXLEVEL+1)	/* endgame level */
-#endif
-#define HELLLEVEL	30	/* first hell level (varies ifdef STRONGHOLD) */
-#define	MAXULEV		30	/* max character experience level */
+#define MAXDUNGEON	10	/* current maximum number of dungeons */
+#define MAXLEVEL	30	/* max number of levels in one dungeon */
+#define MAXSTAIRS	1	/* max # of special stairways in a dungeon */
+#define ALIGNWEIGHT	4	/* generation weight of alignment */
 
-#define	MAXMONNO	120	/* geno monst after this number killed */
+#define MAXULEV		30	/* max character experience level */
+
+#define MAXMONNO	120	/* geno monst after this number killed */
 #define MHPMAX		500	/* maximum monster hp */
 
-#endif /* GLOBAL_H /**/
+#endif /* GLOBAL_H */

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)steal.c	3.0	88/07/06
+/*	SCCS Id: @(#)steal.c	3.1	92/10/14	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -16,7 +16,7 @@ equipname(otmp)
 {
 
 	return (
-#ifdef SHIRT
+#ifdef TOURIST
 		(otmp == uarmu) ? "shirt" :
 #endif
 		(otmp == uarmf) ? "boots" :
@@ -40,29 +40,30 @@ void
 stealgold(mtmp)
 register struct monst *mtmp;
 {
-	register struct gold *gold = g_at(u.ux, u.uy);
+	register struct obj *gold = g_at(u.ux, u.uy);
 	register long tmp;
-	if(gold && ( !u.ugold || gold->amount > u.ugold || !rn2(5))) {
-		mtmp->mgold += gold->amount;
-		freegold(gold);
-		if(Invisible) newsym(u.ux, u.uy);
-		pline("%s quickly snatches some gold from between your %s!",
-			Blind ? "It" : Monnam(mtmp), makeplural(body_part(FOOT)));
-		if(!u.ugold || !rn2(5)) {
-			rloc(mtmp);
-			mtmp->mflee = 1;
-		}
-	} else if(u.ugold) {
-		u.ugold -= (tmp = somegold());
-		Your("purse feels lighter.");
-		mtmp->mgold += tmp;
+
+	if (gold && ( !u.ugold || gold->quan > u.ugold || !rn2(5))) {
+	    mtmp->mgold += gold->quan;
+	    delobj(gold);
+	    newsym(u.ux, u.uy);
+	    pline("%s quickly snatches some gold from between your %s!",
+		    Monnam(mtmp), makeplural(body_part(FOOT)));
+	    if(!u.ugold || !rn2(5)) {
 		rloc(mtmp);
 		mtmp->mflee = 1;
-		flags.botl = 1;
+	    }
+	} else if(u.ugold) {
+	    u.ugold -= (tmp = somegold());
+	    Your("purse feels lighter.");
+	    mtmp->mgold += tmp;
+	    rloc(mtmp);
+	    mtmp->mflee = 1;
+	    flags.botl = 1;
 	}
 }
 
-/* steal armor after he finishes taking it off */
+/* steal armor after you finish taking it off */
 unsigned int stealoid;		/* object to be stolen */
 unsigned int stealmid;		/* monster doing the stealing */
 
@@ -75,10 +76,10 @@ stealarm(){
 	  if(otmp->o_id == stealoid) {
 	    for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
 	      if(mtmp->m_id == stealmid) {
-		  if(otmp->unpaid) subfrombill(otmp);
+		  if(otmp->unpaid) 
+		       subfrombill(otmp, shop_keeper(*u.ushops));
 		  freeinv(otmp);
-		  pline("%s steals %s!", Blind ? "It" : 
-					Monnam(mtmp), doname(otmp));
+		  pline("%s steals %s!", Monnam(mtmp), doname(otmp));
 		  mpickobj(mtmp,otmp);
 		  mtmp->mflee = 1;
 		  rloc(mtmp);
@@ -86,7 +87,8 @@ stealarm(){
 	      }
 	    break;
 	  }
-	return stealoid = 0;
+	stealoid = 0;
+	return 0;
 }
 
 /* Returns 1 when something was stolen (or at least, when N should flee now)
@@ -154,7 +156,7 @@ struct monst *mtmp;
 	    otmp = uwep;
 	/* can't steal armor while wearing cloak - so steal the cloak. */
 	else if(otmp == uarm && uarmc) otmp = uarmc;
-#ifdef SHIRT
+#ifdef TOURIST
 	else if(otmp == uarmu && uarmc) otmp = uarmc;
 	else if(otmp == uarmu && uarm) otmp = uarm;
 #endif
@@ -166,17 +168,17 @@ gotobj:
 #endif
 
 	if((otmp->owornmask & (W_ARMOR | W_RING | W_AMUL | W_TOOL))){
-		switch(otmp->olet) {
-		case TOOL_SYM:
+		switch(otmp->oclass) {
+		case TOOL_CLASS:
 			Blindf_off(otmp);
 			break;
-		case AMULET_SYM:
+		case AMULET_CLASS:
 			Amulet_off();
 			break;
-		case RING_SYM:
+		case RING_CLASS:
 			Ring_gone(otmp);
 			break;
-		case ARMOR_SYM:
+		case ARMOR_CLASS:
 			/* Stop putting on armor which has been stolen. */
 			if (donning(otmp)) {
 			  cancel_don();
@@ -199,12 +201,12 @@ gotobj:
 				  equipname(otmp));
 			else
 			    pline("%s seduces you and %s off your %s.",
-				  Blind ? "It" : Amonnam(mtmp, "beautiful"),
+				  Blind ? "It" : Adjmonnam(mtmp, "beautiful"),
 				  curssv ? "helps you to take" : "you start taking",
 				  equipname(otmp));
 			named++;
 			/* the following is to set multi for later on */
-			(void) nomul(-objects[otmp->otyp].oc_delay);
+			nomul(-objects[otmp->otyp].oc_delay);
 
 			if (otmp == uarm)  (void) Armor_off();
 			else if (otmp == uarmc) (void) Cloak_off();
@@ -236,11 +238,12 @@ gotobj:
 	if(otmp == uball) unpunish();
 
 	freeinv(otmp);
-	pline("%s stole %s.", named ? "She" : (Blind ? "It" : Monnam(mtmp)), doname(otmp));
+	pline("%s stole %s.", named ? "She" : Monnam(mtmp), doname(otmp));
+	(void) snuff_candle(otmp);
 	mpickobj(mtmp,otmp);
 	if (otmp->otyp == CORPSE && otmp->corpsenm == PM_COCKATRICE
 	    && !resists_ston(mtmp->data)) {
-	    pline("%s turns to stone.", Blind ? "It" : Monnam(mtmp));
+	    pline("%s turns to stone.", Monnam(mtmp));
 	    stoned = TRUE;
 	    xkilled(mtmp, 0);
 	    return -1;
@@ -270,13 +273,14 @@ register struct monst *mtmp;
 	register struct obj *otmp;
 
 	for(otmp = invent; otmp; otmp = otmp->nobj) {
-	    if(otmp->otyp == AMULET_OF_YENDOR) {
+	    if(otmp->otyp == AMULET_OF_YENDOR ||
+	       (otmp->otyp == FAKE_AMULET_OF_YENDOR && !mtmp->iswiz)) {
 		/* might be an imitation one */
 		setnotworn(otmp);
 		freeinv(otmp);
 		mpickobj(mtmp,otmp);
-		pline("%s stole %s!", Blind ? "It":Monnam(mtmp), doname(otmp));
-		rloc(mtmp);
+		pline("%s stole %s!", Monnam(mtmp), doname(otmp));
+		if (can_teleport(mtmp->data)) rloc(mtmp);
 		return;
 	    }
 	}
@@ -285,33 +289,60 @@ register struct monst *mtmp;
 #endif /* OVLB */
 #ifdef OVL0
 
-/* release the objects the killed animal has stolen */
+/* release the objects the killed animal was carrying */
 void
-relobj(mtmp,show)
+relobj(mtmp,show,is_pet)
 register struct monst *mtmp;
 register int show;
+boolean is_pet;		/* If true, pet should keep wielded weapon */
 {
 	register struct obj *otmp, *otmp2;
+	register int omx = mtmp->mx, omy = mtmp->my;
 
-	for(otmp = mtmp->minvent; otmp; otmp = otmp2){
+#ifdef MUSE
+	otmp2 = otmp = 0;
+	if (is_pet) {
+		sort_mwep(mtmp);
+		if ((otmp2 = MON_WEP(mtmp))) {
+			otmp = otmp2->nobj;
+			otmp2->nobj = 0;
+		}
+	}
+	if (!otmp2)
+#endif
+	{	otmp = mtmp->minvent;
+		mtmp->minvent = 0;
+	}
+
+	for (; otmp; otmp = otmp2) {
+#ifdef MUSE
+		if (otmp->owornmask) {
+			mtmp->misc_worn_check &= ~(otmp->owornmask);
+			otmp->owornmask = 0L;
+		}
+#endif
 		otmp2 = otmp->nobj;
-		if (flooreffects(otmp,mtmp->mx,mtmp->my)) continue;
-		place_object(otmp, mtmp->mx, mtmp->my);
+		if (is_pet && cansee(omx, omy) && flags.verbose)
+			pline("%s drops %s.", Monnam(mtmp),
+					distant_name(otmp, doname));
+		if (flooreffects(otmp, omx, omy, "fall")) continue;
+		place_object(otmp, omx, omy);
 		otmp->nobj = fobj;
 		fobj = otmp;
 		stackobj(fobj);
-		if(show & cansee(mtmp->mx,mtmp->my))
-			atl(otmp->ox,otmp->oy,Hallucination?rndobjsym() : otmp->olet);
 	}
-	mtmp->minvent = (struct obj *) 0;
-	if(mtmp->mgold || mtmp->data->mlet == S_LEPRECHAUN) {
-		register long tmp;
-
-		tmp = (mtmp->mgold > 10000) ? 10000 : mtmp->mgold;
-		mkgold((long)(tmp + d(dlevel,30)), mtmp->mx, mtmp->my);
-		if(show & cansee(mtmp->mx,mtmp->my))
-			atl(mtmp->mx,mtmp->my, Hallucination ? rndobjsym() : GOLD_SYM);
+	if (mtmp->mgold) {
+		register long g = mtmp->mgold;
+		mkgold(g, omx, omy);
+		if (is_pet && cansee(omx, omy) && flags.verbose)
+			pline("%s drops %ld gold piece%s.", Monnam(mtmp),
+				g, plur(g));
+		mtmp->mgold = 0L;
 	}
+	if (show & cansee(omx, omy))
+		newsym(omx, omy);
 }
 
 #endif /* OVL0 */
+
+/*steal.c*/

@@ -1,33 +1,36 @@
-/*	SCCS Id: @(#)end.c	3.0	88/05/03
+/*	SCCS Id: @(#)end.c	3.1	93/01/15	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
-#define MONATTK_H	/* comment line for pre-compiled headers */
 #define NEED_VARARGS	/* comment line for pre-compiled headers */
-/* block some unused #defines to avoid overloading some cpp's */
 
 #include "hack.h"
+#include "eshk.h"
 #ifndef NO_SIGNAL
 #include <signal.h>
 #endif
 
-#include "eshk.h"
-
-void NDECL(end_box_display);
 STATIC_PTR int NDECL(done_intr);
 static void FDECL(disclose,(int,BOOLEAN_P));
+static struct obj *FDECL(get_valuables, (struct obj *));
+static void FDECL(savelife, (int));
 
+/*
+ * The order of these needs to match the macros in hack.h.
+ */
 static const char NEARDATA *deaths[] = {		/* the array of death */
 	"died", "choked", "poisoned", "starvation", "drowning",
 	"burning", "crushed", "turned to stone", "genocided",
 	"panic", "trickery",
-	"quit", "escaped", "ascended" };
+	"quit", "escaped", "ascended"
+};
 
 static const char NEARDATA *ends[] = {		/* "when you..." */
 	"died", "choked", "were poisoned", "starved", "drowned",
 	"burned", "were crushed", "turned to stone", "were genocided",
 	"panicked", "were tricked",
-	"quit", "escaped", "ascended" };
+	"quit", "escaped", "ascended"
+};
 
 int
 done1()
@@ -39,9 +42,9 @@ done1()
 #ifndef NO_SIGNAL
 		(void) signal(SIGINT, (SIG_RET_TYPE) done1);
 #endif
-		clrlin();
+		clear_nhwindow(WIN_MESSAGE);
 		curs_on_u();
-		(void) fflush(stdout);
+		wait_synch();
 		if(multi > 0) nomul(0);
 		return 0;
 	}
@@ -51,38 +54,34 @@ done1()
 int
 done2()
 {
-#ifdef MACOS
-	if(!flags.silent) SysBeep(1);
-	if(UseMacAlert(128) != 1) {
-#else
-	pline("Really quit? ");
-	if(yn() == 'n') {
-#endif
+	if(yn("Really quit?") == 'n') {
 #ifndef NO_SIGNAL
 		(void) signal(SIGINT, (SIG_RET_TYPE) done1);
 #endif
-		clrlin();
+		clear_nhwindow(WIN_MESSAGE);
 		curs_on_u();
-		(void) fflush(stdout);
+		wait_synch();
 		if(multi > 0) nomul(0);
-		multi = 0;
+		if(multi == 0) {
+		    u.uinvulnerable = FALSE;	/* avoid ctrl-C bug -dlc */
+		    u.usleep = 0;
+		}
 		return 0;
 	}
 #if defined(WIZARD) && (defined(UNIX) || defined(VMS) || defined(LATTICE))
 	if(wizard) {
 # ifdef VMS
-	    pline("Enter debugger? ");
+	    const char *tmp = "Enter debugger?";
 # else
 #  ifdef LATTICE
-	    pline("Create SnapShot? ");
+	    const char *tmp = "Create SnapShot?";
 #  else
-	    pline("Dump core? ");
+	    const char *tmp = "Dump core?";
 #  endif
 # endif
-/* KL - do I need to change the next 3 lines? */
-	    if(yn() == 'y') {
+	    if(yn(tmp) == 'y') {
 		(void) signal(SIGINT, (SIG_RET_TYPE) done1);
-		settty(NULL);
+		exit_nhwindows(NULL);
 #ifdef AMIGA
 		Abort(0);
 #else
@@ -132,16 +131,17 @@ register struct monst *mtmp;
 
 	You("die...");
 	buf[0] = '\0';
-	if (mtmp->iswiz) {
+	if (type_is_pname(mtmp->data) || (mtmp->data->geno & G_UNIQ)) {
+	     if (!(type_is_pname(mtmp->data) && (mtmp->data->geno & G_UNIQ)))
 		Strcat(buf, "the ");
-		killer_format = KILLED_BY;
+	     killer_format = KILLED_BY;
 	}
 	if (mtmp->minvis)
 		Strcat(buf, "invisible ");
 	if (Hallucination)
 		Strcat(buf, "hallucinogen-distorted ");
 
-	if(mtmp->data->mlet == S_GHOST) {
+	if(mtmp->data == &mons[PM_GHOST]) {
 		register char *gn = (char *) mtmp->mextra;
 		if (!Hallucination && !mtmp->minvis && *gn) {
 			Strcat(buf, "the ");
@@ -150,8 +150,12 @@ register struct monst *mtmp;
 		Sprintf(eos(buf), (*gn ? "ghost of %s" : "ghost%s"), gn);
 	} else if(mtmp->isshk) {
 		Sprintf(eos(buf), "%s %s, the shopkeeper",
-			(ESHK(mtmp)->ismale ? "Mr." : "Ms."), shkname(mtmp));
+			(mtmp->female ? "Ms." : "Mr."), shkname(mtmp));
 		killer_format = KILLED_BY;
+	} else if (mtmp->ispriest || mtmp->isminion) {
+		killer = priestname(mtmp);
+		if (!strncmp(killer, "the ", 4)) Strcat(buf, killer+4);
+		else Strcat(buf, killer);
 	} else Strcat(buf, mtmp->data->mname);
 	if (mtmp->mnamelth) Sprintf(eos(buf), " called %s", NAME(mtmp));
 	killer = buf;
@@ -188,49 +192,30 @@ panic VA_DECL(const char *, str)
 	    (void)
 # endif
 		abort();    /* avoid loops - this should never happen*/
-				    /* was exit(1) */
 #endif
-	home(); cls();
-	(void) puts(" Suddenly, the dungeon collapses.");
-#if defined(WIZARD) && !defined(MSDOS)
+
+	if (flags.window_inited) exit_nhwindows(NULL);
+	flags.window_inited = 0; /* they're gone; force raw_print()ing */
+
+	raw_print(" Suddenly, the dungeon collapses.");
+#if defined(WIZARD) && !defined(MICRO)
 	if(!wizard) {
-	    pline("Report error to %s and it may be possible to rebuild.",
+	    raw_printf("Report error to %s and it may be possible to rebuild.",
 # ifdef WIZARD_NAME	/*(KR1ED)*/
 		WIZARD_NAME);
 # else
 		WIZARD);
 # endif
-	    more();
 	}
-#ifdef VMS
-	{
-		char *sem = rindex(SAVEF, ';');
-
-		if (sem)
-			*sem = '\0';
-	}
-	Strcat(SAVEF, ".e;1");
-#else
-	Strcat(SAVEF, ".e");
-#endif
+	set_error_savefile();
 	hu = FALSE;
 	(void) dosave0();
 #endif
-#ifdef MACOS
-	puts(" ERROR:  ");
-#else
-	(void) fputs(" ERROR:  ", stdout);
-#endif
-#ifdef LATTICE
 	{
-	char pbuf[100];
-	vsprintf(pbuf,str,VA_ARGS);
-	(void)puts(pbuf);
+	    char buf[BUFSZ];
+	    Vsprintf(buf,str,VA_ARGS);
+	    raw_print(buf);
 	}
-#else
-	Vprintf(str,VA_ARGS);
-#endif
-	more();				/* contains a fflush() */
 #if defined(WIZARD) && (defined(UNIX) || defined(VMS) || defined(LATTICE))
 	if (wizard)
 # ifdef AMIGA
@@ -251,48 +236,29 @@ disclose(how,taken)
 int how;
 boolean taken;
 {
-#ifdef MACOS
-	int see_c;
-	char mac_buf[80];
-#endif
 	char	c;
+	char	qbuf[QBUFSZ];
 
 	if(invent) {
-#ifndef MACOS
 	    if(taken)
-		pline("Do you want to see what you had when you %s? ",
+		Sprintf(qbuf,"Do you want to see what you had when you %s?",
 			(how == QUIT) ? "quit" : "died");
 	    else
-		pline("Do you want your possessions identified? ");
-	    if ((c = yn_function(ynqchars,'y')) == 'y') {
-#else
-		{
-			extern short macflags;
-		
-			/* stop user from using menus, etc. */
-			macflags &= ~(fDoNonKeyEvt | fDoUpdate);
-		}
-	    if(taken)
-		Sprintf(mac_buf, "Do you want to see what you had when you %s? ",
-			(how == QUIT) ? "quit" : "died");
-	    else
-		Sprintf(mac_buf, "Do you want your possessions identified? ");
-		if(!flags.silent) SysBeep(1);
-	    if ((c = "qqynq"[UseMacAlertText(129,mac_buf)+1]) == 'y') {
-#endif
+		Strcpy(qbuf,"Do you want your possessions identified?");
+	    if ((c = yn_function(qbuf, ynqchars, 'y')) == 'y') {
 	    /* New dump format by maartenj@cs.vu.nl */
 		struct obj *obj;
 
 		for(obj = invent; obj && !done_stopprint; obj = obj->nobj) {
 		    makeknown(obj->otyp);
-		    obj->known = obj->bknown = obj->dknown = 1;
+		    obj->known = obj->bknown = obj->dknown = obj->rknown = 1;
 		}
-		doinv(NULL);
-		end_box_display();
+		(void) display_inventory(NULL, FALSE);
+		container_contents(invent, TRUE, TRUE);
 	    }
 	    if (c == 'q')  done_stopprint++;
 	    if (taken) {
-		/* paybill has already given the inventory locations 
+		/* paybill has already given the inventory locations
 		 * in the shop and put it on the main object list
 		 */
 		struct obj *obj;
@@ -301,21 +267,72 @@ boolean taken;
 		    obj->owornmask = 0;
 		    if(rn2(5)) curse(obj);
 		}
-	        invent = (struct obj *) 0;
+		invent = (struct obj *) 0;
 	    }
 	}
 
 	if (!done_stopprint) {
-#ifdef MACOS
-		c = "qqynq"[UseMacAlertText(129, "Do you want to see your instrinsics ?")+1];
-#else
-	    pline("Do you want to see your intrinsics? ");
-	    c = yn_function(ynqchars, 'y');
-#endif
-	    if (c == 'y') enlightenment();
+	    c = yn_function("Do you want to see your intrinsics?",ynqchars,'y');
+	    if (c == 'y') enlightenment(TRUE);	/* final */
 	    if (c == 'q') done_stopprint++;
 	}
 
+}
+
+/* try to get the player back in a viable state after being killed */
+static void
+savelife(how)
+int how;
+{
+	u.uswldtim = 0;
+	u.uhp = u.uhpmax;
+	if (u.uhunger < 500) {
+	    u.uhunger = 500;
+	    newuhs(FALSE);
+	}
+	if (how == CHOKING) init_uhunger();
+	nomovemsg = "You survived that attempt on your life.";
+	flags.move = 0;
+	if(multi > 0) multi = 0; else multi = -1;
+	if(u.utrap && u.utraptype == TT_LAVA) u.utrap = 0;
+	flags.botl = 1;
+	u.ugrave_arise = -1;
+	curs_on_u();
+}
+
+/*
+ *  Get valuables from the given list. NOTE: The list is destroyed as it is
+ *  processed, so don't expect to use it again!
+ */
+static struct obj *
+get_valuables(list)
+    struct obj *list;
+{
+    struct obj *obj, *next_obj, *c_vals, *temp;
+    struct obj *valuables = (struct obj *)0;
+
+    for (obj = list; obj; obj = next_obj) {
+	if (Is_container(obj) && obj->cobj) {
+	    c_vals = get_valuables(obj->cobj);
+
+	    if (c_vals) {
+		/* find the end of the list */
+		for (temp = c_vals; temp->nobj; temp = temp->nobj) ;
+
+		temp->nobj = valuables;
+		valuables = c_vals;
+	    }
+	}
+
+	next_obj = obj->nobj;
+
+	if ((obj->oclass == GEM_CLASS && obj->otyp < LUCKSTONE)
+	    || obj->oclass == AMULET_CLASS) {
+	    obj->nobj = valuables;
+	    valuables = obj;
+	}
+    }
+    return valuables;
 }
 
 /* Be careful not to call panic from here! */
@@ -325,16 +342,17 @@ int how;
 {
 	struct permonst *upmon;
 	boolean taken;
-	char kilbuf[BUFSZ], buf2[BUFSZ];
+	char kilbuf[BUFSZ], pbuf[BUFSZ];
+	winid endwin = WIN_ERR;
+	boolean have_windows = flags.window_inited;
+
 	/* kilbuf: used to copy killer in case it comes from something like
 	 *	xname(), which would otherwise get overwritten when we call
 	 *	xname() when listing possessions
-	 * buf2: same as player name, except it is capitalized
+	 * pbuf: holds Sprintf'd output for raw_print and putstr
 	 */
-#ifdef ENDGAME
 	if (how == ASCENDED)
 		killer_format = NO_KILLER_PREFIX;
-#endif
 	/* Avoid killed by "a" burning or "a" starvation */
 	if (!killer && (how == STARVING || how == BURNING))
 		killer_format = KILLED_BY;
@@ -346,29 +364,19 @@ int how;
 		return;
 	}
 #endif
-	if(Lifesaved && how <= GENOCIDED) {
-		u.uswldtim = 0;
-		if(u.uhpmax <= 0) u.uhpmax = 10;	/* arbitrary */
-		u.uhp = u.uhpmax;
-		adjattrib(A_CON, -1, TRUE);
+	if (Lifesaved && how <= GENOCIDED) {
 		pline("But wait...");
 		makeknown(AMULET_OF_LIFE_SAVING);
 		Your("medallion %s!",
 		      !Blind ? "begins to glow" : "feels warm");
-		if (how == CHOKING) {
-			init_uhunger();
-			You("vomit ...");
-		}
+		if (how == CHOKING) You("vomit ...");
 		You("feel much better!");
 		pline("The medallion crumbles to dust!");
 		useup(uamul);
-		if (u.uhunger < 500) u.uhunger = 500;
-		nomovemsg = "You survived that attempt on your life.";
-		curs_on_u();
-		flags.move = 0;
-		if(multi > 0) multi = 0; else multi = -1;
-		flags.botl = 1;
-		u.ugrave_arise = -1;
+
+		(void) adjattrib(A_CON, -1, TRUE);
+		if(u.uhpmax <= 0) u.uhpmax = 10;	/* arbitrary */
+		savelife(how);
 		if (how == GENOCIDED)
 			pline("Unfortunately you are still genocided...");
 		else {
@@ -377,27 +385,26 @@ int how;
 		}
 	}
 #if defined(WIZARD) || defined(EXPLORE_MODE)
-	if((wizard || discover) && how <= GENOCIDED) {
-		pline("Die? ");
-		if(yn() == 'y') goto die;
-		u.uswldtim = 0;
-		if(u.uhpmax <= 0) u.uhpmax = 100;	/* arbitrary */
-		u.uhp = u.uhpmax;
-		if (u.uhunger < 500) u.uhunger = 500;
-		if (how == CHOKING) init_uhunger();
-		pline("Ok, so you don't %s.",
+	if ((wizard || discover) && how <= GENOCIDED) {
+		if(yn("Die?") == 'y') goto die;
+		pline("OK, so you don't %s.",
 			(how == CHOKING) ? "choke" : "die");
-		nomovemsg = "You survived that attempt on your life.";
-		curs_on_u();
-		flags.move = 0;
-		if(multi > 0) multi = 0; else multi = -1;
-		flags.botl = 1;
-		u.ugrave_arise = -1;
+		if(u.uhpmax <= 0) u.uhpmax = u.ulevel * 8;	/* arbitrary */
+		savelife(how);
 		killer = 0;
 		return;
 	}
 #endif /* WIZARD || EXPLORE_MODE */
+	/* Sometimes you die on the first move.  Life's not fair.
+	 * On those rare occasions you get hosed immediately, go out
+	 * smiling... :-)  -3.
+	 */
+	if (moves <= 1 && how < QUIT)
+	    /* You die... --More-- */
+	    pline("Do not pass go.  Do not collect 200 zorkmids.");
+
 die:
+	if (have_windows) wait_synch();	/* flush screen output */
 #ifndef NO_SIGNAL
 	(void) signal(SIGINT, (SIG_RET_TYPE) done_intr);
 # if defined(UNIX) || defined(VMS)
@@ -405,17 +412,24 @@ die:
 	(void) signal(SIGHUP, (SIG_RET_TYPE) done_hangup);
 # endif
 #endif /* NO_SIGNAL /* */
+#ifdef POLYSELF
+	if (u.mtimedone)
+	    upmon = uasmon;
+	else
+#endif
 	upmon = player_mon();
-	if(u.ugrave_arise > -1) /* create no corpse */ ;
-	else if(how == STONED)
-		(mk_named_object(STATUE, upmon, u.ux, u.uy, plname,
-					strlen(plname)))->spe = 0;
+
+	if (u.ugrave_arise < 0) { /* >= 0 means create no corpse */
+	    if (how == STONING)
+		u.ugrave_arise = -2;
+
 /*
  * If you're burned to a crisp, why leave a corpse?
  */
-	else if (how != BURNING)
+	    else if (how != BURNING && how != PANICKED)
 		(void) mk_named_object(CORPSE, upmon, u.ux, u.uy, plname,
-							strlen(plname));
+							(int)strlen(plname));
+	}
 
 	if (how == QUIT) {
 		killer_format = NO_KILLER_PREFIX;
@@ -430,248 +444,208 @@ die:
 
 	/* paybill() must be called unconditionally, or strange things will
 	 * happen to bones levels */
-	taken = paybill();
+	taken = paybill(how != QUIT);
 	paygd();
 	clearlocks();
-	if(flags.toplin == 1) more();
+#ifdef AMIGA
+	clear_icon();
+#endif
+	if (have_windows) display_nhwindow(WIN_MESSAGE, FALSE);
 
-	disclose(how,taken);
+	if (flags.end_disclose && how != PANICKED) disclose(how,taken);
 
-	if(how < GENOCIDED) {
+	if (how < GENOCIDED) {
 #ifdef WIZARD
-	    if(wizard) {
-#ifdef MACOS
-		if(!flags.silent) SysBeep(20);
-		if(UseMacAlertText(128, "Save bones ?") == 1) savebones();
-#else
-		pline("Save bones? ");
-		if(yn() == 'y') savebones();
+	    if (!wizard || yn("Save bones?") == 'y')
 #endif
-	    }  else
-#endif
-		if (how != PANICKED && how !=TRICKED)
-			savebones();
-	    if(!flags.notombstone) outrip();
+		savebones();
 	}
+
+	/* clean up unneeded windows */
+	if (have_windows) {
+	    destroy_nhwindow(WIN_MAP);
+	    destroy_nhwindow(WIN_STATUS);
+	    destroy_nhwindow(WIN_MESSAGE);
+
+	    if(!done_stopprint || flags.tombstone)
+		endwin = create_nhwindow(NHW_TEXT);
+
+	    if(how < GENOCIDED && flags.tombstone) outrip(how, endwin);
+	} else
+	    done_stopprint = 1; /* just avoid any more output */
 
 /* changing kilbuf really changes killer. we do it this way because
    killer is declared a (const char *)
 */
-	if(u.uhave_amulet) Strcat(kilbuf, " (with the Amulet)");
-	settty(NULL);	/* does a clear_screen() */
-	Strcpy(buf2, plname);
-	if('a' <= buf2[0] && buf2[0] <= 'z') buf2[0] += 'A'-'a';
-	if(!done_stopprint)
-	    Printf("Goodbye %s the %s...\n\n", buf2,
-#ifdef ENDGAME
-		   how != ASCENDED ? (const char *)pl_character :
-		   flags.female ? (const char *)"Demigoddess" : 
-			(const char *)"Demigod");
-#else
-		   pl_character);
-#endif
-	{ long int tmp;
-	  tmp = u.ugold - u.ugold0;
-	  if(tmp < 0)
-		tmp = 0;
-	  if(how < PANICKED)
-		tmp -= tmp/10;
-	  u.urexp += tmp;
-	  u.urexp += 50 * maxdlevel;
-	  if(maxdlevel > 20)
-		u.urexp += 1000*((maxdlevel > 30) ? 10 : maxdlevel - 20);
-#ifdef ENDGAME
-	  if(how == ASCENDED) u.urexp *= 2;
-#endif
+	if (u.uhave.amulet) Strcat(kilbuf, " (with the Amulet)");
+	if (!done_stopprint) {
+	    Sprintf(pbuf, "%s %s the %s...",
+		   (pl_character[0]=='S') ? "Sayonara" : "Goodbye", plname,
+		   how != ASCENDED ? (const char *) pl_character :
+		   (const char *) (flags.female ? "Demigoddess" : "Demigod"));
+	    putstr(endwin, 0, pbuf);
+	    putstr(endwin, 0, "");
 	}
-	if(how == ESCAPED
-#ifdef ENDGAME
-			|| how == ASCENDED
-#endif
-					) {
-		register struct monst *mtmp;
-		register struct obj *otmp, *otmp2, *prevobj;
-		struct obj *jewels = (struct obj *)0;
-		long i;
-		register unsigned int worthlessct = 0;
-#if defined(LINT) || defined(__GNULINT__)
-		prevobj = (struct obj *)0;
-#endif
+	{   long tmp;
+	    int deepest = deepest_lev_reached(FALSE);
 
-		/* put items that count into jewels chain
-		 * rewriting the fcobj and invent chains here is safe,
-		 * as they'll never be used again
+	    u.ugold += hidden_gold();	/* accumulate gold from containers */
+	    tmp = u.ugold - u.ugold0;
+	    if (tmp < 0L)
+		tmp = 0L;
+	    if (how < PANICKED)
+		tmp -= tmp / 10L;
+	    u.urexp += tmp;
+	    u.urexp += 50L * (long)(deepest - 1);
+	    if (deepest > 20)
+		u.urexp += 1000L * (long)((deepest > 30) ? 10 : deepest - 20);
+	    if (how == ASCENDED) u.urexp *= 2L;
+	}
+	if (how == ESCAPED || how == ASCENDED) {
+		register struct monst *mtmp;
+		register struct obj *otmp;
+		struct obj *jewels;
+		long i;
+		register long worthlessct = 0;
+
+		/*
+		 *  Put items that count into the jewels chain.  Rewriting
+		 *  the invent chain and all the container chains (within
+		 *  invent) here is safe.  They will never be used again.
 		 */
-		for(otmp = fcobj; otmp; otmp = otmp2) {
-			otmp2 = otmp->nobj;
-			if(carried(otmp->cobj)
-					&& ((otmp->olet == GEM_SYM &&
-					     otmp->otyp < LUCKSTONE)
-					    || otmp->olet == AMULET_SYM)) {
-				if(otmp == fcobj)
-					fcobj = otmp->nobj;
-				else
-					prevobj->nobj = otmp->nobj;
-				otmp->nobj = jewels;
-				jewels = otmp;
-			} else
-				prevobj = otmp;
-		}
-		for(otmp = invent; otmp; otmp = otmp2) {
-			otmp2 = otmp->nobj;
-			if((otmp->olet == GEM_SYM && otmp->otyp < LUCKSTONE)
-					    || otmp->olet == AMULET_SYM) {
-				if(otmp == invent)
-					invent = otmp->nobj;
-				else
-					prevobj->nobj = otmp->nobj;
-				otmp->nobj = jewels;
-				jewels = otmp;
-			} else
-				prevobj = otmp;
-		}
+		jewels = get_valuables(invent);
 
 		/* add points for jewels */
 		for(otmp = jewels; otmp; otmp = otmp->nobj) {
-			if(otmp->olet == GEM_SYM)
-				u.urexp += (long) otmp->quan *
-					    objects[otmp->otyp].g_val;
-			else 	/* amulet */
-				u.urexp += (otmp->spe < 0) ? 2 :
-					otmp->otyp == AMULET_OF_YENDOR ?
-							5000 : 500;
+			if(otmp->oclass == GEM_CLASS)
+				u.urexp += otmp->quan *
+					    objects[otmp->otyp].oc_cost;
+			else	/* amulet */
+				u.urexp += objects[otmp->otyp].oc_cost;
 		}
 
 		keepdogs();
+		viz_array[0][0] |= IN_SIGHT; /* need visibility for naming */
 		mtmp = mydogs;
+		if(!done_stopprint) Strcpy(pbuf, "You");
 		if(mtmp) {
-			if(!done_stopprint) Printf("You");
 			while(mtmp) {
-				if(!done_stopprint)
-					Printf(" and %s", mon_nam(mtmp));
+				if(!done_stopprint) {
+				    Strcat(pbuf, " and ");
+				    Strcat(pbuf, mon_nam(mtmp));
+				}
 				if(mtmp->mtame)
 					u.urexp += mtmp->mhp;
 				mtmp = mtmp->nmon;
 			}
 			if(!done_stopprint)
-#ifdef ENDGAME
-		    Printf("\n%s with %ld points,\n",
-			how==ASCENDED ? "went to your reward"
+				putstr(endwin, 0, pbuf);
+			pbuf[0] = 0;
+		} else {
+			if(!done_stopprint)
+				Strcat(pbuf, " ");
+		}
+		if(!done_stopprint) {
+			Sprintf(eos(pbuf),
+				"%s with %ld point%s,",
+				how==ASCENDED ? "went to your reward"
 				: "escaped from the dungeon",
-#else
-		    Printf("\nescaped from the dungeon with %ld points,\n",
-#endif
-			u.urexp);
-		} else
-		if(!done_stopprint)
-#ifdef ENDGAME
-		  Printf("You %s with %ld points,\n",
-			how==ASCENDED ? "went to your reward"
-				: "escaped from the dungeon",
-#else
-		  Printf("You escaped from the dungeon with %ld points,\n",
-#endif
-		    u.urexp);
+				u.urexp, plur(u.urexp));
+			putstr(endwin, 0, pbuf);
+		}
 
 		/* print jewels chain here */
 		for(otmp = jewels; otmp; otmp = otmp->nobj) {
 			makeknown(otmp->otyp);
-			if(otmp->olet == GEM_SYM && otmp->otyp < LUCKSTONE) {
-				i = (long) otmp->quan *
-					objects[otmp->otyp].g_val;
+			if(otmp->oclass == GEM_CLASS &&
+			   otmp->otyp < LUCKSTONE) {
+				i = otmp->quan *
+					objects[otmp->otyp].oc_cost;
 				if(i == 0) {
 					worthlessct += otmp->quan;
 					continue;
 				}
-				Printf("        %s (worth %ld zorkmids),\n",
-				    doname(otmp), i);
 			} else {		/* amulet */
 				otmp->known = 1;
-				i = (otmp->spe < 0) ? 2 :
-					otmp->otyp == AMULET_OF_YENDOR ?
-							5000 : 500;
-				Printf("        %s (worth %ld zorkmids),\n",
+				i = objects[otmp->otyp].oc_cost;
+			}
+			if(!done_stopprint) {
+			    Sprintf(pbuf, "        %s (worth %ld zorkmids),",
 				    doname(otmp), i);
+			    putstr(endwin, 0, pbuf);
 			}
 		}
-		if(worthlessct)
-		  Printf("        %u worthless piece%s of colored glass,\n",
-			worthlessct, plur((long)worthlessct));
-	} else
-		if(!done_stopprint) {
-		    Printf("You %s ", ends[how]);
-#ifdef ENDGAME
-		    if (how != ASCENDED) {
-			if(dlevel == ENDLEVEL)
-			     Printf("in the endgame ");
-			else Printf("on dungeon level %d ", dlevel);
-		    }
-#else
-		    Printf("on dungeon level %d ", dlevel);
-#endif
-		    Printf("with %ld points,\n", u.urexp);
+		if(worthlessct && !done_stopprint) {
+		    Sprintf(pbuf,
+			  "        %ld worthless piece%s of colored glass,",
+			  worthlessct, plur(worthlessct));
+		    putstr(endwin, 0, pbuf);
 		}
-	if(!done_stopprint)
-	  Printf("and %ld piece%s of gold, after %ld move%s.\n",
-	    u.ugold, plur(u.ugold), moves, plur(moves));
-	if(!done_stopprint)
-  Printf("You were level %u with a maximum of %d hit points when you %s.\n",
-	    u.ulevel, u.uhpmax, ends[how]);
+	} else if (!done_stopprint) {
+		Strcpy(pbuf, "You ");
+		Strcat(pbuf, ends[how]);
+		if (how != ASCENDED) {
+		    Strcat(pbuf, " in ");
+		    if (Is_astralevel(&u.uz))
+			Strcat(pbuf, "The Astral Plane");
+		    else Strcat(pbuf, dungeons[u.uz.dnum].dname);
+		    Strcat(pbuf, " ");
+		    if (!In_endgame(&u.uz)
+#ifdef MULDGN
+					       && !Is_knox(&u.uz)
+#endif
+			)
+			Sprintf(eos(pbuf), "on dungeon level %d ", (
+#ifdef MULDGN
+						 In_quest(&u.uz) ?
+						    dunlev(&u.uz) :
+#endif
+						    depth(&u.uz)));
+		}
+		Sprintf(eos(pbuf),
+			"with %ld point%s,", u.urexp, plur(u.urexp));
+		putstr(endwin, 0, pbuf);
+	}
+	if (!done_stopprint) {
+	    Sprintf(pbuf, "and %ld piece%s of gold, after %ld move%s.",
+		    u.ugold, plur(u.ugold), moves, plur(moves));
+	    putstr(endwin, 0, pbuf);
+	}
+	if (!done_stopprint) {
+	    Sprintf(pbuf,
+	     "You were level %u with a maximum of %d hit point%s when you %s.",
+		    u.ulevel, u.uhpmax, plur(u.uhpmax), ends[how]);
+	    putstr(endwin, 0, pbuf);
+	    putstr(endwin, 0, "");
+	}
 #if (defined(WIZARD) || defined(EXPLORE_MODE))
 # ifndef LOGFILE
-	if(wizard || discover)
-		Printf("\nSince you were in %s mode, the score list \
-will not be checked.\n", wizard ? "wizard" : "discover");
-	else
+	if (wizard || discover) {
+	    if (!done_stopprint) {
+		putstr(endwin, 0, "");
+		Sprintf(pbuf, "Since you were in %s mode, the score list \
+will not be checked.", wizard ? "wizard" : "discover");
+		putstr(endwin, 0, pbuf);
+		putstr(endwin, 0, "");
+		display_nhwindow(endwin, TRUE);
+	    }
+	    if (have_windows)
+		exit_nhwindows(NULL);
+	} else
 # endif
 #endif
 	{
-		if (!done_stopprint) {
-			getret();
-			cls();
-		}
+	    if (!done_stopprint)
+		display_nhwindow(endwin, TRUE);
+	    if (have_windows)
+		exit_nhwindows(NULL);
 /* "So when I die, the first thing I will see in Heaven is a score list?" */
-		topten(how);
+	    topten(how);
 	}
-	if(done_stopprint) Printf("\n\n");
-#if defined(APOLLO) || defined(MACOS)
-	getret();
-#endif
-	exit(0);
+	if(done_stopprint) { raw_print(""); raw_print(""); }
+	terminate(0);
 }
 
-void
-clearlocks(){
-#if defined(DGK)
-	eraseall(levels, alllevels);
-	if (ramdisk)
-		eraseall(permbones, alllevels);
-#else
-# if defined(UNIX) || defined(MSDOS) || defined(VMS) || defined(MACOS)
-	register int x;
-#  if defined(UNIX) || defined(VMS)
-	(void) signal(SIGHUP,SIG_IGN);
-#  endif
-#  ifdef MACOS
-	Str255 fileName;
-	int oldVolume;
-	struct term_info *t;
-	extern WindowPtr HackWindow;
-
-	t = (term_info *)GetWRefCon(HackWindow);
-	(void)GetVol(&fileName, &oldVolume);
-	(void)SetVol(0L, t->system.sysVRefNum);
-#  endif
-	for(x = maxdlevel; x >= 0; x--) {
-		glo(x);
-		(void) unlink(lock);	/* not all levels need be present */
-	}
-#  ifdef MACOS
-	(void)SetVol(0L, oldVolume);
-#  endif
-# endif
-#endif
-}
 
 #ifdef NOSAVEONHANGUP
 int
@@ -680,37 +654,63 @@ hangup()
 	(void) signal(SIGINT, SIG_IGN);
 	clearlocks();
 # ifndef VMS
-	exit(1);
+	terminate(1);
 # endif
 }
 #endif
 
+
 void
-end_box_display()
+container_contents(list, identified, all_containers)
+	struct obj *list;
+	boolean identified, all_containers;
 {
 	register struct obj *box, *obj;
 	char buf[BUFSZ];
 
-	for(box=invent; box; box=box->nobj) {
+	for (box = list; box; box = box->nobj) {
 	    if (Is_container(box) && box->otyp != BAG_OF_TRICKS) {
-		int cnt=0;
-
-		for(obj=fcobj; obj; obj=obj->nobj) {
-		    if (obj->cobj == box) {
-			if (!cnt) {
-			    Sprintf(buf, "Contents of the %s:",xname(box));
-			    cornline(0, buf);
+		if (box->cobj) {
+		    winid tmpwin = create_nhwindow(NHW_MENU);
+		    Sprintf(buf, "Contents of the %s:", xname(box));
+		    putstr(tmpwin, 0, buf); putstr(tmpwin, 0, "");
+		    for (obj = box->cobj; obj; obj = obj->nobj) {
+			if (identified) {
+			    makeknown(obj->otyp);
+			    obj->known = obj->bknown = obj->dknown = 1;
 			}
-			makeknown(obj->otyp);
-			obj->known = obj->bknown = obj->dknown = 1;
-			cornline(1,doname(obj));
-			cnt++;
+			putstr(tmpwin, 0, doname(obj));
 		    }
+		    display_nhwindow(tmpwin, TRUE);
+		    destroy_nhwindow(tmpwin);
+		    if (all_containers)
+			container_contents(box->cobj, identified, TRUE);
+		} else {
+		    pline("%s is empty.", The(xname(box)));
+		    display_nhwindow(WIN_MESSAGE, FALSE);
 		}
-		if (!cnt) {
-		    pline("The %s is empty.", xname(box));
-		    more();
-		} else cornline(2,"");
 	    }
+	    if (!all_containers)
+		break;
 	}
 }
+
+void
+terminate(status)
+int status;
+{
+#ifdef MAC
+	if (!hu) {
+		int idx;
+		for (idx = theWindows[BASE_WINDOW].windowTextLen; --idx >= 0; )
+			/* If there is something to show... */
+			if (((unsigned char *)*theWindows[BASE_WINDOW].windowText)[idx] > ' ') {
+				display_nhwindow(BASE_WINDOW, TRUE);
+				break;
+			}
+	}
+#endif
+	exit(status);
+}
+
+/*end.c*/

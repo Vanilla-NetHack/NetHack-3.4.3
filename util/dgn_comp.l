@@ -1,0 +1,156 @@
+%{
+/*	SCCS Id: @(#)dgn_lex.c	3.1	92/10/23	*/
+/*	Copyright (c) 1989 by Jean-Christophe Collet */
+/*	Copyright (c) 1990 by M. Stephenson	     */
+/* NetHack may be freely redistributed.  See license for details. */
+
+#define DGN_COMP
+
+#include "config.h"
+#include "dgn_comp.h"
+#include "dgn_file.h"
+
+long *FDECL(alloc, (unsigned int));
+/*
+ * Most of these don't exist in flex, yywrap is macro and
+ * yyunput is properly declared in flex.skel.
+ */
+#ifndef FLEX_SCANNER
+int FDECL (yyback, (int *, int));
+int NDECL (yylook);
+int NDECL (yyinput);
+int NDECL (yywrap);
+int NDECL (yylex);
+	/* Traditional lexes let yyunput() and yyoutput() default to int;
+	 * newer ones may declare them as void since they don't return
+	 * values.  For even more fun, the lex supplied as part of the
+	 * newer unbundled compiler for SunOS 4.x adds the void declarations
+	 * (under __STDC__ or _cplusplus ifdefs -- otherwise they remain
+	 * int) while the bundled lex and the one with the older unbundled
+	 * compiler do not.  To detect this, we need help from outside --
+	 * sys/unix/Makefile.utl.
+	 */
+# if defined(NeXT) || defined(SVR4)
+#  define VOIDYYPUT
+# endif
+# if !defined(VOIDYYPUT)
+#  if defined(POSIX_TYPES) && !defined(BOS) && !defined(HISX)
+#   define VOIDYYPUT
+#  endif
+# endif
+# if !defined(VOIDYYPUT) && defined(WEIRD_LEX)
+#  if defined(SUNOS4) && defined(__STDC__) && (WEIRD_LEX != 0) 
+#   define VOIDYYPUT
+#  endif
+# endif
+# ifdef VOIDYYPUT
+void FDECL (yyunput, (int));
+void FDECL (yyoutput, (int));
+# else
+int FDECL (yyunput, (int));
+int FDECL (yyoutput, (int));
+# endif
+#endif	/* FLEX_SCANNER */
+
+void FDECL (init_yyin, (FILE *));
+void FDECL (init_yyout, (FILE *));
+
+#ifdef MICRO
+#undef exit
+extern void FDECL(exit, (int));
+#endif
+
+/* this doesn't always get put in dgn_comp.h
+ * (esp. when using older versions of bison)
+ */
+
+extern YYSTYPE yylval;
+
+int line_number = 1;
+/*
+ *	This is a hack required by Michael Hamel to get things
+ *	working on the Mac.
+ */
+#if defined(applec) && !defined(FLEX_SCANNER)
+#undef input
+#undef unput
+#define unput(c) { yytchar = (c); if (yytchar == 10) yylineno--; *yysptr++ = yytchar; }				  
+# ifndef YYNEWLINE
+# define YYNEWLINE 10
+# endif
+
+char
+input() {	/* Under MPW \n is chr(13)! Compensate for this. */
+
+	if (yysptr > yysbuf) return(*--yysptr);
+	else {
+		yytchar = getc(yyin);
+	 	if (yytchar == '\n') {
+		    yylineno++;
+		    return(YYNEWLINE);
+		}
+		if (yytchar == EOF) return(0);
+		else		    return(yytchar);
+	}
+}
+#endif	/* applec && !FLEX_SCANNER */
+
+%}
+%%
+DUNGEON		return(A_DUNGEON);
+up		{ yylval.i=1; return(UP_OR_DOWN); }
+down		{ yylval.i=0; return(UP_OR_DOWN); }
+ENTRY		return(ENTRY);
+stair		return(STAIR);
+no_up		return(NO_UP);
+no_down		return(NO_DOWN);
+portal		return(PORTAL);
+PROTOFILE	return(PROTOFILE);
+DESCRIPTION	return(DESCRIPTION);
+LEVELDESC	return(LEVELDESC);
+ALIGNMENT       return(ALIGNMENT);
+LEVALIGN        return(LEVALIGN);
+town		{ yylval.i=TOWN ; return(DESCRIPTOR); }
+hellish		{ yylval.i=HELLISH ; return(DESCRIPTOR); }
+mazelike	{ yylval.i=MAZELIKE ; return(DESCRIPTOR); }
+roguelike	{ yylval.i=ROGUELIKE ; return(DESCRIPTOR); }
+unaligned       { yylval.i=D_ALIGN_NONE ; return(DESCRIPTOR); }
+noalign         { yylval.i=D_ALIGN_NONE ; return(DESCRIPTOR); }
+lawful          { yylval.i=D_ALIGN_LAWFUL ; return(DESCRIPTOR); }
+neutral         { yylval.i=D_ALIGN_NEUTRAL ; return(DESCRIPTOR); }
+chaotic         { yylval.i=D_ALIGN_CHAOTIC ; return(DESCRIPTOR); }
+BRANCH		return(BRANCH);
+CHAINBRANCH	return(CHBRANCH);
+LEVEL		return(LEVEL);
+RNDLEVEL	return(RNDLEVEL);
+CHAINLEVEL	return(CHLEVEL);
+RNDCHLEVEL	return(RNDCHLEVEL);
+[-0-9]+		{ yylval.i=atoi(yytext); return(INTEGER); }
+\"[^"]*\"	{ yytext[yyleng-1] = 0; /* Discard the trailing \" */
+		  yylval.str = (char *) alloc(strlen(yytext+1)+1);
+		  strcpy(yylval.str, yytext+1); /* Discard the first \" */
+		  return(STRING); }
+^#.*\n		{ line_number++; }
+\n		{ line_number++; }
+[ \t]+		;	/* skip trailing tabs & spaces */
+.		{ return yytext[0]; }
+%%
+
+/* routine to switch to another input file; needed for flex */
+void init_yyin( input_f )
+FILE *input_f;
+{
+#ifdef FLEX_SCANNER
+	if (yyin)
+	    yyrestart(input_f);
+	else
+#endif
+	    yyin = input_f;
+}
+/* analogous routine (for completeness) */
+void init_yyout( output_f )
+FILE *output_f;
+{
+	yyout = output_f;
+}
+

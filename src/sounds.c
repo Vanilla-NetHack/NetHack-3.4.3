@@ -1,9 +1,6 @@
-/*	SCCS Id: @(#)sounds.c	3.0	90/02/05 */
+/*	SCCS Id: @(#)sounds.c	3.1	92/07/07
+/* 	Copyright (c) 1989 Janet Walz, Mike Threepoint */
 /* NetHack may be freely redistributed.  See license for details. */
-/* Copyright (c) 1989 Janet Walz, Mike Threepoint */
-
-#define ONAMES_H	/* comment line for pre-compiled headers */
-/* block some unused #defines to avoid overloading some cpp's */
 
 #include "hack.h"
 #include "edog.h"
@@ -11,13 +8,7 @@
 #ifdef OVLB
 
 static int FDECL(domonnoise,(struct monst *));
-
-void
-verbalize(str)
-register const char *str;
-{
-	if(flags.soundok) pline("\"%s\"", str);
-}
+static int NDECL(dochat);
 
 #endif /* OVLB */
 
@@ -30,35 +21,31 @@ dosounds()
 {
     register xchar hallu;
     register struct mkroom *sroom;
-    register xchar roomtype;
-    register int croomno;
-    boolean gold_in_vault, u_in_room;
     register int vx, vy;
-
-#ifdef __GNULINT__
-    gold_in_vault = u_in_room = FALSE;
+#if defined(AMIGA) && defined(AZTEC_C_WORKAROUND)
+    int xx;
 #endif
 
     hallu = Hallucination ? 1 : 0;
 
-    if(!flags.soundok || u.uswallow) return;
+    if(!flags.soundok || u.uswallow || Underwater) return;
 
-    if (fountsound && !rn2(400))
+    if (level.flags.nfountains && !rn2(400))
 	switch (rn2(3)+hallu) {
 	    case 0:
 		You("hear bubbling water.");
 		break;
 	    case 1:
-		You("hear water falling on coins...");
+		You("hear water falling on coins.");
 		break;
 	    case 2:
 		You("hear the splashing of a naiad.");
 		break;
 	    case 3:
-		You("seem to hear a soda fountain!");
+		You("hear a soda fountain!");
 		break;
 	}
-    if (sinksound && !rn2(300))
+    if (level.flags.nsinks && !rn2(300))
 	switch (rn2(2)+hallu) {
 	    case 0:
 		You("hear a slow drip.");
@@ -67,163 +54,169 @@ dosounds()
 		You("hear a gurgling noise.");
 		break;
 	    case 2:
-		You("seem to hear dishes being washed!");
+		You("hear dishes being washed!");
 		break;
-	}
-    if (!rn2(200)) {
-	roomtype = OROOM;
-	for (sroom = &rooms[0]; ; sroom++) {	/* find any special room */
-	    if (sroom->hx < 0) break;		/* no more rooms */
-	    if (sroom->rtype != OROOM) {
-		croomno = inroom(u.ux,u.uy);
-		u_in_room = croomno >= 0 && sroom == &rooms[croomno];
-		if (sroom->rtype < SHOPBASE)
-		    roomtype = sroom->rtype;
-		else if (!u_in_room) {
-			/* player not presently in shop */
-			/* NOTE: other special room types disappear when player
-			   enters (except VAULT) */
-		    roomtype = SHOPBASE;
-		}
-		break;
-	    }
 	}
 
-	if (roomtype == VAULT) {
-	    gold_in_vault = FALSE;
-	    for (vx = sroom->lx; vx <= sroom->hx && !gold_in_vault; vx++)
-		for (vy = sroom->ly; vy <= sroom->hy; vy++)
-		    if (g_at(vx, vy)) {
-			gold_in_vault = TRUE;
-			break;
-		    }
+    if (level.flags.has_court && !rn2(200)) {
+	switch (rn2(3)+hallu) {
+	    case 0:
+		You("hear the tones of courtly conversation.");
+		break;
+	    case 1:
+		You("hear a sceptre being pounded in judgment.");
+		break;
+	    case 2:
+		pline("Someone just shouted \"Off with %s head!\"",
+		    flags.female ? "her" : "his");
+		break;
+	    case 3:
+		You("hear Queen Beruthiel's cats!");
+		break;
 	}
+	return;
+    }
+    if (level.flags.has_swamp && !rn2(200)) {
+	switch (rn2(2)+hallu) {
+	    case 0:
+		You("hear mosquitoes!");
+		break;
+	    case 1:
+		You("smell marsh gas!");	/* so it's a smell...*/
+		break;
+	    case 2:
+		You("hear Donald Duck!");
+		break;
+	}
+	return;
+    }
+    if (level.flags.has_vault && !rn2(200)) {
+	if (!(sroom = search_special(VAULT))) {
+	    /* strange ... */
+	    level.flags.has_vault = 0;
+	    return;
+	}
+	if(gd_sound())
+	    switch (rn2(2)+hallu) {
+		case 1: {
+		    boolean gold_in_vault = FALSE;
 
-	switch (roomtype) {
-#ifdef THRONES
-	    case COURT:
-		switch (rn2(3)+hallu) {
-		    case 0:
-			You("hear the tones of courtly conversation.");
-			break;
-		    case 1:
-			You("hear a sceptre being pounded in judgment.");
-			break;
-		    case 2:
-			pline("Someone just shouted \"Off with %s head!\"",
-			    flags.female ? "her" : "his");
-			break;
-		    case 3:
-			You("seem to hear Queen Beruthiel's cats!");
-			break;
-		}
-		break;
-#endif
-	    case SWAMP:
-		switch (rn2(2)+hallu) {
-		    case 0:
-			You("hear mosquitoes!");
-			break;
-		    case 1:
-			You("smell marsh gas!");	/* so it's a smell...*/
-			break;
-		    case 2:
-			You("seem to hear Donald Duck.");
-			break;
-		}
-		break;
-	    case VAULT:
-		if(gd_sound())
-		  switch (rn2(2)+hallu) {
-		    case 0:
-			if (gold_in_vault && !u_in_room)
-			    You("hear someone counting money.");
+		    for (vx = sroom->lx;vx <= sroom->hx; vx++)
+			for (vy = sroom->ly; vy <= sroom->hy; vy++)
+			    if (g_at(vx, vy))
+				gold_in_vault = TRUE;
+#if defined(AMIGA) && defined(AZTEC_C_WORKAROUND)
+		    /* Bug in aztec assembler here. Workaround below */
+		    xx = ROOM_INDEX(sroom) + ROOMOFFSET;
+		    xx = (xx != vault_occupied(u.urooms));
+		    if(xx)
+#else
+		    if (vault_occupied(u.urooms) != 
+			 (ROOM_INDEX(sroom) + ROOMOFFSET))
+#endif /* AZTEC_C_WORKAROUND */
+		    {
+			if (gold_in_vault)
+			    You(!hallu ? "hear someone counting money." :
+				"hear the quarterback calling the play.");
 			else
 			    You("hear someone searching.");
 			break;
-		    case 1:
-			You("hear the footsteps of a guard on patrol.");
-			break;
-		    case 2:
-			You("seem to hear Ebenezer Scrooge!");
-			break;
+		    }
+		    /* fall into... (yes, even for hallucination) */
 		}
+		case 0:
+		    You("hear the footsteps of a guard on patrol.");
+		    break;
+		case 2:
+		    You("hear Ebenezer Scrooge!");
+		    break;
+	    }
+	return;
+    }
+    if (level.flags.has_beehive && !rn2(200)) {
+	switch (rn2(2)+hallu) {
+	    case 0:
+		You("hear a low buzzing.");
 		break;
-	    case BEEHIVE:
-		switch (rn2(2)+hallu) {
-		    case 0:
-			You("hear a low buzzing.");
-			break;
-		    case 1:
-			You("hear an angry drone.");
-			break;
-		    case 2:
-			You("seem to hear bees in your %shelmet!",
-			    uarmh ? "" : "(nonexistent) ");
-			break;
-		}
+	    case 1:
+		You("hear an angry drone.");
 		break;
-	    case MORGUE:
-		switch (rn2(2)+hallu) {
-		    case 0:
-		    You("suddenly realize it is unnaturally quiet.");
-			break;
-		    case 1:
-			pline("The hair on the back of your %s stands up.",
-				body_part(NECK));
-			break;
-		    case 2:
-			pline("The hair on your %s seems to stand up.",
-				body_part(HEAD));
-			break;
-		}
-		break;
-	    case BARRACKS:
-		switch (rn2(3)+hallu) {
-		    case 0:
-			You("hear dice being thrown.");
-			break;
-		    case 1:
-			You("hear blades being honed.");
-			break;
-		    case 2:
-			You("hear loud snoring.");
-			break;
-		    case 3:
-			You("seem to hear General MacArthur!");
-			break;
-		}
-		break;
-	    case ZOO:
-		switch (rn2(2)+hallu) {
-		    case 0:
-You("hear a sound reminding you of an elephant stepping on a peanut.");
-			break;
-		    case 1:
-		    You("hear a sound reminding you of a trained seal.");
-			break;
-		    case 2:
-			You("seem to hear Doctor Doolittle!");
-			break;
-		}
-		break;
-	    case SHOPBASE:
-		if(tended_shop(sroom))
-		  switch (rn2(2)+hallu) {
-		    case 0:
-			You("hear the chime of a cash register.");
-			break;
-		    case 1:
-			You("hear someone cursing shoplifters.");
-			break;
-		    case 2:
-			You("seem to hear Neiman and Marcus arguing!");
-			break;
-		  }
-		break;
-	    default:
+	    case 2:
+		You("hear bees in your %sbonnet!",
+		    uarmh ? "" : "(nonexistent) ");
 		break;
 	}
+	return;
+    }
+    if (level.flags.has_morgue && !rn2(200)) {
+	switch (rn2(2)+hallu) {
+	    case 0:
+		You("suddenly realize it is unnaturally quiet.");
+		break;
+	    case 1:
+		pline("The hair on the back of your %s stands up.",
+			body_part(NECK));
+		break;
+	    case 2:
+		pline("The hair on your %s seems to stand up.",
+			body_part(HEAD));
+		break;
+	}
+	return;
+    }
+#ifdef ARMY
+    if (level.flags.has_barracks && !rn2(200)) {
+	switch (rn2(3)+hallu) {
+	    case 0:
+		You("hear blades being honed.");
+		break;
+	    case 1:
+		You("hear loud snoring.");
+		break;
+	    case 2:
+		You("hear dice being thrown.");
+		break;
+	    case 3:
+		You("hear General MacArthur!");
+		break;
+	}
+	return;
+    }
+#endif /* ARMY */
+    if (level.flags.has_zoo && !rn2(200)) {
+	switch (rn2(2)+hallu) {
+	    case 0:
+	You("hear a sound reminding you of an elephant stepping on a peanut.");
+		break;
+	    case 1:
+		You("hear a sound reminding you of a trained seal.");
+		break;
+	    case 2:
+		You("hear Doctor Doolittle!");
+		break;
+	}
+	return;
+    }
+    if (level.flags.has_shop && !rn2(200)) {
+	if (!(sroom = search_special(ANY_SHOP))) {
+	    /* strange... */
+	    level.flags.has_shop = 0;
+	    return;
+	}
+        if(tended_shop(sroom) && 
+	   !index(u.ushops, ROOM_INDEX(sroom) + ROOMOFFSET))
+	    switch (rn2(2)+hallu) {
+		case 0:
+		    You("hear someone cursing shoplifters.");
+		    break;
+		case 1:
+		    You("hear the chime of a cash register.");
+		    break;
+		case 2:
+		    You("hear Neiman and Marcus arguing!");
+		    break;
+	    }
+        return;
     }
 }
 
@@ -231,9 +224,6 @@ You("hear a sound reminding you of an elephant stepping on a peanut.");
 #ifdef OVLB
 
 #include "eshk.h"
-
-#define NOTANGRY(mon)	mon->mpeaceful
-#define ANGRY(mon)	!NOTANGRY(mon)
 
 void
 growl(mtmp)
@@ -256,16 +246,19 @@ register struct monst *mtmp;
 	    pline("%s roars!", Monnam(mtmp));
 	    break;
 	case MS_BUZZ:
-	    kludge("%s buzzes!", Monnam(mtmp));
+	    pline("%s buzzes!", Monnam(mtmp));
 	    break;
 	case MS_SQEEK:
-	    kludge("%s squeals!", Monnam(mtmp));
+	    pline("%s squeals!", Monnam(mtmp));
 	    break;
 	case MS_SQAWK:
-	    kludge("%s screeches!", Monnam(mtmp));
+	    pline("%s screeches!", Monnam(mtmp));
 	    break;
 	case MS_NEIGH:
-	    kludge("%s neighs!", Monnam(mtmp));
+	    pline("%s neighs!", Monnam(mtmp));
+	    break;
+	case MS_WAIL:
+	    pline("%s wails!", Monnam(mtmp));
 	    break;
     }
 }
@@ -286,13 +279,16 @@ register struct monst *mtmp;
 	    pline("%s yelps!", Monnam(mtmp));
 	    break;
 	case MS_ROAR:
-	    kludge("%s snarls!", Monnam(mtmp));
+	    pline("%s snarls!", Monnam(mtmp));
 	    break;
 	case MS_SQEEK:
-	    kludge("%s squeals!", Monnam(mtmp));
+	    pline("%s squeals!", Monnam(mtmp));
 	    break;
 	case MS_SQAWK:
-	    kludge("%s screaks!", Monnam(mtmp));
+	    pline("%s screaks!", Monnam(mtmp));
+	    break;
+	case MS_WAIL:
+	    pline("%s wails!", Monnam(mtmp));
 	    break;
     }
 }
@@ -313,7 +309,7 @@ register struct monst *mtmp;
 	    pline("%s whines.", Monnam(mtmp));
 	    break;
 	case MS_SQEEK:
-	    kludge("%s squeals.", Monnam(mtmp));
+	    pline("%s squeals.", Monnam(mtmp));
 	    break;
     }
 }
@@ -324,26 +320,6 @@ register struct monst *mtmp;
 
 #ifdef OVLB
 
-/* for the connoisseurs ... */
-static const char *Qmen[] = {
-	"Max",      /* Born */
-	"Wolfgang", /* Pauli */
-	"Louis",    /* de Broglie */
-	"Erwin",    /* Schroedinger */
-	"Werner",   /* Heisenberg */
-	"Niels",    /* Bohr */
-	"Paul",     /* Dirac */
-	"Pascual",  /* Jordan */
-	"Dick",     /* Feynman */
-	"Sam" }; /* Beckett ("Oh, boy." :-) */
-
-struct monst *
-qname(mtmp)
-struct monst *mtmp;
-{
-	return(christen_monst(mtmp, Qmen[rn2(SIZE(Qmen))]));
-}
-
 static int
 domonnoise(mtmp)
 register struct monst *mtmp;
@@ -351,86 +327,82 @@ register struct monst *mtmp;
     /* presumably nearness and sleep checks have already been made */
     if (!flags.soundok) return(0);
     switch (mtmp->data->msound) {
-#ifdef ORACLE
 	case MS_ORACLE:
 	    return doconsult(mtmp);
-#endif
-#if defined(ALTARS) && defined(THEOLOGY)
 	case MS_PRIEST:
 	    priest_talk(mtmp);
 	    break;
-#endif
 #ifdef SOUNDS
 	case MS_SILENT:
 	    break;
 	case MS_SQEEK:
-	    kludge("%s squeaks.", Monnam(mtmp));
+	    pline("%s squeaks.", Monnam(mtmp));
 	    break;
 	case MS_SQAWK:
-	    kludge("%s squawks.", Monnam(mtmp));
+	    pline("%s squawks.", Monnam(mtmp));
 	    break;
 	case MS_MEW:
 	    if (mtmp->mtame) {
 		if (mtmp->mconf || mtmp->mflee || mtmp->mtrapped || 
 		    moves > EDOG(mtmp)->hungrytime || mtmp->mtame < 5)
-		    kludge("%s yowls.", Monnam(mtmp));
+		    pline("%s yowls.", Monnam(mtmp));
 		else if (EDOG(mtmp)->hungrytime > moves + 1000)
-		    kludge("%s purrs.", Monnam(mtmp));
+		    pline("%s purrs.", Monnam(mtmp));
 		else
-		    kludge("%s mews.", Monnam(mtmp));
+		    pline("%s mews.", Monnam(mtmp));
 	    }
 	case MS_HISS:
-	    if (!mtmp->mpeaceful && !mtmp->mtame)
-		kludge("%s hisses!", Monnam(mtmp));
+	    if (!mtmp->mpeaceful)
+		pline("%s hisses!", Monnam(mtmp));
 	    break;
 	case MS_BUZZ:
-	    if (!mtmp->mpeaceful && !mtmp->mtame)
-		kludge("%s buzzes angrily.", Monnam(mtmp));
+	    if (!mtmp->mpeaceful)
+		pline("%s buzzes angrily.", Monnam(mtmp));
 	    break;
 	case MS_GRUNT:
-	    kludge("%s grunts.", Monnam(mtmp));
+	    pline("%s grunts.", Monnam(mtmp));
 	    break;
 	case MS_BARK:
 	    if (flags.moonphase == FULL_MOON && night()) {
-		kludge("%s howls.", Monnam(mtmp));
+		pline("%s howls.", Monnam(mtmp));
 		break;
-	    } else if (mtmp->mtame || mtmp->mpeaceful) {
+	    } else if (mtmp->mpeaceful) {
 		if (mtmp->mtame &&
 		    (mtmp->mconf || mtmp->mflee || mtmp->mtrapped ||
 		     moves > EDOG(mtmp)->hungrytime || mtmp->mtame < 5))
-		    kludge("%s whines.", Monnam(mtmp));
+		    pline("%s whines.", Monnam(mtmp));
 		else if (EDOG(mtmp)->hungrytime > moves + 1000)
-		    kludge("%s yips.", Monnam(mtmp));
+		    pline("%s yips.", Monnam(mtmp));
 		else
-		    kludge("%s barks.", Monnam(mtmp));
+		    pline("%s barks.", Monnam(mtmp));
 		break;
 	    }
 	case MS_GROWL:
-	    if (!mtmp->mpeaceful && !mtmp->mtame)
-		kludge("%s growls!", Monnam(mtmp));
+	    if (!mtmp->mpeaceful)
+		pline("%s growls!", Monnam(mtmp));
 	    break;
 	case MS_ROAR:
-	    if (!mtmp->mpeaceful && !mtmp->mtame)
-		kludge("%s roars!", Monnam(mtmp));
+	    if (!mtmp->mpeaceful)
+		pline("%s roars!", Monnam(mtmp));
 	    break;
 	case MS_NEIGH:
-	    kludge("%s neighs.", Monnam(mtmp));
+	    pline("%s neighs.", Monnam(mtmp));
 	    break;
 	case MS_WAIL:
-	    kludge("%s wails mournfully.", Monnam(mtmp));
+	    pline("%s wails mournfully.", Monnam(mtmp));
 	    break;
 	case MS_GURGLE:
-	    kludge("%s gurgles.", Monnam(mtmp));
+	    pline("%s gurgles.", Monnam(mtmp));
 	    break;
 	case MS_BURBLE:
-	    kludge("%s burbles.", Monnam(mtmp));
+	    pline("%s burbles.", Monnam(mtmp));
 	    break;
 	case MS_SHRIEK:
-	    kludge("%s shrieks.", Monnam(mtmp));
+	    pline("%s shrieks.", Monnam(mtmp));
 	    aggravate();
 	    break;
 	case MS_IMITATE:
-	    kludge("%s imitates you.", Monnam(mtmp));
+	    pline("%s imitates you.", Monnam(mtmp));
 	    break;
 	case MS_DJINNI:
 	    if (mtmp->mtame) verbalize("Thank you for freeing me!");
@@ -438,15 +410,29 @@ register struct monst *mtmp;
 	    else verbalize("This will teach you not to disturb me!");
 	    break;
 	case MS_MUMBLE:
-	    kludge("%s mumbles incomprehensibly.", Monnam(mtmp));
+	    pline("%s mumbles incomprehensibly.", Monnam(mtmp));
+	    break;
+#ifdef MULDGN
+	case MS_LEADER:
+	case MS_NEMESIS:
+	case MS_GUARDIAN:
+	    quest_chat(mtmp);
+	    break;
+#endif
+	case MS_BONES:
+	    pline("%s rattles noisily.", Monnam(mtmp));
+	    You("freeze momentarily.");
+	    nomul(-2);
 	    break;
 	case MS_HUMANOID:
+	    if(In_endgame(&u.uz) && is_mplayer(mtmp->data))
+	        mplayer_talk(mtmp);
 	    /* Generic humanoid behaviour. */
-	    if (!mtmp->mpeaceful && !mtmp->mtame) break;
+	    if (!mtmp->mpeaceful) break;
 	    if (mtmp->mflee)
-		kludge("%s wants nothing to do with you.", Monnam(mtmp));
+		pline("%s wants nothing to do with you.", Monnam(mtmp));
 	    else if (mtmp->mhp < mtmp->mhpmax/4)
-		kludge("%s moans.", Monnam(mtmp));
+		pline("%s moans.", Monnam(mtmp));
 	    else if (mtmp->mconf || mtmp->mstun)
 		verbalize(!rn2(3) ? "Huh?" : rn2(2) ? "What?" : "Eh?");
 	    else if (!mtmp->mcansee)
@@ -454,44 +440,31 @@ register struct monst *mtmp;
 	    else if (mtmp->mtrapped)
 		verbalize("I'm trapped!");
 	    else if (mtmp->mhp < mtmp->mhpmax/2)
-		kludge("%s asks for a potion of healing.", Monnam(mtmp));
+		pline("%s asks for a potion of healing.", Monnam(mtmp));
 	    /* Specific monster's interests */
 	    else if (is_elf(mtmp->data))
-		kludge("%s complains about orcs.", Monnam(mtmp));
+		pline("%s curses orcs.", Monnam(mtmp));
 	    else if (is_dwarf(mtmp->data))
-		kludge("%s talks about mining.", Monnam(mtmp));
+		pline("%s talks about mining.", Monnam(mtmp));
 	    else if (likes_magic(mtmp->data))
-		kludge("%s talks about spellcraft.", Monnam(mtmp));
+		pline("%s talks about spellcraft.", Monnam(mtmp));
 	    else if (carnivorous(mtmp->data))
-		kludge("%s discusses what kinds of meat are safe to eat.", Monnam(mtmp));
+		pline("%s discusses what kinds of meat are safe to eat.", Monnam(mtmp));
 	    else switch (monsndx(mtmp->data)){
-# ifdef TOLKIEN
 		case PM_HOBBIT:
 		    if (mtmp->mhpmax - mtmp->mhp >= 10)
-kludge("%s complains about unpleasant dungeon conditions.", Monnam(mtmp));
+pline("%s complains about unpleasant dungeon conditions.", Monnam(mtmp));
 		    else
-		    	kludge("%s asks you about the One Ring.", Monnam(mtmp));
+		    	pline("%s asks you about the One Ring.", Monnam(mtmp));
 		    break;
-# endif
 		case PM_ARCHEOLOGIST:
-kludge("%s describes a recent article in \"Spelunker Today\" magazine.", Monnam(mtmp));
+pline("%s describes a recent article in \"Spelunker Today\" magazine.", Monnam(mtmp));
 		    break;
-		case PM_QUANTUM_MECHANIC:
-		    /* a trademark line for other Quantum Leap cultists -3. */
-		    if (mtmp->mnamelth && strcmp(NAME(mtmp), "Sam") == 0)
-			verbalize("Oh, boy.");
-		    else {
-			const char *Qman;
-
-			do Qman = Qmen[rn2(SIZE(Qmen))];
-			while (mtmp->mnamelth && strcmp(NAME(mtmp), Qman) == 0);
-
-			kludge("%s asks if you've seen %s anywhere around.", 
-				Monnam(mtmp), Qman);
-		    }		    
+		case PM_TOURIST:
+		    verbalize("Aloha.");
 		    break;
 		default:
-		    kludge("%s discusses dungeon exploration.", Monnam(mtmp));
+		    pline("%s discusses dungeon exploration.", Monnam(mtmp));
 	    }
 	    break;
 	case MS_SEDUCE:
@@ -501,7 +474,7 @@ kludge("%s describes a recent article in \"Spelunker Today\" magazine.", Monnam(
 			(void) doseduce(mtmp);
 			break;
 	    }
-	    switch ((poly_gender() != is_female(mtmp)) ? rn2(3) : 0) {
+	    switch ((poly_gender() != mtmp->female) ? rn2(3) : 0) {
 # else
 	    switch ((poly_gender() == 0) ? rn2(3) : 0) {
 # endif
@@ -509,16 +482,16 @@ kludge("%s describes a recent article in \"Spelunker Today\" magazine.", Monnam(
 			verbalize("Hello, sailor.");
 			break;
 		case 1:
-			kludge("%s comes on to you.", Monnam(mtmp));
+			pline("%s comes on to you.", Monnam(mtmp));
 			break;
 		default:
-			kludge("%s cajoles you.", Monnam(mtmp));
+			pline("%s cajoles you.", Monnam(mtmp));
 	    }
 	    break;
 # ifdef KOPS
 	case MS_ARREST:
 	    if (mtmp->mpeaceful)
-		pline("\"Just the facts, %s.\"",
+		verbalize("Just the facts, %s.",
 		      flags.female ? "Ma'am" : "Sir");
 	    else switch (rn2(3)) {
 		case 1:
@@ -535,28 +508,26 @@ kludge("%s describes a recent article in \"Spelunker Today\" magazine.", Monnam(
 	case MS_LAUGH:
 	    switch (rn2(4)) {
 		case 1:
-		    kludge("%s giggles.", Monnam(mtmp));
+		    pline("%s giggles.", Monnam(mtmp));
 		    break;
 		case 2:
-		    kludge("%s chuckles.", Monnam(mtmp));
+		    pline("%s chuckles.", Monnam(mtmp));
 		    break;
 		case 3:
-		    kludge("%s snickers.", Monnam(mtmp));
+		    pline("%s snickers.", Monnam(mtmp));
 		    break;
 		default:
-		    kludge("%s laughs.", Monnam(mtmp));
+		    pline("%s laughs.", Monnam(mtmp));
 	    }
 	    break;
-# ifdef INFERNO
 	case MS_BRIBE:
 	    if (mtmp->mpeaceful && !mtmp->mtame) {
 		(void) demon_talk(mtmp);
 		break;
 	    }
 	    /* fall through */
-# endif
 	case MS_CUSS:
-	    if (!mtmp->mpeaceful && !mtmp->mtame)
+	    if (!mtmp->mpeaceful)
 		cuss(mtmp);
 	    break;
 	case MS_GUARD:
@@ -573,7 +544,7 @@ kludge("%s describes a recent article in \"Spelunker Today\" magazine.", Monnam(
 		    verbalize("Doc, I can't help you unless you cooperate.");
 		else
 		    verbalize("Please undress so I can examine you.");
-# ifdef SHIRT
+# ifdef TOURIST
 	    else if (uarmu)
 		verbalize("Take off your shirt, please.");
 # endif
@@ -581,31 +552,30 @@ kludge("%s describes a recent article in \"Spelunker Today\" magazine.", Monnam(
 	    break;
 	case MS_SELL: /* pitch, pay, total */
 	    if (ANGRY(mtmp))
-		kludge("%s mentions how much %s dislikes %s customers.",
+		pline("%s mentions how much %s dislikes %s customers.",
 			ESHK(mtmp)->shknam,
-			ESHK(mtmp)->ismale ? "he" : "she",
+			mtmp->female ? "she" : "he",
 			ESHK(mtmp)->robbed ? "non-paying" : "rude");
 	    else if (ESHK(mtmp)->following)
 		if (strncmp(ESHK(mtmp)->customer, plname, PL_NSIZ)) {
-		    pline("\"Hello %s!  I was looking for %s.\"",
+		    verbalize("Hello %s!  I was looking for %s.",
 			    plname, ESHK(mtmp)->customer);
 		    ESHK(mtmp)->following = 0;
 		} else {
-		    pline("\"Hello %s!  Didn't you forget to pay?\"",
+		    verbalize("Hello %s!  Didn't you forget to pay?",
 			    plname);
 		}
 	    else if (ESHK(mtmp)->robbed)
-		kludge("%s complains about a recent robbery.", ESHK(mtmp)->shknam);
+		pline("%s complains about a recent robbery.", ESHK(mtmp)->shknam);
 	    else if (ESHK(mtmp)->billct)
-		kludge("%s reminds you that you haven't paid yet.", ESHK(mtmp)->shknam);
+		pline("%s reminds you that you haven't paid yet.", ESHK(mtmp)->shknam);
 	    else if (mtmp->mgold < 50)
-		kludge("%s complains that business is bad.", ESHK(mtmp)->shknam);
+		pline("%s complains that business is bad.", ESHK(mtmp)->shknam);
 	    else if (mtmp->mgold > 4000)
-		kludge("%s says that business is good.", ESHK(mtmp)->shknam);
+		pline("%s says that business is good.", ESHK(mtmp)->shknam);
 	    else
-		kludge("%s talks about the problem of shoplifters.", ESHK(mtmp)->shknam);
+		pline("%s talks about the problem of shoplifters.", ESHK(mtmp)->shknam);
 	    break;
-# ifdef ARMY
 	case MS_SOLDIER:
 	    if (!mtmp->mpeaceful)
 	    switch (rn2(3)) {
@@ -617,9 +587,25 @@ kludge("%s describes a recent article in \"Spelunker Today\" magazine.", Monnam(
 		    break;
 		default:
 		    verbalize("Surrender!");
+	    } else
+	    switch (rn2(3)) {
+		case 2:
+		    verbalize("What lousy pay we're getting here!");
+		    break;
+		case 1:
+		    verbalize("The food's not fit for Orcs!");
+		    break;
+		default:
+		    verbalize("My feet hurt, I've been on them all day!");
 	    }
 	    break;
-# endif
+	case MS_DEATH:
+	    pline("%s is busy reading a copy of Sandman #9.", Monnam(mtmp));
+	    break;
+	case MS_PESTILENCE:
+	case MS_FAMINE:
+	    verbalize("Who do you think you are, War?");
+	    break;
 #endif /* SOUNDS */
     }
     return(1);
@@ -629,16 +615,53 @@ kludge("%s describes a recent article in \"Spelunker Today\" magazine.", Monnam(
 int
 dotalk()
 {
+    int result;
+    boolean save_soundok = flags.soundok;
+    flags.soundok = 1;	/* always allow sounds while chatting */
+    result = dochat();
+    flags.soundok = save_soundok;
+    return result;
+}
+
+static int
+dochat()
+{
     register struct monst *mtmp;
     register int tx,ty;
+    struct obj *otmp;
 
+#ifdef POLYSELF
+    if (uasmon->msound == MS_SILENT) {
+	Your("current form seems unable to speak.");
+	return(0);
+    }
+#endif
+    if (Strangled) {
+	You("can't speak.  You're choking!");
+	return(0);
+    }
     if (u.uswallow) {
 	pline("They won't hear you out there.");
 	return(0);
     }
+    if (Underwater) {
+	pline("All you can utter is a mouthful of air bubbles.");
+	return(0);
+    }
 
-    pline("Talk to whom? [in what direction] ");
-    (void) getdir(0);
+    if (!Blind && (otmp = shop_object(u.ux, u.uy)) != (struct obj *)0) {
+	/* standing on something in a shop and chatting causes the shopkeeper
+	   to describe the price(s).  This can inhibit other chatting inside
+	   a shop, but that shouldn't matter much.  shop_object() returns an
+	   object iff inside a shop and the shopkeeper is present and willing
+	   (not angry) and able (not asleep) to speak and the position contains
+	   any objects other than just gold.
+	*/
+	price_quote(otmp);
+	return(1);
+    }
+
+    (void) getdir("Talk to whom? [in what direction]");
 
     if (u.dz) {
 	pline("They won't hear you %s there.", u.dz < 0 ? "up" : "down");
@@ -662,17 +685,26 @@ dotalk()
     }
 
     tx = u.ux+u.dx; ty = u.uy+u.dy;
-    if ((Blind && !Telepat) || !MON_AT(tx, ty) ||
-	    (mtmp = m_at(tx, ty))->mimic || mtmp->mundetected) {
+    mtmp = m_at(tx, ty);
+    if ((Blind && !Telepat) || !mtmp || mtmp->mundetected ||
+		mtmp->m_ap_type == M_AP_FURNITURE ||
+		mtmp->m_ap_type == M_AP_OBJECT) {
 	pline("I see nobody there.");
 	return(0);
     }
     if (!mtmp->mcanmove || mtmp->msleep) {
-	kludge("%s seems not to notice you.", Monnam(mtmp));
-	return 0;
+	pline("%s seems not to notice you.", Monnam(mtmp));
+	return(0);
+    }
+
+    if (mtmp->mtame && mtmp->meating) {
+	pline("%s is eating noisily.", Monnam(mtmp));
+	return (0);
     }
 
     return domonnoise(mtmp);
 }
 
 #endif /* OVLB */
+
+/*sounds.c*/

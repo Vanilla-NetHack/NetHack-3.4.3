@@ -1,301 +1,320 @@
-/*	SCCS Id: @(#)rumors.c	3.0	89/02/08
+/*	SCCS Id: @(#)rumors.c	3.1	92/12/05	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
-/* hack.rumors.c - version 1.0.3 */
 
-#include	"hack.h"		/* for RUMORFILE and BSD (index) */
+#include "hack.h"
 
-/* Rumors has been entirely rewritten to speed up the access.  This is
+/*	[note: this comment is fairly old, but still accurate for 3.1]
+ * Rumors have been entirely rewritten to speed up the access.  This is
  * essential when working from floppies.  Using fseek() the way that's done
  * here means rumors following longer rumors are output more often than those
  * following shorter rumors.  Also, you may see the same rumor more than once
  * in a particular game (although the odds are highly against it), but
- * this also happens with real fortune cookies.  Besides, a person can
- * just read the rumor file if they desire.  -dgk
+ * this also happens with real fortune cookies.  -dgk
  */
 
-/* The rumors file consists of a long giving the number of bytes of useful/true
- * rumors, followed by the true rumors (one per line), followed by the useless/
- * false/misleading/cute rumors (one per line).
+/*	3.1
+ * The rumors file consists of a "do not edit" line, a hexadecimal number
+ * giving the number of bytes of useful/true rumors, followed by those
+ * true rumors (one per line), followed by the useless/false/misleading/cute
+ * rumors (also one per line).  Number of bytes of untrue rumors is derived
+ * via fseek(EOF)+ftell().
+ *
+ * The oracles file consists of a "do not edit" comment, a decimal count N
+ * and set of N+1 hexadecimal fseek offsets, followed by N multiple-line
+ * records, separated by "---" lines.  The first oracle is a special case,
+ * and placed there by 'makedefs'.
  */
 
-/* The oracle file consists of a number of multiple-line records, separated
- * (but not terminated) by "-----" lines.
- */
-static void NDECL(init_rumors);
-#ifdef ORACLE
-static void NDECL(outoracle);
+#ifndef SEEK_SET
+# define SEEK_SET 0
 #endif
-long first_rumor = sizeof(long);
-long true_rumor_size, false_rumor_size, end_rumor_file;
-#ifdef ORACLE
-long oracle_size;
+#ifndef SEEK_CUR
+# define SEEK_CUR 1
 #endif
+#ifndef SEEK_END	/* aka SEEK_EOF */
+# define SEEK_END 2
+#endif
+
+static void FDECL(init_rumors, (FILE *));
+static void FDECL(init_oracles, (FILE *));
+static void FDECL(outoracle, (BOOLEAN_P));
+
+static long true_rumor_start,  true_rumor_size,  true_rumor_end,
+	    false_rumor_start, false_rumor_size, false_rumor_end;
+static int oracle_flg = 0;  /* -1=>don't use, 0=>need init, 1=>init done */
+static unsigned oracle_cnt = 0;
+static long *oracle_loc = 0;
 
 static void
-init_rumors()
+init_rumors(fp)
+FILE *fp;
 {
-	register FILE *fp;
+	char line[BUFSZ];
 
-#ifdef OS2_CODEVIEW
-	{
-	char tmp[PATHLEN];
-
-	Strcpy(tmp,hackdir);
-	append_slash(tmp);
-	Strcat(tmp,RUMORFILE);
-	if(fp = fopen(tmp, "r")) {
-#else
-# ifdef MACOS
-	if(!(fp = fopen(RUMORFILE, "r")))
-		fp = openFile(RUMORFILE, "r");
-	if (fp) {
-# else
-	if(fp = fopen(RUMORFILE, "r")) {
-# endif
-#endif
-	    (void) fread((genericptr_t)&true_rumor_size,sizeof(long),1,fp);
-	    (void) fseek(fp, 0L, 2);
-	    end_rumor_file = ftell(fp);
-	    false_rumor_size = (end_rumor_file-sizeof(long)) - true_rumor_size;
-	    (void) fclose(fp);
-	} else {
-		pline("Can't open rumors file!");
-		end_rumor_file = -1;	/* don't try to open it again */
-	}
-#ifdef OS2_CODEVIEW
-	}
-#endif
-#ifdef ORACLE
-#ifdef OS2_CODEVIEW
-	{
-	char tmp[PATHLEN];
-
-	Strcpy(tmp,hackdir);
-	append_slash(tmp);
-	Strcat(tmp,ORACLEFILE);
-	if(fp = fopen(tmp, "r")) {
-#else
-# ifdef MACOS
-	if(!(fp = fopen(ORACLEFILE, "r")))
-		fp = openFile(ORACLEFILE, "r");
-	if (fp) {
-# else
-	if(fp = fopen(ORACLEFILE, "r")) {
-# endif
-#endif
-	    (void) fseek(fp, 0L, 2);
-	    oracle_size = ftell(fp);
-	    (void) fclose(fp);
-	} else {
-		pline("Can't open oracles file!");
-		oracle_size = -1;	/* don't try to open it again */
-	}
-#ifdef OS2_CODEVIEW
-	}
-#endif
-#endif
+	(void) fgets(line, sizeof line, fp);	/* skip "don't edit" comment */
+	if (fscanf(fp, "%6lx\n", &true_rumor_size) == 1 &&
+	    true_rumor_size > 0L) {
+	    (void) fseek(fp, 0L, SEEK_CUR);
+	    true_rumor_start  = ftell(fp);
+	    true_rumor_end    = true_rumor_start + true_rumor_size;
+	    (void) fseek(fp, 0L, SEEK_END);
+	    false_rumor_end   = ftell(fp);
+	    false_rumor_start = true_rumor_end;	/* ok, so it's redundant... */
+	    false_rumor_size  = false_rumor_end - false_rumor_start;
+	} else
+	    true_rumor_size = -1L;	/* init failed */
 }
 
+char *
+getrumor(truth)
+int truth; /* 1=true, -1=false, 0=either */
+{
+	static char rumor_buf[COLNO + 28];
+	FILE	*rumors;
+	long tidbit, beginning;
+	char	*endp, line[sizeof rumor_buf];
+
+	rumor_buf[0] = '\0';
+	if (true_rumor_size < 0L)	/* we couldn't open RUMORFILE */
+		return rumor_buf;
+
+	rumors = fopen_datafile(RUMORFILE, "r");
+
+	if (rumors) {
+		if (true_rumor_size == 0L) {	/* if this is 1st outrumor() */
+		    init_rumors(rumors);
+		    if (true_rumor_size < 0L) {	/* init failed */
+			Sprintf(rumor_buf, "Error reading \"%.80s\".",
+				RUMORFILE);
+			return rumor_buf;
+		    }
+		}
+		/*
+		 *	input:      1    0   -1
+		 *	 rn2 \ +1  2=T  1=T  0=F
+		 *	 adj./ +0  1=T  0=F -1=F
+		 */
+		switch (truth += rn2(2)) {
+		  case  2:	/*(might let a bogus input arg sneak thru)*/
+		  case  1:  beginning = true_rumor_start;
+			    tidbit = Rand() % true_rumor_size;
+			break;
+		  case  0:	/* once here, 0 => false rather than "either"*/
+		  case -1:  beginning = false_rumor_start;
+			    tidbit = Rand() % false_rumor_size;
+			break;
+		  default:
+			    impossible("strange truth value for rumor");
+			return strcpy(rumor_buf, "Oops...");
+		}
+		(void) fseek(rumors, beginning + tidbit, SEEK_SET);
+		(void) fgets(line, sizeof line, rumors);
+		if (!fgets(line, sizeof line, rumors) ||
+		    (truth > 0 && ftell(rumors) > true_rumor_end)) {
+			/* reached end of rumors -- go back to beginning */
+			(void) fseek(rumors, beginning, SEEK_SET);
+			(void) fgets(line, sizeof line, rumors);
+		}
+		if ((endp = index(line, '\n')) != 0) *endp = 0;
+		Strcat(rumor_buf, xcrypt(line));
+		(void) fclose(rumors);
+		exercise(A_WIS, (truth > 0));
+	} else {
+		pline("Can't open rumors file!");
+		true_rumor_size = -1;	/* don't try to open it again */
+	}
+	return rumor_buf;
+}
 
 void
-outrumor(truth,cookie)
+outrumor(truth, cookie)
 int truth; /* 1=true, -1=false, 0=either */
 boolean cookie;
 {
 	static const char fortune_msg[] =
 		"This cookie has a scrap of paper inside.";
-	char	line[COLNO];
-	char	*endp;
-	FILE	*rumors;
-	long tidbit, beginning;
+	const char *line;
 
 	if (cookie && Blind) {
 		pline(fortune_msg);
 		pline("What a pity that you cannot read it!");
 		return;
 	}
-	if (end_rumor_file < 0) /* We couldn't open RUMORFILE */
-		return;
-#ifdef OS2_CODEVIEW
-	{
-	char tmp[PATHLEN];
-
-	Strcpy(tmp,hackdir);
-	append_slash(tmp);
-	Strcat(tmp,RUMORFILE);
-	if(rumors = fopen(tmp, "r")) {
-#else
-# ifdef MACOS
-	if(!(rumors = fopen(RUMORFILE, "r")))
-		rumors = openFile(RUMORFILE, "r");
-	if (rumors) {
-# else
-	if(rumors = fopen(RUMORFILE, "r")) {
-# endif
-#endif
-		if (!end_rumor_file) {	/* if this is the first outrumor() */
-			init_rumors();
-		}
-		if (!truth) truth = (rn2(100) >= 50 ? 1 : -1);
-		/* otherwise, 50% chance of being true */
-		switch(truth) {
-		    case 1: beginning = first_rumor;
-			tidbit = Rand() % true_rumor_size;
-			break;
-		    case -1: beginning = first_rumor + true_rumor_size;
-			tidbit = true_rumor_size + Rand() % false_rumor_size;
-			break;
-		    default:
-			impossible("strange truth value for rumor");
-			tidbit = 0; beginning = first_rumor;
-			break;
-		}
-		(void) fseek(rumors, first_rumor + tidbit, 0);
-		(void) fgets(line, COLNO, rumors);
-		if (!fgets(line, COLNO, rumors) || (truth == 1 &&
-		    (ftell(rumors) > true_rumor_size + sizeof(long)))) {
-			/* reached end of rumors -- go back to beginning */
-			(void) fseek(rumors, beginning, 0);
-			(void) fgets(line, COLNO, rumors);
-		}
-		if (endp = index(line, '\n')) *endp = 0;
-		if (cookie) {
-			pline(fortune_msg);
-			pline("It reads:");
-		} else pline("Tidbit of information #%ld: ",tidbit);
-		pline(line);
-		(void) fclose(rumors);
-	} else {
-		pline("Can't open rumors file!");
-		end_rumor_file = -1;	/* don't try to open it again */
+	line = getrumor(truth);
+	if (!*line)
+		line = "NetHack rumors file closed for renovation.";
+	if (cookie) {
+		pline(fortune_msg);
+		pline("It reads:");
+		pline("%s", line);
+	} else {	/* if the Oracle is the only alternative */
+		pline("True to her word, the Oracle %ssays: ",
+		(!rn2(4) ? "offhandedly " : (!rn2(3) ? "casually " :
+		(rn2(2) ? "nonchalantly " : ""))));
+		verbalize("%s", line);
+		exercise(A_WIS, TRUE);
 	}
-#ifdef OS2_CODEVIEW
-	}
-#endif
 }
 
-#ifdef ORACLE
 static void
-outoracle()
+init_oracles(fp)
+FILE *fp;
+{
+	register int i;
+	char line[BUFSZ];
+	int cnt = 0;
+
+	/* this assumes we're only called once */
+	(void) fgets(line, sizeof line, fp);	/* skip "don't edit" comment */
+	if (fscanf(fp, "%5d", &cnt) == 1 && cnt > 0) {
+	    oracle_cnt = (unsigned) cnt;
+	    oracle_loc = (long *) alloc(cnt * sizeof (long));
+	    for (i = 0; i < cnt; i++)
+		(void) fscanf(fp, "%5lx", &oracle_loc[i]);
+	}
+	return;
+}
+
+void
+save_oracles(fd)
+int fd;
+{
+	bwrite(fd, (genericptr_t) &oracle_cnt, sizeof oracle_cnt);
+	if (oracle_cnt)
+	    bwrite(fd, (genericptr_t) oracle_loc, oracle_cnt * sizeof (long));
+}
+
+void
+restore_oracles(fd)
+int fd;
+{
+	mread(fd, (genericptr_t) &oracle_cnt, sizeof oracle_cnt);
+	if (oracle_cnt) {
+	    oracle_loc = (long *) alloc(oracle_cnt * sizeof (long));
+	    mread(fd, (genericptr_t) oracle_loc, oracle_cnt * sizeof (long));
+	    oracle_flg = 1;	/* no need to call init_oracles() */
+	}
+}
+
+static void
+outoracle(special)
+boolean special;
 {
 	char	line[COLNO];
 	char	*endp;
 	FILE	*oracles;
+	int oracle_idx;
 
-	if (oracle_size < 0)	/* We couldn't open ORACLEFILE */
+	if(oracle_flg < 0 ||			/* couldn't open ORACLEFILE */
+	   (oracle_flg > 0 && oracle_cnt == 0))	/* oracles already exhausted */
 		return;
-#ifdef OS2_CODEVIEW
-	{
-    char tmp[PATHLEN];
 
-    Strcpy(tmp,hackdir);
-    append_slash(tmp);
-    Strcat(tmp,ORACLEFILE);
-	if(oracles = fopen(tmp, "r")) {
-#else
-# ifdef MACOS
-	if(!(oracles = fopen(ORACLEFILE, "r")))
-		oracles = openFile(ORACLEFILE, "r");
+	oracles = fopen_datafile(ORACLEFILE, "r");
+
 	if (oracles) {
-# else
-	if(oracles = fopen(ORACLEFILE, "r")) {
-# endif
-#endif
-		if (!oracle_size) {	/* if this is the first outrumor() */
-			init_rumors();
+		winid tmpwin;
+		if (oracle_flg == 0) {	/* if this is the first outoracle() */
+			init_oracles(oracles);
+			oracle_flg = 1;
+			if (oracle_cnt == 0) return;
 		}
-		(void) fseek(oracles, Rand() % oracle_size, 0);
-		(void) fgets(line, COLNO, oracles);
-		while (1)
-		    if (!fgets(line, COLNO, oracles)) {
-			/* reached end of oracle info -- go back to beginning */
-			(void) fseek(oracles, 0L, 0);
-			break;
-		    } else if (!strncmp(line,"-----",5)) {
-			/* found end of an oracle proclamation */
-			break;
-		    }
-		pline("The Oracle meditates for a moment and then intones: ");
-		cornline(0,NULL);
-		while (fgets(line, COLNO, oracles) && strncmp(line,"-----",5)) {
-			if (endp = index(line, '\n')) *endp = 0;
-			cornline(1,line);
+		/* oracle_loc[0] is the special oracle;		*/
+		/* oracle_loc[1..oracle_cnt-1] are normal ones	*/
+		if (oracle_cnt <= 1 && !special) return;  /*(shouldn't happen)*/
+		oracle_idx = special ? 0 : rnd((int) oracle_cnt - 1);
+		(void) fseek(oracles, oracle_loc[oracle_idx], SEEK_SET);
+		if (!special) oracle_loc[oracle_idx] = oracle_loc[--oracle_cnt];
+
+		tmpwin = create_nhwindow(NHW_TEXT);
+		putstr(tmpwin, 0, special ?
+		      "The Oracle scornfully takes all your money and says:" :
+		      "The Oracle meditates for a moment and then intones:");
+		putstr(tmpwin, 0, "");
+
+		while (fgets(line, COLNO, oracles) && strcmp(line,"---\n")) {
+			if ((endp = index(line, '\n')) != 0) *endp = 0;
+			putstr(tmpwin, 0, xcrypt(line));
 		}
-		cornline(2,"");
+		display_nhwindow(tmpwin, TRUE);
+		destroy_nhwindow(tmpwin);
 		(void) fclose(oracles);
 	} else {
 		pline("Can't open oracles file!");
-		oracle_size = -1;	/* don't try to open it again */
+		oracle_flg = -1;	/* don't try to open it again */
 	}
-#ifdef OS2_CODEVIEW
-	}
-#endif
 }
 
 int
 doconsult(oracl)
 register struct monst *oracl;
 {
-	register char ans;
+	int u_pay, minor_cost = 50, major_cost = 500 + 50 * u.ulevel;
+	int add_xpts;
+	char qbuf[QBUFSZ];
 
 	multi = 0;
-	(void) inshop();
 
-	if(!oracl) {
+	if (!oracl) {
 		pline("There is no one here to consult.");
-		return(0);
-	}
-	if(!oracl->mpeaceful) {
+		return 0;
+	} else if (!oracl->mpeaceful) {
 		pline("The Oracle is in no mood for consultations.");
-		return(0);
-	} else {
-		if(!u.ugold) {
-			You("have no money.");
-			return(0);
-		}
-		pline("\"Wilt thou settle for a minor consultation?\"  (50 zorkmids) ");
-		ans = ynq();
-		if(ans == 'y') {
-			if(u.ugold < 50) {
-			    You("don't even have enough money for that!");
-			    return(0);
-			}
-			u.ugold -= 50;
-			oracl->mgold += 50;
-			flags.botl = 1;
-			outrumor(1, FALSE);
-			return(1);
-		} else if(ans == 'q') return(0);
-		else {
-			pline("\"Then dost thou desire a major one?\"  (1000 zorkmids) ");
-			if (yn() != 'y') return(0);
-		}
-		if(u.ugold < 1000) {
-		pline("The Oracle scornfully takes all your money and says:");
-cornline(0,NULL);
-cornline(1,"\"...it is rather disconcerting to be confronted with the");
-cornline(1,"following theorem from [Baker, Gill, and Solovay, 1975].");
-cornline(1,"");
-cornline(1,"Theorem 7.18  There exist recursive languages A and B such that");
-cornline(1,"  (1)  P(A) == NP(A), and");
-cornline(1,"  (2)  P(B) != NP(B)");
-cornline(1,"");
-cornline(1,"This provides impressive evidence that the techniques that are");
-cornline(1,"currently available will not suffice for proving that P != NP or");
-cornline(1,"that P == NP.\"  [Garey and Johnson, p. 185.]");
-cornline(2,"");
-		    oracl->mgold += u.ugold;
-		    u.ugold = 0;
-		    flags.botl = 1;
-		    return(1);
-		}
-		u.ugold -= 1000;
-		oracl->mgold += 1000;
-		flags.botl = 1;
-		outoracle();
-		return(1);
+		return 0;
+	} else if (!u.ugold) {
+		You("have no money.");
+		return 0;
 	}
+
+	Sprintf(qbuf,
+		"\"Wilt thou settle for a minor consultation?\" (%d zorkmids)",
+		minor_cost);
+	switch (ynq(qbuf)) {
+	    default:
+	    case 'q':
+		return 0;
+	    case 'y':
+		if (u.ugold < (long)minor_cost) {
+		    You("don't even have enough money for that!");
+		    return 0;
+		}
+		u_pay = minor_cost;
+		break;
+	    case 'n':
+		if (u.ugold <= (long)minor_cost ||	/* don't even ask */
+		    (oracle_cnt == 1 || oracle_flg < 0)) return 0;
+		Sprintf(qbuf,
+			"\"Then dost thou desire a major one?\" (%d zorkmids)",
+			major_cost);
+		if (yn(qbuf) != 'y') return 0;
+		u_pay = (u.ugold < (long)major_cost ? (int)u.ugold
+						    : major_cost);
+		break;
+	}
+	u.ugold -= (long)u_pay;
+	oracl->mgold += (long)u_pay;
+	flags.botl = 1;
+	add_xpts = 0;	/* first oracle of each type gives experience points */
+	if (u_pay == minor_cost) {
+		outrumor(1, FALSE);
+		if (!u.uevent.minor_oracle)
+		    add_xpts = u_pay / (u.uevent.major_oracle ? 25 : 10);
+		    /* 5 pts if very 1st, or 2 pts if major already done */
+		u.uevent.minor_oracle = TRUE;
+	} else {
+		boolean cheapskate = u_pay < major_cost;
+		outoracle(cheapskate);
+		if (!cheapskate && !u.uevent.major_oracle)
+		    add_xpts = u_pay / (u.uevent.minor_oracle ? 25 : 10);
+		    /* ~100 pts if very 1st, ~40 pts if minor already done */
+		u.uevent.major_oracle = TRUE;
+		exercise(A_WIS, !cheapskate);
+	}
+	if (add_xpts) {
+		more_experienced(add_xpts, u_pay/50);
+		newexplevel();
+	}
+	return 1;
 }
 
-#endif
+/*rumors.c*/

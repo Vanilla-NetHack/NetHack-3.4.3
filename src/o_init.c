@@ -1,12 +1,8 @@
-/*	SCCS Id: @(#)o_init.c	3.0	88/07/06
+/*	SCCS Id: @(#)o_init.c	3.1	92/12/11	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include	"hack.h"		/* for typedefs */
-
-#if defined(LATTICE) 				/* This is NOT */
-# define MACOS					/* a typo! */
-#endif
 
 static void NDECL(setgemprobs);
 static void FDECL(shuffle,(int,int,BOOLEAN_P));
@@ -17,135 +13,113 @@ static boolean FDECL(interesting_to_discover,(int));
  * in the objects array
  */
 #define TOTAL_OBJS	(NROFOBJECTS+2)
-#ifdef MACOS
-short *switches;    /* used to allow position independent loads of app */
-		    /* by storing the number of the description string */
-		    /* [at startup of the game] not the pointer to the string */
-#endif
 
 const char obj_symbols[] = {
-	ILLOBJ_SYM, AMULET_SYM, FOOD_SYM, WEAPON_SYM, TOOL_SYM,
-	BALL_SYM, CHAIN_SYM, ROCK_SYM, ARMOR_SYM,
-	POTION_SYM, SCROLL_SYM, WAND_SYM,
-#ifdef SPELLS
-	SPBOOK_SYM,
-#endif
-	RING_SYM, GEM_SYM, 0 };
+	ILLOBJ_CLASS, AMULET_CLASS, GOLD_CLASS, FOOD_CLASS, WEAPON_CLASS,
+	TOOL_CLASS, BALL_CLASS, CHAIN_CLASS, ROCK_CLASS, ARMOR_CLASS,
+	POTION_CLASS, SCROLL_CLASS, WAND_CLASS,
+	SPBOOK_CLASS, RING_CLASS, GEM_CLASS, 0 };
 
-int NEARDATA bases[sizeof(obj_symbols)] = DUMMY;
-static int NEARDATA disco[TOTAL_OBJS] = DUMMY;
+static short NEARDATA disco[TOTAL_OBJS] = DUMMY;
 
 int
-letindex(let) register char let; {
+letindex(acls) register char acls; {
 register int i = 0;
 register char ch;
-	while((ch = obj_symbols[i++]) != 0)
-		if(ch == let) return(i);
+	while ((ch = obj_symbols[i++]) != 0)
+		if (ch == acls) return(i);
 	return(0);
 }
 
 static void
 setgemprobs()
 {
-	register int j,first;
-#ifdef STRONGHOLD
-	int lev = (dlevel > MAXLEVEL) ? MAXLEVEL : dlevel;
-#endif
+	register int j, first;
+	int lev = (ledger_no(&u.uz) > maxledgerno())
+				? maxledgerno() : ledger_no(&u.uz);
 
-	first = bases[letindex(GEM_SYM)];
+	first = bases[letindex(GEM_CLASS)];
 
-#ifdef STRONGHOLD
 	for(j = 0; j < 9-lev/3; j++)
-#else
-	for(j = 0; j < 9-dlevel/3; j++)
-#endif
 		objects[first+j].oc_prob = 0;
 	first += j;
-	if(first >= LAST_GEM || first > NROFOBJECTS ||
-	    objects[first].oc_olet != GEM_SYM ||
-	    objects[first].oc_name == NULL)
-		Printf("Not enough gems? - first=%d j=%d LAST_GEM=%d\n",
+	if (first > LAST_GEM || objects[first].oc_class != GEM_CLASS ||
+	    OBJ_NAME(objects[first]) == NULL) {
+		raw_printf("Not enough gems? - first=%d j=%d LAST_GEM=%d",
 			first, j, LAST_GEM);
-	for(j = first; j < LAST_GEM; j++)
-		objects[j].oc_prob = (184+j-first)/(LAST_GEM-first);
+		wait_synch();
+	    }
+	for (j = first; j <= LAST_GEM; j++)
+		objects[j].oc_prob = (184+j-first)/(LAST_GEM+1-first);
 }
 
 /* shuffle descriptions on objects o_low to o_high */
 static void
 shuffle(o_low, o_high, domaterial)
-
 	register int o_low, o_high;
 	register boolean domaterial;
 {
 	register int i, j;
-	const char *desc;
 #ifdef TEXTCOLOR
 	int color;
 #endif /* TEXTCOLOR */
-	int tmp;
-#ifdef MACOS
-	short	sw;
-#endif
+	register short sw;
 
-	for(j=o_low; j <= o_high; j++) {
+	for (j=o_low; j <= o_high; j++) {
 		i = o_low + rn2(j+1-o_low);
-		desc = objects[j].oc_descr;
-		objects[j].oc_descr = objects[i].oc_descr;
-		objects[i].oc_descr = desc;
+		sw = objects[j].oc_descr_idx;
+		objects[j].oc_descr_idx = objects[i].oc_descr_idx;
+		objects[i].oc_descr_idx = sw;
 #ifdef TEXTCOLOR
 		color = objects[j].oc_color;
 		objects[j].oc_color = objects[i].oc_color;
 		objects[i].oc_color = color;
 #endif /* TEXTCOLOR */
-		/* shuffle discovery list */
-		tmp = disco[j];
-		disco[j] = disco[i];
-		disco[i] = tmp;
 		/* shuffle material */
-		if(domaterial) {
-			tmp = objects[j].oc_material;
+		if (domaterial) {
+			sw = objects[j].oc_material;
 			objects[j].oc_material = objects[i].oc_material;
-			objects[i].oc_material = tmp;
+			objects[i].oc_material = sw;
 		}
-#ifdef MACOS
-		/* keep track of shuffling of object descriptions */
-		sw=switches[j];
-		switches[j]=switches[i];
-		switches[i]=sw;
-#endif
 	}
 }
 
 void
 init_objects(){
 register int i, j, first, last, sum, end;
-register char let;
+register char acls;
+#ifdef TEXTCOLOR
+# define COPY_OBJ_DESCR(o_dst,o_src) \
+			o_dst.oc_descr_idx = o_src.oc_descr_idx,\
+			o_dst.oc_color = o_src.oc_color
+#else
+# define COPY_OBJ_DESCR(o_dst,o_src) o_dst.oc_descr_idx = o_src.oc_descr_idx
+#endif
 
 	/* bug fix to prevent "initialization error" abort on Intel Xenix.
 	 * reported by mikew@semike
 	 */
-	for(i = 0; i != sizeof(obj_symbols); i++)
+	for (i = 0; i < sizeof(obj_symbols); i++)
 		bases[i] = 0;
-	for(i = 0; i != TOTAL_OBJS; i++)
-		disco[i] = i;
-#ifdef NAMED_ITEMS
-	init_exists();	/* zero out the "artifact exists" list */
-#endif
+	/* initialize object descriptions */
+	for (i = 0; i < TOTAL_OBJS; i++)
+		objects[i].oc_name_idx = objects[i].oc_descr_idx = i;
+	init_artifacts();
 	/* init base; if probs given check that they add up to 1000,
 	   otherwise compute probs; shuffle descriptions */
 	end = TOTAL_OBJS;
 	first = 0;
 	while( first < end ) {
-		let = objects[first].oc_olet;
+		acls = objects[first].oc_class;
 		last = first+1;
-		while(last < end && objects[last].oc_olet == let
-				 && objects[last].oc_name != NULL) last++;
-		i = letindex(let);
-		if((!i && let != ILLOBJ_SYM && let != '.') || bases[i] != 0)
-			error("initialization error for %c", let);
+		while (last < end && objects[last].oc_class == acls) last++;
+		i = letindex(acls);
+		if ((!i && acls != ILLOBJ_CLASS && acls != VENOM_CLASS) ||
+								bases[i] != 0)
+			error("initialization error for object class %d", acls);
 		bases[i] = first;
 
-		if(let == GEM_SYM) setgemprobs();
+		if (acls == GEM_CLASS) setgemprobs();
 	check:
 		sum = 0;
 		for(j = first; j < last; j++) sum += objects[j].oc_prob;
@@ -155,60 +129,49 @@ register char let;
 			goto check;
 		}
 		if(sum != 1000)
-			error("init-prob error for %c (%d%%)", let, sum);
+			error("init-prob error for %d (%d%%)", acls, sum);
 
-		if(objects[first].oc_descr != NULL &&
-		   let != TOOL_SYM && let != WEAPON_SYM && let != ARMOR_SYM) {
+		if (OBJ_DESCR(objects[first]) != NULL &&
+		   acls != TOOL_CLASS && acls != WEAPON_CLASS && acls != ARMOR_CLASS) {
 
-			/* shuffle, also some additional descriptions */
-			while(last < end && objects[last].oc_olet == let)
-				last++;
-			j = last;
-			if (let == GEM_SYM) {
-			    while(--j > first)
-				if(!strcmp(objects[j].oc_name,"turquoise")) {
-				    if(rn2(2)) { /* change from green? */
-					objects[j].oc_descr = blue;
-#ifdef TEXTCOLOR
-					objects[j].oc_color = BLUE;
-#endif
-				    }
-				} else if (!strcmp(objects[j].oc_name,"aquamarine")) {
-				    if(rn2(2)) { /* change from green? */
-					objects[j].oc_descr = blue;
-#ifdef TEXTCOLOR
-					objects[j].oc_color = BLUE;
-#endif
-				    }
-				} else if (!strcmp(objects[j].oc_name,"fluorite")) {
-				    switch (rn2(4)) { /* change from violet? */
-					case 0:  break;
-					case 1:
-					    objects[j].oc_descr = blue;
-#ifdef TEXTCOLOR
-					    objects[j].oc_color = BLUE;
-#endif
-					    break;
-					case 2:
-					    objects[j].oc_descr = white;
-#ifdef TEXTCOLOR
-					    objects[j].oc_color = WHITE;
-#endif
-					    break;
-					case 3:
-					    objects[j].oc_descr = green;
-#ifdef TEXTCOLOR
-					    objects[j].oc_color = GREEN;
-#endif
-					    break;
-					}
-				}
-			} else {
-			    if (let == AMULET_SYM || let == POTION_SYM)
-				j--;  /* THE amulet doesn't have description */
-			    /* and water is always "clear" - 3. */
-			    shuffle(first, --j, TRUE);
+		    /* shuffle, also some additional descriptions */
+		    while (last < end && objects[last].oc_class == acls)
+			last++;
+		    j = last;
+		    if (acls == GEM_CLASS) {
+			if (rn2(2)) { /* change turquoise from green to blue? */
+			    COPY_OBJ_DESCR(objects[TURQUOISE],objects[SAPPHIRE]);
 			}
+			if (rn2(2)) { /* change aquamarine from green to blue? */
+			    COPY_OBJ_DESCR(objects[AQUAMARINE],objects[SAPPHIRE]);
+			}
+			switch (rn2(4)) { /* change fluorite from violet? */
+			    case 0:  break;
+			    case 1:	/* blue */
+				COPY_OBJ_DESCR(objects[FLUORITE],objects[SAPPHIRE]);
+				break;
+			    case 2:	/* white */
+				COPY_OBJ_DESCR(objects[FLUORITE],objects[DIAMOND]);
+				break;
+			    case 3:	/* green */
+				COPY_OBJ_DESCR(objects[FLUORITE],objects[EMERALD]);
+				break;
+			}
+		    } else {
+			if (acls == POTION_CLASS)
+			    j--;  /* only water has a fixed description */
+			else if (acls == AMULET_CLASS ||
+				 acls == SCROLL_CLASS ||
+				 acls == SPBOOK_CLASS)
+			    do { j--; }
+			    while (!objects[j].oc_magic || objects[j].oc_unique);
+			/* non-magical amulets, scrolls, and spellbooks
+			 * (ex. imitation Amulets, blank, scrolls of mail)
+			 * and one-of-a-kind magical artifacts at the end of
+			 * their class in objects[] have fixed descriptions.
+			 */
+			shuffle(first, --j, TRUE);
+		    }
 		}
 		first = last;
 	}
@@ -222,8 +185,23 @@ register char let;
 	/* shuffle the cloaks */
 	shuffle(CLOAK_OF_PROTECTION, CLOAK_OF_DISPLACEMENT, FALSE);
 
-	/* shuffle the boots */
+	/* shuffle the boots [if they change, update find_skates() below] */
 	shuffle(SPEED_BOOTS, LEVITATION_BOOTS, FALSE);
+}
+
+/* find the object index for snow boots; used [once] by slippery ice code */
+int
+find_skates()
+{
+    register int i;
+    register const char *s;
+
+    for (i = SPEED_BOOTS; i <= LEVITATION_BOOTS; i++)
+	if ((s = OBJ_DESCR(objects[i])) != 0 && !strcmp(s, "snow boots"))
+	    return i;
+
+    impossible("snow boots not found?");
+    return -1;	/* not 0, or caller would try again each move */
 }
 
 void
@@ -238,27 +216,14 @@ register int fd;
 {
 	register int i;
 	unsigned int len;
-#ifdef MACOS
-	char	*descr[TOTAL_OBJS];
-#endif
-	const char *now = objects[0].oc_name; /* location of "strange object" */
-	bwrite(fd, (genericptr_t)&now, sizeof now);
-	bwrite(fd, (genericptr_t)bases, sizeof bases);
+
+	bwrite(fd, (genericptr_t)bases, MAXOCLASSES * sizeof *bases);
 	bwrite(fd, (genericptr_t)disco, sizeof disco);
-#ifdef MACOS
-	for (i = 0 ; i < TOTAL_OBJS; i++) {
-		descr[i] = objects[i].oc_descr;
-		objects[i].oc_descr = (const char *)switches[i];
-	}
-#endif
 	bwrite(fd, (genericptr_t)objects, sizeof(struct objclass) * TOTAL_OBJS);
 	/* as long as we use only one version of Hack we
 	   need not save oc_name and oc_descr, but we must save
 	   oc_uname for all objects */
 	for(i=0; i < TOTAL_OBJS; i++) {
-#ifdef MACOS
-		objects[i].oc_descr = descr[i];
-#endif
 		if(objects[i].oc_uname) {
 			len = strlen(objects[i].oc_uname)+1;
 			bwrite(fd, (genericptr_t)&len, sizeof len);
@@ -273,47 +238,11 @@ register int fd;
 {
 	register int i;
 	unsigned int len;
-	char *then;	/* old location of "strange object" */
-	register int differ;	/*(ptrdiff_t)*/
-#ifdef MACOS
-	/* provides position-independent save & restore */
-	/* by giving each object a number, keep track of it */
-	/* when shuffled and save the numbers instead of the */
-	/* description strings (which can change between */
-	/* executions of the program) */
-	/* On restore, the retrieved numbers are matched with the */
-	/* numbers and object descriptions in the program */
-	struct descr {
-		char	*name,
-				*descr;
-	} d[TOTAL_OBJS];
 
-	/* save the current object descriptions */
-	for (i = 0; i < TOTAL_OBJS; i++) {
-		d[i].name = objects[i].oc_name;
-		d[i].descr = objects[i].oc_descr;
-	}
-#endif
-	mread(fd, (genericptr_t) &then, sizeof then);
-	mread(fd, (genericptr_t) bases, sizeof bases);
+	mread(fd, (genericptr_t) bases, MAXOCLASSES * sizeof *bases);
 	mread(fd, (genericptr_t) disco, sizeof disco);
 	mread(fd, (genericptr_t) objects, sizeof(struct objclass) * TOTAL_OBJS);
-#ifdef MACOS
-	for (i = 0; i < TOTAL_OBJS; i++) {
-		objects[i].oc_name = d[i].name;
-		switches[i] = (short)objects[i].oc_descr;
-		objects[i].oc_descr = d[switches[i]].descr;
-	}
-#else
-	differ = objects[0].oc_name - then;	/* note: expected to be 0 */
-#endif	/* MACOS */
 	for(i=0; i < TOTAL_OBJS; i++) {
-#ifndef MACOS
-		if (differ && objects[i].oc_name)
-			objects[i].oc_name += differ;
-		if (differ && objects[i].oc_descr)
-			objects[i].oc_descr += differ;
-#endif /* MACOS */
 		if (objects[i].oc_uname) {
 			mread(fd, (genericptr_t) &len, sizeof len);
 			objects[i].oc_uname = (char *) alloc(len);
@@ -322,12 +251,59 @@ register int fd;
 	}
 }
 
+void
+discover_object(oindx, mark_as_known)
+register int oindx;
+boolean mark_as_known;
+{
+    if (!objects[oindx].oc_name_known) {
+	register int dindx, acls = objects[oindx].oc_class;
+
+	/* Loop thru disco[] 'til we find the target (which may have been
+	   uname'd) or the next open slot; one or the other will be found
+	   before we reach the next class...
+	 */
+	for (dindx = bases[letindex(acls)]; disco[dindx] != 0; dindx++)
+	    if (disco[dindx] == oindx) break;
+	disco[dindx] = oindx;
+
+	if (mark_as_known) {
+	    objects[oindx].oc_name_known = 1;
+	    exercise(A_WIS, TRUE);
+	}
+    }
+}
+
+/* if a class name has been cleared, we may need to purge it from disco[] */
+void
+undiscover_object(oindx)
+register int oindx;
+{
+    if (!objects[oindx].oc_name_known) {
+	register int dindx, acls = objects[oindx].oc_class;
+	register boolean found = FALSE;
+
+	/* find the object; shift those behind it forward one slot */
+	for (dindx = bases[letindex(acls)];
+	      dindx <= NROFOBJECTS && disco[dindx] != 0
+		&& objects[dindx].oc_class == acls; dindx++)
+	    if (found)
+		disco[dindx-1] = disco[dindx];
+	    else if (disco[dindx] == oindx)
+		found = TRUE;
+
+	/* clear last slot */
+	if (found) disco[dindx-1] = 0;
+	else impossible("named object not in disco");
+    }
+}
+
 static boolean
 interesting_to_discover(i)
 register int i;
 {
     return objects[i].oc_uname != NULL ||
-		(objects[i].oc_name_known && objects[i].oc_descr != NULL);
+		(objects[i].oc_name_known && OBJ_DESCR(objects[i]) != NULL);
 }
 
 int
@@ -336,24 +312,29 @@ dodiscovered()				/* free after Robert Viduya */
     register int i, dis;
     int	ct = 0;
     char class = -1;
+    winid tmpwin;
 
-    cornline(0, "Discoveries");
+    tmpwin = create_nhwindow(NHW_MENU);
+    putstr(tmpwin, 0, "Discoveries");
+    putstr(tmpwin, 0, "");
 
     for (i = 0; i <= NROFOBJECTS; i++) {
-	if (interesting_to_discover(dis = disco[i])) {
+	if ((dis = disco[i]) && interesting_to_discover(dis)) {
 	    ct++;
-	    if (objects[dis].oc_olet != class) {
-		class = objects[dis].oc_olet;
-		cornline(1, let_to_name(class));
+	    if (objects[dis].oc_class != class) {
+		class = objects[dis].oc_class;
+		putstr(tmpwin, ATR_INVERSE, let_to_name(class, FALSE));
 	    }
-	    cornline(1, typename(dis));
+	    putstr(tmpwin, 0, typename(dis));
 	}
     }
     if (ct == 0) {
 	You("haven't discovered anything yet...");
-	cornline(3, NULL);
     } else
-	cornline(2, NULL);
+	display_nhwindow(tmpwin, TRUE);
+    destroy_nhwindow(tmpwin);
 
     return 0;
 }
+
+/*o_init.c*/

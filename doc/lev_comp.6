@@ -1,9 +1,12 @@
-.TH LEV_COMP 6 "5 July 1989"
+.TH LEV_COMP 6 "29 Dec 1992"
 .UC 4
 .SH NAME
 lev_comp \- NetHack special levels compiler
 .SH SYNOPSIS
 .B lev_comp
+[
+.B \-w
+]
 [
 .I files
 ]
@@ -12,17 +15,22 @@ If no arguments are given, it reads standard input.
 .SH DESCRIPTION
 .PP
 .I Lev_comp
-is a special level compiler for NetHack version 3.0 and higher.  It
+is a special level compiler for NetHack version 3.1 and higher.  It
 takes description files as arguments and produces level files that can
 be loaded by NetHack at runtime.
 .PP
 The purpose of this tool is to provide NetHack administrators and
 implementors with a convenient way for adding special levels to the
 game, or modifying existing ones, without having to recompile the
-entire world.  At this time, the special levels code is not fully
-implemented, as the decision to load the special levels is hard-coded
-in the game.  In a future release, it is expected to be a run-time
-decision.
+entire world.
+.PP
+The
+.B \-w
+option causes
+.I lev_comp
+to perform extra checks on the level and display extra warnings, however
+these warnings are sometimes superfluous, so they are not normally displayed.
+
 .SH GRAMMAR
 .PP
 .LP
@@ -33,60 +41,168 @@ file		: /* nothing */
 		| levels
 
 levels		: level
-		| levels level
+		| level levels
 
 level		: maze_level
+    		| room_level
 
-maze_level	: maze_definition regions
+maze_level	: maze_def flags lev_init messages regions
 
-maze_definition	: "MAZE" ':' filename
+room_level	: level_def flags lev_init messages
+		  rreg_init rooms corridors_def
 
-filename	: STRING
+level_def	: "LEVEL" ':' string
 
-regions		: region
-		| regions region
+lev_init	: /* nothing */
+		| "INIT_MAP" ':' fgtyp ',' bgtyp ',' smooth ','
+		  joined ',' light_state ',' walled
 
-region		: map_definition reg_initialization map_details
+fgtyp		: CHAR /* a MAP map_contents character */
 
-map_definition	: map_geometry map
+bgtyp		: CHAR /* a MAP map_contents character */
 
-map_geometry	: "GEOMETRY" ':' hjustif ',' vjustif
+smooth		: boolean
 
-hjustif		: "left" | "center" | "right"
+joined		: boolean
 
-vjustif		: "top" | "center" | "bottom"
+walled		: boolean | "random"
 
-map		: "MAP\\n" map_lines "ENDMAP"
+flags		: /* nothing */
+		| "FLAGS" ':' flag_list
 
-map_lines	: map_line
-		| map_lines map_line
+flag_list	: flag_type
+		| flag_type ',' flag_list
 
-map_line	: map_chars '\\n'
+flag_type	: "noteleport" | "hardfloor" | "nommap"  | "shortsighted"
 
-map_chars	: map_char
-		| map_chars map_char
+messages	: /* nothing */
+		| message messages
 
-map_char	: '-' | '|' | '{' | '}' | '+' | 'S'
-		| 'K' | '\\' | '#' | '.' | ' '
+message		: "MESSAGE" ':' STRING
 
-reg_initialization : /* nothing */
-		   | reg_initialization init_reg
+rreg_init	: /* nothing */
+		| rreg_init init_rreg
+
+init_rreg	: "RANDOM_OBJECTS" ':' object_list
+		| "RANDOM_MONSTERS" ':' monster_list
+
+rooms		: /* nothing */
+		| roomlist
+
+roomlist	: aroom
+		| aroom rooms
+
+corridors_def	: random_corridors
+		| corridors
+
+random_corridors: "RANDOM_CORRIDOR"
+
+corridors	: /* nothing */
+		| corridors corridor
+
+corridor	: "CORRIDOR" ':' corr_spec ',' corr_spec
+		| "CORRIDOR" ':' corr_spec ',' INTEGER
+
+corr_spec	: '(' INTEGER ',' direction ',' door_pos ')'
+
+direction	: "north" | "south" | "east" | "west"
+
+aroom		: room_def room_details
+		| subroom_def room_details
+
+subroom_def	: "SUBROOM" ':' room_type ',' light_state ','
+		  subroom_pos ',' room_size ',' string
+
+room_def	: "ROOM" ':' room_type ',' light_state ','
+		  room_pos ',' room_align ',' room_size
+
+room_pos	: '(' INTEGER ',' INTEGER ')'
+		| "random"
+
+subroom_pos	: '(' INTEGER ',' INTEGER ')'
+		| "random"
+
+room_align	: '(' h_justif ',' v_justif ')'
+		| "random"
+
+room_size	: '(' INTEGER ',' INTEGER ')'
+		| "random"
+
+room_details	: /* nothing */
+		| room_details room_detail
+
+room_detail	: room_name
+		| room_chance
+		| room_door
+		| monster_detail
+		| object_detail
+		| trap_detail
+		| altar_detail
+		| fountain_detail
+		| sink_detail
+		| pool_detail
+		| gold_detail
+		| engraving_detail
+		| stair_detail
+
+room_name	: "NAME" ':' string
+
+room_chance	: "CHANCE" ':' INTEGER
+
+room_door	: "DOOR" ':' secret ',' door_state ','
+		  door_wall ',' door_pos
+
+secret		: boolean
+		| "random"
+
+door_wall	: direction
+		| "random"
+
+door_pos	: INTEGER
+		| "random"
+
+boolean		: "true" | "false"
+
+maze_def	: "MAZE" ':' string ',' filling
+
+filling		: CHAR
+		| "random"
+regions 	: aregion
+		| aregion regions
+
+aregion 	: map_definition reg_init map_details
+
+map_definition	: "NOMAP"
+		| map_geometry "MAP" map_contents "ENDMAP"
+
+map_geometry	: "GEOMETRY" ':' h_justif ',' v_justif
+
+map_contents	: /* see discussion below */
+
+h_justif	: "left" | "half-left" | "right" | "half-right"
+		| "center"
+
+v_justif	: "top" | "bottom"
+		| "center"
+
+reg_init	: /* nothing */
+		| reg_init init_reg
 
 init_reg	: "RANDOM_OBJECTS" ':' object_list
 		| "RANDOM_PLACES" ':' place_list
 		| "RANDOM_MONSTERS" ':' monster_list
 
 object_list	: object
-		| object_list ',' object
-
-place_list	: place
-		| place_list ',' place
+		| object ',' object_list
 
 monster_list	: monster
-		| monster_list ',' monster
+		| monster ',' monster_list
+
+place_list	: place
+		| place ',' place_list
 
 map_details	: /* nothing */
-		: map_details map_detail
+		| map_details map_detail
 
 map_detail	: monster_detail
 		| object_detail
@@ -94,68 +210,145 @@ map_detail	: monster_detail
 		| trap_detail
 		| drawbridge_detail
 		| region_detail
+		| stair_region
+		| portal_region
+		| teleprt_region
+		| branch_region
 		| altar_detail
+		| fountain_detail
 		| mazewalk_detail
+                | wallify_detail
 		| ladder_detail
+		| stair_detail
+		| gold_detail
+		| engraving_detail
 		| diggable_detail
 
 monster_detail	: "MONSTER" ':' monster_c ',' m_name ',' coordinate
+		  monster_infos
+
+monster_infos	: /* nothing */
+		| monster_infos monster_info
+
+monster_info	: ',' string
+		| ',' mon_attitude
+		| ',' mon_alertness
+		| ',' alignment
+		| ',' "m_feature" string
+		| ',' "m_monster" string
+		| ',' "m_object" string
+
+mon_attitude	: "peaceful" | "hostile"
+
+mon_alertness	: "asleep" | "awake"
 
 object_detail	: "OBJECT" ':' object_c ',' o_name ',' coordinate
+		  object_infos
+
+object_infos	: /* nothing */
+		| ',' STRING ',' enchantment
+    		| ',' curse_state ',' enchantment ',' art_name
+
+curse_state	: "random"
+		| "blessed" | "uncursed" | "cursed"
+
+enchantment	: INTEGER
+		| "random"
 
 door_detail	: "DOOR" ':' door_state ',' coordinate
 
 trap_detail	: "TRAP" ':' trap_name ',' coordinate
 
-drawbridge_detail : "DRAWBRIDGE" ':' coordinate ',' direction ',' open
+drawbridge_detail: "DRAWBRIDGE" ':' coordinate ','
+		  direction ',' door_state
 
 mazewalk_detail	: "MAZEWALK" ':' coordinate ',' direction
 
+wallify_detail	: "WALLIFY"
+
 ladder_detail	: "LADDER" ':' coordinate ',' up_or_down
 
-diggable_detail	: "NON_DIGGABLE" ':' rectangle
+stair_detail	: "STAIR" ':' coordinate ',' up_or_down
+
+stair_region	: "STAIR" ':' lev_region ',' lev_region ',' up_or_down
+
+up_or_down:	: "up" | "down"
+
+portal_region	: "PORTAL" ':' lev_region ',' lev_region ',' string
+
+teleprt_region	: "TELEPORT_REGION" ':' lev_region
+		  ',' lev_region teleprt_detail
+
+branch_region	: "BRANCH" ':' lev_region ',' lev_region
+
+teleprt_detail	: /* empty */
+		| ',' up_or_down
+
+lev_region	: region
+		| "levregion"
+		  '(' INTEGER ',' INTEGER ',' INTEGER ',' INTEGER ')'
+
+fountain_detail	: "FOUNTAIN" ':' coordinate
+
+sink_detail	: "SINK" ':' coordinate
+
+pool_detail	: "POOL" ':' coordinate
+
+diggable_detail	: "NON_DIGGABLE" ':' region
+
+region_detail	: "REGION" ':' region ',' light_state ','
+		  room_type prefilled
 
 altar_detail	: "ALTAR" ':' coordinate ',' alignment ',' altar_type
 
-region_detail	: "REGION" ':' rectangle ',' light_state ',' room_type
+gold_detail	: "GOLD" ':' amount ',' coordinate
 
-monster_c	: CHAR
+engraving_detail: "ENGRAVING" ':' coordinate ','
+		  engraving_type ',' string
+
+monster_c	: monster
 		| "random"
 		| m_register
 
-object_c	: CHAR
+object_c	: object
 		| "random"
 		| o_register
 
-m_name		: STRING
+m_name		: string
 		| "random"
 
-o_name		: STRING
+o_name		: string
 		| "random"
 
-trap_name	: STRING
+trap_name	: string
+		| "random"
+
+room_type	: string
+		| "random"
+
+prefilled	: /* empty */
+		| ',' filling
+		| ',' filling ',' irregular
+
+filling		: "filled" | "unfilled"
+
+irregular	: boolean /* irregular shaped room around region */
+
+coordinate	: coord
+		| p_register
+		| "random"
+
+door_state	: "open" | "closed" | "locked" | "nodoor" | "broken"
 		| "random"
 
 light_state	: "lit" | "unlit"
 		| "random"
 
-room_type	: STRING
-		| "random"
-
-coordinate	: place
-		| p_register
-		| "random"
-
-door_state	: "open" | "closed" | "locked" | "broken" | "nodoor"
-		| "random"
-
-open_or_closed	: "open" | "closed"
-
-alignment	: "law" | "neutral" | "chaos"
+alignment	: "noalign" | "law" | "neutral" | "chaos"
 		| a_register
 		| "random"
 
-altar_type	: "shrine" | "altar"
+altar_type	: "sanctum" | "shrine" | "altar"
 		| "random"
 
 p_register	: "place" '[' INTEGER ']'
@@ -164,24 +357,69 @@ o_register	: "object" '[' INTEGER ']'
 
 m_register	: "monster" '[' INTEGER ']'
 
-a_register	: "altar" '[' { 0 | 1 | 2 } ']'
+a_register	: "align" '[' INTEGER ']'
 
-place		: '(' INTEGER ',' INTEGER ')'
+place		: coord
 
-rectangle	: '(' INTEGER ',' INTEGER ',' INTEGER ',' INTEGER ')'
+monster 	: CHAR
+
+object		: CHAR
+
+string		: STRING
+
+art_name	: STRING
+		| "none"
+
+amount		: INTEGER
+		| "random"
+
+engraving_type	: "dust" | "engrave" | "burn" | "mark"
+		| "random"
+
+coord		: '(' INTEGER ',' INTEGER ')'
+
+region		: '(' INTEGER ',' INTEGER ',' INTEGER ',' INTEGER ')'
 .fi
 .PP
 .I NOTE:
 .br
 Lines beginning with '#' are considered comments.
-
+.PP
+The contents of a "MAP" description of a maze is a rectangle showing the exact
+level map that should be used for the given part of a maze.
+Each character in the map corresponds to a location on the screen.
+Different location types are denoted using different ASCII characters.
+The following characters are recognized.
+To give an idea of how these are used, see the EXAMPLE, below.
+The maximum size of a map is normally 76 columns by 21 rows.
+.LP
+.nf
+.ta +8n +8n +8n
+\&'-'	horizontal wall
+\&'|'	vertical wall
+\&'+'	a doorway (state is specified in a DOOR declaration)
+\&'A'	open air
+\&'B'	boundary room location (for bounding unwalled irregular regions)
+\&'C'	cloudy air
+\&'I'	ice
+\&'S'	a secret door
+\&'{'	a fountain
+\&'\\'	a throne
+\&'K'	a sink (if SINKS is defined, else a room location)
+\&'}'	a part of a moat or other deep water
+\&'P'	a pool
+\&'L'	lava
+\&'#'	a corridor
+\&'.'	a normal room location (unlit unless lit in a REGION declaration)
+\&' '	stone
+.fi
 .SH EXAMPLE
 .PP
 Here is an example of a description file (a very simple one):
 .LP
 .nf
 .ta +8n +8n +8n
-MAZE : "fortress"
+MAZE : "fortress", random
 GEOMETRY : center , center
 MAP
 }}}}}}}}}
@@ -209,14 +447,26 @@ TRAP: random, (6,4)
 MONSTER: ';', "electric eel", (4,8)
 # make the walls non-diggable
 NON_DIGGABLE: (0,0,8,8)
+TELEPORT_REGION: lev_region(0,0,79,20), (0,0,8,8)
 .fi
 .PP
 This example will produce a file named "fortress" that can be integrated into
 one of the numerous mazes of the game.
-
+.PP
+Note especially the final, TELEPORT_REGION specification.  This says
+that level teleports or other non-stairway arrivals on this level can
+land anywhere on the level except the area of the map.  This shows the
+use of the ``lev_region'' prefix allowed in certain region specifications.
+Normally, regions apply only to the most recent MAP specification, but
+when prefixed with ``lev_region'', one can refer to any area of the
+level, regardless of the placement of the current MAP in the level.
 .SH AUTHOR
 .PP
-Jean-Christophe Collet.
+Jean-Christophe Collet, David Cohrs.
+.SH "SEE ALSO"
+.PP
+dgn_comp(6), nethack(6)
 .SH BUGS
 .PP
 Probably infinite.
+Most importantly, still needs additional bounds checking.

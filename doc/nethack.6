@@ -88,9 +88,13 @@ The
 .B \-u
 .I playername
 option supplies the answer to the question "Who are you?".
-It overrides any name from NETHACKOPTIONS, USER, LOGNAME, or getlogin(),
-which will otherwise be tried in order.
+It overrides any name from NETHACKOPTIONS, HACKOPTIONS, USER, LOGNAME,
+or getlogin(), which will otherwise be tried in order.
 If none of these provides a useful name, the player will be asked for one.
+Player names (in conjunction with uids) are used to identify save files,
+so you can have several saved games under different names.
+Conversely, you must use the appropriate player name to restore a saved game.
+.PP
 A
 .I playername
 suffix or a separate option consisting of one of
@@ -125,8 +129,9 @@ The
 .B \-d
 option, which must be the first argument if it appears,
 supplies a directory which is to serve as the playground.
-It overrides the value from HACKDIR or the directory specified by the game
-administrator during compilation (usually /usr/games/lib/nethackdir).
+It overrides the value from NETHACKDIR, HACKDIR,
+or the directory specified by the game administrator during compilation
+(usually /usr/games/lib/nethackdir).
 This option is usually only useful to the game administrator.
 The playground must contain several auxiliary files such as help files,
 the list of top scorers, and a subdirectory
@@ -154,18 +159,20 @@ distinction, as he may eventually release a new version of his own.
 All files are in the playground, normally /usr/games/lib/nethackdir.
 .br
 .DT
-.ta \w'tower1, tower2, tower3\ \ \ 'u
+.ta \w'cmdhelp, opthelp, wizhelp\ \ \ 'u
 nethack		The program itself.
 .br
 data, oracles, rumors	Data files used by NetHack.
 .br
+options, quest.dat	More data files.
+.br
 help, hh	Help data files.
 .br
-cmdhelp, opthelp	More help data files.
+cmdhelp, opthelp, wizhelp	More help data files.
 .br
-castle, endgame	Predefined special levels.
+*.lev	Predefined special levels.
 .br
-tower1, tower2, tower3	More special levels.
+dungeon	Control file for special levels.
 .br
 history	A short history of NetHack.
 .br
@@ -173,25 +180,23 @@ license	Rules governing redistribution.
 .br
 record	The list of top scorers.
 .br
-logfile	An extended list of games played.
+logfile	An extended list of games
 .br
-save	A subdirectory containing the saved
+	played.
 .br
-	games.
+xlock.nnn	Description of a dungeon level.
 .br
-bones.dd	Descriptions of the ghost and
+perm	Lock file for xlock.dd.
+.br
+bonesDD.nn	Descriptions of the ghost and
 .br
 	belongings of a deceased
 .br
 	adventurer.
 .br
-xlock.dd	Description of a dungeon level.
+save	A subdirectory containing the
 .br
-perm, safelock	Lock files for xlock.dd.
-.br
-record_lock	Lock file for record.
-.br
-logfile_lock	Lock file for logfile.
+	saved games.
 .SH ENVIRONMENT
 .DT
 .ta \w'HACKPAGER or PAGER\ \ \ 'u
@@ -211,7 +216,7 @@ MAILREADER	Replacement for default reader
 .br
 	(probably /bin/mail or /usr/ucb/mail).
 .br
-HACKDIR	Playground.
+NETHACKDIR	Playground.
 .br
 NETHACKOPTIONS	String predefining several NetHack
 .br
@@ -219,6 +224,9 @@ NETHACKOPTIONS	String predefining several NetHack
 .br
 
 In addition, SHOPTYPE is used in debugging (wizard) mode.
+.SH "SEE ALSO"
+.PP
+dgn_comp(6), lev_comp(6), recover(6)
 .SH BUGS
 .PP
 Probably infinite.

@@ -1,6 +1,6 @@
-/*
- *  amiwind.c	(C) Copyright 1989 by Olaf Seibert (KosmoSoft)
- */
+/*    SCCS Id: @(#)amiwind.c     3.1    93/01/08
+/*    Copyright (c) Olaf Seibert (KosmoSoft), 1989, 1992	  */
+/*    Copyright (c) Kenneth Lorber, Bethesda, Maryland 1993	  */
 /* NetHack may be freely redistributed.  See license for details. */
 
 /*
@@ -9,11 +9,10 @@
  */
 
 #include "hack.h"
+#include "winami.h"
 
-#undef TRUE
-#undef FALSE
-#undef COUNT
-#undef NULL
+/* Have to undef CLOSE as display.h and intuition.h both use it */
+#undef CLOSE
 
 #include <exec/types.h>
 #include <exec/alerts.h>
@@ -22,117 +21,117 @@
 #include <devices/console.h>
 #include <devices/conunit.h>
 #include <intuition/intuition.h>
+#include <intuition/intuitionbase.h>
 #include <libraries/dosextens.h>
 
-#ifdef LATTICE
-#include <dos.h>
-#include <proto/exec.h>
-#include <proto/graphics.h>
-#include <proto/intuition.h>
-#include <proto/diskfont.h>
-#include <proto/console.h>
+#ifdef __SASC
+# undef COUNT
+
+# include <dos.h>       /* for __emit */
+# include <string.h>
+# include <proto/dos.h>
+# include <proto/exec.h>
+
+/* kludge - see amirip for why */
+# undef red
+# undef green
+# undef blue
+# undef index
+# include <proto/graphics.h>
+
+# include <proto/intuition.h>
+# include <proto/diskfont.h>
+# include <proto/console.h>
 #endif
+
+#undef  NULL
+#define NULL    0L
 
 #include "Amiga:amimenu.c"
 
-/*
- * Versions we need of various libraries.  We can't use LIBRARY_VERSION
- * as defined in <exec/types.h> because some of the libraries we need
- * don't have that version number in the 1.2 ROM.
- */
-
-#define INTUITION_VERSION 33L
-#define GRAPHICS_VERSION  33L
-#define DISKFONT_VERSION  34L
-#define ICON_VERSION	  34L
-
 /*  First, external declarations... */
 
-extern struct Library *IconBase;
 struct Library *ConsoleDevice;
 
-#ifdef AZTEC_C
-void FDECL(Alert, (long, char *));
-void NDECL(Forbid);
-void NDECL(Permit);
-struct Process *FDECL(FindTask, (char *));
-struct Library *FDECL(OpenLibrary, (char *, long));
-void FDECL(CloseLibrary, (struct Library *));
-struct Message *FDECL(GetMsg, (struct MsgPort *));
-void FDECL(ReplyMsg, (struct Message *));
-long FDECL(OpenDevice, (char *, long, struct IORequest *, long));
-void FDECL(CloseDevice, (struct IORequest *));
-long FDECL(DoIO, (struct IORequest *));
-struct TextFont *FDECL(OpenDiskFont, (struct TextAttr *));
-struct TextFont *FDECL(OpenFont, (struct TextAttr *));
-void FDECL(CloseFont, (struct TextFont *));
-void FDECL(LoadRGB4, (struct ViewPort *, unsigned short *, long));
-long FDECL(SetFont, (struct RastPort *, struct TextFont*));
-struct MsgPort *FDECL(CreatePort, (char *, long));
-void FDECL(DeletePort, (struct MsgPort *));
-struct Screen *FDECL(OpenScreen, (struct NewScreen *));
-struct Window *FDECL(OpenWindow, (struct NewWindow *));
-void FDECL(CloseWindow, (struct Window *));
-void FDECL(SetMenuStrip, (struct Window *, struct Menu *));
-void FDECL(ClearMenuStrip, (struct Window *));
-struct MenuItem *FDECL(ItemAddress, (struct Menu *, long));
-long FDECL(RawKeyConvert, (struct InputEvent *, char *, long, struct KeyMap *));
+#ifdef AZTEC_50
+# include <functions.h>
 #endif
 
-static int NDECL(BufferGetchar);
-static void FDECL(ConvertKey, (register struct IntuiMessage *));
-static void FDECL(ProcessMessage, (register struct IntuiMessage *));
+#ifdef  INTUI_NEW_LOOK
+#define NewWindow ExtNewWindow
+#endif
+
+#include "Amiga:winami.p"
+#include "Amiga:amiwind.p"
+#include "Amiga:amidos.p"
+
+static int BufferGetchar(void);
+static void ProcessMessage( register struct IntuiMessage *message );
+
 #ifdef AMIFLUSH
 static struct Message *FDECL(GetFMsg,(struct MsgPort *));
 #endif
-void NDECL(Initialize);
 
 /*  Now our own variables */
 
-struct Library *IntuitionBase;
+struct IntuitionBase *IntuitionBase;
 struct Screen *HackScreen;
-struct Window *HackWindow;
 struct Window *pr_WindowPtr;
+struct MsgPort *HackPort;
 struct IOStdReq ConsoleIO;
 char Initialized = 0;
+WEVENT lastevent;
 
 #ifdef HACKFONT
-struct Library *GfxBase;
+struct GfxBase *GfxBase;
 struct Library *DiskfontBase;
 #endif
 
 extern struct Library *ConsoleDevice;
 
-#define CSI	    '\x9b'
+#define CSI     '\x9b'
 #define NO_CHAR     -1
-#define RAWHELP     0x5F	/* Rawkey code of the HELP key */
-
-/*
- *  It is assumed that all multiple-character outputs are
- *  at most CONBUFFER characters each.
- */
-
-#define CONBUFFER   512
-static char ConsoleBuffer[CONBUFFER];
-static unsigned short Buffered;
+#define RAWHELP     0x5F    /* Rawkey code of the HELP key */
 
 #define KBDBUFFER   10
 static unsigned char KbdBuffer[KBDBUFFER];
-static unsigned char KbdBuffered;
+unsigned char KbdBuffered;
 
-#define BufferQueueChar(ch) (KbdBuffer[KbdBuffered++] = ch)
+#define BufferQueueChar(ch) (KbdBuffer[KbdBuffered++] = (ch))
 
 /*
- *  It seems Intuition won't OpenDiskFont our diskFont, so we get the
- *  closest match, which is of course topaz/8. (and if not, it is still
- *  an 8-pixel font, so everything still looks ok)
+ * Define some stuff for our special glyph drawing routines
  */
+static unsigned short glyph_node_index, glyph_buffer_index;
+#define NUMBER_GLYPH_NODES  80
+#define GLYPH_BUFFER_SIZE   512
+struct glyph_node {
+    short	x;
+    short	y;
+    short	len;
+    unsigned char   bg_color;
+    unsigned char   fg_color;
+    char	*buffer;
+};
+static struct glyph_node g_nodes[NUMBER_GLYPH_NODES];
+static char glyph_buffer[GLYPH_BUFFER_SIZE];
+
+#ifdef TEXTCOLOR
+/*
+ * Map our amiga-specific colormap into the colormap specified in color.h.
+ * See amiwind.c for the amiga specific colormap.
+ */
+
+int foreg[16] = { 0, 7, 4, 2, 6, 5, 3, 1, 1, 0, 0, 0, 0, 0, 0, 0 };
+int backg[16] = { 1, 0, 0, 0, 0, 0, 0, 0, 0, 7, 4, 1, 6, 5, 3, 1 };
+#endif
 
 #ifdef HACKFONT
 
 struct TextFont *HackFont;
 UBYTE FontName[] = "NetHack:hack.font";
-#define 	    SIZEOF_DISKNAME	8
+    /* # chars in "NetHack:": */
+#define         SIZEOF_DISKNAME 8
 
 #endif
 
@@ -145,64 +144,69 @@ struct TextAttr Hack80 = {
     TOPAZ_EIGHTY, FS_NORMAL, FPF_DISKFONT | FPF_ROMFONT
 };
 
-#define BARHEIGHT	11
-#define WINDOWHEIGHT	192
-#define WIDTH		640
+/*
+ * Open a window that shares the HackPort IDCMP. Use CloseShWindow()
+ * to close.
+ */
 
-#ifdef TEXTCOLOR
-#define DEPTH       3
-static unsigned short palette[] = {
-	0x0000,	/* Black   */
-	0x0DDD, /* White   */
-    	0x0C75, /* Brown   */
-	0x0B08,	/* Cyan    */
-	0x00B0,	/* Green   */
-	0x0F08,	/* Magenta */
-	0x055F,	/* Blue    */
-	0x0F00,	/* Red     */
-};
-#else
-#define DEPTH		2
-#endif
+struct Window *OpenShWindow(nw)
+struct NewWindow *nw;
+{
+    register struct Window *win;
+    register ULONG idcmpflags;
 
-struct NewScreen NewHackScreen = {
-    0, 0, WIDTH, BARHEIGHT + WINDOWHEIGHT, DEPTH,
-    0, 1,     /* DetailPen, BlockPen */
-    HIRES,
-    CUSTOMSCREEN,
-    &Hack80,  /* Font */
-    (UBYTE *) " NetHack 3.0 - Ported by Olaf Seibert (KosmoSoft)",
-    NULL,     /* Gadgets */
-    NULL,     /* CustomBitmap */
-};
+    if (!HackPort)  /* Sanity check */
+	return (struct Window *) 0;
 
-struct NewWindow NewHackWindow = {
-    /* left, top, width, height, detailpen, blockpen */
-    0, BARHEIGHT, WIDTH, WINDOWHEIGHT, -1, -1,
-    RAWKEY | MENUPICK
-#ifdef MAIL
-		      | DISKINSERTED
-#endif
-    , BORDERLESS | BACKDROP | ACTIVATE,
-    NULL, NULL, NULL,
-    NULL, NULL, -1,-1,-1,-1, CUSTOMSCREEN
-};
+    idcmpflags = nw->IDCMPFlags;
+    nw->IDCMPFlags = 0;
+    if (!(win = OpenWindow((void *)nw)))
+	return (struct Window *) 0;
+
+    win->UserPort = HackPort;
+    ModifyIDCMP(win, idcmpflags);
+    return win;
+}
+
+
+/*
+ * Close a window that shared the HackPort IDCMP port.
+ */
+
+void FDECL(CloseShWindow, (struct Window *));
+void CloseShWindow(win)
+struct Window *win;
+{
+    register struct IntuiMessage *msg, *nxt;
+
+    if( !HackPort )
+	panic("HackPort NULL in CloseShWindow" );
+    if (!win)
+	return;
+
+    Forbid();
+    /* Flush all messages for all windows to avoid typeahead and other
+     * similar problems...
+     */
+    while( msg = (struct IntuiMessage *)GetMsg( win->UserPort ) )
+	ReplyMsg( (struct Message *) msg );
+    KbdBuffered = 0;
+    win->UserPort = (struct MsgPort *) 0;
+    ModifyIDCMP(win, 0L);
+    Permit();
+    CloseWindow(win);
+}
 
 static int BufferGetchar()
 {
-    register unsigned char *from, *to;
     register int c;
-    register short i;
 
-    if (KbdBuffered) {
+    if (KbdBuffered > 0) {
 	c = KbdBuffer[0];
 	KbdBuffered--;
-	to = KbdBuffer;
-	from = to + 1;
 	/* Move the remaining characters */
-	for (i = KbdBuffered; i > 0; i--) {
-	    *to++ = *from++;
-	}
+	if( KbdBuffered < sizeof( KbdBuffer ) )
+	    memcpy( KbdBuffer, KbdBuffer+1, KbdBuffered );
 	return c;
     }
 
@@ -210,18 +214,17 @@ static int BufferGetchar()
 }
 
 /*
- *  This should remind you remotely of DeadKeyConvert,
- *  but we are cheating a bit.
- *  We want complete control over the numeric keypad, and no
- *  dead keys... (they are assumed to be on Alted keys)
- *  Also assumed is that the IntuiMessage is of type RAWKEY.
- *  For some reason, IECODE_UP_PREFIX events seem to be lost when they
- *  occur while our console window is inactive. This is particulary
- *  troublesome with qualifier keys... Is this because I never
- *  RawKeyConvert those events???
+ *  This should remind you remotely of DeadKeyConvert, but we are cheating
+ *  a bit. We want complete control over the numeric keypad, and no dead
+ *  keys... (they are assumed to be on Alted keys).
+ *
+ *  Also assumed is that the IntuiMessage is of type RAWKEY.  For some
+ *  reason, IECODE_UP_PREFIX events seem to be lost when they  occur while
+ *  our console window is inactive. This is particulary  troublesome with
+ *  qualifier keys... Is this because I never RawKeyConvert those events???
  */
 
-static void ConvertKey(message)
+int ConvertKey(message)
 register struct IntuiMessage *message;
 {
     static struct InputEvent theEvent;
@@ -230,63 +233,73 @@ register struct IntuiMessage *message;
     static char shift_numpad[] = "BJNH.LYKU";
 
     unsigned char buffer[1];
-    register char length;
-    register ULONG qualifier = message->Qualifier;
+    register int length;
+    register ULONG qualifier;
     char numeric_pad, shift, control, alt;
+
+    qualifier = message->Qualifier;
 
     control = (qualifier &  IEQUALIFIER_CONTROL) != 0;
     shift   = (qualifier & (IEQUALIFIER_LSHIFT | IEQUALIFIER_RSHIFT)) != 0;
     alt     = (qualifier & (IEQUALIFIER_LALT   | IEQUALIFIER_RALT  )) != 0;
+
     /* Allow ALT to function as a META key ... */
+
     qualifier &= ~(IEQUALIFIER_LALT | IEQUALIFIER_RALT);
     numeric_pad = (qualifier & IEQUALIFIER_NUMERICPAD) != 0;
 
     /*
-     *	Shortcut for HELP and arrow keys. I suppose this is allowed.
-     *	The defines are in intuition/intuition.h, and the keys don't
-     *	serve 'text' input, normally. Also, parsing their escape
-     *	sequences is such a mess...
+     *  Shortcut for HELP and arrow keys. I suppose this is allowed.
+     *  The defines are in intuition/intuition.h, and the keys don't
+     *  serve 'text' input, normally. Also, parsing their escape
+     *  sequences is such a mess...
      */
 
     switch (message->Code) {
-    case RAWHELP:
-	length = '?';
-	goto no_arrow;
-    case CURSORLEFT:
-	length = 'h'; goto arrow;
-    case CURSORDOWN:
-	length = 'j'; goto arrow;
-    case CURSORUP:
-	length = 'k'; goto arrow;
-    case CURSORRIGHT:
-	length = 'l';
-    arrow:
-	if (!flags.num_pad)	/* Give digits if set, letters otherwise */
-	    goto wasarrow;
-    no_arrow:
-	BufferQueueChar(length);
-	return;
+	case RAWHELP:
+	    if( alt )
+	    {
+		EditColor();
+		return( -1 );
+	    }
+	    return( '?' );
+	    break;
+	case CURSORLEFT:
+	    length = '4';
+	    numeric_pad = 1;
+	    goto arrow;
+	case CURSORDOWN:
+	    length = '2';
+	    numeric_pad = 1;
+	    goto arrow;
+	case CURSORUP:
+	    length = '8';
+	    numeric_pad = 1;
+	    goto arrow;
+	case CURSORRIGHT:
+	    length = '6';
+	    numeric_pad = 1;
+	    goto arrow;
     }
-
-#ifdef BETA
-    if (!ConsoleDevice) { /* Should never happen */
-	Abort(AG_IOError | AO_ConsoleDev);
-	return;
-    }
-#endif
 
     theEvent.ie_Class = IECLASS_RAWKEY;
     theEvent.ie_Code = message->Code;
-    theEvent.ie_Qualifier = numeric_pad ? IEQUALIFIER_NUMERICPAD :
-					  qualifier;
-    theEvent.ie_EventAddress = (APTR) *(message->IAddress);
+    theEvent.ie_Qualifier = numeric_pad ? IEQUALIFIER_NUMERICPAD : qualifier;
+    theEvent.ie_EventAddress = (APTR) (message->IAddress);
 
-    length = RawKeyConvert(&theEvent, buffer, (long) sizeof(buffer), NULL);
+    length = RawKeyConvert(&theEvent, (char *)buffer, 
+      (long) sizeof(buffer), NULL);
 
     if (length == 1) {   /* Plain ASCII character */
 	length = buffer[0];
+	/*
+	 *  If flags.num_pad is set, movement is by 4286.
+	 *  If not set, translate 4286 into hjkl.
+	 *  This way, the numeric pad can /always/ be used
+	 *  for moving, though best results are when it is off.
+	 */
+arrow:
 	if (!flags.num_pad && numeric_pad && length >= '1' && length <= '9') {
-wasarrow:
 	    length -= '1';
 	    if (control) {
 		length = ctrl_numpad[length];
@@ -298,8 +311,10 @@ wasarrow:
 	}
 	if (alt)
 	    length |= 0x80;
-	BufferQueueChar(length);
+	return(length);
     } /* else shift, ctrl, alt, amiga, F-key, shift-tab, etc */
+    else
+	return( -1 );
 }
 
 /*
@@ -314,11 +329,33 @@ wasarrow:
 static void ProcessMessage(message)
 register struct IntuiMessage *message;
 {
+    int c;
+    static int skip_mouse=0;    /* need to ignore next mouse event on
+				 * a window activation */
     switch(message->Class) {
+    case ACTIVEWINDOW:
+	skip_mouse=1;break;
+    case MOUSEBUTTONS:
+	{
+	    if(skip_mouse){
+		skip_mouse=0;
+		break;
+	    }
+	    if( message->Code == SELECTDOWN ){
+		lastevent.type = WEMOUSE;
+		lastevent.u.mouse.x = message->MouseX;
+		lastevent.u.mouse.y = message->MouseY;
+		    /* With shift equals RUN */
+		lastevent.u.mouse.qual = (message->Qualifier &
+		  (IEQUALIFIER_LSHIFT|IEQUALIFIER_RSHIFT)) != 0;
+	    }
+	}
+	break;
+
     case MENUPICK:
 	{
 	    USHORT thismenu;
-	    struct MenuItem *item = NULL;
+	    struct MenuItem *item;
 
 	    thismenu = message->Code;
 	    while (thismenu != MENUNULL) {
@@ -329,19 +366,16 @@ register struct IntuiMessage *message;
 	    }
 	}
 	break;
-    case RAWKEY:
-	if (!(message->Code & IECODE_UP_PREFIX))
-	    ConvertKey(message);    /* May queue multiple characters */
-	break;			    /* but doesn't do that yet       */
-#ifdef MAIL
-    case DISKINSERTED:
-	{
-	    extern int mustgetmail;
 
-	    if (mustgetmail < 0)
-		mustgetmail = rn1(100,50);
-	}
-#endif
+    case RAWKEY:
+	if (!(message->Code & IECODE_UP_PREFIX)){
+	    /* May queue multiple characters
+	     * but doesn't do that yet...
+	     */
+	    if( ( c = ConvertKey(message) ) > 0 )
+		BufferQueueChar( c );
+        }
+        break;
     }
     ReplyMsg((struct Message *) message);
 }
@@ -357,133 +391,53 @@ register struct IntuiMessage *message;
 int kbhit()
 {
     register struct IntuiMessage *message;
-
-    while( (KbdBuffered < KBDBUFFER / 2) &&
+    while( KbdBuffered < KBDBUFFER / 2 )
+    {
 #ifdef AMIFLUSH
-	    (message = (struct IntuiMessage *) GetFMsg(HackWindow->UserPort)))
+	message = (struct IntuiMessage *) GetFMsg(HackPort);
 #else
-	    (message = (struct IntuiMessage *) GetMsg(HackWindow->UserPort)) )
+	message = (struct IntuiMessage *) GetMsg(HackPort);
 #endif
-	ProcessMessage(message);
-
-    return (int) KbdBuffered;
+	if(message)
+	{
+	    ProcessMessage(message);
+	    if( lastevent.type != WEUNK && lastevent.type != WEKEY )
+		break;
+	}
+	else
+	    break;
+    }
+    return ( lastevent.type == WEUNK ) ? KbdBuffered : -1;
 }
 
 /*
- *  Get a character from the keyboard buffer, waiting if
- *  not available.
+ *  Get a character from the keyboard buffer, waiting if not available.
+ *  Ignore other kinds of events that happen in the mean time.
  */
 
-int WindowGetchar()
+int WindowGetchar( )
 {
-    while (!kbhit()) {
-	WaitPort(HackWindow->UserPort);
+    while ((lastevent.type = WEUNK), kbhit() <= 0) {
+	WaitPort(HackPort);
     }
     return BufferGetchar();
 }
 
-/*
- *  Flush the output waiting in the console output buffer.
- */
-
-void WindowFlush()
+WETYPE WindowGetevent()
 {
-#ifdef BETA
-    if (!ConsoleDevice) { /* Should never happen */
-	Abort(AG_IOError | AO_ConsoleDev);
-	return;
+    lastevent.type = WEUNK;
+    while (kbhit() == 0)
+    {
+	WaitPort(HackPort);
     }
-#endif
 
-    if (Buffered) {
-	ConsoleIO.io_Command = CMD_WRITE;
-	ConsoleIO.io_Data = (APTR)ConsoleBuffer;
-	ConsoleIO.io_Length = Buffered;
-	DoIO((struct IORequest *) &ConsoleIO);
-	Buffered = 0;
+    if( KbdBuffered )
+    {
+	lastevent.type = WEKEY;
+	lastevent.u.key = BufferGetchar();
     }
+    return( lastevent.type );
 }
-
-/*
- *  Queue a single character for output to the console screen.
- */
-
-void WindowPutchar(c)
-char c;
-{
-    if (Buffered >= CONBUFFER)
-	WindowFlush();
-
-    ConsoleBuffer[Buffered++] = c;
-}
-
-/*
- *  Queue an entire string for output to the console screen,
- *  flushing the existing characters first, if necessary.
- *  Do not append a newline.
- */
-
-void WindowFPuts(string)
-char *string;
-{
-    register int len = strlen(string);
-
-    if (len + Buffered >= CONBUFFER)
-	WindowFlush();
-
-    strcpy(ConsoleBuffer + Buffered, string);
-    Buffered += len;
-}
-
-/*
- *  Queue an entire string for output to the console screen,
- *  flushing the existing characters first, if necessary.
- *  Append a newline.
- */
-
-void WindowPuts(string)
-char *string;
-{
-    WindowFPuts(string);
-    WindowPutchar('\n');
-}
-
-/*
- *  Queue a formatted string for output to the console screen,
- *  flushing the existing characters first, if necessary.
- */
-
-/*VARARGS1*/
-#if defined(USE_STDARG) || defined(USE_VARARGS)
-void
-WindowPrintf VA_DECL(char *, fmt)
-    VA_START(fmt);
-    VA_INIT(fmt, char *);
-    WindowFlush();  /* Don't know if all will fit */
-    vsprintf(ConsoleBuffer, fmt, VA_ARGS);
-    ConsoleIO.io_Command = CMD_WRITE;
-    ConsoleIO.io_Data = (APTR)ConsoleBuffer;
-    ConsoleIO.io_Length = -1;
-    DoIO((struct IORequest *) &ConsoleIO);
-    VA_END();
-}
-#else
-void WindowPrintf(fmt, args, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9)
-char *fmt;
-long args, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9;
-{
-# ifdef AZTEC_36 	/* Efficient but not portable */
-    format(WindowPutchar, fmt, &args);
-#else
-    WindowFlush();  /* Don't know if all will fit */
-    sprintf(ConsoleBuffer, fmt, args, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
-    ConsoleIO.io_Command = CMD_WRITE;
-    ConsoleIO.io_Data = (APTR)ConsoleBuffer;
-    ConsoleIO.io_Length = -1;
-    DoIO((struct IORequest *) &ConsoleIO);
-#endif
-}
-#endif
 
 /*
  *  Clean up everything. But before we do, ask the user to hit return
@@ -492,55 +446,72 @@ long args, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9;
 
 void CleanUp()
 {
-    /* Clean up resources */
-    if (ConsoleIO.io_Device) {
-	register struct ConUnit *cu;
+    register struct IntuiMessage *msg;
 
-	cu = (struct ConUnit *)ConsoleIO.io_Unit;
-	if (cu->cu_XCCP != 1 || cu->cu_YCCP != 1)
-	    getret();
+    /* Finish closing things up */
 
-	CloseDevice((struct IORequest *) &ConsoleIO);
-	ConsoleDevice = NULL;
-    }
-    if (ConsoleIO.io_Message.mn_ReplyPort)
-	DeletePort(ConsoleIO.io_Message.mn_ReplyPort);
-    if (HackWindow) {
-	register struct IntuiMessage *msg;
+    amii_raw_print("");
+    amii_getret();
 
-	((struct Process *) FindTask(NULL))->pr_WindowPtr = (APTR) pr_WindowPtr;
-	ClearMenuStrip(HackWindow);
+    ((struct Process *) FindTask(NULL))->pr_WindowPtr = (APTR) pr_WindowPtr;
+    if (ConsoleIO.io_Device)
+	CloseDevice( (struct IORequest *)&ConsoleIO );
+
+    if (HackPort) {
 	Forbid();
-	while (msg = (struct IntuiMessage *) GetMsg(HackWindow->UserPort))
+	while (msg = (struct IntuiMessage *) GetMsg(HackPort))
 	    ReplyMsg((struct Message *) msg);
-	CloseWindow(HackWindow);
+	kill_nhwindows( 1 );
+	DeletePort( HackPort );
+	HackPort = NULL;
 	Permit();
-	HackWindow = NULL;
     }
+
     if (HackScreen) {
+#ifdef  INTUI_NEW_LOOK
+	if( IntuitionBase->LibNode.lib_Version >= 37 )
+	{
+	    while( CloseScreen(HackScreen) == FALSE )
+	    {
+		struct EasyStruct easy =
+		{
+		    sizeof( struct EasyStruct ),
+		    0,
+		    "Nethack Problem",
+		    "Can't Close Screen, Close Remaining Windows",
+		    "Okay",
+		};
+		EasyRequest( NULL, &easy, NULL, NULL );
+	    }
+	}
+#else
 	CloseScreen(HackScreen);
+#endif
 	HackScreen = NULL;
     }
-    if (IconBase) {
-	CloseLibrary(IconBase);
-	IconBase = NULL;
-    }
+
 #ifdef HACKFONT
-    if (HackFont) {
+
+    if (HackFont)
+    {
 	CloseFont(HackFont);
 	HackFont = NULL;
     }
-    if (DiskfontBase) {
+
+    if( DiskfontBase )
+    {
 	CloseLibrary(DiskfontBase);
 	DiskfontBase = NULL;
     }
+#endif
+
     if (GfxBase) {
-	CloseLibrary(GfxBase);
+	CloseLibrary((struct Library *)GfxBase);
 	GfxBase = NULL;
     }
-#endif
+
     if (IntuitionBase) {
-	CloseLibrary(IntuitionBase);
+	CloseLibrary((struct Library *)IntuitionBase);
 	IntuitionBase = NULL;
     }
 
@@ -556,20 +527,19 @@ long rc;
 #endif
     if (Initialized && ConsoleDevice) {
 	printf("\n\nAbort with alert code %08lx...\n", rc);
-	getret();
+	amii_getret();
     } else
-	Alert(rc, 0L);
-#ifdef LATTICE
-	{
-/*	__emit(0x4afc);		/* illegal instruction */
-	__emit(0x40fc);		/* divide by */
-	__emit(0x0000);		/*  #0	*/
-		/* NOTE: don't move CleanUp() above here - */
-		/* it is too likely to kill the system     */
-		/* before it can get the SnapShot out, if  */
-		/* there is something really wrong.	   */
-__builtin_printf("abort botch");				/* (KL)TEMP */
-	}
+	Alert(rc);
+#ifdef __SASC
+    {
+/*  __emit(0x4afc);     /* illegal instruction */
+    __emit(0x40fc);     /* divide by */
+    __emit(0x0000);     /*  #0  */
+	/* NOTE: don't move CleanUp() above here - */
+	/* it is too likely to kill the system     */
+	/* before it can get the SnapShot out, if  */
+	/* there is something really wrong.    */
+    }
 #endif
     CleanUp();
 #undef exit
@@ -579,115 +549,345 @@ __builtin_printf("abort botch");				/* (KL)TEMP */
     exit((int) rc);
 }
 
-/*
- *  Open everything we need.
- */
-
-void Initialize()
-{
-    if (Initialized)
-	return;
-
-    if ( (IntuitionBase = OpenLibrary("intuition.library", INTUITION_VERSION))
-	  == NULL)
-	Abort(AG_OpenLib | AO_Intuition);
-
-#ifdef HACKFONT
-
-    if ( (GfxBase = OpenLibrary("graphics.library", GRAPHICS_VERSION)) == NULL)
-	Abort(AG_OpenLib | AO_GraphicsLib);
-
-    /*
-     *	Force our own font to be loaded, if possible.
-     *	If we can open diskfont.library, but not our font, we can close
-     *	the diskfont.library again since it just wastes memory.
-     *	Even if we can open the font, we don't need the diskfont.library
-     *	anymore, since CloseFont is a graphics.library function.
-     */
-
-    if ((HackFont = OpenFont(&Hack80)) == NULL) {
-	if (DiskfontBase = OpenLibrary("diskfont.library", DISKFONT_VERSION)) {
-	    Hack80.ta_Name -= SIZEOF_DISKNAME;
-	    HackFont = OpenDiskFont(&Hack80);
-	    Hack80.ta_Name += SIZEOF_DISKNAME;
-	    CloseLibrary(DiskfontBase);
-	    DiskfontBase = NULL;
-	}
-    }
-#endif
-
-    /* if ( (IconBase = OpenLibrary("icon.library", ICON_VERSION)) == NULL)
-	Abort(AG_OpenLib | AO_IconLib); */
-
-    /*
-     *	Now Intuition is supposed to use our HackFont for the screen,
-     *	since we have a corresponding TextAttr, but it *doesn't*.
-     *	So, we need to do a SetFont() a bit later on.
-     */
-    if ( (HackScreen = OpenScreen(&NewHackScreen)) == NULL)
-	Abort(AN_OpenScreen & ~AT_DeadEnd);
-
-#ifdef TEXTCOLOR
-    LoadRGB4(&HackScreen->ViewPort, palette, 8L);
-#endif
-
-    NewHackWindow.Screen = HackScreen;
-
-    if ( (HackWindow = OpenWindow(&NewHackWindow)) == NULL)
-	Abort(AN_OpenWindow & ~AT_DeadEnd);
-
-    SetMenuStrip(HackWindow, HackMenu);
-    {
-	register struct Process *myProcess = (struct Process *) FindTask(NULL);
-	pr_WindowPtr = (struct Window *)myProcess->pr_WindowPtr;
-	myProcess->pr_WindowPtr = (APTR) HackWindow;
-    }
-#ifdef HACKFONT
-    if (HackFont)
-	SetFont(HackWindow->RPort, HackFont);
-#endif
-
-    ConsoleIO.io_Data = (APTR) HackWindow;
-    ConsoleIO.io_Length = sizeof(*HackWindow);
-    ConsoleIO.io_Message.mn_ReplyPort = CreatePort(NULL, 0L);
-    if (OpenDevice("console.device", 0L, (struct IORequest *) &ConsoleIO, 0L) != 0)
-	Abort(AG_OpenDev | AO_ConsoleDev);
-
-    ConsoleDevice = (struct Library *) ConsoleIO.io_Device;
-
-    Buffered = 0;
-    KbdBuffered = 0;
-
-    /* set CRMOD on */
-    WindowFPuts("\23320h");
-
-    Initialized = 1;
-}
-
 #ifdef AMIFLUSH
 /* This routine adapted from AmigaMail IV-37 by Michael Sinz */
 static struct Message *
 GetFMsg(port)
-	struct MsgPort *port;
-	{
-	struct IntuiMessage *msg,*succ,*succ1;
+    struct MsgPort *port;
+    {
+    struct IntuiMessage *msg,*succ,*succ1;
 
-	if(msg=(struct IntuiMessage *)GetMsg(port)){
-		if(!flags.amiflush)return(msg);
-		if(msg->Class==RAWKEY){
-			Forbid();
-			succ=(struct IntuiMessage *)(port->mp_MsgList.lh_Head);
-			while(succ1=(struct IntuiMessage *)
-				 (succ->ExecMessage.mn_Node.ln_Succ)){
-				if(succ->Class==RAWKEY){
-					Remove((struct Node *)succ);
-					ReplyMsg((struct Message *)succ);
-				}
-				succ=succ1;
-			}
-			Permit();
+    if(msg=(struct IntuiMessage *)GetMsg(port)){
+	if(!flags.amiflush)return((struct Message *)msg);
+	if(msg->Class==RAWKEY){
+	    Forbid();
+	    succ=(struct IntuiMessage *)(port->mp_MsgList.lh_Head);
+	    while(succ1=(struct IntuiMessage *)
+	      (succ->ExecMessage.mn_Node.ln_Succ)){
+		if(succ->Class==RAWKEY){
+		    Remove((struct Node *)succ);
+		    ReplyMsg((struct Message *)succ);
 		}
+		succ=succ1;
+	    }
+	    Permit();
 	}
-	return(msg);
+    }
+    return((struct Message *)msg);
 }
 #endif
+
+/*
+ * Begin Revamped Text display routines
+ *
+ * Up until version 3.1, the only method for displaying text on the playing
+ * field was by using the console.device.  This was nice for a number of
+ * reasons, the most signifigant of which was a lot of the nuts and bolts was
+ * done for you via escape sequences interpreted by said device.  This did
+ * not come without a price however.  And that price was speed. It has now
+ * come to a point where the speed has now been deemed unacceptable.
+ *
+ * The following series of routines are designed to drop into the current
+ * nethack display code, using hooks provided for such a measure. It works
+ * on similar principals as the WindowPuts(), buffering I/O internally
+ * until either an explicit flush or internal buffering is exceeded, thereby
+ * forcing the flush.  The output (or glyphs) does not go to the
+ * console.device, however.  It is driven directly to the rasterport of the
+ * nethack window via the low-level Text() calls, increasing the speed by
+ * a very signifigant factor.
+ */
+/*
+ * Routine to simply flush whatever is buffered
+ */
+void
+flush_glyph_buffer( w )
+    struct Window *w;
+{
+    short i, x, y;
+
+    /* If nothing is buffered, return before we do anything */
+    if(glyph_node_index == 0)
+	return;
+
+    cursor_off( WIN_MAP );
+    start_glyphout( WIN_MAP );
+    /* Set up the drawing mode */
+    SetDrMd( w->RPort, JAM2);
+
+    /* Go ahead and start dumping the stuff */
+    for(i=0; i<glyph_node_index; ++i) {
+	/* These coordinate calculations must be synced with the
+	 * code in curs() in winami.c.  curs_on_u() calls curs()
+	 * to draw the cursor on top of the player
+	 */
+	y = w->BorderTop + (g_nodes[i].y-1) * w->RPort->TxHeight +
+	    w->RPort->TxBaseline + 1;
+	x = g_nodes[i].x * w->RPort->TxWidth + w->BorderLeft;
+
+	/* Move pens to correct location */
+	Move(w->RPort, (long)x, (long)y);
+
+	/* Setup the colors */
+	SetAPen(w->RPort, (long)g_nodes[i].fg_color);
+	SetBPen(w->RPort, (long)g_nodes[i].bg_color);
+
+	/* Do it */
+	Text(w->RPort, g_nodes[i].buffer, g_nodes[i].len);
+    }
+
+    end_glyphout( WIN_MAP );
+    /* Clean up */
+    glyph_node_index = glyph_buffer_index = 0;
+}
+
+/*
+ * Glyph buffering routine.  Called instead of WindowPuts().
+ */
+void
+amiga_print_glyph(window,color_index, glyph)
+    winid window;
+    int color_index, glyph;
+{
+    int fg_color, bg_color;
+    struct WinDesc *cw;
+    struct Window *w;
+    int curx;
+    int cury;
+
+    if( ( cw=wins[window] ) == (struct WinDesc *)NULL )
+	panic("bad winid in amiga_print_glyph: %d", window );
+
+    w = cw->win;
+    curx=cw->curx;
+    cury=cw->cury;
+
+#ifdef TEXTCOLOR
+    fg_color = foreg[color_index];
+    bg_color = backg[color_index];
+#else
+    fg_color = 1;
+    bg_color = 0;
+#endif /* TEXTCOLOR */
+
+    /* See if we have enough character buffer space... */
+    if(glyph_buffer_index  >= GLYPH_BUFFER_SIZE)
+	flush_glyph_buffer( w );
+
+    /*
+     * See if we can append it to the current active node of glyph buffer. It
+     * must satisfy the following conditions:
+     *
+     *    * background colors are the same, AND
+     *    * foreground colors are the same, AND
+     *    * they are precisely side by side
+     */
+    if((glyph_buffer_index != 0) &&
+       (fg_color == g_nodes[glyph_node_index-1].fg_color) &&
+       (bg_color == g_nodes[glyph_node_index-1].bg_color) &&
+       (g_nodes[glyph_node_index-1].x+
+	g_nodes[glyph_node_index-1].len == curx) &&
+       (g_nodes[glyph_node_index-1].y == cury)) {
+	/*
+	 * Add it to the end of the buffer
+	 */
+	glyph_buffer[glyph_buffer_index++] = glyph;
+	g_nodes[glyph_node_index-1].len ++;
+     } else {
+	/* See if we're out of glyph nodes */
+	if(glyph_node_index >= NUMBER_GLYPH_NODES)
+	    flush_glyph_buffer( w );
+	g_nodes[glyph_node_index].len = 1;
+	g_nodes[glyph_node_index].x = curx;
+	g_nodes[glyph_node_index].y = cury;
+	g_nodes[glyph_node_index].fg_color = fg_color;
+	g_nodes[glyph_node_index].bg_color = bg_color;
+	g_nodes[glyph_node_index].buffer = &glyph_buffer[glyph_buffer_index];
+	glyph_buffer[glyph_buffer_index] = glyph;
+	++glyph_buffer_index;
+	++glyph_node_index;
+    }
+}
+
+/*
+ * Define some variables which will be used to save context when toggling
+ * back and forth between low level text and console I/O.
+ */
+static long xsave, ysave, modesave, apensave, bpensave;
+static int usecolor;
+
+/*
+ * The function is called before any glyphs are driven to the screen.  It
+ * removes the cursor, saves internal state of the window, then returns.
+ */
+
+void
+start_glyphout(window)
+    winid window;
+{
+    struct WinDesc *cw;
+    struct Window *w;
+
+    if( ( cw=wins[window] ) == (struct WinDesc *)NULL )
+	panic( "bad winid %d in start_glyphout()", window );
+
+    if( cw->flags & FLMAP_INGLYPH )
+	return;
+
+    if( !(w = cw->win ) )
+	panic( "bad winid %d, no window ptr set", window );
+
+    /*
+     * Save the context of the window
+     */
+    xsave = w->RPort->cp_x;
+    ysave = w->RPort->cp_y;
+    modesave = w->RPort->DrawMode;
+    apensave = w->RPort->FgPen;
+    bpensave = w->RPort->BgPen;
+
+    /*
+     * Set the mode, and be done with it
+     */
+    usecolor = flags.use_color;
+    flags.use_color = FALSE;
+    cw->flags |= FLMAP_INGLYPH;
+}
+
+/*
+ * General cleanup routine -- flushes and restores cursor
+ */
+void
+end_glyphout(window)
+    winid window;
+{
+    struct WinDesc *cw;
+    struct Window *w;
+
+    if( ( cw = wins[ window ] ) == (struct WinDesc *)NULL )
+	panic("bad window id %d in end_glyphout()", window );
+
+    if( ( cw->flags & FLMAP_INGLYPH ) == 0 )
+	return;
+    cw->flags &= ~(FLMAP_INGLYPH);
+
+    if( !(w = cw->win ) )
+	panic( "bad winid %d, no window ptr set", window );
+
+    /*
+     * Clean up whatever is left in the buffer
+     */
+    flags.use_color = usecolor;
+
+    /*
+     * Reset internal data structs
+     */
+    SetAPen(w->RPort, apensave);
+    SetBPen(w->RPort, bpensave);
+    SetDrMd(w->RPort, modesave);
+
+    Move(w->RPort, xsave, ysave);
+}
+
+struct NewWindow *
+DupNewWindow( win )
+    struct NewWindow *win;
+{
+    struct NewWindow *nwin;
+    struct Gadget *ngd, *gd, *pgd = NULL;
+    struct PropInfo *pip;
+    struct StringInfo *sip;
+
+    /* Copy the (Ext)NewWindow structure */
+
+    nwin = (struct NewWindow *)alloc( sizeof( struct NewWindow ) );
+    *nwin = *win;
+
+    /* Now do the gadget list */
+
+    nwin->FirstGadget = NULL;
+    for( gd = win->FirstGadget; gd; gd = gd->NextGadget )
+    {
+	ngd = (struct Gadget *)alloc( sizeof( struct Gadget ) );
+	*ngd = *gd;
+	if( gd->GadgetType == STRGADGET )
+	{
+	    sip = (struct StringInfo *)alloc( sizeof( struct StringInfo ) );
+	    *sip = *((struct StringInfo *)gd->SpecialInfo);
+	    sip->Buffer = (UBYTE *) alloc( sip->MaxChars );
+	    *sip->Buffer = 0;
+	    ngd->SpecialInfo = (APTR)sip;
+	}
+	else if( gd->GadgetType == PROPGADGET )
+	{
+	    pip = (struct PropInfo *)alloc( sizeof( struct PropInfo ) );
+	    *pip = *((struct PropInfo *)gd->SpecialInfo);
+	    ngd->SpecialInfo = (APTR)pip;
+	}
+	if( pgd )
+	    pgd->NextGadget = ngd;
+	else
+	    nwin->FirstGadget = ngd;
+	pgd = ngd;
+	ngd->NextGadget = NULL;
+    }
+    return( nwin );
+}
+
+void
+FreeNewWindow( win )
+    struct NewWindow *win;
+{
+    register struct Gadget *gd, *pgd;
+    register struct StringInfo *sip;
+
+    for( gd = win->FirstGadget; gd; gd = pgd )
+    {
+	pgd = gd->NextGadget;
+	if( gd->GadgetType == STRGADGET )
+	{
+	    sip = (struct StringInfo *)gd->SpecialInfo;
+	    free( sip->Buffer );
+	    free( sip );
+	}
+	else if( gd->GadgetType == PROPGADGET )
+	{
+	    free( (struct PropInfo *)gd->SpecialInfo );
+	}
+	free( gd );
+    }
+    free( win );
+}
+
+void
+bell()
+{
+    if (flags.silent) return;
+    DisplayBeep(NULL);
+}
+
+void
+amii_delay_output()
+{
+    /* delay 50 ms */
+    Delay(2L);
+}
+
+void
+amii_number_pad(state)
+int state;
+{
+}
+
+/* fatal error */
+/*VARARGS1*/
+void error VA_DECL(const char *, s)
+    VA_START(s);
+    VA_INIT(s, char *);
+
+    putchar('\n');
+    vprintf(s, VA_ARGS);
+    putchar('\n');
+
+    VA_END();
+    Abort(0L);
+}

@@ -1,34 +1,35 @@
-/*	SCCS Id: @(#)attrib.c	3.0	90/2/15
-/*	Copyright 1988, 1989, 1990, M. Stephenson		  */
+/*	SCCS Id: @(#)attrib.c	3.1	92/10/26	*/
+/*	Copyright 1988, 1989, 1990, 1992, M. Stephenson		  */
 /* NetHack may be freely redistributed.  See license for details. */
 
 /*  attribute modification routines. */
 
 #include "hack.h"
+#include "artifact.h"
+
+/* #define	DEBUG	/* uncomment for debugging info */
 
 #ifdef OVLB
 
-const char	*plusattr[] = {	/* part of the output on gain of attribute */
-
+	/* part of the output on gain or loss of attribute */
+static
+const char	*plusattr[] = {
 	"strong", "smart", "wise", "agile", "tough", "charismatic"
-};
-
-const char	*minusattr[] = { /* part of the output on loss of attribute */
-
+},
+		*minusattr[] = {
 	"weak", "stupid", "foolish", "clumsy", "vulnerable", "ugly"
 };
 
-struct attribs	attrmax = {	/* max values for the attributes */
-
+	/* maximum and minimum values for the attributes */
+struct attribs	attrmax = {
 	118, 18, 18, 18, 18, 18
 },
-		attrmin = {	/* min values for the attributes */
-
+		attrmin = {
 	3, 3, 3, 3, 3, 3
 };
 
+static
 const struct innate {
-
 	schar	ulevel;
 	long	*ability;
 	const char *gainstr, *losestr;
@@ -84,10 +85,10 @@ const struct innate {
 		     {  17, &(HTeleport_control), "controlled","uncontrolled" },
 		     {	 0, 0, 0, 0 } };
 
+static
 const struct clattr {
-
-	struct	attribs	base, dist;
- 	schar	align, aligntyp;
+	struct	attribs	base, cldist;
+ 	align	align;
 	schar	shp, hd, xlev, ndx;
 /* According to AD&D, HD for some classes (ex. Wizard) should be smaller
  * (4-sided for wizards).  But this is not AD&D, and using the AD&D
@@ -99,112 +100,115 @@ const struct clattr {
 	const struct	innate *abil;
 }	a_attr = { {	 7, 10, 10,  7,  7,  7 },  /* Archeologist */
 		   {	20, 20, 20, 10, 20, 10 },
-		    10,  1, 13, 10, 14,  2, a_abil },
+		    { A_LAWFUL, 10 },  13, 10, 14,  2, a_abil },
 
 	b_attr = { {	16,  7,  7, 15, 16,  6 },  /* Barbarian */
 		   {	30,  6,  7, 20, 30,  7 },
-		    10, -1, 16, 12, 10,  3, b_abil },
+		    { A_NEUTRAL, 10 }, 16, 12, 10,  3, b_abil },
 
 	c_attr = { {	10,  7,  7,  7,  8,  6 },  /* Caveman (fighter) */
 		   {	30,  6,  7, 20, 30,  7 },
-		     0,  1, 16, 10, 10,  3, c_abil },
+		     { A_LAWFUL, 0 },  16, 10, 10,  3, c_abil },
 
 /*
 	e_attr = { {	13, 13, 14,  6, 14,  6 },
  */
 	e_attr = { {	13, 13, 13,  9, 13,  7 },  /* Elf (ranger) */
 		   {	30, 10, 10, 20, 20, 10 },
-		    10,  1, 15, 10, 11,  2, e_abil },
+		    { A_CHAOTIC, 10 },  15, 10, 11,  2, e_abil },
 
 	h_attr = { {	 7,  7, 13,  7, 11, 16 },  /* Healer (druid) */
 		   {	15, 20, 20, 15, 25, 10 },
-		    10,  1, 13, 10, 20,  2, h_abil },
+		    { A_NEUTRAL, 10 },  13, 10, 20,  2, h_abil },
 
 	k_attr = { {	13,  7, 14,  8, 10, 17 },  /* Knight (paladin) */
 		   {	20, 15, 15, 10, 20, 10 },
-		    10,  1, 16, 10, 10,  3, k_abil },
+		    { A_LAWFUL, 10 },  16, 10, 10,  3, k_abil },
 
 	p_attr = { {	 7,  7, 10,  7,  7,  7 },  /* Priest (cleric) */
 		   {	15, 10, 30, 15, 20, 10 },
-		     0,  0, 14, 10, 10,  2, p_abil },
+		    { A_NEUTRAL, 0 },  14, 10, 10,  2, p_abil },
 
 	r_attr = { {	 7,  7,  7, 10,  7,  6 },  /* Rogue (thief) */
 		   {	20, 10, 10, 30, 20, 10 },
-		    10, -1, 12, 10, 11,  2, r_abil },
+		    { A_CHAOTIC, 10 }, 12, 10, 11,  2, r_abil },
 
 	s_attr = { {	10,  8,  7, 10, 17,  6 },  /* Samurai (fighter/thief) */
 		   {	30, 10, 10, 30, 14, 10 },
-		    10,  1, 15, 10, 11,  2, s_abil },
+		    { A_LAWFUL, 10 },  15, 10, 11,  2, s_abil },
 
+#ifdef TOURIST
 	t_attr = { {	 7, 10,  6,  7,  7, 10 },  /* Tourist */
 		   {	15, 10, 10, 15, 30, 20 },
-		     0,  0, 10, 10, 14,  1, t_abil },
+		    { A_NEUTRAL, 0 },  10, 10, 14,  1, t_abil },
+#endif
 
 	v_attr = { {	10,  7,  7,  7, 10,  7 },  /* Valkyrie (fighter) */
 		   {	30,  6,  7, 20, 30,  7 },
-		     0, -1, 16, 10, 10,  3, v_abil },
+		    { A_NEUTRAL, 0 },  16, 10, 10,  3, v_abil },
 
 	w_attr = { {	 7, 10,  7,  7,  7,  7 },  /* Wizard (magic-user) */
 		   {	10, 30, 10, 20, 20, 10 },
-		     0,  0, 12, 10, 12,  1, w_abil },
+		    { A_NEUTRAL, 0 },  12, 10, 12,  1, w_abil },
 
 	X_attr = { {	 3,  3,  3,  3,  3,  3 },
 		   {	20, 15, 15, 15, 20, 15 },
-		     0,  0, 12, 10, 14,  1,  0 };
+		    { A_NEUTRAL, 0 },  12, 10, 14,  1,  0 };
 
+static long next_check = 600L;	/* arbitrary first setting */
 static const struct clattr NEARDATA *NDECL(clx);
 static void NDECL(init_align);
+static void NDECL(exerper);
 
-void
-adjattrib(ndx, incr, silent)
-
+/* adjust an attribute; return TRUE if change is made, FALSE otherwise */
+boolean
+adjattrib(ndx, incr, msgflg)
 	int	ndx, incr;
-	boolean	silent;
-{
-	if(!incr) return;
+	int	msgflg;	    /* positive => no message, zero => message, and */
+{			    /* negative => conditional (msg if change made) */
+	if (!incr) return FALSE;
 
-	if(incr > 0) {
-	    if((AMAX(ndx) >= attrmax.a[ndx]) && (ACURR(ndx) >= AMAX(ndx))) {
-
-		if(!silent && flags.verbose)
+	if (incr > 0) {
+	    if ((AMAX(ndx) >= ATTRMAX(ndx)) && (ACURR(ndx) >= AMAX(ndx))) {
+		if (msgflg == 0 && flags.verbose)
 		    pline("You're already as %s as you can get.",
 			  plusattr[ndx]);
-		ABASE(ndx) = AMAX(ndx) = attrmax.a[ndx]; /* just in case */
-		return;
+		ABASE(ndx) = AMAX(ndx) = ATTRMAX(ndx); /* just in case */
+		return FALSE;
 	    }
 
 	    ABASE(ndx) += incr;
 	    if(ABASE(ndx) > AMAX(ndx)) {
 		incr = ABASE(ndx) - AMAX(ndx);
 		AMAX(ndx) += incr;
-		if(AMAX(ndx) > attrmax.a[ndx])
-		    AMAX(ndx) = attrmax.a[ndx];
+		if(AMAX(ndx) > ATTRMAX(ndx))
+		    AMAX(ndx) = ATTRMAX(ndx);
 		ABASE(ndx) = AMAX(ndx);
 	    }
 	} else {
-	    if((AMAX(ndx) <= attrmin.a[ndx]) && (ABASE(ndx) == AMAX(ndx))) {
-		if(!silent && flags.verbose)
+	    if (ABASE(ndx) <= ATTRMIN(ndx)) {
+		if (msgflg == 0 && flags.verbose)
 		    pline("You're already as %s as you can get.",
 			  minusattr[ndx]);
-		ABASE(ndx) = AMAX(ndx) = attrmin.a[ndx]; /* just in case */
-		return;
+		ABASE(ndx) = ATTRMIN(ndx); /* just in case */
+		return FALSE;
 	    }
 
 	    ABASE(ndx) += incr;
-	    if(ABASE(ndx) < attrmin.a[ndx]) {
-		incr = ABASE(ndx) - attrmin.a[ndx];
-		ABASE(ndx) = attrmin.a[ndx];
+	    if(ABASE(ndx) < ATTRMIN(ndx)) {
+		incr = ABASE(ndx) - ATTRMIN(ndx);
+		ABASE(ndx) = ATTRMIN(ndx);
 		AMAX(ndx) += incr;
-		if(AMAX(ndx) < attrmin.a[ndx])
-		    AMAX(ndx) = attrmin.a[ndx];
+		if(AMAX(ndx) < ATTRMIN(ndx))
+		    AMAX(ndx) = ATTRMIN(ndx);
 	    }
 	}
-	if(!silent)
+	if (msgflg <= 0)
 	    You("feel %s%s!",
-		  (incr > 1) ? "very ": "",
+		  (incr > 1 || incr < -1) ? "very ": "",
 		  (incr > 0) ? plusattr[ndx] : minusattr[ndx]);
 	flags.botl = 1;
-	return;
+	return TRUE;
 }
 
 void
@@ -219,7 +223,7 @@ gainstr(otmp, incr)
 	    if(ABASE(A_STR) < 18) num = (rn2(4) ? 1 : rnd(6) );
 	    else if (ABASE(A_STR) < 103) num = rnd(10);
 	}
-	adjattrib(A_STR, (otmp && otmp->cursed) ? -num : num, TRUE);
+	(void) adjattrib(A_STR, (otmp && otmp->cursed) ? -num : num, TRUE);
 }
 
 void
@@ -234,7 +238,7 @@ losestr(num)	/* may kill you; cause may be poison or monster like 'a' */
 		u.uhp -= 6;
 		u.uhpmax -= 6;
 	}
-	adjattrib(A_STR, -num, TRUE);
+	(void) adjattrib(A_STR, -num, TRUE);
 }
 
 void
@@ -251,16 +255,17 @@ stone_luck(parameter)
 boolean parameter; /* So I can't think up of a good name.  So sue me. --KAA */
 {
 	register struct obj *otmp;
-	register int bonchance = 0;
+	register long bonchance = 0;
 
 	for(otmp = invent; otmp; otmp=otmp->nobj)
-	    if(otmp->otyp == LUCKSTONE) {
-		if (otmp->cursed) bonchance -= (int)otmp->quan;
+	    if (otmp->otyp == LUCKSTONE
+		|| (otmp->oartifact && spec_ability(otmp, SPFX_LUCK))) {
+		if (otmp->cursed) bonchance -= otmp->quan;
 		else if (otmp->blessed) bonchance += otmp->quan;
 		else if (parameter) bonchance += otmp->quan;
 	    }
 
-	return sgn(bonchance);
+	return sgn((int)bonchance);
 }
 
 #endif /* OVLB */
@@ -287,6 +292,183 @@ restore_attrib() {
 #endif /* OVL1 */
 #ifdef OVLB
 
+#define AVAL	50		/* tune value for exercise gains */
+
+void
+exercise(i, inc_or_dec)
+int	i;
+boolean	inc_or_dec;
+{
+#ifdef DEBUG
+	pline("Exercise:");
+#endif
+	if (i == A_INT || i == A_CHA) return;	/* can't exercise these */
+
+#ifdef POLYSELF
+	/* no physical exercise while polymorphed; the body's temporary */
+	if (u.umonnum >= 0 && i != A_WIS) return;
+#endif
+	if(abs(AEXE(i)) < AVAL) {
+		/*
+		 *	Law of diminishing returns (Part I):
+		 *
+		 *	Gain is harder at higher attribute values.
+		 *	79% at "3" --> 0% at "18"
+		 *	Loss is even at all levels (50%).
+		 *
+		 *	Note: *YES* ACURR is the right one to use.
+		 */
+		AEXE(i) += (inc_or_dec) ? (rn2(19) > ACURR(i)) : -rn2(2);
+#ifdef DEBUG
+		pline("%s, %s AEXE = %d",
+			(i == A_STR) ? "Str" : (i == A_WIS) ? "Wis" :
+			(i == A_DEX) ? "Dex" : "Con",
+			(inc_or_dec) ? "inc" : "dec", AEXE(i));
+#endif
+	}
+}
+
+/* hunger values - from eat.c */
+#define SATIATED	0
+#define NOT_HUNGRY	1
+#define HUNGRY		2
+#define WEAK		3
+#define FAINTING	4
+#define FAINTED		5
+#define STARVED		6
+
+static void
+exerper()
+{
+	if(!(moves % 10)) {
+		/* Hunger Checks */
+
+		int hs = (u.uhunger > 1000) ? SATIATED :
+			 (u.uhunger > 150) ? NOT_HUNGRY :
+			 (u.uhunger > 50) ? HUNGRY :
+			 (u.uhunger > 0) ? WEAK : FAINTING;
+
+#ifdef DEBUG
+		pline("exerper: Hunger checks");
+#endif
+		switch (hs) {
+		    case SATIATED:	exercise(A_DEX, FALSE); break;
+		    case NOT_HUNGRY:	exercise(A_CON, TRUE); break;
+		    case WEAK:		exercise(A_STR, FALSE); break;
+		    case FAINTING:
+		    case FAINTED:	exercise(A_CON, FALSE); break;
+		}
+
+		/* Encumberance Checks */
+#ifdef DEBUG
+		pline("exerper: Encumber checks");
+#endif
+		switch (near_capacity()) {
+		    case MOD_ENCUMBER:	exercise(A_STR, TRUE); break;
+		    case HVY_ENCUMBER:	exercise(A_STR, TRUE);
+					exercise(A_DEX, FALSE); break;
+		    case EXT_ENCUMBER:	exercise(A_DEX, FALSE);
+					exercise(A_CON, FALSE); break;
+		}
+
+	}
+
+	/* status checks */
+	if(!(moves % 5)) {
+#ifdef DEBUG
+		pline("exerper: Status checks");
+#endif
+		if(Clairvoyant)		exercise(A_WIS, TRUE);
+		if(HRegeneration)	exercise(A_STR, TRUE);
+
+		if(Sick || Vomiting)			exercise(A_CON, FALSE);
+		if(Confusion || Hallucination)		exercise(A_WIS, FALSE);
+		if(Wounded_legs || Fumbling || HStun)	exercise(A_DEX, FALSE);
+	}
+}
+
+void
+exerchk()
+{
+	int	i, mod_val;
+
+	/*	Check out the periodic accumulations */
+	exerper();
+
+#ifdef DEBUG
+	if(moves >= next_check)
+		pline("exerchk: ready to test. multi = %d.", multi);
+#endif
+	/*	Are we ready for a test?	*/
+	if(moves >= next_check && !multi) {
+#ifdef DEBUG
+	    pline("exerchk: testing.");
+#endif
+	    /*
+	     *	Law of diminishing returns (Part II):
+	     *
+	     *	The effects of "exercise" and "abuse" wear
+	     *	off over time.  Even if you *don't* get an
+	     *	increase/decrease, you lose some of the
+	     *	accumulated effects.
+	     */
+	    for(i = 0; i < A_MAX; AEXE(i++) /= 2) {
+
+		if(ABASE(i) >= 18 || !AEXE(i)) continue;
+		if(i == A_INT || i == A_CHA) continue;/* can't exercise these */
+
+#ifdef DEBUG
+		pline("exerchk: testing %s (%d).",
+			(i == A_STR) ? "Str" : (i == A_WIS) ? "Wis" :
+			(i == A_DEX) ? "Dex" : "Con", AEXE(i));
+#endif
+		/*
+		 *	Law of diminishing returns (Part III):
+		 *
+		 *	You don't *always* gain by exercising.
+		 *	[MRS 92/10/28 - Treat Wisdom specially for balance.]
+		 */
+		if(rn2(AVAL) > ((i != A_WIS) ? abs(AEXE(i)*2/3) : abs(AEXE(i))))
+		    continue;
+		mod_val = sgn(AEXE(i));
+
+#ifdef DEBUG
+		pline("exerchk: changing %d.", i);
+#endif
+		if(adjattrib(i, mod_val, -1)) {
+#ifdef DEBUG
+		    pline("exerchk: changed %d.", i);
+#endif
+		    /* if you actually changed an attrib - zero accumulation */
+		    AEXE(i) = 0;
+		    /* then print an explanation */
+		    switch(i) {
+		    case A_STR: You((mod_val >0) ?
+				    "must have been exercising." :
+				    "must have been abusing your body.");
+				break;
+		    case A_WIS: You((mod_val >0) ?
+				    "must have been very observant." :
+				    "must not have been paying attention.");
+				break;
+		    case A_DEX: You((mod_val >0) ?
+				    "must have been working on your reflexes." :
+				    "haven't been working on reflexes lately.");
+				break;
+		    case A_CON: You((mod_val >0) ?
+				    "must be leading a healthy life-style." :
+				    "must not have been watching your health.");
+				break;
+		    }
+		}
+	    }
+	    next_check += rn1(200,800);
+#ifdef DEBUG
+	    pline("exerchk: next check at %ld.", next_check);
+#endif
+	}
+}
+
 static const struct	clattr *
 clx()  {
 
@@ -312,8 +494,10 @@ clx()  {
 			break;
 	    case 'S':	attr = &s_attr;
 			break;
+#ifdef TOURIST
 	    case 'T':	attr = &t_attr;
 			break;
+#endif
 	    case 'V':	attr = &v_attr;
 			break;
 	    case 'W':	attr = &w_attr;
@@ -330,8 +514,11 @@ init_align() {	/* called from newhp if u.ulevel is 0 */
 
 	register const struct	clattr	*attr = clx();
 
-	u.ualign = (int)attr->align;
-	u.ualigntyp = attr->aligntyp;
+	u.ualign = attr->align;
+	/* there should be priests of every stripe */
+	if(pl_character[0] == 'P')
+	     u.ualign.type = (rn2(2)) ? attr->align.type : (rn2(2)) ? 1 : -1;
+	else u.ualign.type = attr->align.type;
 }
 
 void
@@ -352,10 +539,10 @@ init_attr(np)
 	while(np > 0 && tryct < 100) {
 
 	    x = rn2(100);
-	    for(i = 0; (i < A_MAX) && ((x -= attr->dist.a[i]) > 0); i++);
+	    for (i = 0; (i < A_MAX) && ((x -= attr->cldist.a[i]) > 0); i++) ;
 	    if(i >= A_MAX) continue; /* impossible */
 
-	    if(ABASE(i) >= attrmax.a[i]) {
+	    if(ABASE(i) >= ATTRMAX(i)) {
 
 		tryct++;
 		continue;
@@ -370,10 +557,10 @@ init_attr(np)
 	while(np < 0 && tryct < 100) {		/* for redistribution */
 
 	    x = rn2(100);
-	    for(i = 0; (i < A_MAX) && ((x -= attr->dist.a[i]) > 0); i++);
+	    for (i = 0; (i < A_MAX) && ((x -= attr->cldist.a[i]) > 0); i++) ;
 	    if(i >= A_MAX) continue; /* impossible */
 
-	    if(ABASE(i) <= attrmin.a[i]) {
+	    if(ABASE(i) <= ATTRMIN(i)) {
 
 		tryct++;
 		continue;
@@ -395,11 +582,11 @@ redist_attr() {
 		/* Polymorphing doesn't change your mind */
 	    tmp = AMAX(i);
 	    AMAX(i) += (rn2(5)-2);
-	    if (AMAX(i) > attrmax.a[i]) AMAX(i) = attrmax.a[i];
-	    if (AMAX(i) < attrmin.a[i]) AMAX(i) = attrmin.a[i];
+	    if (AMAX(i) > ATTRMAX(i)) AMAX(i) = ATTRMAX(i);
+	    if (AMAX(i) < ATTRMIN(i)) AMAX(i) = ATTRMIN(i);
 	    ABASE(i) = ABASE(i) * AMAX(i) / tmp;
-	    /* ABASE(i) > attrmax.a[i] is impossible */
-	    if (ABASE(i) < attrmin.a[i]) ABASE(i) = attrmin.a[i];
+	    /* ABASE(i) > ATTRMAX(i) is impossible */
+	    if (ABASE(i) < ATTRMIN(i)) ABASE(i) = ATTRMIN(i);
 	}
 }
 
@@ -408,7 +595,7 @@ adjabil(oldlevel,newlevel)
 int oldlevel, newlevel;
 {
 	register const struct clattr	*attr = clx();
-#ifdef __GNULINT__
+#ifdef GCC_WARN
 	/* this is the "right" definition */
 	register const struct innate	*abil = attr->abil;
 #else
@@ -419,17 +606,26 @@ int oldlevel, newlevel;
 	if(abil) {
 	    for(; abil->ability; abil++) {
 		if(oldlevel < abil->ulevel && newlevel >= abil->ulevel) {
-			if(!(*(abil->ability) & INTRINSIC)) {
-			    *(abil->ability) |= INTRINSIC;
-			    if(strlen(abil->gainstr))
+			/* Abilities gained at level 1 can never be lost
+			 * via level loss, only via means that remove _any_
+			 * sort of ability.  A "gain" of such an ability from
+			 * an outside source is devoid of meaning, so we set
+			 * FROMOUTSIDE to avoid such gains.
+			 */
+			if (abil->ulevel == 1)
+				*(abil->ability) |= (FROMEXPER|FROMOUTSIDE);
+			else
+				*(abil->ability) |= FROMEXPER;
+			if(!(*(abil->ability) & FROMOUTSIDE)) {
+			    if(*(abil->gainstr))
 				You("feel %s!", abil->gainstr);
 			}
 		} else if (oldlevel >= abil->ulevel && newlevel < abil->ulevel) {
+			*(abil->ability) &= ~FROMEXPER;
 			if((*(abil->ability) & INTRINSIC)) {
-			    *(abil->ability) &= ~INTRINSIC;
-			    if(strlen(abil->losestr))
+			    if(*(abil->losestr))
 				You("feel %s!", abil->losestr);
-			    else if(strlen(abil->gainstr))
+			    else if(*(abil->gainstr))
 				You("feel less %s!", abil->gainstr);
 			}
 		}
@@ -483,7 +679,26 @@ int x;
 		if (uarmg && uarmg->otyp == GAUNTLETS_OF_POWER) return(125);
 		else return((tmp >= 125) ? 125 : (tmp <= 3) ? 3 : tmp);
 	} 
-	else return((tmp >= 25) ? 25 : (tmp <= 3) ? 3 : tmp);
+#ifdef POLYSELF
+	else if(x == A_CHA) {
+		if (tmp < 18 && (u.usym == S_NYMPH ||
+		    u.umonnum==PM_SUCCUBUS || u.umonnum == PM_INCUBUS))
+		    return 18;
+	}
+#endif
+	return((tmp >= 25) ? 25 : (tmp <= 3) ? 3 : tmp);
+}
+
+schar
+acurrstr()
+/* condense clumsy ACURR(A_STR) value into value that fits into game formulas
+ */
+{
+	register int str = ACURR(A_STR);
+
+	if (str <= 18) return str;
+	if (str <= 121) return (19 + str / 50); /* map to 19-21 */
+	else return str - 100;
 }
 
 #endif /* OVL0 */
@@ -496,14 +711,19 @@ void
 adjalign(n)
 register int n;
 {
-	register int newalign = u.ualign + n;
+	register int newalign = u.ualign.record + n;
 
 	if(n < 0) {
-		if(newalign < u.ualign)
-			u.ualign = newalign;
+		if(newalign < u.ualign.record)
+			u.ualign.record = newalign;
 	} else
-		if(newalign > u.ualign)
-			u.ualign = newalign;
+		if(newalign > u.ualign.record) {
+			u.ualign.record = newalign;
+			if(u.ualign.record > ALIGNLIM)
+				u.ualign.record = ALIGNLIM;
+		}
 }
 
 #endif /* OVL2 */
+
+/*attrib.c*/

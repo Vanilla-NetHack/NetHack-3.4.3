@@ -1,5 +1,5 @@
-/*     SCCS Id: @(#)dbridge.c  3.0     88/18/12
-/*     Copyright (c) 1989 by Jean-Christophe Collet */
+/*	SCCS Id: @(#)dbridge.c	3.1	92/10/24	*/
+/*	Copyright (c) 1989 by Jean-Christophe Collet */
 /* NetHack may be freely redistributed.  See license for details. */
 
 /*
@@ -12,16 +12,16 @@
 
 #include "hack.h"
 
-#ifdef STRONGHOLD
-# ifdef OVLB
-static void FDECL(redosym, (int, int));
+#ifdef OVLB
 static void FDECL(get_wall_for_db, (int *, int *));
 static struct entity *FDECL(e_at, (int, int));
-static void FDECL(m_to_e, (struct monst *, struct entity *));
+static void FDECL(m_to_e, (struct monst *, XCHAR_P, XCHAR_P, struct entity *));
 static void FDECL(u_to_e, (struct entity *));
 static void FDECL(set_entity, (int, int, struct entity *));
 static char *FDECL(e_nam, (struct entity *));
-/* static char *FDECL(Enam, (struct entity *)); */ /* unused */
+#ifdef D_DEBUG
+static char *FDECL(Enam, (struct entity *)); /* unused */
+#endif
 static char *FDECL(E_phrase, (struct entity *, const char *));
 static boolean FDECL(e_survives_at, (struct entity *, int, int));
 static void FDECL(e_died, (struct entity *, int, int));
@@ -29,8 +29,7 @@ static boolean FDECL(automiss, (struct entity *));
 static boolean FDECL(e_missed, (struct entity *, BOOLEAN_P));
 static boolean FDECL(e_jumps, (struct entity *));
 static void FDECL(do_entity, (struct entity *));
-# endif /* OVLB */
-#endif /* STRONGHOLD */
+#endif /* OVLB */
 
 #ifdef OVL0
 
@@ -38,50 +37,37 @@ boolean
 is_pool(x,y)
 int x,y;
 {
-       if(levl[x][y].typ == POOL || levl[x][y].typ == MOAT) return TRUE;
-#ifdef STRONGHOLD
-       if(levl[x][y].typ == DRAWBRIDGE_UP &&
+       register schar ltyp = levl[x][y].typ;
+       if(ltyp == POOL || ltyp == MOAT || ltyp == WATER) return TRUE;
+       if(ltyp == DRAWBRIDGE_UP &&
                (levl[x][y].drawbridgemask & DB_UNDER) == DB_MOAT) return TRUE;
-#endif
        return FALSE;
+}
+
+boolean
+is_lava(x,y)
+int x,y;
+{
+       register schar ltyp = levl[x][y].typ;
+       if(ltyp == LAVAPOOL ||
+	  (ltyp == DRAWBRIDGE_UP &&
+	   (levl[x][y].drawbridgemask & DB_UNDER) == DB_LAVA)) return TRUE;
+       return FALSE;
+}
+
+boolean
+is_ice(x,y)
+int x,y;
+{
+	register schar ltyp = levl[x][y].typ;
+	if (ltyp == ICE ||
+	    (ltyp == DRAWBRIDGE_UP &&
+		(levl[x][y].drawbridgemask & DB_UNDER) == DB_ICE)) return TRUE;
+	return FALSE;
 }
 
 #endif /* OVL0 */
 
-#ifdef STRONGHOLD
-
-#ifdef OVL1
-
-void
-initsym(x,y)
-int x,y;
-{
-	char oldseen;
-	struct rm *crm = &levl[x][y];
-
-	oldseen = crm->seen;
-	crm->seen = 1;
-	crm->scrsym = news0(x,y);
-	crm->seen = oldseen;
-}
-
-#endif /* OVL1 */
-#ifdef OVLB
-
-static void
-redosym(x,y)
-int x,y;
-{
-	if(cansee(x,y)) {
-		levl[x][y].seen = 0;            /* force prl */
-		prl(x, y);
-	} else {
-		initsym(x,y);
-		levl[x][y].seen = 0;
-	}
-}
-
-#endif /* OVLB */
 #ifdef OVL1
 
 /* 
@@ -98,26 +84,22 @@ int x,y;
 	struct rm *lev;
 
 	lev = &levl[x][y];
-	if (lev->typ != DOOR && !(lev->diggable & W_GATEWAY))
+	if (lev->typ != DOOR && lev->typ != DBWALL)
 		return (-1);
-	switch (lev->typ) {
-	case DOOR:
-	case VWALL:
-		if (IS_DRAWBRIDGE(levl[x+1][y].typ) &&
-	 	    (levl[x+1][y].drawbridgemask & DB_DIR) == DB_WEST)
-			return (DB_WEST);
-		if (IS_DRAWBRIDGE(levl[x-1][y].typ) && 
-		    (levl[x-1][y].drawbridgemask & DB_DIR) == DB_EAST)
-			return (DB_EAST);
-		if (lev->typ == VWALL) break;
-	case HWALL:
-		if (IS_DRAWBRIDGE(levl[x][y-1].typ) && 
-		    (levl[x][y-1].drawbridgemask & DB_DIR) == DB_SOUTH)
-			return (DB_SOUTH);
-		if (IS_DRAWBRIDGE(levl[x][y+1].typ) && 
-		    (levl[x][y+1].drawbridgemask & DB_DIR) == DB_NORTH)
-			return (DB_NORTH);
-	}
+
+	if (IS_DRAWBRIDGE(levl[x+1][y].typ) &&
+	    (levl[x+1][y].drawbridgemask & DB_DIR) == DB_WEST)
+		return (DB_WEST);
+	if (IS_DRAWBRIDGE(levl[x-1][y].typ) && 
+	    (levl[x-1][y].drawbridgemask & DB_DIR) == DB_EAST)
+		return (DB_EAST);
+	if (IS_DRAWBRIDGE(levl[x][y-1].typ) && 
+	    (levl[x][y-1].drawbridgemask & DB_DIR) == DB_SOUTH)
+		return (DB_SOUTH);
+	if (IS_DRAWBRIDGE(levl[x][y+1].typ) && 
+	    (levl[x][y+1].drawbridgemask & DB_DIR) == DB_NORTH)
+		return (DB_NORTH);
+
 	return (-1);
 }
 
@@ -130,8 +112,7 @@ boolean
 is_db_wall(x,y)
 int x,y;
 {
-	return( (levl[x][y].typ == VWALL || levl[x][y].typ == HWALL) &&
-		levl[x][y].diggable & W_GATEWAY);
+	return( levl[x][y].typ == DBWALL );
 }
 
 
@@ -190,27 +171,28 @@ int x,y,dir;
 boolean flag;
 {
 	int x2,y2;
-	uchar wall;
+	boolean horiz;
+	boolean lava = levl[x][y].typ == LAVAPOOL; /* assume initialized map */
 
 	x2 = x; y2 = y;
 	switch(dir) {
 		case DB_NORTH:
-			wall = HWALL;
+			horiz = TRUE;
 			y2--;
 			break;
 		case DB_SOUTH:
-			wall = HWALL;
+			horiz = TRUE;
 			y2++;
 			break;
 		case DB_EAST:
-			wall = VWALL;
+			horiz = FALSE;
 			x2++;
 			break;
 		default:
 			impossible("bad direction in create_drawbridge");
 			/* fall through */
 		case DB_WEST:
-			wall = VWALL;
+			horiz = FALSE;
 			x2--;
 			break;
 	}
@@ -222,19 +204,20 @@ boolean flag;
 		levl[x2][y2].doormask = D_NODOOR;
 	} else {
 		levl[x][y].typ = DRAWBRIDGE_UP;
-		levl[x2][y2].typ = wall;
-		/* Beware, drawbridges are non-diggable. */
-		levl[x2][y2].diggable = (W_NONDIGGABLE | W_GATEWAY);
+		levl[x2][y2].typ = DBWALL;
+		/* Drawbridges are non-diggable. */
+		levl[x2][y2].diggable = W_NONDIGGABLE;
 	}
-	levl[x][y].drawbridgemask = dir;        /* always have DB_MOAT */
-	initsym(x,y);
-	initsym(x2,y2);
+	levl[x][y].horizontal = !horiz;
+	levl[x2][y2].horizontal = horiz;
+	levl[x][y].drawbridgemask = dir;
+	if(lava) levl[x][y].drawbridgemask |= DB_LAVA;
 	return(TRUE);           
 }
 
 struct entity {
-	struct monst *emon;	   /* youmonst for the player */
-	struct permonst *edata;    /* must be non-zero for record to be valid */
+	struct monst *emon;	  /* youmonst for the player */
+	struct permonst *edata;   /* must be non-zero for record to be valid */
 	int ex, ey;
 };
 
@@ -256,22 +239,26 @@ int x, y;
 			break;
 #ifdef D_DEBUG
 	pline("entitycnt = %d", entitycnt);
-	fflush(stdout);
+	wait_synch();
 #endif
 	return((entitycnt == ENTITIES)? 
 	       (struct entity *)0 : &(occupants[entitycnt]));
 }
 
 static void
-m_to_e(mtmp, etmp)
+m_to_e(mtmp, x, y, etmp)
 struct monst *mtmp;
+xchar x, y;
 struct entity *etmp;
 {
 	etmp->emon = mtmp;
 	if (mtmp) {
-		etmp->ex = mtmp->mx;
-		etmp->ey = mtmp->my;
-		etmp->edata = mtmp->data;
+		etmp->ex = x;
+		etmp->ey = y;
+		if (mtmp->wormno && (x != mtmp->mx || y != mtmp->my))
+			etmp->edata = &mons[PM_LONG_WORM_TAIL];
+		else
+			etmp->edata = mtmp->data;
 	} else
 		etmp->edata = (struct permonst *)0;
 }
@@ -295,23 +282,13 @@ struct entity *etmp;
 		u_to_e(etmp);
 	else
 		if (MON_AT(x, y))
-			m_to_e(m_at(x, y), etmp);
+			m_to_e(m_at(x, y), x, y, etmp);
 		else
 			etmp->edata = (struct permonst *)0;
 }
 
-#ifdef POLYSELF
 #define is_u(etmp) (etmp->emon == &youmonst)
-#else
-#define is_u(x) FALSE
-#endif
-
-/* 
- * WARNING! THE FOLLOWING IS ONLY USEFUL FOR CANSEEMON, OR OTHER FUNCS WHICH 
- * ALWAYS RETURN TRUE FOR U.
- */
-
-#define e_boolean(etmp, func) (is_u(etmp)? (boolean)TRUE : func(etmp->emon)) 
+#define e_canseemon(etmp) (is_u(etmp) ? (boolean)TRUE : canseemon(etmp->emon)) 
 
 /*
  * e_strg is a utility routine which is not actually in use anywhere, since 
@@ -327,18 +304,18 @@ struct entity *etmp;
 	return(is_u(etmp)? "you" : mon_nam(etmp->emon));
 }
 
+#ifdef D_DEBUG
 /*
  * Enam is another unused utility routine:  E_phrase is preferable.
  */
 
-/*
 static char *
 Enam(etmp)
 struct entity *etmp;
 {
 	return(is_u(etmp)? "You" : Monnam(etmp->emon));
 }
-*/
+#endif /* D_DEBUG */
 
 /*
  * Generates capitalized entity name, makes 2nd -> 3rd person conversion on 
@@ -350,7 +327,8 @@ E_phrase(etmp, verb)
 struct entity *etmp;
 const char *verb;
 {
-	char wholebuf[80], verbbuf[30];
+	static char wholebuf[80];
+	char verbbuf[30];
 
 	if (is_u(etmp)) 
 		Strcpy(wholebuf, "You");
@@ -401,9 +379,12 @@ int x, y;
 	if (noncorporeal(etmp->edata))
 		return(TRUE);
 	if (is_pool(x, y))
-		return((is_u(etmp) && (Wwalking || Levitation)) ||
+		return((is_u(etmp) && (Wwalking || Magical_breathing || Levitation)) ||
 		       is_swimmer(etmp->edata) || is_flyer(etmp->edata) ||
 		       is_floater(etmp->edata));
+	/* must force call to lava_effects in e_died if is_u */
+	if (is_lava(x, y))
+		return(is_u(etmp) ? !!Levitation : resists_fire(etmp->edata));
 	if (is_db_wall(x, y))
 		return(passes_walls(etmp->edata));
 	return(TRUE);
@@ -416,7 +397,9 @@ int dest, how;
 {
 	if (is_u(etmp)) {
 		if (how == DROWNING)
-			drown();
+			(void) drown();
+		if (how == BURNING)
+			(void) lava_effects();
 		else {
 			coord xy;
 
@@ -475,20 +458,20 @@ boolean chunks;
 	if (is_flyer(etmp->edata) && 
 	    (is_u(etmp)? !Sleeping : 
 	     (etmp->emon->mcanmove && !etmp->emon->msleep)))
-						  /* flying requires mobility */
+						 /* flying requires mobility */
 		misses = 5;	/* out of 8 */	
 	else
 		if (is_floater(etmp->edata) ||
-		    (is_u(etmp) && Levitation))	  /* doesn't require mobility */
+		    (is_u(etmp) && Levitation))	 /* doesn't require mobility */
 			misses = 3;
 		else
 			if (chunks && is_pool(etmp->ex, etmp->ey))
-				misses = 2; 		     /* sitting ducks */
+				misses = 2; 		    /* sitting ducks */
 			else
 				misses = 0;	  
 
 	if (is_db_wall(etmp->ex, etmp->ey))
-		misses -= 3;				     /* less airspace */
+		misses -= 3;				    /* less airspace */
 
 #ifdef D_DEBUG
 	pline("Miss chance = %d (out of 8)", misses);
@@ -509,7 +492,7 @@ struct entity *etmp;
 
 	if (is_u(etmp)? (Sleeping || Fumbling) : 
 		        (!etmp->emon->mcanmove || etmp->emon->msleep || 
-			 !etmp->edata->mmove))
+			 !etmp->edata->mmove   || etmp->emon->wormno))
 		return(FALSE);
 
 	if (is_u(etmp)? Confusion : etmp->emon->mconf)
@@ -519,7 +502,7 @@ struct entity *etmp;
 		tmp -= 3;
 
 	if (is_db_wall(etmp->ex, etmp->ey))
-		tmp -= 2;			     /* less room to maneuver */
+		tmp -= 2;			    /* less room to maneuver */
 	
 #ifdef D_DEBUG
 	pline("%s to jump (%d chances in 10)", E_phrase(etmp, "try"), tmp);
@@ -538,7 +521,7 @@ struct entity *etmp;
 	if (!etmp->edata)
 		return;
 
-	e_inview = e_boolean(etmp, canseemon);
+	e_inview = e_canseemon(etmp);
 
 	oldx = etmp->ex;
 	oldy = etmp->ey;
@@ -582,41 +565,41 @@ struct entity *etmp;
 			if (at_portcullis)
 				must_jump = TRUE;
 			else
-				relocates = TRUE;  /* just ride drawbridge in */
+				relocates = TRUE; /* just ride drawbridge in */
 		}
 	} else {
 		if (crm->typ == DRAWBRIDGE_DOWN) {
 			pline("%s crushed underneath the drawbridge.",
-		      	      E_phrase(etmp, "are"));	   	   /* no jump */
-			e_died(etmp, e_inview? 2 : 3, CRUSHING); /* no corpse */
-			return;   /* Note: Beyond this point, we know we're   */
-		}                 /* not at an opened drawbridge, since all   */
-		must_jump = TRUE; /* *missable* creatures survive on the      */
-	}			  /* square, and all the unmissed ones die.   */
-	if (must_jump) 
-		if (at_portcullis) {
-			if (e_jumps(etmp)) {
-				relocates = TRUE;
+		      	      E_phrase(etmp, "are"));	   	  /* no jump */
+			e_died(etmp, e_inview? 3 : 2, CRUSHING);/* no corpse */
+			return;   /* Note: Beyond this point, we know we're  */
+		}                 /* not at an opened drawbridge, since all  */
+		must_jump = TRUE; /* *missable* creatures survive on the     */
+	}			  /* square, and all the unmissed ones die.  */
+	if (must_jump) {
+	    if (at_portcullis) {
+		if (e_jumps(etmp)) {
+		    relocates = TRUE;
 #ifdef D_DEBUG
-				pline("Jump succeeds!");
+		    pline("Jump succeeds!");
 #endif
-			} else {
-				if (e_inview)
-			       pline("%s crushed by the falling portcullis!",
-	      	      		     E_phrase(etmp, "are"));
-				else
-					if (flags.soundok)
-						You("hear a crushing sound.");
-				e_died(etmp, e_inview? 1 : 0, CRUSHING);
-								    /* corpse */
-				return;
-			}
-		} else {       /* tries to jump off bridge to original square */
-			relocates = !e_jumps(etmp); 
-#ifdef D_DEBUG
-			pline("Jump %s!", (relocates)? "fails" : "succeeds");
-#endif
+		} else {
+		    if (e_inview)
+			pline("%s crushed by the falling portcullis!",
+			      E_phrase(etmp, "are"));
+		    else if (flags.soundok)
+			You("hear a crushing sound.");
+		    e_died(etmp, e_inview? 3 : 2, CRUSHING);
+		    /* no corpse */
+		    return;
 		}
+	    } else { /* tries to jump off bridge to original square */
+		relocates = !e_jumps(etmp); 
+#ifdef D_DEBUG
+		pline("Jump %s!", (relocates)? "fails" : "succeeds");
+#endif
+	    }
+	}
 
 /*
  * Here's where we try to do relocation.  Assumes that etmp is not arriving
@@ -625,7 +608,7 @@ struct entity *etmp;
  * unnecessary (i.e. etmp started here) in such a situation.
  */
 #ifdef D_DEBUG
-	pline("Doing relocation");
+	pline("Doing relocation.");
 #endif
 	newx = oldx;
 	newy = oldy;
@@ -633,7 +616,7 @@ struct entity *etmp;
 	if ((newx == oldx) && (newy == oldy))
 		get_wall_for_db(&newx, &newy);
 #ifdef D_DEBUG
-	pline("Checking new square for occupancy");
+	pline("Checking new square for occupancy.");
 #endif
 	if (relocates && (e_at(newx, newy))) { 
 
@@ -649,7 +632,7 @@ struct entity *etmp;
 		pline("New square is occupied by %s", e_nam(other));
 #endif
 		if (e_survives_at(other, newx, newy) && automiss(other)) {
-			relocates = FALSE;     	       /* "other" won't budge */
+			relocates = FALSE;     	      /* "other" won't budge */
 #ifdef D_DEBUG
 			pline("%s suicide.", E_phrase(etmp, "commit"));
 #endif
@@ -662,21 +645,20 @@ struct entity *etmp;
 			       (e_at(newx, newy) != etmp))
 		       		do_entity(other);
 #ifdef D_DEBUG
-			pline("Checking existence of %s", 
-			      e_nam(etmp));
-			fflush(stdout);
+			pline("Checking existence of %s", e_nam(etmp));
+			wait_synch();
 #endif
 			if (e_at(oldx, oldy) != etmp) {
 #ifdef D_DEBUG
-			        pline("%s moved or died in recursion somewhere",
-				      E_phrase(etmp, "have"));
-				fflush(stdout);
+			    pline("%s moved or died in recursion somewhere",
+				  E_phrase(etmp, "have"));
+			    wait_synch();
 #endif
-				return;
+			    return;
 			}
 		}
 	}
-	if (relocates) {
+	if (relocates && !e_at(newx, newy)) {/* if e_at() entity = worm tail */
 #ifdef D_DEBUG
 		pline("Moving %s", e_nam(etmp));
 #endif
@@ -689,18 +671,18 @@ struct entity *etmp;
 		}
 		etmp->ex = newx;
 		etmp->ey = newy;
-		e_inview = e_boolean(etmp, canseemon);
+		e_inview = e_canseemon(etmp);
 	}
 #ifdef D_DEBUG
 	pline("Final disposition of %s", e_nam(etmp));
-	fflush(stdout);
+	wait_synch();
 #endif
 	if (is_db_wall(etmp->ex, etmp->ey)) {
 #ifdef D_DEBUG
 		pline("%s in portcullis chamber", E_phrase(etmp, "are"));
-		fflush(stdout);
+		wait_synch();
 #endif
-		if (e_inview)
+		if (e_inview) {
 			if (is_u(etmp)) {
 				You("tumble towards the closed portcullis!"); 
 				if (automiss(etmp))
@@ -710,10 +692,11 @@ struct entity *etmp;
 			} else
 				pline("%s behind the drawbridge.",
 		      	      	      E_phrase(etmp, "disappear"));
+		}
 		if (!e_survives_at(etmp, etmp->ex, etmp->ey)) {
 			killer_format = KILLED_BY_AN;
 			killer = "closing drawbridge";
-			e_died(etmp, 0, CRUSHING); 		/* no message */
+			e_died(etmp, 0, CRUSHING); 	       /* no message */
 			return;
 		}
 #ifdef D_DEBUG
@@ -734,22 +717,28 @@ struct entity *etmp;
 			return;	
 		}
 #ifdef D_DEBUG
-		pline("%s cannot survive on the drawbridge square", Enam(etmp));
+		pline("%s cannot survive on the drawbridge square",Enam(etmp));
 #endif
-		if (is_pool(etmp->ex, etmp->ey))
-			if (e_inview && 
-			    !is_u(etmp))  /* drown() will supply msgs if nec. */
-				if (Hallucination)
-				      pline("%s the moat and disappears.",
-					    E_phrase(etmp, "drink"));
-				else
-				      pline("%s into the moat.",
-			      	            E_phrase(etmp, "fall"));
+		if (is_pool(etmp->ex, etmp->ey) || is_lava(etmp->ex, etmp->ey))
+		    if (e_inview && !is_u(etmp)) {
+			/* drown() will supply msgs if nec. */
+			boolean lava = is_lava(etmp->ex, etmp->ey);
+
+			if (Hallucination)
+			    pline("%s the %s and disappears.",
+				  E_phrase(etmp, "drink"),
+				  lava ? "lava" : "moat");
+			else
+			    pline("%s into the %s.",
+				  E_phrase(etmp, "fall"),
+				  lava ? "lava" : "moat");
+		    }
 		killer_format = NO_KILLER_PREFIX;
 		killer = "fell from a drawbridge";
-		e_died(etmp, e_inview? 1 : 0,        /* CRUSHING is arbitrary */
-		       (is_pool(etmp->ex, etmp->ey))? DROWNING : CRUSHING);
-		       						    /* corpse */
+		e_died(etmp, e_inview ? 3 : 2,      /* CRUSHING is arbitrary */
+		       (is_pool(etmp->ex, etmp->ey)) ? DROWNING :
+		       (is_lava(etmp->ex, etmp->ey)) ? BURNING :
+						       CRUSHING); /*no corpse*/
 		return;
 	}
 }
@@ -763,53 +752,43 @@ close_drawbridge(x,y)
 int x,y;
 {
 	register struct rm *lev1, *lev2;
-	struct obj *otmp, *otmp2;
 	int x2, y2;
 
 	lev1 = &levl[x][y];
 	if (lev1->typ != DRAWBRIDGE_DOWN) return;
 	x2 = x; y2 = y;
 	get_wall_for_db(&x2,&y2);
-	if (cansee(x,y))   /* change msgs if you are a w-walker at portcullis */
+	if (cansee(x,y))  /* change msgs if you are a w-walker at portcullis */
 		You("see a drawbridge %s up!", 
 		    ((u.ux == x2) && (u.uy == y2))? "coming" : "going");
 	lev1->typ = DRAWBRIDGE_UP;
 	lev2 = &levl[x2][y2];
+	lev2->typ = DBWALL;
 	switch (lev1->drawbridgemask & DB_DIR) {
 		case DB_NORTH:
 		case DB_SOUTH:
-			lev2->typ = HWALL;
+			lev2->horizontal = TRUE;
 			break;
 		case DB_WEST:
 		case DB_EAST:
-			lev2->typ = VWALL;
+			lev2->horizontal = FALSE;
 			break;
 	}
-	lev2->diggable = (W_NONDIGGABLE | W_GATEWAY);
+	lev2->diggable = W_NONDIGGABLE;
 	set_entity(x, y, &(occupants[0]));
 	set_entity(x2, y2, &(occupants[1]));
-	do_entity(&(occupants[0]));
+	do_entity(&(occupants[0]));		/* Do set_entity after first */
+	set_entity(x2, y2, &(occupants[1]));	/* do_entity for worm tail */
 	do_entity(&(occupants[1]));
-	redosym(x, y);
 	if(OBJ_AT(x,y) && flags.soundok)
-		You("hear smashing and crushing.");
-	for (otmp = level.objects[x][y]; otmp; otmp = otmp2) {
-		otmp2 = otmp->nexthere;
-		if (otmp == uball)
-			unpunish();
-		if (otmp == uchain)
-			continue;
-		delobj(otmp);
-	}
-	for (otmp = level.objects[x2][y2]; otmp; otmp = otmp2) {
-		otmp2 = otmp->nexthere;
-		if (otmp == uball)
-			unpunish();
-		if (otmp == uchain)
-			continue;
-		delobj(otmp);
-	}
-	redosym(x2, y2);
+	    You("hear smashing and crushing.");
+	(void) revive_nasty(x,y,NULL);
+	(void) revive_nasty(x2,y2,NULL);
+	delallobj(x, y);
+	newsym(x, y);
+	delallobj(x2, y2);
+	newsym(x2, y2);
+	block_point(x2,y2);	/* vision */
 }
 
 /* 
@@ -827,7 +806,7 @@ int x,y;
 	if (lev1->typ != DRAWBRIDGE_UP) return;
 	x2 = x; y2 = y;
 	get_wall_for_db(&x2,&y2);
-	if (cansee(x,y))   /* change msgs if you are a w-walker at portcullis */
+	if (cansee(x,y))  /* change msgs if you are a w-walker at portcullis */
 		You("see a drawbridge %s down!",
 		    ((x2 == u.ux) && (y2 == u.uy))? "going" : "coming");
 	lev1->typ = DRAWBRIDGE_DOWN;
@@ -836,10 +815,16 @@ int x,y;
 	lev2->doormask = D_NODOOR;
 	set_entity(x, y, &(occupants[0]));
 	set_entity(x2, y2, &(occupants[1]));
-	do_entity(&(occupants[0]));
+	do_entity(&(occupants[0]));		/* do set_entity after first */
+	set_entity(x2, y2, &(occupants[1]));	/* do_entity for worm tails */
 	do_entity(&(occupants[1]));
-	redosym(x, y);
-	redosym(x2, y2);
+	spoteffects();  /* if underwater, hero is now on solid ground */
+	(void) revive_nasty(x,y,NULL);
+	delallobj(x, y);
+	newsym(x, y);
+	newsym(x2, y2);
+	unblock_point(x2,y2);	/* vision */
+	if (Is_stronghold(&u.uz)) u.uevent.uopened_dbridge = TRUE;
 }
 
 /*
@@ -861,77 +846,92 @@ int x,y;
 	x2 = x; y2 = y;
 	get_wall_for_db(&x2,&y2);
 	lev2 = &levl[x2][y2];
-	if ((lev1->drawbridgemask & DB_UNDER) == DB_MOAT) {
+	if ((lev1->drawbridgemask & DB_UNDER) == DB_MOAT ||
+	    (lev1->drawbridgemask & DB_UNDER) == DB_LAVA) {
+		struct obj *otmp;
+		boolean lava = (lev1->drawbridgemask & DB_UNDER) == DB_LAVA;
 		if (lev1->typ == DRAWBRIDGE_UP) {
 			if (cansee(x2,y2))
-		pline("The portcullis of the drawbridge falls into the moat!");
+			    pline("The portcullis of the drawbridge falls into the %s!",
+				  lava ? "lava" : "moat");
 			else if (flags.soundok)
 				You("hear a loud *SPLASH*!");
 		} else {
 			if (cansee(x,y))
-			    pline("The drawbridge collapses into the moat!");
+			    pline("The drawbridge collapses into the %s!",
+				  lava ? "lava" : "moat");
 			else if (flags.soundok)
 				You("hear a loud *SPLASH*!");
 		}
-		lev1->typ = MOAT;
+		lev1->typ = lava ? LAVAPOOL : MOAT;
 		lev1->drawbridgemask = 0;
+		if(otmp = sobj_at(BOULDER,x,y)) {
+		    freeobj(otmp);
+		    (void) flooreffects(otmp,x,y,"fall");
+		}
 	} else {
 		if (cansee(x,y))
 			pline("The drawbridge disintegrates!");
 		else
 			You("hear a loud *CRASH*!");
-		lev1->typ = ROOM;
+		lev1->typ =
+			((lev1->drawbridgemask & DB_ICE) ? ICE : ROOM);
 		lev1->icedpool =
 			((lev1->drawbridgemask & DB_ICE) ? ICED_MOAT : 0);
 	}
-	set_entity(x2, y2, etmp2); /* currently, only automissers can be here */
+	wake_nearby();
+	lev2->typ = DOOR;
+	lev2->doormask = D_NODOOR;
+	newsym(x,y);
+	newsym(x2,y2);
+	if (!does_block(x2,y2,lev2)) unblock_point(x2,y2);	/* vision */
+	if (Is_stronghold(&u.uz)) u.uevent.uopened_dbridge = TRUE;
+
+	set_entity(x2, y2, etmp2); /* currently only automissers can be here */
 	if (etmp2->edata) {
-		e_inview = e_boolean(etmp2, canseemon);
-		if (!automiss(etmp2)) {			   /* i.e. no-one yet */
+		e_inview = e_canseemon(etmp2);
+		if (!automiss(etmp2)) {
 			if (e_inview)
-				pline("%s blown apart by flying debris",
+				pline("%s blown apart by flying debris.",
 			      	      E_phrase(etmp2, "are"));
 			killer_format = KILLED_BY_AN;
 			killer = "exploding drawbridge";
-			e_died(etmp2, e_inview? 2 : 3, CRUSHING);/* no corpse */
-		}	      /* nothing which is vulnerable can survive this */
+			e_died(etmp2, e_inview? 3 : 2, CRUSHING); /*no corpse*/
+		}	     /* nothing which is vulnerable can survive this */
 	}
-	lev2->typ = DOOR;
-	lev2->doormask = D_NODOOR;
 	set_entity(x, y, etmp1);
 	if (etmp1->edata) {
-		e_inview = e_boolean(etmp1, canseemon);
+		e_inview = e_canseemon(etmp1);
 		if (e_missed(etmp1, TRUE)) {
 #ifdef D_DEBUG
 			pline("%s spared!", E_phrase(etmp1, "are"));
 #endif
 		} else {
-			if (e_inview) 
-				if (!is_u(etmp1) && Hallucination)
-					pline("%s into some heavy metal",
-					      E_phrase(etmp1, "get"));
-				else
-				    pline("%s hit by a huge chunk of metal!",
-			      	          E_phrase(etmp1, "are"));
-			else 
-				if (flags.soundok && !is_u(etmp1) && 
-				    !is_pool(x, y))
-					You("hear a crushing sound");
+			if (e_inview) {
+			    if (!is_u(etmp1) && Hallucination)
+				pline("%s into some heavy metal",
+				      E_phrase(etmp1, "get"));
+			    else
+				pline("%s hit by a huge chunk of metal!",
+				      E_phrase(etmp1, "are"));
+			} else {
+			    if (flags.soundok && !is_u(etmp1) && !is_pool(x,y))
+				You("hear a crushing sound");
 #ifdef D_DEBUG
-				else
-					pline("%s from shrapnel", 
-					      E_phrase(etmp1, "die"));
+			    else
+				pline("%s from shrapnel", 
+				      E_phrase(etmp1, "die"));
 #endif
+			}
 			killer_format = KILLED_BY_AN;
 			killer = "collapsing drawbridge";
-			e_died(etmp1, e_inview? 0 : 1, CRUSHING);   /* corpse */
+			e_died(etmp1, e_inview? 3 : 2, CRUSHING); /*no corpse*/
+			if(lev1->typ == MOAT) do_entity(etmp1);
 		}
 	}
-	redosym(x,y);
-	redosym(x2,y2);
 }
 
 
 #endif /* OVLB */
 
-#endif /* STRONGHOLD /**/
+/*dbridge.c*/

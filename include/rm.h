@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)rm.h	3.0	88/10/25
+/*	SCCS Id: @(#)rm.h	3.1	92/09/01		  */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -8,7 +8,7 @@
 /*
  * The dungeon presentation graphics code and data structures were rewritten
  * and generalized for NetHack's release 2 by Eric S. Raymond (eric@snark)
- * building on Don G. Kneller's MS-DOS implementation. See options.c for
+ * building on Don G. Kneller's MS-DOS implementation.  See drawing.c for
  * the code that permits the user to set the contents of the symbol structure.
  *
  * The door representation was changed by Ari Huttunen(ahuttune@niksula.hut.fi)
@@ -31,8 +31,8 @@
 
 /* Level location types */
 #define STONE		0
-#define HWALL		1
-#define VWALL		2
+#define VWALL		1
+#define HWALL		2
 #define TLCORNER	3
 #define TRCORNER	4
 #define BLCORNER	5
@@ -42,30 +42,37 @@
 #define TDWALL		9
 #define TLWALL		10
 #define TRWALL		11
-#define SDOOR		12
-#define SCORR		13
-#define POOL		14
-#define MOAT		15	/* pool that doesn't boil, adjust messages */
-#define DRAWBRIDGE_UP	16
-#define DOOR		17
-#define CORR		18
-#define ROOM		19
-#define STAIRS		20
-#define LADDER		21
-#define FOUNTAIN	22
-#define THRONE		23
-#define SINK		24
-#define ALTAR		25
-#define DRAWBRIDGE_DOWN	26
+#define DBWALL		12
+#define SDOOR		13
+#define SCORR		14
+#define POOL		15
+#define MOAT		16	/* pool that doesn't boil, adjust messages */
+#define WATER		17
+#define DRAWBRIDGE_UP	18
+#define LAVAPOOL	19
+#define DOOR		20
+#define CORR		21
+#define ROOM		22
+#define STAIRS		23
+#define LADDER		24
+#define FOUNTAIN	25
+#define THRONE		26
+#define SINK		27
+#define ALTAR		28
+#define ICE		29
+#define DRAWBRIDGE_DOWN	30
+#define AIR		31
+#define CLOUD		32
+
+#define INVALID_TYPE	127
 
 /*
  * Avoid using the level types in inequalities:
  * these types are subject to change.
  * Instead, use one of the macros below.
  */
-#ifndef STUPID_CPP	/* otherwise these macros are functions in prisym.c */
-#define IS_WALL(typ)	((typ) && (typ) <= TRWALL)
-#define IS_STWALL(typ)	((typ) <= TRWALL)	/* STONE <= (typ) <= TRWALL */
+#define IS_WALL(typ)	((typ) && (typ) <= DBWALL)
+#define IS_STWALL(typ)	((typ) <= DBWALL)	/* STONE <= (typ) <= DBWALL */
 #define IS_ROCK(typ)	((typ) < POOL)		/* absolutely nonaccessible */
 #define IS_DOOR(typ)	((typ) == DOOR)
 #define ACCESSIBLE(typ)	((typ) >= DOOR)		/* good position */
@@ -79,13 +86,14 @@
 #define IS_ALTAR(typ)	((typ) == ALTAR)
 #define IS_DRAWBRIDGE(typ) ((typ) == DRAWBRIDGE_UP || (typ) == DRAWBRIDGE_DOWN)
 #define IS_FURNITURE(typ) ((typ) >= STAIRS && (typ) <= ALTAR)
-#endif
+#define IS_AIR(typ)	((typ) == AIR || (typ) == CLOUD)
+#define IS_SOFT(typ)	((typ) == AIR || (typ) == CLOUD || IS_POOL(typ))
 
 /*
- * The level-map symbols may be compiled in or defined at initialization time
+ * The screen symbols may be the default or defined at game startup time.
+ * See drawing.c for defaults.
+ * Note: {ibm|dec}_graphics[] arrays (also in drawing.c) must be kept in synch.
  */
-
-/* screen symbols for using character graphics. */
 #define S_stone		0
 #define S_vwall		1
 #define S_hwall		2
@@ -98,78 +106,88 @@
 #define S_tdwall	9
 #define S_tlwall	10
 #define S_trwall	11
-#define S_vbeam		12
-#define S_hbeam		13
-#define S_lslant	14
-#define S_rslant	15
-#define S_ndoor		16
-#define S_vodoor	17
-#define S_hodoor	18
-#define S_cdoor		19
-#define S_room		20
-#define S_corr		21
-#define S_upstair	22
-#define S_dnstair	23
+#define S_ndoor		12
+#define S_vodoor	13
+#define S_hodoor	14
+#define S_vcdoor	15	/* closed door, vertical wall */
+#define S_hcdoor	16	/* closed door, horizontal wall */
+#define S_room		17
+#define S_corr		18
+#define S_litcorr	19
+#define S_upstair	20
+#define S_dnstair	21
+#define S_upladder	22
+#define S_dnladder	23
 #define S_trap		24
 #define S_web		25
-#define S_pool		26
-#define S_fountain	27
+#define S_altar		26
+#define S_throne	27
 #define S_sink		28
-#define S_throne	29
-#define S_altar		30
-#define S_upladder	31
-#define S_dnladder	32
-#define S_dbvwall	33
-#define S_dbhwall	34
+#define S_fountain	29
+#define S_pool		30
+#define S_ice		31
+#define S_lava		32
+#define S_vodbridge	33
+#define S_hodbridge	34
+#define S_vcdbridge	35	/* closed drawbridge, vertical wall */
+#define S_hcdbridge	36	/* closed drawbridge, horizontal wall */
+#define S_air		37
+#define S_cloud		38
+#define S_water		39
+#define S_vbeam		40	/* The 4 zap beam symbols.  Do NOT separate. */
+#define S_hbeam		41	/* To change order or add, see function     */
+#define S_lslant	42	/* zapdir_to_glyph() in display.c.	    */
+#define S_rslant	43
+#define S_digbeam	44	/* dig beam symbol */
+#define S_flashbeam	45	/* camera flash symbol */
+#define S_boomleft	46	/* thrown boomerang, open left, e.g ')'    */
+#define S_boomright	47	/* thrown boomerand, open right, e.g. '('  */
+#define S_ss1		48	/* 4 magic shield glyphs */
+#define S_ss2		49
+#define S_ss3		50
+#define S_ss4		51
 
-#define MAXPCHARS	35	/* maximum number of mapped characters */
+/* The 8 swallow symbols.  Do NOT separate.  To change order or add, see */
+/* the function swallow_to_glyph() in display.c.			 */
+#define S_sw_tl		52	/* swallow top left [1]			*/
+#define S_sw_tc		53	/* swallow top center [2]	Order:	*/
+#define S_sw_tr		54	/* swallow top right [3]		*/
+#define S_sw_ml		55	/* swallow middle left [4]	1 2 3	*/
+#define S_sw_mr		56	/* swallow middle right [6]	4 5 6	*/
+#define S_sw_bl		57	/* swallow bottom left [7]	7 8 9	*/
+#define S_sw_bc		58	/* swallow bottom center [8]		*/
+#define S_sw_br		59	/* swallow bottom right [9]		*/
 
-typedef uchar symbol_array[MAXPCHARS];
+#define S_explode1	60	/* explosion top left			*/
+#define S_explode2	61	/* explosion top center			*/
+#define S_explode3	62	/* explosion top right		 Ex.	*/
+#define S_explode4	63	/* explosion middle left		*/
+#define S_explode5	64	/* explosion middle center	 /-\	*/
+#define S_explode6	65	/* explosion middle right	 |@|	*/
+#define S_explode7	66	/* explosion bottom left	 \-/	*/
+#define S_explode8	67	/* explosion bottom center		*/
+#define S_explode9	68	/* explosion bottom right		*/
 
-extern symbol_array showsyms;
-extern const char *explainsyms[MAXPCHARS];  /* tells what the characters are */
-#ifdef REINCARNATION
-extern symbol_array savesyms;
+#define MAXPCHARS	69	/* maximum number of mapped characters */
+
+struct symdef {
+    uchar sym;
+    const char  *explanation;
+#ifdef TEXTCOLOR
+    uchar color;
 #endif
-extern symbol_array defsyms;
+};
 
-#define STONE_SYM	showsyms[S_stone]
-#define VWALL_SYM	showsyms[S_vwall]
-#define HWALL_SYM	showsyms[S_hwall]
-#define TLCORN_SYM	showsyms[S_tlcorn]
-#define TRCORN_SYM	showsyms[S_trcorn]
-#define BLCORN_SYM	showsyms[S_blcorn]
-#define BRCORN_SYM	showsyms[S_brcorn]
-#define CRWALL_SYM	showsyms[S_crwall]
-#define TUWALL_SYM	showsyms[S_tuwall]
-#define TDWALL_SYM	showsyms[S_tdwall]
-#define TLWALL_SYM	showsyms[S_tlwall]
-#define TRWALL_SYM	showsyms[S_trwall]
-#define VBEAM_SYM	showsyms[S_vbeam]
-#define HBEAM_SYM	showsyms[S_hbeam]
-#define LSLANT_SYM	showsyms[S_lslant]
-#define RSLANT_SYM	showsyms[S_rslant]
-#define NO_DOOR_SYM	showsyms[S_ndoor]
-#define H_OPEN_DOOR_SYM	showsyms[S_hodoor]
-#define V_OPEN_DOOR_SYM	showsyms[S_vodoor]
-#define CLOSED_DOOR_SYM	showsyms[S_cdoor]
-#define ROOM_SYM	showsyms[S_room]
-#define	CORR_SYM	showsyms[S_corr]
-#define UP_SYM		showsyms[S_upstair]
-#define DN_SYM		showsyms[S_dnstair]
-#define TRAP_SYM	showsyms[S_trap]
-#define WEB_SYM		showsyms[S_web]
-#define	POOL_SYM	showsyms[S_pool]
-#define FOUNTAIN_SYM	showsyms[S_fountain]
-#define SINK_SYM	showsyms[S_sink]
-#define THRONE_SYM	showsyms[S_throne]
-#define ALTAR_SYM	showsyms[S_altar]
-#define UPLADDER_SYM	showsyms[S_upladder]
-#define DNLADDER_SYM	showsyms[S_dnladder]
-#define DB_VWALL_SYM	showsyms[S_dbvwall]
-#define DB_HWALL_SYM	showsyms[S_dbhwall]
+extern const struct symdef defsyms[MAXPCHARS];	/* defaults */
+extern uchar showsyms[MAXPCHARS];
 
-#define	ERRCHAR	']'
+/*
+ * Graphics sets for display symbols
+ */
+#define ASCII_GRAPHICS	0	/* regular characters: '-', '+', &c */
+#define IBM_GRAPHICS	1	/* PC graphic characters */
+#define DEC_GRAPHICS	2	/* VT100 line drawing characters */
+#define MAC_GRAPHICS	3	/* Macintosh drawing characters */
 
 /*
  * The 5 possible states of doors
@@ -185,14 +203,14 @@ extern symbol_array defsyms;
 /*
  * The 3 possible alignments for altars
  */
-#define A_CHAOS		0
-#define A_NEUTRAL	1
-#define A_LAW		2
+#ifndef ALIGN_H
+#include "align.h"		/* defines the "AM_" values */
+#endif
 
 /*
  * Some altars are considered as shrines, so we need a flag.
  */
-#define A_SHRINE	4
+#define AM_SHRINE	8
 
 /*
  * Thrones should only be looted once.
@@ -200,58 +218,54 @@ extern symbol_array defsyms;
 #define T_LOOTED	1
 
 /*
+ * Fountains have limits, and special warnings.
+ */
+#define F_LOOTED	1
+#define F_WARNED	2
+
+/*
+ * Sinks have 3 different types of loot that shouldn't be abused
+ */
+#define S_LPUDDING	1
+#define S_LDWASHER	2
+#define S_LRING		4
+
+/*
  * The four directions for a DrawBridge.
  */
 #define DB_NORTH	0
 #define DB_SOUTH	1
-#define DB_EAST 	2
-#define DB_WEST 	4
-#define DB_DIR		7	/* mask for direction */
+#define DB_EAST		2
+#define DB_WEST		3
+#define DB_DIR		3	/* mask for direction */
 
 /*
  * What's under a drawbridge.
  */
 #define DB_MOAT		0
-#define DB_FLOOR	8
-#define DB_ICE		16
-#define DB_UNDER	24	/* mask for underneath */
+#define DB_LAVA		4
+#define DB_ICE		8
+#define DB_FLOOR	16
+#define DB_UNDER	28	/* mask for underneath */
 
-/* 
+/*
  * Some walls may be non diggable.
  */
 #define W_DIGGABLE	0
 #define W_NONDIGGABLE	1
-#define W_GATEWAY	16	/* is a drawbridge wall */
+#define W_REPAIRED	2
 
 /*
  * Ladders (in Vlad's tower) may be up or down.
  */
 #define LA_UP		1
-#define LA_DOWN 	2
+#define LA_DOWN		2
 
 /*
- * Room areas may be iced pools,
+ * Room areas may be iced pools
  */
 #define ICED_POOL	8
 #define ICED_MOAT	16
-
-
-/*
- * at() display character types, in order of precedence.
- */
-#ifndef MAXCOLORS
-#define MAXCOLORS	1
-#endif
- 
-#define AT_APP		(uchar)0
-/* 1-MAXCOLORS are specific overrides, see color.h */
-/* non-specific */
-#define AT_ZAP		(uchar)(MAXCOLORS+1)
-#define AT_MON		(uchar)(MAXCOLORS+2)
-#define AT_U		AT_MON
-#define AT_OBJ		(uchar)(MAXCOLORS+3)
-#define AT_GLD		AT_OBJ
-#define AT_MAP		(uchar)(MAXCOLORS+4)
 
 /*
  * The structure describing a coordinate position.
@@ -259,33 +273,58 @@ extern symbol_array defsyms;
  * the size of temporary files and save files.
  */
 struct rm {
-	uchar scrsym;
-	Bitfield(typ,5);
-	Bitfield(new,1);
-	Bitfield(seen,1);
-	Bitfield(lit,1);
-	Bitfield(doormask,5);
-	Bitfield(gmask,1);
+	int glyph;		/* what the hero thinks is there */
+	schar typ;		/* what is really there */
+	Bitfield(seen,1);	/* speed hack for room walls on corridors */
+	Bitfield(lit,1);	/* speed hack for lit rooms */
+	Bitfield(flags,5);	/* extra information for typ */
+	Bitfield(horizontal,1);	/* wall/door/etc is horiz. (more typ info) */
+	Bitfield(waslit,1);	/* remember if a location was lit */
+	Bitfield(roomno,6);	/* room # for special rooms */
+	Bitfield(edge,1);	/* marks boundaries for special rooms*/
 };
 
-#define altarmask	doormask
-#define diggable	doormask
-#define ladder		doormask
-#define drawbridgemask	doormask
-#define looted		doormask
-#define icedpool	doormask
+#define doormask	flags
+#define altarmask	flags
+#define diggable	flags
+#define ladder		flags
+#define drawbridgemask	flags
+#define looted		flags
+#define icedpool	flags
 
-#ifdef MACOS
-typedef struct
-{
-    struct rm		**locations;
-    struct obj		***objects;
-    struct monst	***monsters;
-    struct obj		*objlist;
-    struct monst	*monlist;
-}
-dlevel_t;
-#else
+#define blessedftn      horizontal  /* a fountain that grants attribs */
+
+struct damage {
+	struct damage *next;
+	long when, cost;
+	coord place;
+	schar typ;
+};
+
+struct levelflags {
+	uchar	nfountains;	/* Number of fountains on level */
+	uchar	nsinks;		/* Number of sinks on the level */
+	/* Several flags that give hints about what's on the level */
+	Bitfield(has_shop, 1);
+	Bitfield(has_vault, 1);
+	Bitfield(has_zoo, 1);
+	Bitfield(has_court, 1);
+	Bitfield(has_morgue, 1);
+	Bitfield(has_beehive, 1);
+#ifdef ARMY
+	Bitfield(has_barracks, 1);
+#endif
+	Bitfield(has_temple, 1);
+	Bitfield(has_swamp, 1);
+	Bitfield(noteleport,1);
+	Bitfield(hardfloor,1);
+	Bitfield(nommap,1);
+	Bitfield(hero_memory,1);	/* hero has memory */
+	Bitfield(shortsighted,1);	/* monsters are shortsighted */
+	Bitfield(is_maze_lev,1);
+	Bitfield(is_cavernous_lev,1);
+};
+
 typedef struct
 {
     struct rm		locations[COLNO][ROWNO];
@@ -300,9 +339,10 @@ typedef struct
 #endif
     struct obj		*objlist;
     struct monst	*monlist;
+    struct damage	*damagelist;
+    struct levelflags	flags;
 }
 dlevel_t;
-#endif
 
 extern dlevel_t	level;	/* structure describing the current level */
 
@@ -313,29 +353,15 @@ extern dlevel_t	level;	/* structure describing the current level */
 #define fobj		level.objlist
 #define fmon		level.monlist
 
-#ifndef STUPID_CPP	/* otherwise these macros are functions */
-#define OBJ_AT(x, y)	(level.objects[x][y] != (struct obj *)0)
+#define OBJ_AT(x,y)	(level.objects[x][y] != (struct obj *)0)
 /*
  * Macros for encapsulation of level.monsters references.
  */
-#define MON_AT(x, y)	(level.monsters[x][y] != (struct monst *)0)
-#define place_monster(m, x, y)	m->mx=x,m->my=y,level.monsters[m->mx][m->my]=m
-#define place_worm_seg(m, x, y) level.monsters[x][y] = m
-#define remove_monster(x, y)	level.monsters[x][y] = (struct monst *)0
-#define m_at(x, y)		level.monsters[x][y]
-#endif	/* STUPID_CPP */
+#define MON_AT(x,y)	(level.monsters[x][y] != (struct monst *)0)
+#define place_monster(m,x,y)	((m)->mx=(x),(m)->my=(y),\
+				 level.monsters[(m)->mx][(m)->my]=(m))
+#define place_worm_seg(m,x,y)	level.monsters[x][y] = m
+#define remove_monster(x,y)	level.monsters[x][y] = (struct monst *)0
+#define m_at(x,y)		level.monsters[x][y]
 
-#if defined(DGK) && !defined(OLD_TOS)
-#define ACTIVE	1
-#define SWAPPED	2
-
-struct finfo {
-	int	where;
-	long	time;
-	long	size;
-};
-extern struct finfo fileinfo[];
-#define ZFINFO	{ 0, 0L, 0L }
-#endif
-
-#endif /* RM_H /**/
+#endif /* RM_H */

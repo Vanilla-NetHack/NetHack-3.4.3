@@ -1,12 +1,18 @@
-	    Instructions for compiling and installing the Overlaid
-			NetHack 3.0 on an MS-DOS system
-	    ======================================================
-			(or, How to make PC NetHack 3.0)
-			  Last revision: Feb 01, 1991
+	SCCS Id: @(#)Install.dos	 3.1		93/01/06
 
-    (Credit for a runnable full PC NetHack 3.0 goes to the overlay team of
-     Pierre Martineau, Stephen Spackman, Norm Meluch, and Kevin Smolkowski,
-     who built on the work of Steve Creps and Mike Threepoint.)
+        Copyright (c) NetHack PC Development Team 1990 - 1993.
+        NetHack may be freely redistributed.  See license for details.
+	    ======================================================
+            Instructions for compiling and installing
+                 NetHack 3.1 on an MS-DOS system
+	    ======================================================
+                 (or, How to make PC NetHack 3.1)
+                    Last revision: Jan 6, 1993
+
+Credit for a runnable full PC NetHack 3.1 goes to the PC Development team
+of Norm Meluch, Kevin Smolkowski, Paul Winner and Steve VanDevender who
+built on the work of Pierre Martineau, Stephen Spackman, Steve Creps,
+Mike Threepoint and Don Kneller.
 
 I.  Dispelling the Myths:
 
@@ -14,12 +20,185 @@ I.  Dispelling the Myths:
     however it will behoove you to read this entire file through before
     beginning the task.
 
-*** Note: If you are going to try compilation with TC++ 1.0, please feel
-    free to read through this file, but bear in mind that most comments are
-    directed toward MSC users.  TC++ hints are at the very end of this file.
-    If you have any Borland Turbo C product without VROOM (overlay ability)
-    you are wasting your time reading this file.
+    We have provided the proper makefiles for building NetHack using the
+    following compilers:
 
+    Microsoft C 6.0a
+    Microsoft C 7.0
+    DJGPP       1.9   (gcc version 2.2 for msdos,
+                       free from your local archive sites)
+
+    For specific details concerning each compiler, please see the
+    corresponding appendix.
+
+    All the makefiles were created for use with NDMAKE.  The make programs
+    provided by the various vendors all seem to lack necessary features.
+    NDMAKE is available free from your local archive site.
+
+    You may find it useful to obtain copies of lex (flex) and yacc (bison).
+    While not strictly necessary to compile nethack, they are required should
+    you desire to make any changes to the level and dungeon compilers.
+    Flex and Bison are included with the DJGPP distribution and are also
+    available on many archive sites.
+
+II. To compile your copy of NetHack on a MSDOS machine:
+    (or "just follow these few 'simple' steps outlined below.")
+
+1.  It almost goes without saying that you should make sure that your tools
+    are set up and running correctly.
+
+2.  Make sure all the NetHack files are in the appropriate directory
+    structure.  You should have a main directory with subdirectories
+    dat, doc, include, src, sys\share, sys\msdos, util and win\tty.
+    Other subdirectories may also be included in your distribution, but
+    they are not necessary for use with MSDOS.  You can delete them
+    to save space.  If you are using MSC7, the makefile will create
+    an additional directory src\o.
+
+    Check the file "Files" in your top level directory for an exact
+    listing of what file is in which directory.  In order for the
+    Makefiles to work, all the source files must be in the proper
+    locations.
+
+    If you downloaded or ftp'd the sources from a UNIX system, the lines
+    will probably end in UNIX-style newlines, instead of the carriage
+    return and line feed pairs used by DOS.  Some programs have trouble
+    with them, so you may need to convert them (with a utility like
+    Rahul Dhesi's "flip").  Also, every file should end with an empty
+    line, because both Microsoft C and MASM have a habit of ignoring the
+    last line of each file. 
+
+3.  The file termcap.uu is the fixed version of the Fred Fish termcap library.
+    You will need to run a uudecode utility on it to generate the file
+    termcap.zip.  termcap.zip contains several files of termcap routines.
+    Using them with NetHack involves very little knowledge of the UNIX concept
+    of a termcap database; mostly you need to know enough to set a TERM
+    environment variable.  You can unzip termcap.zip in the sys/msdos
+    directory, but if you are going to use it, it is probably better to
+    unzip a copy in a special directory and copy the library files to where
+    your linker can find them.
+
+    Makefiles are included should you want to build your own termcap
+    library file.  Makemsc.lib works with Microsoft C and generates
+    termcap.lib, Makegcc.lib works with DJGPP and generates libtermc.a.
+
+4.  ovlmgr.uu (MS-DOS overlay manager) is the uuencoded assembled
+    object module for the overlay manager used with Microsoft C 6.0
+    and older.  This file is provided in case you do not have an assembler
+    of your own.  You will need to run a uudecode utility on this file too,
+    to generate ovlmgr.obj.  If you want to use this, put the ovlmgr.obj
+    in the src directory; the makefile will access it when it needs it.
+
+5.  Go to the sys/msdos directory and run the setup.bat batch file
+    with either MSC or GCC as the argument.  The necessary Makefile
+    movements will be accomplished for you.  In addition, when used
+    with the MSC option, certain compiler options will be set.  Make
+    sure that you either run setup.bat each time you start compiling
+    or copy the line that starts "SET CL" into your autoexec.bat file.
+
+6.  Now go to the include subdirectory to check a couple of the header
+    files there.  Things *should* work as they are, but since you have
+    probably set up your system in some sort of custom configuration
+    it doesn't hurt to check out the following:
+
+    First check config.h according to the comments to match your system and
+    desired set of features.  Mostly you need to check the WIZARD option,
+    make sure the HACKDIR is set properly, and check TERMLIB and COMPRESS.
+
+    We've managed to enable all the special features.  You may include all
+    or as few of them as you wish.
+
+    Also check pcconf.h, which should not need much editing (if you are
+    including termcap.uu and random.c).  If you are not including these, you
+    will need to comment out TERMLIB and/or RANDOM.  If you are using
+    a Microsoft compiler you should make doubly certain that OVERLAY is
+    defined in pcconf.h, since otherwise things will compile properly but
+    very ugly things are likely to happen wherever function pointers
+    cross overlay boundaries - the linker is a little thick about that.
+
+    Commenting out the #define TERMLIB in pcconf.h to disable use of termcap
+    routines (relying on the ANSI_DEFAULT feature) will make your job a bit
+    easier.  However, you can compile with both TERMLIB and ANSI_DEFAULT
+    and simply not set your TERM variable if you do not wish to use the
+    termcap file settings.
+
+7.  If you want to change the high score list behavior, examine the top of
+    topten.c, in the src directory.  You may want to change the definitions of
+    PERSMAX, POINTSMIN, and ENTRYMAX.  I set POINTSMIN to 51 and ENTRYMAX to
+    50 to keep the size of the score list down.
+
+8.  Go to the src directory and edit the top of your Makefile.  Be sure the
+    directory you want the game installed (GAMEDIR) in actually exists.
+
+    If you elected not to use the high-quality BSD random number routines by
+    commenting out RANDOM in pcconf.h or tosconf.h, comment out (or set equal
+    to nothing) the RANDOM macro in your Makefile.
+
+    If you are recompiling after patching your sources, or if you got your
+    files from somewhere other than the official distribution, "touch
+    makedefs.c" to ensure that certain files (onames.h and pm.h) are remade,
+    lest potentially troublesome timestamps fool "make".
+
+9.  Now that everything is set up, go to the util directory and
+    run ndmake.  If you get any errors along the way then something
+    has not been set correctly.  Next do the same in the dat directory.
+    Finally, go to the src directory and "make install".  Depending on
+    your particular machine and compiler, you can either grab a cup
+    of coffee or go home for the day.  Your computer will be occupied
+    for a long time.  If all goes well, you will get an NetHack executable.
+
+10. Make sure the support files -- data, rumors, cmdhelp, opthelp, help, hh,
+    history, and license -- were copied to the game directory.  If not,
+    move them there from the dat directory yourself.  rumors. can be
+    created manually be entering "makedefs -r", data. by entering
+    "makedefs -d".
+
+    Make sure the files NetHack.cnf and termcap also made it to your game
+    directory.  If not, go to sys\share and copy NetHack.cnf and
+    termcap to your game directory.  Edit NetHack.cnf to reflect your
+    particular setup and personal preferences, by following the comments.
+
+    If you'll be running NetHack from a different subdirectory, you will
+    want to "set HACKDIR=c:\games\nethack" (or whatever drive and directory 
+    you want to use) now.  Add it to your autoexec.bat (in DOS), as you'll
+    be playing often.
+
+11. Play NetHack.  If it works, you're done!
+
+
+Appendix A - Microsoft C Compilers
+
+    You can compile NetHack using almost any version of Microsoft C later
+    than 5.1.  Versions 5.0 and earlier are broken in such a way that it
+    is impossible to use them.  Version 6.0 requires a patch available
+    from Microsoft; after applying you should have 6.0ax.  Version 7.0
+    works with or without the August 1992 patch.
+
+    Officially, support is no longer provided for MSC versions prior to
+    6.0ax.  NetHack v3.1 will compile with 5.1, but you will need to
+    make a lot of modifications to the makefiles in order to avoid heap
+    space problems.  We strongly recommend upgrading to 6.0ax if you
+    intend to recompile NetHack often.
+
+    One Makefile is used for all versions.  Version 7.0 takes advantage
+    of the CL environment variables to set the compiler flags, as they
+    exceed the MSDOS limitation of 128 characters on the command line.
+    Please read the Makefile carefully and select those options that
+    go with the compiler.  Also, remember to run setup.bat to set the
+    CL environment variable before you compile.
+
+    We use the following Makefiles:
+    MakeMSC.src  - src directory
+    MakeMSC.utl  - util directory
+    Makefile.dat - dat directory
+
+    The Makefile uses a structured break-up of the object modules so that
+    we can link heavily used functions together without actual source code
+    movement.  This has provided a great speed improvement for this release.
+    See the file sys\msdos\ovlmgr.doc for more information on this
+    structuring.
+
+  Microsoft C version 6.0:
     The NetHack executable that you are about to get will be generated by an
     overlay linker.  The beauty of this overlay linker beastie is that it will
     create an executable that will function in much less memory than it would
@@ -30,262 +209,113 @@ I.  Dispelling the Myths:
     You do not want to run the program like that!  The more free RAM you have
     available for the program, the more smoothly it will run.
 
-    The magic piece to the overlay puzzle is a program called ovlmgr.asm.  This
-    is a replacement for the Microsoft (and we use the term loosely) overlay
-    manager.  This program has been enhanced since its release in November
-    1989.  It will now allow NetHack to use EMS memory if any is available,
-    therefore, RAM requirements can be reduced to the minimum with at least
-    256K of EMS.  Also, the overlay manager will now read overlays out of
-    files completely separate from the EXE.  This will cut down on the size
-    of files for NetHack making distribution to PCs with low density disk
-    drives much easier.
-
-    As of patch level 7, version 3.0 has an added feature in the Makefile.  
-    This feature enables a structured break-up of the object modules so that 
-    we can link heavily used functions together without actual source code
-    movement.  This has provided a great speed improvement for this release.
-    See the file others\maintain.ovl for more information on this structuring.
-
-
-II.  How long is this going to take?
-
-    On an XT class PC it has been rumored that NetHack can be built in 8 - 10
-      hours.
-    On a 286 10MHz PC you can build NetHack in about 3 - 3.5 hours,
-    On the flip side if you have a 386 33MHz PC with a *VERRRRY* fast hard
-      disk, math coprocessor, 32 bit bus, and severe I/O caching you will have
-      NetHack in about 15 minutes!
-    
-    Hope you enjoy the game.  We have worked very hard to try to bring it back
-    to the PC.
-
-
-III.  Tools:
-
-   The following programs are necessary to successfully compile the overlaid
-   version of NetHack:
-
-   A.	Microsoft C, version 5.1 or newer.
-
-   B.	The Microsoft Overlay Linker, version 3.6 or newer or preferably,
-	 the Microsoft Segmented Linker, version 5.01.20 or newer. The
-	 overlay linker has been known to cause problems with other
-	 programs, but not with NetHack, yet.
-	One of these linkers should be included in your MSC version.
-
-   C.	NDmake, version 4.5 or newer.
-	As the overlay makefile is pretty large, you will want to use the
-	 large model of NDmake: MAKE45L.EXE, as your make program.  This
-	 should be available from the "usual" archive sites, or you can try
-	 ftp from SIMTEL-20 (wsmr-simtel20.army.mil [26.2.0.74]) or its
-	 more-often-available mirror, wuarchive.wustl.edu [128.252.135.4].
-	MSC 6.0 has a new make program distributed with it that might be
-	 able to handle the Makefile.ovl with a few modifications.  This has
-	 not been completely tested.  We recommend NDmake 4.5.
-
-
-IV.  Optional tools:
-
-   The following programs are not necessary, because pre-built copies of the
-   files are included in this distribution.  However, if you want to build
-   NetHack 100% from scratch, you will need them.
-
-   A.	An 80x86 assembler.
-	This is for assembling the ovlmgr.asm file into ovlmgr.obj.  If you
-	 want to assemble your own copy of the overlay manager.  The file
-	 others\ovlmgr.uu is a uuencoded version of the assembled ovlmgr.asm.
-	For details, see the file ovlmgr.doc.
-
-   B.	Yacc/Bison & Lex/Flex workalike programs for the PC.
-	The source files for the special levels compiler are built using
-	 bison and flex.  Precompiled copies of the files lev_lex.c, and
-	 lev_comp.c have been provided if you do not have these utilities.
-	Bison & flex should also be available at your local ftp site.
-
-
-V.  To compile your copy of NetHack on a MSDOS machine:
-    (or "just follow these few 'simple' steps outlined below.")
-
-1.  It almost goes without saying that you should make sure that your tools
-    are set up and running correctly.
-
-2.  Make sure all the NetHack files are in the appropriate directory
-    structure.  You should have a main directory with subdirectories
-    src, include, auxil, others, amiga, mac, and vms.  You will also
-    need to create a directory under src called "o", (src\o).  If you
-    do not follow this structure, the Makefile.ovl will not function
-    properly.
-
-    All the shared and UNIX-specific .c files and the source Makefile(.src)
-    belong in src; all the PC *.c files and PC make files belong in others;
-    all the .h files belong in include; other assorted files belong in auxil.
-    Check the file "Files" in your top level directory for an exact listing
-    of what file is in which directory.
-
-    We will not need any of the files from the amiga, mac, and vms
-    directories, so you can delete them if you need the space.
-
-    If you downloaded or ftp'd the sources from a UNIX system, the lines
-    will probably end in UNIX-style newlines, instead of the carriage
-    return and line feed pairs used by DOS.  Some programs have trouble
-    with them,  you may need to convert them (with a utility like
-    Rahul Dhesi's "flip").  Also, every file should end with an empty
-    line, because both Microsoft C and MASM have a habit of ignoring the
-    last line of each file. 
-
-3.  Move/Copy files from the others directory to your src directory
-    based on the following criteria.  You will probably want to include
-    most all of these files.
-
-    You will definitely need pc*.c, msdos.c, trampoli.c, and exesmurf.c.
-
-    random.c is only needed if you want the high-quality random number
-    generation routines.
-
-    You should be able to use either others/lev_lex.c (generated by flex)
-    or src/lev_lex.c (generated by lex), but the one in src is smaller.
-    If you have flex or some other lex work-alike, you can use that to
-    produce lev_lex.c from lev_comp.l.
-
-    The file termcap.uu is the fixed version of the Fred Fish termcap library.
-    You will need to run a uudecode utility on it to generate the file
-    termcap.arc.  termcap.arc contains several files of termcap routines.
-    Using them with NetHack involves very little knowledge of the UNIX concept
-    of a termcap database; mostly you need to know enough to set a TERM
-    environment variable.  You can unarc termcap.arc here in the others
-    directory, but if you are going to use it, it is probably best to unarc a
-    copy in the src directory.  That way you will not miss copying any
-    files over.  Wherever you unarc it, get rid of the included makefile
-    since a better version has been provided as Makefile.lib.
-
-    ovlmgr.uu (MS-DOS overlay manager) is the uuencoded assembled
-    object module for the overlay manager in case you do not have an assembler.
-    You will need to run a uudecode utility on this file too, to generate
-    ovlmgr.obj.  If you are using this copy of ovlmgr.obj uudecode and
-    leave the ovlmgr.obj generated in the others directory; the makefile
-    will access it when it needs it.
-
-4.  Rename the file Makefile.ovl to "Makefile." (no extension), and move 
-    it into your src directory.
-
-    The PC NetHack makefiles are set up for NDMAKE, a public domain
-    "make" utility.  Microsoft 5.1's "make" leaves much to be desired.
-    MSC 6.0's NMAKE can be used, however it will take some tinkering with
-    the makefile to get it to work.  If you are going to do this you will
-    need to take a cue from Makefile.os2, which has full support for NMAKE.
-    Believe me, it is worth the extra effort to get NDMAKE if you don't
-    already have it.  Among other things, NDMAKE automatically generates
-    link response files when the link command involves so many objects
-    that the command would become longer than DOS can handle.
-
-    If you are going to be constructing the Fred Fish termlib you will need 
-    the Makefile.lib.  Copy this to your source directory too, and do not 
-    change its name.
-
-    Makefile.top in the top directory, Makefile.src in the src directory,
-    and Makefile.aux(il) in the auxil directory are for UNIX NetHack. You
-    will not need these, and you may delete them.
-
-    Makefile.pc, Makefile.msc, and Makefile.tos are for compiling non-
-    overlaid versions of NetHack, and for the atari.  You may delete these
-    too.
-
-4.  Now go to the include subdirectory to edit a couple of the header files
-    there.
-
-    First edit config.h according to the comments to match your system and
-    desired set of features.  Mostly you need to check the WIZARD option,
-    make sure the HACKDIR is set properly, and check TERMLIB and COMPRESS.
-  
-    Using Microsoft C and overlays, we've managed to enable all the special
-    features.  You may include all the neat features you want.
-
-    Also check pcconf.h, which should not need much editing (if you are
-    including termcap.uu and random.c).  If you are not including these, you
-    will need to comment out TERMLIB and/or RANDOM.  You should make doubly
-    certain that OVERLAY is defined in pcconf.h, since otherwise things will
-    compile properly but very ugly things are likely to happen wherever
-    function pointers cross overlay boundaries - the linker is a little thick
-    about that.
-
-    Commenting out the #define TERMLIB in pcconf.h to disable use of termcap
-    routines (relying on the ANSI_DEFAULT feature) will make your job a bit
-    easier.  However, you can compile with both TERMLIB and ANSI_DEFAULT
-    and simply not set your TERM variable if you do not wish to use the
-    termcap file settings.
-
-6.  If you want to change the high score list behavior, examine the top of
-    topten.c, in the src directory.  You may want to change the definitions of
-    PERSMAX, POINTSMIN, and ENTRYMAX.  I set POINTSMIN to 51 and ENTRYMAX to
-    50 to keep the size of the score list down.
-
-7.  Go to the src directory and edit the top of your Makefile.  Be sure the
-    directory you want the game installed (GAMEDIR) in actually exists.
-
-    If you elected not to use the high-quality BSD random number routines by
-    commenting out RANDOM in pcconf.h or tosconf.h, comment out (or set equal
-    to nothing) the RANDOM macro in your Makefile.
-
-    If you elected to use Fred Fish's termcap library (bundled in as
-    termcap.arc), you will have to generate termlib.lib from those sources
-    by typing "make -f makefile.lib".  You must also set the TERMLIB option
-    in Makefile.ovl to link in the resulting termlib.lib.
+    Microsoft's internal overlay management scheme was pretty useless prior
+    to version 7.0.  However, the sheer size of NetHack requires some sort
+    of overlay scheme.  The magic piece to this puzzle is a program called
+    ovlmgr.asm.  This is a replacement for the Microsoft (and we use the
+    term loosely) overlay manager.  This program has been enhanced since
+    its release in November 1989.  It will now allow NetHack to use EMS
+    memory if any is available.  Also, the overlay manager will now read
+    overlays out of files completely separate from the EXE.  This will
+    cut down on the size of files for NetHack making distribution to PCs
+    with low density disk drives much easier.
 
     If you have a MASM compatible Assembler, you may want to enable the option
     in the makefile to rebuild ovlmgr.obj, although a ready-made object file 
-    is provided for those of you without.   Before assembling ovlmgr, be sure
+    is provided for those of you without.  Before assembling ovlmgr, be sure
     to read ovlmgr.doc as there are several options that you may or may not
     wish to enable/disable.
-    
-    If you are recompiling after patching your sources, or if you got your
-    files from somewhere other than the official distribution, "touch
-    makedefs.c" to ensure that certain files (onames.h and pm.h) are remade,
-    lest potentially troublesome timestamps fool "make".
 
-8.  Now, enter "make45l install", and take a long siesta; your computer will
-    be occupied for a long time.  If all goes well, you will get an executable.
+  Microsoft C version 7.0
+    Microsoft was finally able to come out with a workable overlay
+    linker in version 7.0.  Instead of linking in the custom overlay
+    manager, we just let Microsoft do the work.
 
-9.  Make sure the support files -- data, rumors, cmdhelp, opthelp, help, hh,
-    history, license, and oracles (if ORACLE was #define'd) -- were copied
-    to the game directory.  If not, move them there from the auxil directory
-    yourself.  rumors can be created manually by entering "makedefs -r",
-    data by entering "makedefs -d".
+Appendix B - DJGPP Compiler (gcc ported to msdos)
 
-    If you compiled in the special levels (if STRONGHOLD was #define'd), make
-    sure castle, tower?, and possibly endgame are there, too.  They can be
-    created manually by entering "lev_comp filename.des", where filename.des
-    is the appropriate description file (found in the auxil directory).
+    If you have a 386 or better machine, you are in luck.  You can compile
+    NetHack without spending money on a compiler.  DJGPP is available free
+    from many archive sites.
 
-    Make sure the files NetHack.cnf and termcap also made it to your game
-    directory.  If not go to the others directory and copy NetHack.cnf and
-    termcap to your game directory.  Edit NetHack.cnf to reflect your
-    particular setup and personal preferences, by following the comments.
+    Setting up DJGPP is more than adequately explained in the documentation
+    that comes with it.  Be sure to pick up the yacc and flex built with
+    DJGPP if you intend to do any modification of the special levels or
+    dungeon compilers.  They should be available at the same place you got
+    djgpp.
 
-    If you'll be running NetHack from a different subdirectory, you will
-    want to "set HACKDIR=c:\games\nethack" (or whatever drive and directory 
-    you want to use) now.  Add it to your autoexec.bat (in DOS), if you'll 
-    be playing often.
+    The executable version of NetHack built with DJGPP runs in protected mode
+    without overlays and is quite fast.  It cannot run under Microsoft
+    Windows.  See the DJGPP documentation for more details on particular
+    memory requirements.
 
-11. Play NetHack.  If it works, you're done!
+    Building with DJGPP is easy, just follow the steps outlined in the
+    main section.
+
+Appendix C - Borland C Compiler
+
+    NetHack will not compile at all with any version of Turbo C/C++.  It
+    has been made to compile with Borland C v2.0 after much work, but the
+    resulting binaries are far too slow to be playable.  It will not compile
+    with Borland C/C++ v3.0 - the bugs in that version of the compiler
+    related to the preprocessor make a total mess out of the macros that
+    the NetHack code is laced with.  We haven't had much luck at
+    compiling with v3.1 either.  If you successfully compile a playable
+    binary using any version of Borland's compiler we would love to
+    hear from you -- it would be a sure ticket to a position on the PC
+    Development team and all the fame and fortune that goes along with
+    it.  To get you started, here are a few hints.
+
+    0. This should almost go without saying, but if you just bought
+       Borland (or Turbo C) and you are thinking that compiling
+       NetHack would be a great way to learn C and your nifty new
+       compiler at the same time, you are either going to prove
+       yourself some kind of prodigy or get very frustrated and quit.
+
+    1. We left most of the __TURBOC__ defines in the code, some are
+       necessary, others are not, and a few are misleading depending
+       upon which compiler version you use as they relate to problems
+       with Borland compilers long since fixed.  We left them in to
+       provide some landmarks for future Borland hackers.
+
+    2. No makefiles are provided as nothing we have tried has really
+       worked.  Most of our attempts have started off using the
+       GCC makefiles.
+
+    3. Start off by working with the utility programs in the util
+       directory.  They are the smallest and will give you some
+       measure of success before you tackle the main code.  The
+       programs contained in util are necessary to build the
+       game so you will not be wasting your time.  Once you get
+       the utility program compiled, run the makefile in the dat
+       directory.  The utility programs you just compiled will attempt
+       to convert the raw data files into game readable form.  If you
+       get errors then something is wrong.
+
+Appendix D - Microsoft C Compiler Warnings
+
+    If you are using MSC for your compile with any of the /W levels set,
+    you can expect warnings.  The list below are those warnings that we
+    are aware of and our recommendation for dealing with them.  You can
+    use the warning disable pragma to ignore them if you wish.  (NOTE:
+    this is not a complete list of all warnings you might receive, only
+    those for which we feel we can safely provide guidance on.)
+
+C4131 (function:uses old-style declarator)
+    You should ignore this warning.  In order to make the source code as
+    portable as possible, only old-style declarators are used so that as
+    many compilers as possible can use the same code.
+C4706 (Assignment within conditional expression)
+    This is a perfectly valid construction.  These warnings have not
+    produced any problems.
+C4761 (Integral size mismatch in argument; conversion supplied)
+    These should be no problem.  Prototyping compilers will do the con-
+    version, and non-prototyping compilers will go through int anyway.
 
 
-Notes
------
-1)  First and foremost:  We have been developing with MSC 5.1 as a compiler
-    and NDmake 4.5 as a make.  NDmake is readily available on the Usenet;
-    obtaining MSC might be more of a problem.  MSC 5.0 is broken.  You *will
-    not* be able to compile the overlay version with that compiler due to
-    problems with the /Gt option allowing the CONST segment to become
-    > 64k when linking.
-    MSC 6.0 and its make utility have been used to generate an overlaid
-    NetHack.exe, however sufficient testing has not been completed at this
-    time for us to "recommend" its use.
+Notes:
 
-2)  Save files and bones files from any version of NetHack (other than
-    3.0 patchlevel 9) will not work with this NetHack.  Don't bother trying 
-    to keep them.  If you are going to try to bring a save file forward from
-    pl 9 you will have to 'touch' it, or otherwise update the date and time
-    on the file to later than the time on the NETHACK.EXE file.  Record
+1)  Save files and bones files from previous versions of NetHack will not
+    work with this NetHack.  Don't bother trying to keep them.  Record
     (score) files from before 3.0 patchlevel 7 will almost work, but you need
     to make one change manually to them:  At the end of each line is a word or
     phrase specifying what killed the player.  Change the string to start with
@@ -294,79 +324,31 @@ Notes
     by" instead of "killed by".  Don't change "starvation", "quit", "escaped",
     or "ascended".
 
-3)  To install an update of NetHack after changing something, enter "make"
+2)  To install an update of NetHack after changing something, enter "make45l"
     from the src directory.  If you add, delete, or reorder monsters or
     objects, or you change the format of saved level files, delete any save
     and bones files.  (Trying to use such files sometimes produces amusing
     confusions on the game's part, but usually crashes.)
 
-4)  During linking the Microsoft Overlay Linker will need temporary storage
+    If you made changes to any of the level compiler software, you may have
+    to delete dgn_flex.c, dgn_yacc.c, lev_flex.c, and lev_yacc.c from the
+    util directory to ensure that they are remade.
+
+3)  During linking the Microsoft Overlay Linker will need temporary storage
     space.  Make sure you have about a meg of free disk wherever you have
     defined your temporary storage.
 
-A special note for those attempting compilation with Turbo C++ 1.0 (or better)
-------------------------------------------------------------------------------
+4)  If you have comments or suggestions, feel free to drop any one of
+    us a line c/o nethack-bugs@linc.cis.upenn.edu.  From compuserve,
+    try INTERNET:nethack-bugs@linc.cis.upenn.edu.  Should you be
+    without email access, some of us can still be reached by lesser means:
 
-At this time NetHack has been compiled on a PC using TC++ with marginal
-results.  There are some modifications that need to be made to the source
-in order to accomplish this.  Unfortunately 3.0 NetHack is not receiving
-"official" support.  You will have to wait for 3.1 for that.  If you
-attempt TC++ compilation and have questions please feel free to write
-to us, but don't expect (correct) answers.
+    For the west coast:
+      Kevin D Smolkowski
+      c/o OSLC
+      207 E 5th
+      Eugene, OR  97401
 
-Not to be too negative though, here is what little advice we have on
-how to proceed:
-
-1)	First, make sure your version of TC++ will work.  Early releases of
-	TC++ 1.0 had a serious bug in their overlay libraries.  A free fix
-	is available from a Borland BBS.  (408)439-9181.  You will get
-	*nowhere* if you do not have this fix.
-
-2)	You will need to create your own makefile from the current Makefile.tcc
-	and Makefile.ovl.  You're pretty much on your own here.  Some have
-	used Borland's MAKE 3.0, others have used NDMake 4.5 for compilation.
-	If you elect to use NDMake 4.5 you will run into memory problems,
-	Borland's MAKE avoids this by swapping itself out of memory when
-	other programs are running.
-
-3)	Use TC++'s -A option (for __STDC__ to be defined) and use the -Y
-        option to enable overlays.  The -A will leave you with problems with
-        the fileno() macro.  To solve this add a 
-		#define fileno(f) (f->fd)
-	to global.h or some such.
-
-4)	You will probably need to play with the #ifdef __MSDOS__ in config.h.
-	The "first area" is for TC and does not define things like
-	NEARDATA etc.
-
-5)	You will probably need to massage the lines in global.h that sets
-	CHAR_P, XCHAR_P ... to int.  These need to be set (for __STDC__)
-        to int for the -A case of TC++ 1.0.
-
-6)	TC++ has trouble with informal declarations using 'static const char *'
-	where the formal parameters are of type 'int'.  Thus any declarations
-	that look like this:
-		static const char *FDECL(foo, int);
-	need to be changed (by hand) to:
-		static const char *FDECL(foo, (int bar));
-
-7)	Barfage on 'struct permonst *' can possibly be corrected by changing
-	type 'void *'.
-
-8)	Choking on msmsg declaration and definition and the like can be
-        corrected by the setting definition of VDECL(f, a) to f() in global.h.
-
-9)	Finally, you will need to work with the overlay buffer size to
-	optimize performance.  Using the OVLx (see maintain.ovl) scheme should
-	help performance too.
-
-Good luck.  BTW, any EXE produced has functioned somewhat lethargically with
-abysmally slow overlay swapping times.  If you do manage to succeed, and can
-figure out how to tune the game well, please write to us.  We are at
-
-	nethack-bugs@linc.cis.upenn.edu
-
-We love to hear from you, and we *need* to hear from you to get good support
-for 3.1!
-
-Hack On!
+    Compuserve users can also reach Paul Winner by sending compuserve mail
+    to 73207,226.  The NetHack binaries and sources can be found in the
+    GAMERS forum.

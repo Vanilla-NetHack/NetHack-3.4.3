@@ -1,554 +1,512 @@
-/*	SCCS Id: @(#)pager.c	3.0	89/11/19
+/*	SCCS Id: @(#)pager.c	3.1	92/09/01		  */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
-/* This file contains the command routine dowhatis() and a pager. */
-/* Also readmail() and doshell(), and generally the things that
-   contact the outside world. */
+/* This file contains the command routines dowhatis() and dohelp() and */
+/* a few other help related facilities */
 
-#define MONATTK_H	/* comment line for pre-compiled headers */
-/* block some unused #defines to avoid overloading some cpp's */
 #include	"hack.h"
-
-#include <ctype.h>
-#ifndef NO_SIGNAL
-#include <signal.h>
-#endif
-#if defined(BSD) || defined(ULTRIX)
-#include <sys/wait.h>
-#endif
-#ifdef MACOS
-extern WindowPtr	HackWindow;
-extern short macflags;
-#endif
 
 #ifndef SEEK_SET
 #define SEEK_SET 0
 #endif
 
-STATIC_DCL boolean FDECL(clear_help, (CHAR_P));
-STATIC_DCL boolean FDECL(valid_help, (CHAR_P));
-
-#ifndef OVLB
-STATIC_DCL char hc;
-#else /* OVLB */
-STATIC_OVL char NEARDATA hc = 0;
-
-static void FDECL(page_more, (FILE *,int));
 static boolean FDECL(is_swallow_sym, (UCHAR_P));
-static boolean FDECL(pmatch,(const char *,const char *));
-static boolean FDECL(outspec,(const char *,int));
-static const char *FDECL(lookat,(int,int,UCHAR_P));
-#ifdef WIZARD
-static void NDECL(wiz_help);
+static int FDECL(append_str, (char *, const char *));
+static void FDECL(lookat, (int, int, char *));
+static void FDECL(checkfile, (char *, BOOLEAN_P));
+static int FDECL(do_look, (BOOLEAN_P));
+static char NDECL(help_menu);
+#ifdef PORT_HELP
+extern void NDECL(port_help);
 #endif
-static void NDECL(help_menu);
 
-/*
- * simple pattern matcher: '*' matches 0 or more characters
- * returns TRUE if strng matches patrn
- */
-
-static boolean
-pmatch(patrn, strng)
-	const char *patrn, *strng;
-{
-	char s, p;
-
-	s = *strng;
-	p = *patrn;
-
-	if (!p) {
-		return (s == 0);
-	}
-
-	if (p == '*') {
-		if (!patrn[1] || pmatch(patrn+1, strng)) {
-			return TRUE;
-		}
-		return (s ? pmatch(patrn, strng+1) : FALSE);
-	}
-
-	return (p == s) ? pmatch(patrn+1, strng+1) : FALSE;
-}
-
-/*
- * returns "true" for characters that could represent a monster's stomach
- */
-
+/* Returns "true" for characters that could represent a monster's stomach. */
 static boolean
 is_swallow_sym(c)
-uchar c;
+    uchar c;
 {
-	return (index(" /-\\|", (char)c) != 0);
+    int i;
+    for (i = S_sw_tl; i <= S_sw_br; i++)
+	if (showsyms[i] == c) return TRUE;
+    return FALSE;
 }
 
 /*
- * print out another possibility for dowhatis. "new" is the possible new
- * string; "out_flag" indicates whether we really want output, and if
- * so what kind of output: 0 == no output, 1 == "(or %s)" output. 
- * Returns TRUE if this new string wasn't the last string printed.
+ * Append new_str to the end of buf if new_str doesn't already exist as
+ * a substring of buf.  Return 1 if the string was appended, 0 otherwise.
+ * It is expected that buf is of size BUFSZ.
  */
-
-static boolean
-outspec(new, out_flag)
-const char *new;
-int out_flag;
+static int
+append_str(buf, new_str)
+    char *buf;
+    const char *new_str;
 {
-	static char NEARDATA old[50];
+    int space_left;	/* space remaining in buf */
 
-	if (!strcmp(old, new))
-		return FALSE;		/* don't print the same thing twice */
+    if (strstri(buf, new_str)) return 0;
 
-	if (out_flag)
-		pline("(or %s)", an(new));
-
-	Strcpy(old, new);
-	return 1;
+    space_left = BUFSZ - strlen(buf) - 1;
+    (void) strncat(buf, " or ", space_left);
+    (void) strncat(buf, new_str, space_left - 4);
+    return 1;
 }
 
 /*
- * return the name of the character ch found at (x,y)
+ * Return the name of the glyph found at (x,y).
  */
-
-static
-const char *
-lookat(x, y, ch)
-int x,y;
-uchar ch;
+static void
+lookat(x, y, buf)
+    int x, y;
+    char *buf;
 {
-	register struct monst *mtmp;
-	register struct obj *otmp;
-	struct trap *trap;
-	static char NEARDATA answer[50];
-	register char *s, *t;
-	uchar typ;
+    register struct monst *mtmp;
+    struct trap *trap;
+    register char *s, *t;
+    int glyph;
 
-	answer[0] = 0;
+    buf[0] = 0;
+    glyph = glyph_at(x,y);
+    if (u.ux == x && u.uy == y && canseeself()) {
+	Sprintf(buf, "%s called %s",
+#ifdef POLYSELF
+		u.mtimedone ? mons[u.umonnum].mname :
+#endif
+		player_mon()->mname, plname);
+    }
+    else if (u.uswallow) {
+	/* all locations when swallowed other than the hero are the monster */
+	Sprintf(buf, "interior of %s",
+				    Blind ? "a monster" : a_monnam(u.ustuck));
+    }
+    else if (glyph_is_monster(glyph)) {
+	bhitpos.x = x;
+	bhitpos.y = y;
+	mtmp = m_at(x,y);
+	if(mtmp != (struct monst *) 0) {
+	    register boolean hp = (mtmp->data == &mons[PM_HIGH_PRIEST]);
 
-	if(MON_AT(x,y)) {
-		mtmp = m_at(x,y);
-		if (!showmon(mtmp) || Hallucination)
-			mtmp = (struct monst *)0;
+	    Sprintf(buf, "%s%s%s",
+		    (!hp && mtmp->mtame && !Hallucination) ? "tame " :
+		    (!hp && mtmp->mpeaceful && !Hallucination) ?
+		                                          "peaceful " : "",
+		    (hp ? "high priest" : l_monnam(mtmp)),
+		    u.ustuck == mtmp ?
+#ifdef POLYSELF
+			(u.mtimedone ? ", being held" :
+#endif
+			", holding you"
+#ifdef POLYSELF
+			)
+#endif
+			: "");
+	}
+    }
+    else if (glyph_is_object(glyph)) {
+	struct obj *otmp = vobj_at(x,y);
+
+	if(otmp == (struct obj *) 0 || otmp->otyp != glyph_to_obj(glyph)) {
+	    if(glyph_to_obj(glyph) != STRANGE_OBJECT) {
+		otmp = mksobj(glyph_to_obj(glyph), FALSE, FALSE);
+		if(otmp->oclass == GOLD_CLASS)
+		    otmp->quan = 2L; /* to force pluralization */
+		Strcpy(buf, distant_name(otmp, xname));
+		dealloc_obj(otmp);
+	    }
 	} else
-		mtmp = (struct monst *) 0;
-	typ = levl[x][y].typ;
-	if (!Invisible 
-#ifdef POLYSELF
-			&& !u.uundetected
-#endif
-			&& u.ux==x && u.uy==y) {
-		Sprintf(answer, "%s named %s",
-#ifdef POLYSELF
-			u.mtimedone ? mons[u.umonnum].mname :
-#endif
-			pl_character, plname);
-	} else if (u.uswallow && is_swallow_sym(ch)) {
-		Sprintf(answer, "interior of %s", defmonnam(u.ustuck));
-	} else if (mtmp && !mtmp->mimic)
-		Sprintf(answer, "%s%s",
-		   mtmp->mtame ? "tame " :
-		   mtmp->mpeaceful ? "peaceful " : "",
-		   strncmp(lmonnam(mtmp), "the ", 4)
-			  ? lmonnam(mtmp) : lmonnam(mtmp)+4);
-	else if (!levl[x][y].seen)
-		Strcpy(answer,"dark part of a room");
-	else if (mtmp && mtmp->mimic) {
-		if (mtmp->m_ap_type == M_AP_FURNITURE) {
-			if (mtmp->mappearance == S_altar)
-				Strcpy(answer, "neutral altar");
-			else
-				Strcpy(answer, explainsyms[mtmp->mappearance]);
-		}
-		else if (mtmp->m_ap_type == M_AP_OBJECT) {
-			if (mtmp->mappearance == STRANGE_OBJECT)
-				Strcpy(answer, "strange object");
-			else {
-				int oindx = mtmp->mappearance;
-				otmp = mksobj(oindx,FALSE );
-				if(oindx == STATUE || oindx == FIGURINE)
-				    otmp->corpsenm = PM_KOBOLD;
-				else if (oindx == DRAGON_SCALE_MAIL)
-				    otmp->corpsenm = PM_RED_DRAGON;
-				Strcpy(answer, distant_name(otmp, xname));
-				free((genericptr_t) otmp);
-			}
-		}
-		else if (mtmp->m_ap_type == M_AP_GOLD)
-			Strcpy(answer, "pile of gold");
-	}
-	else if (OBJ_AT(x, y)) {
-		otmp = level.objects[x][y];
-		Strcpy(answer, distant_name(otmp, xname));
-	}
-	else if (ch == GOLD_SYM) {
-		Strcpy(answer, "pile of gold");
-	}
-#ifdef ALTARS
-	else if (ch == ALTAR_SYM && IS_ALTAR(typ)) {
-		int kind = levl[x][y].altarmask & ~A_SHRINE;
-		Sprintf( answer, "%s altar",
-			(kind == A_CHAOS) ? "chaotic" :
-			(kind == A_NEUTRAL) ? "neutral" :
-			 "lawful" );
-	}
-#endif
-#ifdef STRONGHOLD
-	else if ((ch == DB_VWALL_SYM || ch == DB_HWALL_SYM) && is_db_wall(x,y))
-		Strcpy(answer,"raised drawbridge");
-#endif
-#ifdef THRONES
-	else if ((ch == THRONE_SYM) && IS_THRONE(typ))
-		Strcpy(answer, "throne");
-#endif
-	else if ( (ch==H_OPEN_DOOR_SYM ||
-		   ch==V_OPEN_DOOR_SYM ||
-		   ch==CLOSED_DOOR_SYM ||
-		   ch==NO_DOOR_SYM) &&
-		  IS_DOOR(typ) ) {
-		switch(levl[x][y].doormask & ~D_TRAPPED) {
-			case D_NODOOR: Strcpy(answer,"doorway"); break;
-			case D_BROKEN: Strcpy(answer,"broken door"); break;
-			case D_ISOPEN: Strcpy(answer,"open door"); break;
-			default:       Strcpy(answer,"closed door"); break;
-					   /* locked or not */
-		}
-	}
-#ifdef SINKS
-	else if (ch == SINK_SYM && IS_SINK(levl[x][y].typ))
-		Strcpy(answer,"sink");
-#endif
-	else if ((ch == TRAP_SYM || ch == WEB_SYM) && (trap = t_at(x, y))) {
-		if (trap->ttyp == WEB && ch == WEB_SYM)
-			Strcpy(answer, "web");
-		else if (trap->ttyp != MONST_TRAP && ch == TRAP_SYM) {
-			Strcpy(answer, traps[ Hallucination ?
-				rn2(TRAPNUM-3)+3 : trap->ttyp]);
+	    Strcpy(buf, distant_name(otmp, xname));
+    }
+    else if (glyph_is_trap(glyph)) {
+	if (trap = t_at(x, y)) {
+	    if (trap->ttyp == WEB)
+		Strcpy(buf, "web");
+	    else {
+		Strcpy(buf, traps[ Hallucination ?
+				     rn2(TRAPNUM-3)+3 : trap->ttyp]);
 		/* strip leading garbage */
-			for (s = answer; *s && *s != ' '; s++) ;
-			if (*s) ++s;
-			for (t = answer; *t++ = *s++; ) ;
-		}
+		for (s = buf; *s && *s != ' '; s++) ;
+		if (*s) ++s;
+		for (t = buf; *t++ = *s++; ) ;
+	    }
 	}
-	else if (ch == UP_SYM && x == xupstair && y == yupstair)
-		Strcpy(answer, "staircase up");
-	else if (ch == DN_SYM && x == xdnstair && y == ydnstair)
-		Strcpy(answer, "staircase down");
-#ifdef STRONGHOLD
-	else if (ch == UPLADDER_SYM && x && x == xupladder && y == ydnladder)
-		Strcpy(answer, "ladder up");
-	else if (ch == DNLADDER_SYM && x && x == xdnladder && y == ydnladder)
-		Strcpy(answer, "ladder down");
-#endif
-	else if (IS_ROOM(typ)) {
-		if (ch == ROOM_SYM) {
-			if (levl[x][y].icedpool)
-			    Strcpy(answer,"iced pool");
-			else
-			    Strcpy(answer,"floor of a room");
-		}
-		else if (ch == STONE_SYM || ch == ' ')
-			Strcpy(answer,"dark part of a room");
-	}
-	else if (ch == CORR_SYM && SPACE_POS(typ))
-		Strcpy(answer,"corridor");
-	else if (!ACCESSIBLE(typ)) {
-		if (ch == STONE_SYM || ch == ' ')
-			Strcpy(answer,"dark part of a room");
-		else
-			Strcpy(answer,"wall");
-	}
-	return answer;
+    }
+    else if(!glyph_is_cmap(glyph))
+	Strcpy(buf,"dark part of a room");
+    else switch(glyph_to_cmap(glyph)) {
+    case S_altar:
+        if(!In_endgame(&u.uz))
+	    Sprintf(buf, "%s altar",
+		align_str(Amask2align(levl[x][y].altarmask & ~AM_SHRINE)));
+	else Sprintf(buf, "aligned altar");
+	break;
+    case S_ndoor:
+	if((levl[x][y].doormask & ~D_TRAPPED) == D_BROKEN)
+	    Strcpy(buf,"broken door");
+	else
+	    Strcpy(buf,"doorway");
+	break;
+    default:
+	Strcpy(buf,defsyms[glyph_to_cmap(glyph)].explanation);
+	break;
+    }
 }
 
-	
+/*
+ * Look in the "data" file for more info.  Called if the user typed in the
+ * whole name (user_typed_name == TRUE), or we've found a possible match
+ * with a character/glyph and flags.help is TRUE.
+ *
+ * NOTE: when (user_typed_name == FALSE), inp is considered read-only and 
+ *	 must not be changed directly, e.g. via lcase(). Permitted are
+ *	 functions, e.g. makesingular(), which operate on a copy of inp.
+ */
+static void
+checkfile(inp, user_typed_name)
+    char *inp;
+    boolean user_typed_name;
+{
+    FILE *fp;
+    char buf[BUFSZ];
+    char *ep;
+    long txt_offset;
+    boolean found_in_file = FALSE;
+
+    fp = fopen_datafile(DATAFILE, "r");
+    if (!fp) {
+	pline("Cannot open data file!");
+	return;
+    }
+
+    if (!strncmp(inp, "interior of ", 12))
+	inp += 12;
+    if (!strncmp(inp, "a ", 2))
+	inp += 2;
+    else if (!strncmp(inp, "an ", 3))
+	inp += 3;
+    else if (!strncmp(inp, "the ", 4))
+	inp += 4;
+    if (!strncmp(inp, "tame ", 5))
+	inp += 5;
+    else if (!strncmp(inp, "peaceful ", 9))
+	inp += 9;
+    if (!strncmp(inp, "invisible ", 10))
+	inp += 10;
+
+    /* Make sure the name is non-empty. */
+    if (*inp) {
+	/* adjust the input to remove "named " and convert to lower case */
+	char *alt = 0;	/* alternate description */
+	if ((ep = strstri(inp, " named ")) != 0)
+	    alt = ep + 7;
+	else
+	    ep = strstri(inp, " called ");
+	if (ep) *ep = '\0';
+	if (user_typed_name)
+	    (void) lcase(inp);
+
+	/*
+	 * If the object is named, then the name is the alternate description;
+	 * otherwise, the result of makesingular() applied to the name is. This
+	 * isn't strictly optimal, but named objects of interest to the user
+	 * will usually be found under their name, rather than under their
+	 * object type, so looking for a singular form is pointless.
+	 */
+
+	if (!alt)
+	    alt = makesingular(inp);
+	else
+	    if (user_typed_name)
+	    	(void) lcase(alt);
+
+	/* skip first record; read second */
+	txt_offset = 0L;
+	if (!fgets(buf, BUFSZ, fp) || !fgets(buf, BUFSZ, fp)) {
+	    impossible("can't read 'data' file");
+	    (void) fclose(fp);
+	    return;
+	} else if (sscanf(buf, "%8lx\n", &txt_offset) < 1 || txt_offset <= 0)
+	    goto bad_data_file;
+
+	/* look for the appropriate entry */
+	while (fgets(buf,BUFSZ,fp)) {
+	    if (*buf == '.') break;  /* we passed last entry without success */
+
+	    if (!digit(*buf)) {
+		if (!(ep = index(buf, '\n'))) goto bad_data_file;
+		*ep = 0;
+		if (pmatch(buf, inp) || (alt && pmatch(buf, alt))) {
+		    found_in_file = TRUE;
+		    break;
+		}
+	    }
+	}
+    }
+
+    if(found_in_file) {
+	long entry_offset;
+	int  entry_count;
+	int  i;
+
+	/* skip over other possible matches for the info */
+	do {
+	    if (!fgets(buf, BUFSZ, fp)) goto bad_data_file;
+	} while (!digit(*buf));
+	if (sscanf(buf, "%ld,%d\n", &entry_offset, &entry_count) < 2) {
+bad_data_file:	impossible("'data' file in wrong format");
+		(void) fclose(fp);
+		return;
+	}
+
+	if (user_typed_name || yn("More info?") == 'y') {
+	    winid datawin;
+
+	    if (fseek(fp, txt_offset + entry_offset, SEEK_SET) < 0) {
+		pline("? Seek error on 'data' file!");
+		(void) fclose(fp);
+		return;
+	    }
+	    datawin = create_nhwindow(NHW_TEXT);
+	    for (i = 0; i < entry_count; i++) {
+		if (!fgets(buf, BUFSZ, fp)) goto bad_data_file;
+		if ((ep = index(buf, '\n')) != 0) *ep = 0;
+		if (index(buf+1, '\t') != 0) (void) tabexpand(buf+1);
+		putstr(datawin, 0, buf+1);
+	    }
+	    display_nhwindow(datawin, FALSE);
+	    destroy_nhwindow(datawin);
+	}
+    } else if (user_typed_name)
+	pline("I don't have any information on those things.");
+
+    (void) fclose(fp);
+}
+
+static int
+do_look(quick)
+    boolean quick;	/* use cursor && don't search for "more info" */
+{
+    char    out_str[BUFSZ], look_buf[BUFSZ];
+    const char    *firstmatch = 0;
+    int     i;
+    int     sym;		/* typed symbol or converted glyph */
+    int	    found;		/* count of matching syms found */
+    coord   cc;			/* screen pos of unknown glyph */
+    boolean save_verbose;	/* saved value of flags.verbose */
+    boolean from_screen;	/* question from the screen */
+    boolean need_to_look;	/* need to get explan. from glyph */
+    static const char *mon_interior = "the interior of a monster";
+
+#ifdef GCC_WARN
+    sym = 0;
+#endif
+
+    if (quick) {
+	from_screen = TRUE;	/* yes, we want to use the cursor */
+    } else {
+	i = ynq("Specify unknown object by cursor?");
+	if (i == 'q') return 0;
+	from_screen = (i == 'y');
+    }
+
+    if (from_screen) {
+	cc.x = u.ux;
+	cc.y = u.uy;
+    } else {
+	getlin("Specify what? (type the word)", out_str);
+	if (out_str[0] == '\033')
+	    return 0;
+
+	if (out_str[1]) {	/* user typed in a complete string */
+	    checkfile(out_str, TRUE);
+	    return 0;
+	}
+	sym = out_str[0];
+    }
+
+    /* Save the verbose flag, we change it later. */
+    save_verbose = flags.verbose;
+    flags.verbose = flags.verbose && !quick;
+    /*
+     * The user typed one letter, or we're identifying from the screen.
+     */
+    do {
+	/* Reset some variables. */
+	need_to_look = FALSE;
+	found = 0;
+	out_str[0] = '\0';
+
+	if (from_screen) {
+	    int glyph;	/* glyph at selected position */
+
+	    if (flags.verbose)
+		pline("Please move the cursor to an unknown object.");
+	    else
+		pline("Pick an object.");
+
+	    getpos(&cc, FALSE, "an unknown object");
+	    if (cc.x < 0) {
+		flags.verbose = save_verbose;
+		return 0;	/* done */
+	    }
+	    flags.verbose = FALSE;	/* only print long question once */
+
+	    /* Convert the glyph at the selected position to a symbol. */
+	    glyph = glyph_at(cc.x,cc.y);
+	    if (glyph_is_cmap(glyph)) {
+		sym = showsyms[glyph_to_cmap(glyph)];
+	    } else if (glyph_is_trap(glyph)) {
+		sym = showsyms[(glyph_to_trap(glyph) == WEB) ? S_web : S_trap];
+	    } else if (glyph_is_object(glyph)) {
+		sym = oc_syms[objects[glyph_to_obj(glyph)].oc_class];
+	    } else if (glyph_is_monster(glyph)) {
+		sym = monsyms[mons[glyph_to_mon(glyph)].mlet];
+	    } else if (glyph_is_swallow(glyph)) {
+		sym = showsyms[glyph_to_swallow(glyph)+S_sw_tl];
+	    } else {
+		impossible("do_look:  bad glyph %d at (%d,%d)",
+						glyph, (int)cc.x, (int)cc.y);
+		sym = ' ';
+	    }
+	}
+
+	/*
+	 * Check all the possibilities, saving all explanations in a buffer.
+	 * When all have been checked then the string is printed.
+	 */
+
+	/* Check for monsters */
+	for (i = 0; i < MAXMCLASSES; i++) {
+	    if (sym == (from_screen ? monsyms[i] : def_monsyms[i])) {
+		need_to_look = TRUE;
+		if (!found) {
+		    Sprintf(out_str, "%c       %s", sym, an(monexplain[i]));
+		    firstmatch = monexplain[i];
+		    found++;
+		} else {
+		    found += append_str(out_str, an(monexplain[i]));
+		}
+	    }
+	}
+
+	/*
+	 * Special case: if identifying from the screen, and we're swallowed,
+	 * and looking at something other than our own symbol, then just say
+	 * "the interior of a monster".
+	 */
+	if (u.uswallow && from_screen && is_swallow_sym((uchar) sym)) {
+	    if (!found) {
+		Sprintf(out_str, "%c       %s", sym, mon_interior);
+		firstmatch = mon_interior;
+	    } else {
+		found += append_str(out_str, mon_interior);
+	    }
+	    need_to_look = TRUE;
+	}
+
+	/* Now check for objects */
+	for (i = 1; i < MAXOCLASSES; i++) {
+	    if (sym == (from_screen ? oc_syms[i] : def_oc_syms[i])) {
+		need_to_look = TRUE;
+		if (!found) {
+		    Sprintf(out_str, "%c       %s", sym, an(objexplain[i]));
+		    firstmatch = objexplain[i];
+		    found++;
+		} else {
+		    found += append_str(out_str, an(objexplain[i]));
+		}
+	    }
+	}
+
+	/* Now check for graphics symbols */
+	for (i = 0; i < MAXPCHARS; i++) {
+	    if (sym == (from_screen ? showsyms[i] : defsyms[i].sym) &&
+						(*defsyms[i].explanation)) {
+		if (!found) {
+		    Sprintf(out_str, "%c       %s",
+					    sym, an(defsyms[i].explanation));
+		    firstmatch = defsyms[i].explanation;
+		    found++;
+		} else if (!u.uswallow) {
+		    found += append_str(out_str, an(defsyms[i].explanation));
+		}
+
+		if (i == S_altar || i == S_trap || i == S_web)
+		    need_to_look = TRUE;
+	    }
+	}
+
+	/*
+	 * If we are looking at the screen, follow multiple posibilities or
+	 * an ambigious explanation by something more detailed.
+	 */
+	if (from_screen) {
+	    if (found > 1 || need_to_look) {
+		lookat(cc.x, cc.y, look_buf);
+		firstmatch = look_buf;
+		if (*firstmatch) {
+		    char temp_buf[BUFSZ];
+		    Sprintf(temp_buf, " (%s)", firstmatch);
+		    (void)strncat(out_str, temp_buf, BUFSZ-strlen(out_str)-1);
+		    found = 1;	/* we have something to look up */
+		}
+	    }
+	}
+
+	/* Finally, print out our explanation. */
+	if (found) {
+	    pline(out_str);
+	    /* check the data file for information about this thing */
+	    if (found == 1 && !quick && flags.help) {
+		char temp_buf[BUFSZ];
+		Strcpy(temp_buf, firstmatch);
+		checkfile(temp_buf, FALSE);
+	    }
+	} else {
+	    pline("I've never heard of such things.");
+	}
+
+    } while (from_screen && !quick);
+
+    flags.verbose = save_verbose;
+    return 0;
+}
+
+
 int
 dowhatis()
 {
-	FILE *fp;
-	char buf[BUFSZ], inpbuf[BUFSZ];
-	register char *ep, *inp = inpbuf;
-	char *alt = 0;		/* alternate description */
-#ifdef __GNULINT__
-	const char *firstmatch = 0;
-#else
-	const char *firstmatch;
-#endif
-	uchar q;
-	register int i;
-	coord	cc;
-	boolean oldverb = flags.verbose;
-	boolean found_in_file = FALSE, need_to_print = FALSE;
-	int	found = 0;
-	static const char *mon_interior = "the interior of a monster";
+	return do_look(FALSE);
+}
 
-#ifdef OS2_CODEVIEW
-	char tmp[PATHLEN];
+int
+doquickwhatis()
+{
+	return do_look(TRUE);
+}
 
-	Strcpy(tmp,hackdir);
-	append_slash(tmp);
-	Strcat(tmp,DATAFILE);
-	fp = fopen(tmp,"r"));
-#else
-	fp = fopen(DATAFILE, "r");
-#endif
-	if(!fp) {
-#ifdef MACOS
-		fp = openFile(DATAFILE, "r");
-	}
-	if (!fp) {
-#endif
-		pline("Cannot open data file!");
-		return 0;
-	}
+int
+doidtrap()
+{
+	register struct trap *trap;
+	register int x,y;
 
-	pline ("Specify unknown object by cursor? ");
-	q = ynq();
-	if (q == 'q') {
-		(void) fclose(fp);
-		return 0;
-	} else if (q == 'n') {
-		cc.x = cc.y = -1;
-		pline("Specify what? (type the word) ");
-		getlin(inp);
-		if (inp[0] == '\033' || !inp[0]) {
-			(void)fclose(fp);
-			return 0;
+	if(!getdir(NULL)) return 0;
+	x = u.ux + u.dx;
+	y = u.uy + u.dy;
+	for(trap = ftrap; trap; trap = trap->ntrap)
+		if(trap->tx == x && trap->ty == y && trap->tseen) {
+		    if(u.dz) {
+			if(u.dz < 0 && trap->ttyp == TRAPDOOR)
+			    continue;
+		        if(u.dz > 0 && trap->ttyp == ROCKTRAP)
+			    continue;
+		    }
+		    pline("That is a%s.",
+			  traps[ Hallucination ? rn1(TRAPNUM-3, 3) :
+				trap->ttyp]);
+		    return 0;
 		}
-		if (!inp[1])
-			q = inp[0];
-		else
-			q = 0;
-	} else {
-		cc.x = u.ux;
-		cc.y = u.uy;
-selobj:
-		need_to_print = found_in_file = FALSE;
-		found = 0;
-		inp = inpbuf;
-		alt = 0;
-		(void) outspec("", 0);		/* reset output */
-		if(flags.verbose)
-			pline("Please move the cursor to an unknown object.");
-		else
-			pline("Pick an object.");
-		getpos(&cc, FALSE, "an unknown object");
-		if (cc.x < 0) {
-			    (void) fclose(fp); /* sweet@scubed */
-			    flags.verbose = oldverb;
-			    return 0;
-		}
-		flags.verbose = FALSE;
-		if (!u.uswallow) {
-			q = levl[cc.x][cc.y].scrsym;
-			if (!q || (!levl[cc.x][cc.y].seen && !MON_AT(cc.x,cc.y)))
-				q = ' ';
-		}
-		else if (cc.x == u.ux && cc.y == u.uy)
-			q = u.usym;
-		else {
-			i = (u.uy - cc.y)+1;
-			if (i < 0 || i > 2)
-				q = ' ';
-			else {
-				firstmatch = (i == 0) ? "/-\\" :
-					(i == 1) ? "| |" : "\\-/";
-				i = (u.ux - cc.x)+1;
-				if (i < 0 || i > 2)
-					q = ' ';
-				else
-					q = firstmatch[i];
-			}
-		}
-	}
-
-	if (!q)
-		goto checkfile; /* user typed in a complete string */
-
-	if (q != ' ' && index(quitchars, (char)q)) {
-		(void) fclose(fp); /* sweet@scubed */
-		flags.verbose = oldverb;
-		return 0;
-	}
-/*
- * if the user just typed one letter, or we're identifying from the
- * screen, then we have to check all the possibilities and print them
- * out for him/her.
- */
-
-/* Check for monsters */
-	for (i = 0; monsyms[i]; i++) {
-		if (q == monsyms[i]) {
-			need_to_print = TRUE;
-			pline("%c       %s",q,an(monexplain[i]));
-			(void) outspec(firstmatch = monexplain[i], 0);
-			found++;
-			break;
-		}
-	}
-
-/* Special case: if identifying from the screen, and
- * we're swallowed, and looking at something other than our own symbol,
- * then just say "the interior of a monster".
- */
-	if (u.uswallow && is_swallow_sym(q)) {
-		if (!found) {
-			pline("%c       %s", q, mon_interior);
-			(void)outspec(firstmatch=mon_interior, 0);
-		}
-		else
-			(void)outspec(mon_interior, 1);
-		found++; need_to_print = TRUE;
-	}
-
-/* Now check for objects */
-	for (i = 0; objsyms[i]; i++) {
-		if (q == objsyms[i]) {
-			need_to_print = TRUE;
-			if (!found) {
-				pline("%c       %s",q,an(objexplain[i]));
-				(void)outspec(firstmatch = objexplain[i], 0);
-				found++;
-			}
-			else if (outspec(objexplain[i], 1))
-				found++;
-		}
-	}
-
-/* Now check for graphics symbols */
-	for (i = 0; i < MAXPCHARS; i++) {
-		if ( q == showsyms[i] && (*explainsyms[i])) {
-			if (!found) {
-				pline("%c       %s",q,an(explainsyms[i]));
-				(void)outspec(firstmatch = explainsyms[i], 0);
-				found++;
-			}
-			else if (outspec(explainsyms[i], 1))
-				found++;
-			if (i == S_altar || i == S_trap || i == S_web)
-				need_to_print = TRUE;
-		}
-	}
-
-	if (!found)
-		pline("I've never heard of such things.");
-	else if (cc.x != -1) {	/* a specific object on screen */
-		if (found > 1 || need_to_print) {
-			Strcpy(inp, lookat(cc.x, cc.y, q));
-			if (*inp)
-				pline("(%s)", inp);
-		}
-		else {
-			Strcpy(inp, firstmatch);
-		}
-	}
-	else if (found == 1) {
-		Strcpy(inp, firstmatch);
-	}
-	else
-		found = FALSE;	/* abort the 'More info?' stuff */
-
-/* check the data file for information about this thing */
-
-checkfile:
-
-	if (!strncmp(inp, "interior of ", 12))
-		inp += 12;
-	if (!strncmp(inp, "a ", 2))
-		inp += 2;
-	else if (!strncmp(inp, "an ", 3))
-		inp += 3;
-	else if (!strncmp(inp, "the ", 4))
-		inp += 4;
-	if (!strncmp(inp, "tame ", 5))
-		inp += 5;
-	else if (!strncmp(inp, "peaceful ", 9))
-		inp += 9;
-	if (!strncmp(inp, "invisible ", 10))
-		inp += 10;
-
-/*
- * look in the file for more info if:
- * the user typed in the whole name (!q)
- * OR we've found a possible match with the character q (found) and
- *    flags.help is TRUE
- * and, of course, the name to look for must be non-empty.
- */
-	if ((!q || (found && flags.help)) && *inp) {
-/* adjust the input to remove "named " and convert to lower case */
- 		for (ep = inp; *ep; ) {
-			if ((!strncmp(ep, " named ", 7) && (alt = ep + 7)) ||
-			    !strncmp(ep, " called ", 8))
-				*ep = 0;
-			else {
-				if(isupper(*ep)) *ep = tolower(*ep);
-				ep++;
-			}
-		}
-
-/*
- * If the object is named, then the name is the alternate search string;
- * otherwise, the result of makesingular() applied to the name is. This
- * isn't strictly optimal, but named objects of interest to the user
- * will usually be found under their name, rather than under their
- * object type, so looking for a singular form is pointless.
- */
-
-		if (!alt)
-			alt = makesingular(inp);
-		else
-			for (ep = alt; *ep; ep++) 
-				if(isupper(*ep)) *ep = tolower(*ep);
-
-		while(fgets(buf,BUFSZ,fp)) {
-			if(*buf != '\t') {
-			    ep = index(buf, '\n');
-			    if(ep) *ep = 0;
-			    else impossible("bad data file");
-			    if (pmatch(buf, inp)||(alt && pmatch(buf, alt))) {
-				found_in_file = TRUE;
-				break;
-			    }
-			}
-		}
-	}
-
-	if(found_in_file) {
-/* skip over other possible matches for the info */
-		for(;;) {
-			if ( (i = getc(fp)) == '\t' ) {
-				(void) ungetc(i, fp);
-				break;
-			}
-			if (!fgets(buf, BUFSZ, fp)) {
-				break;
-			}
-		}
-		if (q) {
-			pline("More info? ");
-			if(yn() == 'y') {
-				page_more(fp,1); /* does fclose() */
-				flags.verbose = oldverb;
-				return 0;
-			}
-		}
-		else {
-			page_more(fp, 1);
-			flags.verbose = oldverb;
-			return 0;
-		}
-	}
-	else if (!q)
-		pline("I don't have any information on those things.");
-
-/* if specified by cursor, keep going */
-	if(cc.x != -1) {
-		more();
-		rewind(fp);
-		goto selobj;
-	}
-	(void) fclose(fp); 	/* kopper@psuvax1 */
-	flags.verbose = oldverb;
+	pline("I can't see a trap there.");
 	return 0;
 }
 
@@ -558,31 +516,17 @@ dowhatdoes()
 	FILE *fp;
 	char bufr[BUFSZ+6];
 	register char *buf = &bufr[6], *ep, q, ctrl, meta;
-#ifdef OS2_CODEVIEW
-	char tmp[PATHLEN];
 
-	Strcpy(tmp,hackdir);
-	append_slash(tmp);
-	Strcat(tmp,CMDHELPFILE);
-	if(!(fp = fopen(tmp,"r"))) {
-#else
-# ifdef MACOS
-	if(!(fp = fopen(CMDHELPFILE, "r")))
-		fp = openFile(CMDHELPFILE, "r");
+	fp = fopen_datafile(CMDHELPFILE, "r");
 	if (!fp) {
-# else
-	if(!(fp = fopen(CMDHELPFILE, "r"))) {
-# endif
-#endif
 		pline("Cannot open data file!");
 		return 0;
 	}
 
-	pline("What command? ");
 #if defined(UNIX) || defined(VMS)
 	introff();
 #endif
-	q = readchar();
+	q = yn_function("What command?", NULL, '\0');
 #if defined(UNIX) || defined(VMS)
 	intron();
 #endif
@@ -616,662 +560,103 @@ dowhatdoes()
 	return 0;
 }
 
-/* make the paging of a file interruptible */
-static volatile int NEARDATA got_intrup;
-
-#if !defined(MSDOS) && !defined(TOS) && !defined(MACOS)
-static int
-intruph(){
-	(void) signal(SIGINT, (SIG_RET_TYPE) intruph);
-	got_intrup++;
-	return 0;
-}
+/* data for help_menu() */
+static const char *help_menu_items[] = {
+	"Information available:",
+	"",
+	"a.  Long description of the game and commands.",
+	"b.  List of game commands.",
+	"c.  Concise history of NetHack.",
+	"d.  Info on a character in the game display.",
+	"e.  Info on what a given key does.",
+	"f.  List of game options.",
+	"g.  Longer explanation of game options.",
+	"h.  List of extended commands.",
+	"i.  The NetHack license.",
+#ifdef PORT_HELP
+	"j.  %s-specific help and commands.",
 #endif
-
-/* simple pager, also used from dohelp() */
-static void
-page_more(fp,strip)
-FILE *fp;
-int strip;	/* nr of chars to be stripped from each line (0 or 1) */
-{
-#ifdef MACOS
-	short tmpflags;
-	
-	tmpflags = macflags;
-	macflags &= ~fDoUpdate;
-	if(!mac_more(fp, strip)) {
-		macflags |= (tmpflags & fDoUpdate);
-		return;
-	}
-	macflags |= (tmpflags & fDoUpdate);
-#else
-	register char *bufr;
-#if !defined(MSDOS) && !defined(MINIMAL_TERM)
-	register char *ep;
-#endif
-#if !defined(MSDOS) && !defined(TOS)
-	int (*prevsig)() = (int (*)())signal(SIGINT, (SIG_RET_TYPE) intruph);
-#endif
-#if defined(MSDOS) || defined(MINIMAL_TERM)
-	/* There seems to be a bug in ANSI.SYS  The first tab character
-	 * after a clear screen sequence is not expanded correctly.  Thus
-	 * expand the tabs by hand -dgk
-	 */
-	int tabstop = 8, spaces;
-	char buf[BUFSIZ], *bufp, *bufrp;
-
-	set_pager(0);
-	bufr = (char *) alloc((unsigned) COLNO);
-	while (fgets(buf, BUFSIZ, fp) && (!strip || *buf == '\t')){
-		bufp = buf;
-		bufrp = bufr;
-		if (strip && *bufp && *bufp != '\n')
-			*bufrp++ = *bufp++;
-		while (*bufp && *bufp != '\n') {
-			if (*bufp == '\t') {
-				spaces = tabstop - (bufrp - bufr) % tabstop;
-				while (spaces--)
-					*bufrp++ = ' ';
-				bufp++;
-			} else
-				*bufrp++ = *bufp++;
-		}
-		*bufrp = '\0';
-#else /* MSDOS /**/
-	set_pager(0);
-	bufr = (char *) alloc((unsigned) COLNO);
-	bufr[COLNO-1] = 0;
-	while(fgets(bufr,COLNO-1,fp) && (!strip || *bufr == '\t')){
-		ep = index(bufr, '\n');
-		if(ep)
-			*ep = 0;
-#endif /* MSDOS /**/
-		if(got_intrup || page_line(bufr+strip)) {
-			set_pager(2);
-			goto ret;
-		}
-	}
-	set_pager(1);
-ret:
-	free((genericptr_t) bufr);
-	(void) fclose(fp);
-#if !defined(MSDOS) && !defined(TOS)
-	(void) signal(SIGINT, (SIG_RET_TYPE) prevsig);
-	got_intrup = 0;
-#endif
-#endif /* MACOS */
-}
-
-#endif /* OVLB */
-
-#define	PAGMIN	12	/* minimum # of lines for page below level map */
-
-#ifndef OVLB
-
-STATIC_DCL boolean whole_screen;
-
-#else /* OVLB */
-
-STATIC_OVL boolean NEARDATA whole_screen = TRUE;
-
-void
-set_whole_screen() {	/* called in termcap as soon as LI is known */
-	whole_screen = (LI-ROWNO-2 <= PAGMIN || !CD);
-}
-
-#ifdef NEWS
-int
-readnews() {
-	register int ret;
-
-	whole_screen = TRUE;	/* force a docrt(), our first */
-	ret = page_file(NEWS, TRUE);
-	set_whole_screen();
-	return(ret);		/* report whether we did docrt() */
-}
-#endif
-
-void
-set_pager(mode)
-register int mode;	/* 0: open  1: wait+close  2: close */
-{
-#ifdef LINT	/* lint may handle static decl poorly -- static boolean so; */
-	boolean so;
-#else
-	static boolean NEARDATA so;
-#endif
-	if(mode == 0) {
-		if(!whole_screen) {
-			/* clear topline */
-			clrlin();
-			/* use part of screen below level map */
-			curs(1, ROWNO+4);
-		} else {
-			cls();
-		}
-		so = flags.standout;
-		flags.standout = 1;
-	} else {
-		if(mode == 1) {
-			curs(1, LI);
-			more();
-		}
-		flags.standout = so;
-		if(whole_screen)
-			docrt();
-		else {
-			curs(1, ROWNO+4);
-			cl_eos();
-		}
-	}
-}
-
-#endif /* OVLB */
-#ifdef OVL0
-
-int
-page_line(s)		/* returns 1 if we should quit */
-register const char *s;
-{
-#ifdef CLIPPING
-/* we assume here that no data files have more than 80 chars/line */
-	static char tmp[81], *t;
-#endif
-	if(cury == LI-1) {
-		if(!*s)
-			return(0);	/* suppress blank lines at top */
-		(void) putchar('\n');
-		cury++;
-		cmore("q\033");
-		if(morc) {
-			morc = 0;
-			return(1);
-		}
-		if(whole_screen)
-			cls();
-		else {
-			curs(1, ROWNO+4);
-			cl_eos();
-		}
-	}
-#ifdef CLIPPING
-/* if lines are too long for the screen, first try stripping leading blanks */
-	if (strlen(s) >= CO) {
-		while (*s == ' ' || *s == '\t') s++;
-	}
-
-/* if it's still too long, try compressing blanks */
-	if (strlen(s) >= CO) {
-		t = tmp;
-		while ( (*t = *s) != 0) {
-			if (*t == ' ') {
-				while (*s == ' ')
-					s++;
-			}
-			else
-				s++;
-			t++;
-		}
-		s = tmp;
-	}
-#endif /* CLIPPING */
-
-#ifdef TERMINFO
-	xputs(s); xputc('\n');
-#else
-	(void) puts(s);
-# ifdef MACOS
-	(void) putchar('\n');
+#ifdef WIZARD
+# ifdef PORT_HELP
+# define WIZHLP_SLOT 12	/* assumed to be next to last by code below */
+	"k.  List of wizard-mode commands.",
+# else
+# define WIZHLP_SLOT 11	/* assumed to be next to last by code below */
+	"j.  List of wizard-mode commands.",
 # endif
 #endif
-	cury++;
-	return(0);
-}
+	"",
+	NULL
+};
 
-/*
- * Flexible pager: feed it with a number of lines and it will decide
- * whether these should be fed to the pager above, or displayed in a
- * corner.
- * Call:
- *	cornline(0, title or 0)	: initialize
- *	cornline(1, text)	: add text to the chain of texts
- *	cornline(2, morcs)	: output everything and cleanup
- *	cornline(3, 0)		: cleanup
- *	cornline(-1,"")		: special, for help menu mode only
- */
-
-void
-cornline(mode, text)
-int mode;
-const char *text;
+static char
+help_menu()
 {
-	static struct line {
-		struct line *next_line;
-		char *line_text;
-	} NEARDATA *texthead, NEARDATA *texttail;
-	static int NEARDATA maxlen;
-	static int NEARDATA linect;
-	register struct line *tl;
-	register boolean hmenu = FALSE;
-
-	if(mode == -1) { /* help menu display only */
-		mode = 2;
-		hmenu = TRUE;
-	}
-	if(mode == 0) {
-		texthead = 0;
-		maxlen = 0;
-		linect = 0;
-		if(text) {
-			cornline(1, text);	/* title */
-			cornline(1, "");	/* blank line */
-		}
-		return;
-	}
-
-	if(mode == 1) {
-	    register int len;
-
-	    if(!text) return;	/* superfluous, just to be sure */
-	    linect++;
-	    len = strlen(text) + 1; /* allow for an extra leading space */
-	    if(len > maxlen)
-		maxlen = len;
-	    tl = (struct line *)
-		alloc((unsigned)(len + sizeof(struct line) + 1));
-	    tl->next_line = 0;
-	    tl->line_text = (char *)(tl + 1);
-	    tl->line_text[0] = ' ';
-	    tl->line_text[1] = '\0';
-	    Strcat(tl->line_text, text);
-	    if(!texthead)
-		texthead = tl;
-	    else
-		texttail->next_line = tl;
-	    texttail = tl;
-	    return;
-	}
-
-	/* --- now we really do it --- */
-	if(mode == 2 && linect == 1)			    /* topline only */
-		pline("%s", texthead->line_text);
-	else
-	if(mode == 2) {
-	    register int curline, lth;
-
-	    if(flags.toplin == 1) more();	/* ab@unido */
-	    remember_topl();
-
-	    lth = CO - maxlen - 2;		   /* Use full screen width */
-	    if (linect < LI && lth >= 10) {		     /* in a corner */
-		home ();
-		cl_end ();
-		flags.toplin = 0;
-		curline = 1;
-		for (tl = texthead; tl; tl = tl->next_line) {
-#if defined(MSDOS) && !defined(AMIGA)
-		    cmov (lth, curline);
-#else
-		    curs (lth, curline);
+	winid tmpwin = create_nhwindow(NHW_MENU);
+#ifdef PORT_HELP
+	char helpbuf[QBUFSZ];
 #endif
-		    if(curline > 1)
-			cl_end ();
-		    xputs(tl->line_text);
-		    curx = curx + strlen(tl->line_text);
-		    curline++;
-		}
-		if(hmenu) {	/* help menu display */
-			do 
-				hc = lowc(readchar());
-			while (!valid_help(hc));
-		}
-#if defined(MSDOS) && !defined(AMIGA)
-		cmov (lth, curline);
-#else
-		curs (lth, curline);
+	char hc;
+	register int i;
+
+	start_menu(tmpwin);
+#ifdef WIZARD
+	if (!wizard) help_menu_items[WIZHLP_SLOT] = "",
+		     help_menu_items[WIZHLP_SLOT+1] = NULL;
 #endif
-		cl_end ();
-		if (!hmenu) {
-			cmore (text);
-		}
-		if (!hmenu || clear_help(hc)) {
-		    home ();
-		    cl_end ();
-		    docorner (lth, curline-1);
-		}
-	    } else {					/* feed to pager */
-#ifdef MACOS
-		short	tmpflags;
-		
-		tmpflags = macflags;
-		macflags &= ~fDoNonKeyEvt;
+	for (i = 0; help_menu_items[i]; i++)
+#ifdef PORT_HELP
+	    /* port-specific line has a %s in it for the PORT_ID */
+	    if (index(help_menu_items[i], '%')) {
+		Sprintf(helpbuf, help_menu_items[i], PORT_ID);
+		add_menu(tmpwin, helpbuf[0], 0, helpbuf);
+	    } else
 #endif
-		set_pager(0);
-		for (tl = texthead; tl; tl = tl->next_line) {
-		    if (page_line (tl->line_text)) {
-			set_pager(2);
-#ifdef MACOS
-			macflags = tmpflags;
-#endif
-			while(tl = texthead) {
-			    texthead = tl->next_line;
-			    free((genericptr_t) tl);
-			}
-			return;
-		    }
-		}
-		if(text) {
-			cgetret(text);
-			set_pager(2);
-		} else
-			set_pager(1);
-#ifdef MACOS
-		macflags = tmpflags;
-#endif
+	    {
+		add_menu(tmpwin, i ? *help_menu_items[i] : 0, 0,
+			 help_menu_items[i]);
 	    }
-	}
-
-	while(tl = texthead) {
-		texthead = tl->next_line;
-		free((genericptr_t) tl);
-	}
-}
-
-#endif /* OVL0 */
-#ifdef OVLB
-
-#ifdef WIZARD
-static
-void
-wiz_help()
-{
-	cornline(0, "Wizard-Mode Quick Reference:");
-	cornline(1, "^E  ==  detect secret doors and traps.");
-	cornline(1, "^F  ==  do magic mapping.");
-	cornline(1, "^G  ==  create monster.");
-	cornline(1, "^I  ==  identify items in pack.");
-	cornline(1, "^O  ==  tell locations of special levels.");
-	cornline(1, "^T  ==  do intra-level teleport.");
-	cornline(1, "^V  ==  do trans-level teleport.");
-	cornline(1, "^W  ==  make wish.");
-	cornline(1, "^X  ==  show intrinsic attributes.");
-	cornline(1, "");
-	cornline(2, "");
-}
-#endif
-
-static void
-help_menu() {
-	cornline(0, "Information available:");
-	cornline(1, "a.  Long description of the game and commands.");
-	cornline(1, "b.  List of game commands.");
-	cornline(1, "c.  Concise history of NetHack.");
-	cornline(1, "d.  Info on a character in the game display.");
-	cornline(1, "e.  Info on what a given key does.");
-	cornline(1, "f.  List of game options.");
-	cornline(1, "g.  Longer explanation of game options.");
-	cornline(1, "h.  List of extended commands.");
-	cornline(1, "i.  The NetHack license.");
-#ifdef MACOS
-	cornline(1, "j.  Macintosh primer.");
-#endif
-#ifdef WIZARD
-	if (wizard)
-# ifdef MACOS
-		cornline(1, "k.  List of wizard-mode commands.");
-# else
-		cornline(1, "j.  List of wizard-mode commands.");
-# endif
-#endif
-	cornline(1, "");
-#ifdef WIZARD
-	if (wizard)
-# ifdef MACOS
-		cornline(1, "Select one of a,b,c,d,e,f,g,h,i,j,k or ESC: ");
-# else
-		cornline(1, "Select one of a,b,c,d,e,f,g,h,i,j or ESC: ");
-# endif
-	else
-#endif
-#ifdef MACOS
-		cornline(1, "Select one of a,b,c,d,e,f,g,h,i,j or ESC: ");
-#else
-		cornline(1, "Select one of a,b,c,d,e,f,g,h,i or ESC: ");
-#endif
-	cornline(-1,"");
-}
-
-STATIC_OVL boolean
-clear_help(c)
-char c;
-{
-	/* those valid_help characters which do not correspond to help routines
-	 * that redraw the whole screen on their own.  if we always clear the
-	 * help menu, we end up restoring the part of the maze underneath the
-	 * help menu when the last page of a long help file is displayed with
-	 * an external pager.
-	 *
-	 * When whole_screen is FALSE and the internal pager is used, the
-	 * screen is big enough so that the maze is left in place during paging
-	 * and the paging occurs in the lower part of the screen.  In this case
-	 * the pager clears out the part it wrote over when it exits but it
-	 * doesn't redraw the whole screen.  So all characters require that
-	 * the help menu be cleared.
-	 *
-	 * When an external pager is used, the screen is always cleared.
-	 * However, the "f" and "h" help options always use the internal
-	 * pager even if DEF_PAGER is defined.
-	 *                        - Bob Wilber  wilber@homxb.att.com  10/20/89
-	 */
-	return(index(quitchars,c) || c == 'd' || c == 'e'
-#ifdef DEF_PAGER
-	        || (!whole_screen && (c == 'f' || c == 'h'))
-#else
-	        || !whole_screen
-#endif
-#ifdef WIZARD
-# ifdef MACOS
-		|| c == 'k'
-# else
-		|| c == 'j'
-# endif
-#endif
-		);
-}
-
-STATIC_OVL boolean
-valid_help(c)
-char c;
-{
-#ifdef WIZARD
-# ifdef MACOS
-	return ((c >= 'a' && c <= (wizard ? 'k' : 'j')) || index(quitchars,c));
-# else
-	return ((c >= 'a' && c <= (wizard ? 'j' : 'i')) || index(quitchars,c));
-# endif
-#else
-# ifdef MACOS
-	return ((c >= 'a' && c <= 'j') || index(quitchars,c));
-# else
-	return ((c >= 'a' && c <= 'i') || index(quitchars,c));
-# endif
-#endif
+	end_menu(tmpwin, '\033', "\033", "Select one item or ESC: ");
+	hc = select_menu(tmpwin);
+	destroy_nhwindow(tmpwin);
+	return hc;
 }
 
 int
 dohelp()
 {
-#ifdef MACOS
-	term_info	*t;
-
-	macflags &= ~fDoNonKeyEvt;
-	t = (term_info *)GetWRefCon(HackWindow);
-	SetVol((StringPtr)NULL,
-		(t->auxFileVRefNum) ? t->auxFileVRefNum : t->recordVRefNum);
-#endif
-	help_menu();
+	char hc = help_menu();
 	if (!index(quitchars, hc)) {
 		switch(hc) {
-			case 'a':  (void) page_file(HELP, FALSE);  break;
-			case 'b':  (void) page_file(SHELP, FALSE);  break;
+			case 'a':  display_file(HELP, TRUE);  break;
+			case 'b':  display_file(SHELP, TRUE);  break;
 			case 'c':  (void) dohistory();  break;
 			case 'd':  (void) dowhatis();  break;
 			case 'e':  (void) dowhatdoes();  break;
 			case 'f':  option_help();  break;
-			case 'g':  (void) page_file(OPTIONFILE, FALSE);  break;
+			case 'g':  display_file(OPTIONFILE, TRUE);  break;
 			case 'h':  (void) doextlist();  break;
-			case 'i':  (void) page_file(LICENSE, FALSE);  break;
-#ifdef WIZARD
-# ifdef MACOS
-			case 'j':  (void) page_file(MACHELP, FALSE);  break;
-			case 'k':  wiz_help();  break;
-# else
-			case 'j':  wiz_help();  break;
+			case 'i':  display_file(LICENSE, TRUE);  break;
+#ifdef PORT_HELP
+			case 'j':  port_help();  break;
+# ifdef WIZARD
+			case 'k':  display_file(DEBUGHELP, TRUE);  break;
+# endif
+#else
+# ifdef WIZARD
+			case 'j':  display_file(DEBUGHELP, TRUE);  break;
 # endif
 #endif
 		}
 	}
-#ifdef MACOS
-	SetVol((StringPtr)NULL, t->recordVRefNum);
-	macflags |= fDoNonKeyEvt;
-#endif
 	return 0;
 }
 
 int
 dohistory()
 {
-	(void) page_file(HISTORY, FALSE);
+	display_file(HISTORY, TRUE);
 	return 0;
 }
 
-int
-page_file(fnam, silent)	/* return: 0 - cannot open fnam; 1 - otherwise */
-register const char *fnam;
-boolean silent;
-{
-#ifdef DEF_PAGER			/* this implies that UNIX is defined */
-      {
-	/* use external pager; this may give security problems */
-
-	register int fd = open(fnam, 0);
-
-	if(fd < 0) {
-		if(!silent) pline("Cannot open %s.", fnam);
-		return(0);
-	}
-	if(child(1)){
-		/* Now that child() does a setuid(getuid()) and a chdir(),
-		   we may not be able to open file fnam anymore, so make
-		   it stdin. */
-		(void) close(0);
-		if(dup(fd)) {
-			if(!silent) Printf("Cannot open %s as stdin.\n", fnam);
-		} else {
-			(void) execl(catmore, "page", NULL);
-			if(!silent) Printf("Cannot exec %s.\n", catmore);
-		}
-		exit(1);
-	}
-	(void) close(fd);
-      }
-#else
-      {
-	FILE *f;			/* free after Robert Viduya */
-#ifdef OS2_CODEVIEW
-	char tmp[PATHLEN];
-
-	Strcpy(tmp,hackdir);
-	append_slash(tmp);
-	Strcat(tmp,fnam);
-	if ((f = fopen (tmp, "r")) == (FILE *) 0) {
-#else
-# ifdef MACOS
-	if ((f = fopen (fnam, "r")) == (FILE *) 0)
-		f = openFile(fnam, "r");
-	if (!f) {
-# else
-	if ((f = fopen (fnam, "r")) == (FILE *) 0) {
-# endif
-#endif
-		if(!silent) {
-			home(); perror (fnam); flags.toplin = 1;
-			pline ("Cannot open %s.", fnam);
-		}
-		return(0);
-	}
-	page_more(f, 0);
-      }
-#endif /* DEF_PAGER /**/
-
-	return(1);
-}
-
-#ifdef UNIX
-#ifdef SHELL
-int
-dosh(){
-register char *str;
-	if(child(0)) {
-		if(str = getenv("SHELL"))
-			(void) execl(str, str, NULL);
-		else
-			(void) execl("/bin/sh", "sh", NULL);
-		pline("sh: cannot execute.");
-		exit(1);
-	}
-	return 0;
-}
-#endif /* SHELL /**/
-
-#if defined(SHELL) || defined(DEF_PAGER) || defined(DEF_MAILREADER)
-int
-child(wt)
-int wt;
-{
-register int f = fork();
-	if(f == 0){		/* child */
-		settty(NULL);		/* also calls end_screen() */
-		(void) setgid(getgid());
-		(void) setuid(getuid());
-#ifdef CHDIR
-		(void) chdir(getenv("HOME"));
-#endif
-		return(1);
-	}
-	if(f == -1) {	/* cannot fork */
-		pline("Fork failed.  Try again.");
-		return(0);
-	}
-	/* fork succeeded; wait for child to exit */
-	(void) signal(SIGINT,SIG_IGN);
-	(void) signal(SIGQUIT,SIG_IGN);
-	(void) wait(
-#if defined(BSD) || defined(ULTRIX)
-		(union wait *)
-#else
-		(int *)
-#endif
-		0);
-	gettty();
-	setftty();
-	(void) signal(SIGINT, (SIG_RET_TYPE) done1);
-#ifdef WIZARD
-	if(wizard) (void) signal(SIGQUIT,SIG_DFL);
-#endif
-	if(wt) {
-		boolean so;
-
-		cmov(1, LI);	/* get prompt in reasonable place */
-		so = flags.standout;
-		flags.standout = 1;
-		more();
-		flags.standout = so;
-	}
-	docrt();
-	return(0);
-}
-#endif
-#endif /* UNIX /**/
-
-#endif /* OVLB */
+/*pager.c*/

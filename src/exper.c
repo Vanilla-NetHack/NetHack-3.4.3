@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)exper.c	3.0	89/11/08
+/*	SCCS Id: @(#)exper.c	3.1	90/22/02
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -31,7 +31,7 @@ experience(mtmp, nk)	/* return # of exp points for mtmp after nk killed */
 	tmp = 1 + mtmp->m_lev * mtmp->m_lev;
 
 /*	For higher ac values, give extra experience */
-	if(ptr->ac < 3) tmp += (7 - ptr->ac) * (ptr->ac < 0) ? 2 : 1;
+	if((i = find_mac(mtmp)) < 3) tmp += (7 - i) * (i < 0) ? 2 : 1;
 
 /*	For very fast monsters, give extra experience */
 	if(ptr->mmove >= 12) tmp += (ptr->mmove >= 18) ? 5 : 3;
@@ -56,7 +56,7 @@ experience(mtmp, nk)	/* return # of exp points for mtmp after nk killed */
 	    else if((tmp2 == AD_DRLI) || (tmp2 == AD_STON)) tmp += 50;
 	    else if(tmp != AD_PHYS) tmp += mtmp->m_lev;
 		/* extra heavy damage bonus */
-	    if((ptr->mattk[i].damd * ptr->mattk[i].damn) > 23)
+	    if((int)(ptr->mattk[i].damd * ptr->mattk[i].damn) > 23)
 		tmp += mtmp->m_lev;
 	}
 
@@ -101,7 +101,11 @@ more_experienced(exp, rexp)
 {
 	u.uexp += exp;
 	u.urexp += 4*exp + rexp;
-	if(exp) flags.botl = 1;
+	if(exp
+#ifdef SCORE_ON_BOTL
+	   || flags.showscore
+#endif
+	   ) flags.botl = 1;
 	if(u.urexp >= ((pl_character[0] == 'W') ? 1000 : 2000))
 		flags.beginner = 0;
 }
@@ -124,13 +128,11 @@ losexp() {	/* hit by drain life attack */
 	num = newhp();
 	u.uhp -= num;
 	u.uhpmax -= num;
-#ifdef SPELLS
-	num = rnd((int)u.ulevel/2+1) + 1;		/* M. Stephenson */
+	num = rn1((int)u.ulevel/2+1, 2);		/* M. Stephenson */
 	u.uen -= num;
 	if (u.uen < 0)		u.uen = 0;
 	u.uenmax -= num;
 	if (u.uenmax < 0)	u.uenmax = 0;
-#endif
 	u.uexp = newuexp(u.ulevel) - 1;
 	flags.botl = 1;
 }
@@ -157,11 +159,9 @@ newexplevel() {
 		tmp = newhp();
 		u.uhpmax += tmp;
 		u.uhp += tmp;
-#ifdef SPELLS
-		tmp = rnd((int)ACURR(A_WIS)/2+1) + 1; /* M. Stephenson */
+		tmp = rn1((int)ACURR(A_WIS)/2+1, 2); /* M. Stephenson */
 		u.uenmax += tmp;
 		u.uen += tmp;
-#endif
 		flags.botl = 1;
 	}
 }
@@ -174,11 +174,9 @@ pluslvl() {
 	num = newhp();
 	u.uhpmax += num;
 	u.uhp += num;
-#ifdef SPELLS
-	num = rnd((int)ACURR(A_WIS)/2+1) + 1;	/* M. Stephenson */
+	num = rn1((int)ACURR(A_WIS)/2+1, 2);	/* M. Stephenson */
 	u.uenmax += num;
 	u.uen += num;
-#endif
 	if(u.ulevel < MAXULEV) {
 		u.uexp = newuexp(u.ulevel);
 		pline("Welcome to experience level %u.", ++u.ulevel);
@@ -200,3 +198,5 @@ rndexp()
 		return(minexp + rn2((int)(maxexp - minexp)));
 	}
 }
+
+/*exper.c*/

@@ -1,35 +1,57 @@
 
-		NetHack 3.0 -- General information
+                NetHack 3.1 -- General information
 
-NetHack 3.0 is a new generation of the dungeon exploration game NetHack.
-It is a distant descendent of Hack, and a direct descendent of NetHack 2.3.
-It is the product of a year-long, very intensive, international team
-effort.  Many parts of 2.3 were rewritten for NetHack 3.0, and many new
-features were added.  Judged by size alone, with all options enabled,
-NetHack 3.0 is twice as big as 2.3.
+NetHack 3.1 is a new generation of the dungeon exploration game NetHack.
+It is a distant descendent of Hack, and a direct descendent of NetHack 3.0.
+It is the product of two years of very intensive effort by the NetHack
+Development Team and its porting sub-teams.  Many parts of 3.0 were
+rewritten for NetHack 3.1, and many new features were added.
 
-While aiming at retaining the general atmosphere of NetHack 2.3, we sought
-to open up new directions of development for the game.  Alignment, both for
-player characters and for monsters, was introduced.  Player character
-attributes were added and integrated into the game.  Special compiled
-levels were added, and these open up endless future possibilities.  An
-endgame was written, for a climactic ending.  The code for monsters and
-objects was massively rewritten, and many new creatures and items were
-added.  The self-polymorph code was debugged and greatly enriched.  Shops,
-too, were enhanced.  There are now doors in doorways and chests that may
-contain valuables, both of which may be closed or locked.  New commands to
-open or kick doors and force locks on chests were added.  You can also use
-kicking as an attack mode, and you can kick objects around if it pleases
-you.  You will discover the rest for yourselves...
+There are a number of dramatic new additions or changes in the game:
 
-To compensate for the massive additions, we rewrote the code around some
-new map fields for an increase in speed up to, if not beyond, that of 2.3.
-The code is now organized, and nearly lint-free.
+A general "mythology" was adopted for the game.  The various tasks in the
+game are now articulated in the context of that mythology, and this gives
+the game a greater coherence and unity.
 
-We dedicate the game to the many unknown hackers, both past and future, who
-contribute so much to the game.
+The dungeon design was changed.  Unlike the linear form of the dungeon in
+3.0, the dungeon in 3.1 is tree-structured, with dungeons that branch off
+the "main" dungeon.  These branch-dungeons have each unique features which
+distinguish them from one another.  As a part of this new design, a dungeon
+"compiler" was added, which enables some control of the game's dungeon
+design from a data file.  A goal for the future is making that control
+complete.
 
-			- - - - - - - - - - -
+The special levels facility of the game was greatly enhanced.  It is now
+highly versatile, and we took advantage of its extended capacity to add many
+new special levels.
+
+The game's display code was completely re-written.  The display is now based
+on a line-of-sight principle.  It is much more efficient than the old
+display code, and a lot more interesting.
+
+Intelligent creatures in the game can now wear armor, and they can wield
+and use weapons in combat.  They can also use wands, spells, and throw
+objects.  This must be taken into consideration in choosing a game strategy.
+
+We sought to increase the differences between the various character
+classes, so as to make playing each of them a distinct experience.  To this
+end, special character-specific tasks and dungeons were introduced into the
+game.
+
+These are some of the most prominent global changes.  But there are many
+other changes in the game, and they are not less dramatic.  To mention just
+a few:  The shop code was revised.  Shopkeepers are smarter, and they know
+how to repair damage to their shop.  The endgame is now a multi-level
+dungeon, full of surprises.  The artifact code was rewritten, and gaining
+access to the Amulet of Yendor requires the coordinated use of special
+artifacts.  Many new creatures and objects were added to the game.  We leave
+it to you to discover the rest for yourselves.
+
+We dedicate the game to the many players of 3.0, with special note of those
+who communicated with us and contributed their ideas to the development of
+this new version.
+
+                        - - - - - - - - - - -
 
 Please read items (1), (2) and (3) BEFORE doing anything with your new code.
 
@@ -37,109 +59,129 @@ Please read items (1), (2) and (3) BEFORE doing anything with your new code.
     directory as the 'Top' directory.  It makes no difference what you
     call it.
 
-2.  If there is no flaw in the packaging, SEVEN sub-directories will be
-    automatically created, and files will be deposited in them: 
+2.  If there is no flaw in the packaging, many sub-directories will be
+    automatically created, and files will be deposited in them:
 
-    a.  A 'src' directory, which will contain general *.c files.
-    b.  An 'include' directory, which will contain general *.h files.
-    c.  An 'auxil' directory, which will contain a variety of data files.
-    d.  An 'amiga' directory, which will contain the Amiga-specific files.
-    e.  An 'others' directory, which will contain MSDOS and TOS files.
-    f.  A 'vms' directory, which will contain VMS files.
-    g.  A 'mac' directory, which will contain Macintosh files.
+    a.  A 'dat' directory, which contains a variety of data files.
+    b.  A 'doc' directory, which contains various documentation.
+    c.  An 'include' directory, which contains all *.h files.
+    d.  A 'src' directory, which contains game *.c files used by all versions.
+    e.  A 'util' directory, which contains files for utility programs.
+    f.  A 'sys' directory, which contains subdirectories for files that
+        are operating-system specific.
+    g.  A 'sys/share' subdirectory, which contains files shared by some OSs.
+    h.  A 'sys/amiga' subdirectory, which contains files specific to AmigaDOS.
+    i.  A 'sys/amiga/splitter' subsubdirectory, which contains files
+        for the Amiga splitter program.
+    j.  A 'sys/atari' subdirectory, which contains files specific to TOS.
+    k.  A 'sys/mac' subdirectory, which contains files specific to MacOS.
+    l.  A 'sys/msdos' subdirectory, which contains files specific to MS-DOS.
+    m.  A 'sys/os2' subdirectory, which contains files specific to OS/2.
+    n.  A 'sys/unix' subdirectory, which contains files specific to UNIX.
+    o.  A 'sys/vms' subdirectory, which contains files specific to VMS.
+    p.  A 'win' directory, which contains subdirectories for files that
+        are windowing-system specific (but not operating-system specific).
+    q.  A 'win/tty' subdirectory, which contains files specific to ttys.
+    r.  A 'win/X11' subdirectory, which contains files specific to X11.
 
     The names of these directories should not be changed, unless you are
     ready to go through the makefiles and the makedefs program and change
     all the directory references in them.
 
 3.  Having unpacked, you should have a file called 'Files' in your Top
-    directory.  This file contains the list of all the files you now SHOULD 
-    have in each directory.  Please check the files in each directory 
+    directory.  This file contains the list of all the files you now SHOULD
+    have in each directory.  Please check the files in each directory
     against this list to make sure that you have a complete set.
 
 4.  Before you do anything else, please read carefully the file called
-    'license' in the auxil subdirectory.  It is expected that you comply
+    'license' in the dat subdirectory.  It is expected that you comply
     with the terms of that license, and we are very serious about it.  In
     particular, you are prohibited by the terms of the license from using
-    NetHack 3.0 for gainful purposes.   
+    NetHack 3.1 for gainful purposes.
 
 5.  If everything is in order, you can now turn to trying to get the program
     to compile and run on your particular system.  It is worth mentioning
-    that the default configuration is Ultrix (simply because the code was
-    housed on such a system).  It is also worth mentioning here that NetHack
-    3.0 is a huge program by comparison with 2.3.  If you intend to run it
-    on a small machine, you'll have to make hard choices among the options
-    available in config.h.
+    that the default configuration is BSD/Sun/SunOS4.x (simply because
+    the code was housed on such a system).  It is also worth mentioning
+    here that NetHack 3.1 is a huge program by comparison with 3.0, let
+    alone 2.3.  If you intend to run it on a small machine, you'll have
+    to make hard choices among the options available in config.h.
 
-    The files Install.* were written to guide you in configuring the program
-    for your operating system.  Reading them, and the man page, should answer
-    most of your questions.
+    The files sys/*/Install.* were written to guide you in configuring the
+    program for your operating system.  The files win/*/Install.* are
+    available, where necessary, to help you in configuring the program
+    for particular windowing environments.  Reading them, and the man page,
+    should answer most of your questions.
 
-    At the time of this release, NetHack 3.0 is known to run on:
+    At the time of this release, NetHack 3.1 is known to run on:
 
-        Apple Macintosh running A/UX 2.0
         AT&T 3B1 running System V (3.51)
         AT&T 3B2/600 & 3B2/622 running System V R3.2.1
         AT&T 3B2/1000 Model 80 running System V R3.2.2
         AT&T 3B4000 running System V
         AT&T 6386 running System V R3.2
-        Bull DPX/2 200 running System V R3.1
-        Bull XPS100 running System V R2.2 or R3.1
+        Bull DPX/2 2x0 and 3x0 running B.O.S 02.00.xx
+        Bull DPX/20  1xx 4xx 6xx or 8xx running BOSX V3.2
+        Bull XPS100 running System V R3.1 (Rel VS/25 only)
         Data General AViiON systems running DG/UX
         DEC vaxen running Ultrix and BSD
-        DECstations running Ultrix 3.1 or 4.0
+        Decstations running Ultrix 3.1 or 4.0 using the cc compiler only
+        Decstations running Ultrix 4.2 using either cc or gcc (1.39 OSF)
         Encore Multimax running UMAX 4.2
         Gould NP1 running UTX 3/2
         H-P 9000s300 running HP-UX
         IBM PC/RT and RS/6000 running AIX
         Mips M2000 running RiscOS 4.1
-        NeXT workstations running NeXT 2.0 (Mach)
+        NeXT running Mach (using BSD configuration)
         Pyramid 9820x running OSx 4.4c
         SGI Iris running IRIX
+        Stardent Vistra 800 running SysV R4.0
         Stride 460 running UniStride 2.1
         Sun-3s, -4s, and -386is running SunOS 3.x and 4.x
+        Sun-4s running Solaris 2.x (aka SunOS 5.x)
         Valid Logic Systems SCALD-System
         286 box running Microport SysV/AT (not extensively tested)
 
         Apple Macintosh running MacOS
-        Atari 1040ST running TOS or MiNT
-        Commodore Amiga running AmigaDOS 1.3 (WorkBench 1.3,
-                KickStart 1.2 or 1.3) with Lattice or Manx/Aztec C
-        DEC VAX/VMS, running V4.6 through V5.4-1
-        IBM PC compatibles running MS-DOS with MicroSoft C or Turbo C
-        IBM PS/2 and AT compatibles running OS/2 with MicroSoft C
+        Atari ST/TT/Falcon running TOS (or MultiTOS) with GCC
+        Commodore Amiga running AmigaDOS 1.3/2.x with SAS/C 5.10b or
+                Manx 5.0 (but see Install.ami about DICE and SAS/C 6.1)
+        DEC Alpha/VMS (aka OpenVMS AXP), running V1.0
+        DEC VAX/VMS, running V4.6 through V5.5-2, T6.0
+        IBM PC compatibles running MS-DOS with MicroSoft C or DJGPP
+        IBM PS/2 and AT compatibles running OS/2 1.1 - 2.0 with Microsoft C
+                5.1 or 6.0, and OS/2 2.0 with GCC emx 0.8f or IBM C Set/2
 
-			- - - - - - - - - - -
+                        - - - - - - - - - - -
 
-If you have problems building the game, or you find bugs in it, the 
+If you have problems building the game, or you find bugs in it, the
 development team may be reached as
- 
-		    nethack-bugs@linc.cis.upenn.edu.  
+
+                    nethack-bugs@linc.cis.upenn.edu
 
 Please be sure to include your machine type, OS, and patchlevel.
 
-Patches especially should be directed to this address.  If you've changed 
+Patches especially should be directed to this address.  If you've changed
 something to get NetHack to run on your system, it's likely that others have
 done it by making slightly different modifications.  By routing your patches
 through the development team, we should be able to avoid making everyone else
 choose among variant patches claiming to do the same thing, to keep most of
-the copies of 3.0 synchronized by means of official patches, and to maintain
+the copies of 3.1 synchronized by means of official patches, and to maintain
 the painfully-created file organization.  (Remember the mess when everybody
 just posted their own patches to 2.3?  There were no archived bug-fixes to
 give people who got 2.3 after its initial release, so the same bugs kept being
-discovered by new batches of people.  Please cooperate to keep this from
-happening to 3.0.)
+discovered by new batches of people.  We were successful in preventing this
+from happening to 3.0.  Please cooperate to keep this from happening to 3.1.)
 
 It is inevitable that we will reject some proposed additions of new features
-either because they do not fit our conception of the game, or because they 
+either because they do not fit our conception of the game, or because they
 require more code than we consider they're worth.  If we reject your feature,
 you are free, of course, to post the patches to the net yourself and let the
 marketplace decide its worth.
 
 All of this amounts to the following:  If you decide to apply a free-lanced
-patch to your 3.0 code, you are on your own.  In our own patches, including
-those which will update to 3.1, we will assume that your code is synchronized
-with ours.
+patch to your 3.1 code, you are on your own.  In our own patches, we will
+assume that your code is synchronized with ours.
 
-		  -- Good luck, and happy Hacking --
+                  -- Good luck, and happy Hacking --
 

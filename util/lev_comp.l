@@ -1,13 +1,9 @@
 %{
-/*	SCCS Id: @(#)lev_lex.c	3.0	90/01/04
+/*	SCCS Id: @(#)lev_lex.c	3.1	92/07/12	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #define LEV_LEX_C
-
-/* block some unused #defines to avoid overloading some cpp's */
-#define MONDATA_H	/* comment this line for pre-compiled headers */
-#define MONFLAG_H	/* comment this line for pre-compiled headers */
 
 #include "hack.h"
 #include "lev_comp.h"
@@ -22,19 +18,41 @@ int NDECL (yylook);
 int NDECL (yyinput);
 int NDECL (yywrap);
 int NDECL (yylex);
-# ifdef NeXT
+	/* Traditional lexes let yyunput() and yyoutput() default to int;
+	 * newer ones may declare them as void since they don't return
+	 * values.  For even more fun, the lex supplied as part of the
+	 * newer unbundled compiler for SunOS 4.x adds the void declarations
+	 * (under __STDC__ or _cplusplus ifdefs -- otherwise they remain
+	 * int) while the bundled lex and the one with the older unbundled
+	 * compiler do not.  To detect this, we need help from outside --
+	 * sys/unix/Makefile.utl.
+	 */
+# if defined(NeXT) || defined(SVR4)
+#  define VOIDYYPUT
+# endif
+# if !defined(VOIDYYPUT)
+#  if defined(POSIX_TYPES) && !defined(BOS) && !defined(HISX)
+#   define VOIDYYPUT
+#  endif
+# endif
+# if !defined(VOIDYYPUT) && defined(WEIRD_LEX)
+#  if defined(SUNOS4) && defined(__STDC__) && (WEIRD_LEX != 0) 
+#   define VOIDYYPUT
+#  endif
+# endif
+# ifdef VOIDYYPUT
 void FDECL (yyunput, (int));
 void FDECL (yyoutput, (int));
 # else
 int FDECL (yyunput, (int));
 int FDECL (yyoutput, (int));
 # endif
-#endif
+#endif	/* FLEX_SCANNER */
 
 void FDECL (init_yyin, (FILE *));
 void FDECL (init_yyout, (FILE *));
 
-#ifdef MSDOS
+#ifdef MICRO
 #undef exit
 extern void FDECL(exit, (int));
 #endif
@@ -45,18 +63,7 @@ extern void FDECL(exit, (int));
 
 extern YYSTYPE yylval;
 
-#ifdef MACOS
-#undef putchar
-#undef putc
-#undef printf
-#undef Printf
-#define Printf printf
-# ifdef LSC
-#define	putc(c,stream)	(fputc(c,stream))
-#define	putchar(c)	(fputc(c,stdout))
-# endif
-#endif
-int line_number = 1;
+int line_number = 1, colon_line_number = 1;
 
 /* This is *** UGLY *** but I can't think a better way to do it
  * I really need a huge buffer to scan maps...
@@ -65,11 +72,41 @@ int line_number = 1;
 #undef YYLMAX
 #define YYLMAX	2048
 
+/*
+ *	This is a hack required by Michael Hamel to get things
+ *	working on the Mac.
+ */
+#if defined(applec) && !defined(FLEX_SCANNER)
+#undef input
+#undef unput
+#define unput(c) { yytchar = (c); if (yytchar == 10) yylineno--; *yysptr++ = yytchar; }
+# ifndef YYNEWLINE
+# define YYNEWLINE 10
+# endif
+
+char
+input() {	/* Under MPW \n is chr(13)! Compensate for this. */
+
+	if (yysptr > yysbuf) return(*--yysptr);
+	else {
+		yytchar = getc(yyin);
+		if (yytchar == '\n') {
+		    yylineno++;
+		    return(YYNEWLINE);
+		}
+		if (yytchar == EOF) return(0);
+		else		    return(yytchar);
+	}
+}
+#endif	/* applec && !FLEX_SCANNER */
+
 %}
+%e 1500
+%p 5000
+%n 600
 %s MAPC
 %%
-<MAPC>[-|}{+SK\\#. ]*\n	{ line_number++; yymore(); }	
-<MAPC>ENDMAP\n	{
+<MAPC>ENDMAP	{
 #ifdef FLEX_SCANNER
 		  /*
 		   * There is a bug in Flex 2.3 patch level < 6
@@ -82,32 +119,53 @@ int line_number = 1;
 
 		  yy_more_len = 0;
 #endif
-		  BEGIN 0;
-		  line_number++;
-		  yytext[yyleng-7] = 0; /* Discard \nENDMAP */
-		  yylval.map = (char *) alloc(strlen(yytext)+1);
-		  strcpy(yylval.map, yytext);
+		  BEGIN(INITIAL);
+		  yylval.map = (char *) alloc(yyleng-5);
+		  strncpy(yylval.map, yytext,yyleng-6);
+		  yylval.map[yyleng-6] = 0;
 		  return MAP_ID;
 		}
+<MAPC>[-|}{+ABCISKPLW\\#. ]*\n	{ line_number++; yymore(); }
 ^#.*\n		{ line_number++; }
+:		{ colon_line_number = line_number; return ':'; }
+MESSAGE		return MESSAGE_ID;
 MAZE		return MAZE_ID;
+NOMAP		return NOMAP_ID;
 LEVEL		return LEVEL_ID;
+INIT_MAP	return LEV_INIT_ID;
+FLAGS		return FLAGS_ID;
 GEOMETRY	return GEOMETRY_ID;
-^MAP\n		{ BEGIN MAPC; line_number++; }
+^MAP\n		{ BEGIN(MAPC); line_number++; }
 OBJECT		return OBJECT_ID;
 MONSTER		return MONSTER_ID;
 TRAP		return TRAP_ID;
 DOOR		return DOOR_ID;
 DRAWBRIDGE	return DRAWBRIDGE_ID;
 MAZEWALK	return MAZEWALK_ID;
+WALLIFY		return WALLIFY_ID;
 REGION		return REGION_ID;
 RANDOM_OBJECTS	return RANDOM_OBJECTS_ID;
 RANDOM_MONSTERS	return RANDOM_MONSTERS_ID;
 RANDOM_PLACES	return RANDOM_PLACES_ID;
 ALTAR		return ALTAR_ID;
 LADDER		return LADDER_ID;
+STAIR		return STAIR_ID;
+PORTAL		return PORTAL_ID;
+TELEPORT_REGION	return TELEPRT_ID;
+BRANCH		return BRANCH_ID;
+FOUNTAIN	return FOUNTAIN_ID;
+SINK		return SINK_ID;
+POOL		return POOL_ID;
 NON_DIGGABLE	return NON_DIGGABLE_ID;
 ROOM		return ROOM_ID;
+SUBROOM		return SUBROOM_ID;
+RANDOM_CORRIDORS	return RAND_CORRIDOR_ID;
+CORRIDOR	return CORRIDOR_ID;
+GOLD		return GOLD_ID;
+ENGRAVING	return ENGRAVING_ID;
+NAME		return NAME_ID;
+CHANCE		return CHANCE_ID;
+levregion	return LEV;
 open		{ yylval.i=D_ISOPEN; return DOOR_STATE; }
 closed		{ yylval.i=D_CLOSED; return DOOR_STATE; }
 locked		{ yylval.i=D_LOCKED; return DOOR_STATE; }
@@ -118,25 +176,52 @@ east		{ yylval.i=W_EAST; return DIRECTION; }
 south		{ yylval.i=W_SOUTH; return DIRECTION; }
 west		{ yylval.i=W_WEST; return DIRECTION; }
 random		{ yylval.i = -1; return RANDOM_TYPE; }
+none		{ yylval.i = -2; return NONE; }
 object		return O_REGISTER;
 monster		return M_REGISTER;
 place		return P_REGISTER;
 align		return A_REGISTER;
 left		{ yylval.i=1; return LEFT_OR_RIGHT; }
-right		{ yylval.i=3; return LEFT_OR_RIGHT; }
-center		{ yylval.i=2; return CENTER; }
+half-left	{ yylval.i=2; return LEFT_OR_RIGHT; }
+center		{ yylval.i=3; return CENTER; }
+half-right	{ yylval.i=4; return LEFT_OR_RIGHT; }
+right		{ yylval.i=5; return LEFT_OR_RIGHT; }
 top		{ yylval.i=1; return TOP_OR_BOT; }
-bottom		{ yylval.i=3; return TOP_OR_BOT; }
+bottom		{ yylval.i=5; return TOP_OR_BOT; }
 lit		{ yylval.i=1; return LIGHT_STATE; }
 unlit		{ yylval.i=0; return LIGHT_STATE; }
-law		{ yylval.i=A_LAW; return ALIGNMENT; }
-neutral		{ yylval.i=A_NEUTRAL; return ALIGNMENT; }
-chaos		{ yylval.i=A_CHAOS; return ALIGNMENT; }
+filled		{ yylval.i=0; return FILLING; }
+unfilled	{ yylval.i=1; return FILLING; }
+noalign		{ yylval.i= AM_NONE; return ALIGNMENT; }
+law		{ yylval.i= AM_LAWFUL; return ALIGNMENT; }
+neutral		{ yylval.i= AM_NEUTRAL; return ALIGNMENT; }
+chaos		{ yylval.i= AM_CHAOTIC; return ALIGNMENT; }
+peaceful	{ yylval.i=1; return MON_ATTITUDE; }
+hostile		{ yylval.i=0; return MON_ATTITUDE; }
+asleep		{ yylval.i=1; return MON_ALERTNESS; }
+awake		{ yylval.i=0; return MON_ALERTNESS; }
+m_feature	{ yylval.i= M_AP_FURNITURE; return MON_APPEARANCE; }
+m_monster	{ yylval.i= M_AP_MONSTER;   return MON_APPEARANCE; }
+m_object	{ yylval.i= M_AP_OBJECT;    return MON_APPEARANCE; }
+sanctum		{ yylval.i=2; return ALTAR_TYPE; }
 shrine		{ yylval.i=1; return ALTAR_TYPE; }
 altar		{ yylval.i=0; return ALTAR_TYPE; }
 up		{ yylval.i=1; return UP_OR_DOWN; }
 down		{ yylval.i=0; return UP_OR_DOWN; }
-[0-9]+		{ yylval.i=atoi(yytext); return INTEGER; }
+false		{ yylval.i=0; return BOOLEAN; }
+true		{ yylval.i=1; return BOOLEAN; }
+dust		{ yylval.i=DUST; return ENGRAVING_TYPE; }
+engrave		{ yylval.i=ENGRAVE; return ENGRAVING_TYPE; }
+burn		{ yylval.i=BURN; return ENGRAVING_TYPE; }
+mark		{ yylval.i=MARK; return ENGRAVING_TYPE; }
+blessed		{ yylval.i=1; return CURSE_TYPE; }
+uncursed	{ yylval.i=2; return CURSE_TYPE; }
+cursed		{ yylval.i=3; return CURSE_TYPE; }
+noteleport	{ yylval.i=NOTELEPORT; return FLAG_TYPE; }
+hardfloor	{ yylval.i=HARDFLOOR; return FLAG_TYPE; }
+nommap		{ yylval.i=NOMMAP; return FLAG_TYPE; }
+shortsighted	{ yylval.i=SHORTSIGHTED; return FLAG_TYPE; }
+[+\-]?[0-9]+	{ yylval.i=atoi(yytext); return INTEGER; }
 \"[^"]*\"	{ yytext[yyleng-1] = 0; /* Discard the trailing \" */
 		  yylval.map = (char *) alloc(strlen(yytext+1)+1);
 		  strcpy(yylval.map, yytext+1); /* Discard the first \" */
@@ -159,7 +244,7 @@ void init_yyin( input_f )
 FILE *input_f;
 {
 #ifdef FLEX_SCANNER
-	if (yyin != NULL)
+	if (yyin)
 	    yyrestart(input_f);
 	else
 #endif

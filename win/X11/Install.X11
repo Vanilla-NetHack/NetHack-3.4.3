@@ -1,0 +1,109 @@
+
+This is a first cut at an X11 window port for NetHack.  X11 offers enormous
+potential for NetHack, little of which is realized here.  If you have ideas
+and extra time, feel free to send in improvements!
+
+There are no explicit UNIX dependencies in this code, but it is only
+known to work under UNIX, using X11R4 or X11R5.  Other X11R4+ platforms
+may work as well, with some tweaking likely.  Follow WIN* in
+sys/unix/Makefile.src for compilation hints.
+
+The reason this uses the Athena widget set is that the Athena widgets come
+free from MIT (like X11).  Unfortunately, the companies that resell X11
+(value subtracted er, added software; yea, yea, that's the ticket) usually
+discourage its use by either omitting the set or putting it on the
+"unsupported" portion of their tape.  If you do not have the Athena
+widgets, you may obtain them via anonymous ftp from export.lcs.mit.edu.
+
+To use this code, define X11_GRAPHICS in include/config.h.  Add $(WINX11SRC),
+$(WINX11OBJ), and $(WINX11LIB) to WINSRC, WINOBJ, and WINLIB respectively
+in src/Makefile.  This will give you an executable supporting both X11 and
+tty windowing.
+
+If you want special graphics symbols, you will also need to install one
+or both of the included X11 fonts and use the symbol mappings found in
+nethack.rc.  The fonts are found in nh10.bdf and ibm.bdf.  You first need
+to convert the bdf files to whatever form your X11 server recognizes
+(usually using a command called bdftosnf, or on Ultrix systems, bdftopcf).
+Then run mkfontdir on the directory containing your font files (you might
+want to copy them to GAMEDIR, from the top Makefile, after you've done
+"make install").  If these commands aren't familiar, talk to your local
+X11 guru and read the man pages.  Finally, add that directory to your
+font search path (e.g. xset fp+ GAMEDIR, setting GAMEDIR to the value of
+GAMEDIR in the top Makefile).  Alternatively, you (assuming you are a
+system administrator) can install the fonts in your standard X11 font
+directory.  If you do not install the fonts in the standard X11 font
+directory, all persons playing nethack must add that "xset fp+" command
+to their .xinitrc file, or whatever file they execute when starting X11.
+Adding the "xset" command to the nethack.sh is also an alternative, though
+it may clutter your X11 font search path after playing several games, so
+this method is not recommended.  See the note below for the alternative
+installation procedure for Sun's OpenWindows.
+
+If your X11 include files and libraries are not installed in a standard
+place (i.e. /usr/include/X11 and /usr/lib respectively) you will need to
+prepend an appropriate -I<idirectory> parameter to CFLAGS and a
+-L<ldirectory> parameter to LFLAGS, setting <?directory> to the place to
+find the include and library files for X11.
+
+Finally, you should also install the NetHack.ad file in the normal X11
+applications defaults directory.  Alternatively, each person may append
+the contents of this file to their .Xdefaults file.  A second
+alternative is copy NetHack.ad to GAMEDIR (from the top Makefile) and
+add a line to nethack.sh specifying this additional applications
+defaults directory:
+	XAPPLRESDIR=$HACKDIR; export XAPPLRESDIR
+
+Two icon suggestions to the window manager are supported:  nh72 and nh56.
+Data for them comes from source files nh72icon and nh56icon and they are
+compiled into the program via #include in winX.c.  Selection between them
+is controlled by the "icon" resource in NetHack.ad; the default is nh72.
+
+Sorry, an Imakefile is not included.  Unlike many X11 programs, X11
+support is only a small, optional, part of nethack, and the Makefile is
+needed for systems that don't use X11.
+
+Notes for Sun's OpenWindows 3.x (2.x will not work):
+    1.	Define OPENWINBUG in include/unixconf.h.  Add -I/usr/openwin/include
+	to CFLAGS, -L/usr/openwin/lib to LFLAGS, and -lm to WINX11LIB in
+	src/Makefile.  (Naturally, if your OpenWindows is installed
+	elsewhere, adapt the two openwin paths.)  This will allow you
+	to create a game executable.
+
+    2.	Run the fonts through convertfont and run bldfamily on the directory.
+	The environment variable FONTPATH must include the directory the fonts
+	are in when NetHack is run.  For a personal installation, setting the
+	variable in your .profile or .login is the simplest thing.  For a
+	multi-user installation, add the lines
+		FONTPATH=$FONTPATH:$HACKDIR/fonts
+		export FONTPATH
+	near the top of sys/unix/nethack.sh (before installation), and put
+	the fonts and associated files in the "fonts" subdirectory of your
+	GAMEDIR from the top Makefile (after installation via 'make install').
+
+    3.  Something must still be done with the NetHack.ad file.  All three
+	of the possibilities mentioned for standard X11 should work, but
+	it may be simplest to use the second or third, paralleling your
+	FONTPATH choice.
+
+
+File				Description
+---------	---------------------------------------------------------------
+nethack.rc	- A sample configuration file for fonts nh10 and ibm.
+nh10.bdf	- A modified version of the 10x20 standard font.
+ibm.bdf		- A modified version of one of the ibm (8x14) nethack font.
+		  Must be used in conjunction with NetHack.ad or nethack.rc.
+nh32icon	- A 32x32 icon bitmap for use with window managers.
+nh56icon	- A 56x56 icon bitmap for use with window managers.
+nh72icon	- A 72x72 icon bitmap for use with window managers.
+NetHack.ad	- A sample .Xdefaults for a color screen.
+../../include/Window.h
+../../include/WindowP.h
+Window.c	- A bare-bones widget that has 16 colors and a drawing canvas.
+../../include/winX.h
+		- Defines for the X window-port.
+win*.c		- Code for the X window-port
+dialogs.c	- A better dialog widget.  Original code (modified slightly
+		  by Dean Luick) distributed under the X copyright by Tim
+		  Theisen.  This is from his Ghostview program (which is under
+		  the GNU public license, v2 or higher).

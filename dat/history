@@ -23,7 +23,8 @@ released NetHack versions 2.2 and 2.3.
 Later, Mike coordinated a major rewrite of the game, heading a team which
 included Ken Arromdee, Jean-Christophe Collet, Steve Creps, Eric Hendrickson,
 Izchak Miller, Eric S. Raymond, John Rupley, Mike Threepoint, and Janet Walz,
-to produce NetHack 3.0c.
+to produce NetHack 3.0c.  The same group subsequently released ten patch-
+level revisions and updates of 3.0.
 
 NetHack 3.0 was ported to the Atari by Eric R. Smith, to OS/2 by Timo
 Hakulinen, and to VMS by David Gentzel.  The three of them and Kevin Darcy
@@ -36,6 +37,31 @@ Johnny Lee ported NetHack 3.0 to the Macintosh.  Along with various other
 Dungeoneers, they continued to enhance the PC, Macintosh, and Amiga ports
 through the later revisions of 3.0.
  
+Headed by Mike Stephenson and coordinated by Izchak Miller and Janet Walz,
+the development team which now included Ken Arromdee, David Cohrs,
+Jean-Christophe Collet, Kevin Darcy, Matt Day, Timo Hakulinen, Steve Linhart,
+Dean Luick, Pat Rankin, Eric Raymond, and Eric Smith undertook a radical
+revision of 3.0.  They re-structured the game's design, and re-wrote major
+parts of the code.  They added multiple dungeons, a new display, special
+individual character quests, a new endgame and many other new features, and
+produced NetHack 3.1.
+
+Ken Lorber, Gregg Wonderly and Greg Olson, with help from Richard Addison,
+Mike Passaretti, and Olaf Seibert, developed NetHack 3.1 for the Amiga.
+
+Norm Meluch and Kevin Smolkowski, with help from Carl Schelin, Stephen
+Spackman, Steve VanDevender, and Paul Winner, ported NetHack 3.1 to the PC.
+
+Jon W{tte, with help from Ross Brown, Mike Engber, David Hairston, Michael
+Hamel, Jonathan Handler, Johnny Lee, Tim Lennan, Rob Menke, Andy Swanson, and
+especially from Hao-yang Wang, developed NetHack 3.1 for the Macintosh.
+
+Timo Hakulinen ported NetHack 3.1 to OS/2.  Eric Smith ported NetHack 3.1
+to the Atari.  Pat Rankin, with help from Joshua Delahunty, is responsible
+for the VMS version of NetHack 3.1.
+
+Dean Luick, with help from David Cohrs, developed NetHack 3.1 for X11.
+
                            - - - - - - - - - -
  
 From time to time, some depraved individual out there in netland sends a
@@ -43,20 +69,26 @@ particularly intriguing modification to help out with the game.  The Gods of
 the Dungeon sometimes make note of the names of the worst of these miscreants
 in this, the list of Dungeoneers:
 
-    Richard Addison           Bruce Holloway         Mike Passaretti
-    Tom Almy                  Richard P. Hughey      Pat Rankin
-    Ken Arromdee              Ari Huttunen           Eric S. Raymond
-    Eric Backus               Del Lamb               John Rupley
-    John S. Bien              Greg Laskin            Olaf Seibert
-    Ralf Brown                Johnny Lee             Kevin Sitze
-    Jean-Christophe Collet    Merlyn LeRoy           Eric R. Smith
-    Steve Creps               Steve Linhart          Kevin Smolkowski
-    Kevin Darcy               Ken Lorber             Michael Sokolov
-    Matthew Day               Benson I. Margulies    Stephen Spackman
-    Joshua Delahunty          Pierre Martineau       Andy Swanson
-    Jochen Erwied             Roland McGrath         Kevin Sweet
-    David Gentzel             Norm Meluch            Scott R. Turner
-    Mark Gooderum             Bruce Mewborne         Janet Walz
-    David Hairston            Izchak Miller          Jon Watte
-    Timo Hakulinen            Gil Neiger             Tom West
-    Eric Hendrickson          Greg Olson             Gregg Wonderly
+    Richard Addison           Eric Hendrickson       Mike Passaretti
+    Tom Almy                  Bruce Holloway         Pat Rankin
+    Ken Arromdee              Richard P. Hughey      Eric S. Raymond
+    Eric Backus               Ari Huttunen           Frederick Roeber
+    John S. Bien              John Kallen            John Rupley
+    Ralf Brown                Del Lamb               Carl Schelin
+    Ross Brown                Greg Laskin            Olaf Seibert
+    David Cohrs               Johnny Lee             Kevin Sitze
+    Jean-Christophe Collet    Tim Lennan             Eric R. Smith
+    Steve Creps               Merlyn LeRoy           Kevin Smolkowski
+    Kevin Darcy               Steve Linhart          Michael Sokolov
+    Matthew Day               Ken Lorber             Stephen Spackman
+    Joshua Delahunty          Dean Luick             Andy Swanson
+    Bill Dyer                 Benson I. Margulies    Kevin Sweet
+    Mike Engber               Pierre Martineau       Scott R. Turner
+    Jochen Erwied             Roland McGrath         Steve VanDevender
+    Mike Gallop               Norm Meluch            Janet Walz   
+    David Gentzel             Rob Menke              Hao-yang Wang
+    Mark Gooderum             Deron Meranda          Jon W{tte
+    David Hairston            Bruce Mewborne         Tom West
+    Timo Hakulinen            Izchak Miller          Paul Winner
+    Michael Hamel             Gil Neiger             Gregg Wonderly
+    Jonathan Handler          Greg Olson

@@ -1,4 +1,4 @@
-#	SCCS Id: @(#)castle.des	3.0	89/07/02
+#	SCCS Id: @(#)castle.des	3.1	90/02/26
 #	Copyright (c) 1989 by Jean-Christophe Collet
 # NetHack may be freely redistributed.  See license for details.
 #
@@ -16,31 +16,37 @@
 # To motivate the player : there are 4 storerooms (armors, weapons, food and
 # gems) and a wand of wishing in one of the 4 towers...
 
-MAZE:"castle"
+MAZE:"castle",random
+FLAGS: noteleport
 GEOMETRY:center,center
 MAP
-}}}}}}}}}                                             }}}}}}}}}
+}}}}}}}}}.............................................}}}}}}}}}
 }-------}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}-------}
-}|     |-----------------------------------------------|     |}
-}|     +                                               +     |}
+}|.....|-----------------------------------------------|.....|}
+}|.....+...............................................+.....|}
 }-------------------------------+-----------------------------}
-}}}}}}|        |          +           |       S S       |}}}}}}
-     }|        |          |           |       | |       |}     
-     }|        ------------           ---------S---------}     
-     }|   {    +          +         \ S                 +      
-     }|        ------------           ---------S---------}     
-     }|        |          |           |       | |       |}     
-}}}}}}|        |          +           |       S S       |}}}}}}
+}}}}}}|........|..........+...........|.......S.S.......|}}}}}}
+.....}|........|..........|...........|.......|.|.......|}.....
+.....}|........------------...........---------S---------}.....
+.....}|...{....+..........+.........\.S.................+......
+.....}|........------------...........---------S---------}.....
+.....}|........|..........|...........|.......|.|.......|}.....
+}}}}}}|........|..........+...........|.......S.S.......|}}}}}}
 }-------------------------------+-----------------------------}
-}|     +                                               +     |}
-}|     |-----------------------------------------------|     |}
+}|.....+...............................................+.....|}
+}|.....|-----------------------------------------------|.....|}
 }-------}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}-------}
-}}}}}}}}}                                             }}}}}}}}}
+}}}}}}}}}.............................................}}}}}}}}}
 ENDMAP
+
 # Random registers initialisation
 RANDOM_OBJECTS:'[',')','*','%'
 RANDOM_PLACES:(04,02),(58,02),(04,14),(58,14)
 RANDOM_MONSTERS:'L','N','E','H','M','O','R','T','X','Z'
+
+TELEPORT_REGION:levregion(01,00,10,20),(0,0,62,16),down
+TELEPORT_REGION:levregion(69,00,79,20),(0,0,62,16),up
+STAIR:levregion(01,00,10,20),(0,0,62,16),up
 # Doors
 DOOR:closed,(07,03)
 DOOR:closed,(55,03)
@@ -124,6 +130,8 @@ OBJECT:object[3],random,(54,11)
 OBJECT:object[3],random,(55,11)
 # THE WAND OF WISHING in 1 of the 4 towers
 OBJECT:'/',"wishing",place[0]
+# Prevent monsters from eating it.  (@'s never eat objects)
+ENGRAVING:place[0],burn,"Elbereth"
 # The treasure of the lord
 OBJECT:'(',"chest",(37,08)
 # Traps
@@ -195,8 +203,13 @@ MAZEWALK:(62,06),east
 # Non diggable walls
 NON_DIGGABLE:(00,00,62,16)
 # Subrooms:
+#   Entire castle area
+REGION:(00,00,62,16),unlit,"ordinary"
+#   Courtyards
+REGION:(00,05,05,11),lit,"ordinary"
+REGION:(57,05,62,11),lit,"ordinary"
 #   Throne room
-REGION:(27,05,37,11),lit,"throne"
+REGION:(27,05,37,11),lit,"throne",unfilled
 #   Antechamber
 REGION:(07,05,14,11),lit,"ordinary"
 #   Storerooms
@@ -210,13 +223,13 @@ REGION:(56,02,60,03),lit,"ordinary"
 REGION:(02,13,06,14),lit,"ordinary"
 REGION:(56,13,60,14),lit,"ordinary"
 #   Barracks
-REGION:(16,05,25,06),lit,"ordinary"
-REGION:(16,10,25,11),lit,"ordinary"
-#   Outside
-REGION:(00,05,05,11),lit,"ordinary"
-REGION:(57,05,62,11),lit,"ordinary"
+REGION:(16,05,25,06),lit,"barracks"
+REGION:(16,10,25,11),lit,"barracks"
 #   Hallways
-#REGION:(08,03,54,03),unlit,"ordinary"
-#REGION:(08,13,54,13),unlit,"ordinary"
-#REGION:(16,08,25,08),unlit,"ordinary"
-#REGION:(39,08,55,08),unlit,"ordinary"
+REGION:(08,03,54,03),unlit,"ordinary"
+REGION:(08,13,54,13),unlit,"ordinary"
+REGION:(16,08,25,08),unlit,"ordinary"
+REGION:(39,08,55,08),unlit,"ordinary"
+#   Storeroom alcoves
+REGION:(47,05,47,06),unlit,"ordinary"
+REGION:(47,10,47,11),unlit,"ordinary"

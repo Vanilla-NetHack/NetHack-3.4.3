@@ -1,80 +1,162 @@
-/*	SCCS Id: @(#)monsym.h	3.0	89/11/08
-/*	Monster symbols and creation information rev 1.0 */
+/*	SCCS Id: @(#)monsym.h	3.1	92/10/18	*/
+/*	Monster symbols and creation information rev 1.0	  */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #ifndef MONSYM_H
 #define MONSYM_H
 
-#define	S_ANT		'a'
-#define	S_BLOB		'b'
-#define	S_COCKATRICE	'c'
-#define	S_DOG		'd'
-#define	S_EYE		'e'
-#define	S_FELINE	'f'
-#define	S_GREMLIN	'g'
-#define	S_HUMANOID	'h'
-#define	S_IMP		'i'
-#define	S_JELLY		'j'
-#define	S_KOBOLD	'k'
-#define	S_LEPRECHAUN	'l'
-#define	S_MIMIC		'm'
-#define	S_NYMPH 	'n'
-#define	S_ORC		'o'
-#define	S_PIERCER	'p'
-#define	S_QUADRUPED	'q'
-#define	S_RODENT	'r'
-#define	S_SPIDER	's'
-#define	S_TRAPPER	't'
-#define	S_UNICORN	'u'
-#define	S_VORTEX	'v'
-#define	S_WORM		'w'
-#define	S_XAN		'x'
-#define	S_YLIGHT	'y'
-#define	S_ZRUTY		'z'
-#define	S_APE		'A'
-#define	S_BAT		'B'
-#define	S_CENTAUR	'C'
-#define	S_DRAGON	'D'
-#define	S_ELEMENTAL	'E'
-#define	S_FUNGUS	'F'
-#define	S_GNOME		'G'
-#define	S_GIANT		'H'
-#define	S_STALKER	'I'
-#define	S_JABBERWOCK	'J'
-#define	S_KOP		'K'
-#define	S_LICH		'L'
-#define	S_MUMMY		'M'
-#define	S_NAGA		'N'
-#define	S_OGRE		'O'
-#define	S_PUDDING	'P'
-#define	S_QUANTMECH	'Q'
-#define	S_RUSTMONST	'R'
-#define	S_SNAKE		'S'
-#define	S_TROLL		'T'
-#define	S_UMBER		'U'
-#define	S_VAMPIRE	'V'
-#define	S_WRAITH	'W'
-#define	S_XORN		'X'
-#define	S_YETI		'Y'
-#define	S_ZOMBIE	'Z'
-#define	S_HUMAN		'@'
-#define	S_GHOST		' '
-#define	S_GOLEM		'\''
-#define	S_DEMON		'&'
-#define	S_EEL		';'
-#define	S_LIZARD	':'
+/*
+ * Monster classes.  Below, are the corresponding default characters for
+ * them.  Monster class 0 is not used or defined so we can use it as a
+ * NULL character.
+ */
+#define S_ANT		1
+#define S_BLOB		2
+#define S_COCKATRICE	3
+#define S_DOG		4
+#define S_EYE		5
+#define S_FELINE	6
+#define S_GREMLIN	7
+#define S_HUMANOID	8
+#define S_IMP		9
+#define S_JELLY		10
+#define S_KOBOLD	11
+#define S_LEPRECHAUN	12
+#define S_MIMIC		13
+#define S_NYMPH		14
+#define S_ORC		15
+#define S_PIERCER	16
+#define S_QUADRUPED	17
+#define S_RODENT	18
+#define S_SPIDER	19
+#define S_TRAPPER	20
+#define S_UNICORN	21
+#define S_VORTEX	22
+#define S_WORM		23
+#define S_XAN		24
+#define S_LIGHT		25
+#define S_ZRUTY		26
+#define S_ANGEL		27
+#define S_BAT		28
+#define S_CENTAUR	29
+#define S_DRAGON	30
+#define S_ELEMENTAL	31
+#define S_FUNGUS	32
+#define S_GNOME		33
+#define S_GIANT		34
+#define S_STALKER	35
+#define S_JABBERWOCK	36
+#define S_KOP		37
+#define S_LICH		38
+#define S_MUMMY		39
+#define S_NAGA		40
+#define S_OGRE		41
+#define S_PUDDING	42
+#define S_QUANTMECH	43
+#define S_RUSTMONST	44
+#define S_SNAKE		45
+#define S_TROLL		46
+#define S_UMBER		47
+#define S_VAMPIRE	48
+#define S_WRAITH	49
+#define S_XORN		50
+#define S_YETI		51
+#define S_ZOMBIE	52
+#define S_HUMAN		53
+#define S_GHOST		54
+#define S_GOLEM		55
+#define S_DEMON		56
+#define S_EEL		57
+#define S_LIZARD	58
 
-#define	S_WORM_TAIL	'~'
-#define	S_MIMIC_DEF	']'
+#define S_WORM_TAIL	59
+#define S_MIMIC_DEF	60
 
-#define	G_UNIQ		0x800		/* generated only once */
-#define	G_HELL		0x400		/* generated only in "hell" */
-#define	G_NOGEN		0x200		/* generated only specially */
-#define	G_NOCORPSE	0x100		/* no corpse left ever */
-#define	G_SGROUP	0x080		/* appear in small groups normally */
-#define	G_LGROUP	0x040		/* appear in large groups normally */
-#define	G_GENO		0x020		/* can be genocided */
-#define G_GENOD		0x010		/* have been genocided */
-#define G_FREQ		0x007		/* creation frequency mask */
+#define MAXMCLASSES 61	/* number of monster classes */
 
-#endif /* MONSYM_H /* */
+#if 0	/* moved to decl.h so that makedefs.c won't see them */
+extern const char def_monsyms[MAXMCLASSES];	/* default class symbols */
+extern uchar monsyms[MAXMCLASSES];		/* current class symbols */
+#endif
+
+/*
+ * Default characters for monsters.  These correspond to the monster classes
+ * above.
+ */
+#define DEF_ANT		'a'
+#define DEF_BLOB	'b'
+#define DEF_COCKATRICE	'c'
+#define DEF_DOG		'd'
+#define DEF_EYE		'e'
+#define DEF_FELINE	'f'
+#define DEF_GREMLIN	'g'
+#define DEF_HUMANOID	'h'
+#define DEF_IMP		'i'
+#define DEF_JELLY	'j'
+#define DEF_KOBOLD	'k'
+#define DEF_LEPRECHAUN	'l'
+#define DEF_MIMIC	'm'
+#define DEF_NYMPH	'n'
+#define DEF_ORC		'o'
+#define DEF_PIERCER	'p'
+#define DEF_QUADRUPED	'q'
+#define DEF_RODENT	'r'
+#define DEF_SPIDER	's'
+#define DEF_TRAPPER	't'
+#define DEF_UNICORN	'u'
+#define DEF_VORTEX	'v'
+#define DEF_WORM	'w'
+#define DEF_XAN		'x'
+#define DEF_LIGHT	'y'
+#define DEF_ZRUTY	'z'
+#define DEF_ANGEL	'A'
+#define DEF_BAT		'B'
+#define DEF_CENTAUR	'C'
+#define DEF_DRAGON	'D'
+#define DEF_ELEMENTAL	'E'
+#define DEF_FUNGUS	'F'
+#define DEF_GNOME	'G'
+#define DEF_GIANT	'H'
+#define DEF_STALKER	'I'
+#define DEF_JABBERWOCK	'J'
+#define DEF_KOP		'K'
+#define DEF_LICH	'L'
+#define DEF_MUMMY	'M'
+#define DEF_NAGA	'N'
+#define DEF_OGRE	'O'
+#define DEF_PUDDING	'P'
+#define DEF_QUANTMECH	'Q'
+#define DEF_RUSTMONST	'R'
+#define DEF_SNAKE	'S'
+#define DEF_TROLL	'T'
+#define DEF_UMBER	'U'
+#define DEF_VAMPIRE	'V'
+#define DEF_WRAITH	'W'
+#define DEF_XORN	'X'
+#define DEF_YETI	'Y'
+#define DEF_ZOMBIE	'Z'
+#define DEF_HUMAN	'@'
+#define DEF_GHOST	' '
+#define DEF_GOLEM	'\''
+#define DEF_DEMON	'&'
+#define DEF_EEL		';'
+#define DEF_LIZARD	':'
+
+#define DEF_WORM_TAIL	'~'
+#define DEF_MIMIC_DEF	']'
+
+
+#define G_UNIQ		0x1000		/* generated only once */
+#define G_NOHELL	0x0800		/* not generated in "hell" */
+#define G_HELL		0x0400		/* generated only in "hell" */
+#define G_NOGEN		0x0200		/* generated only specially */
+#define G_NOCORPSE	0x0100		/* no corpse left ever */
+#define G_SGROUP	0x0080		/* appear in small groups normally */
+#define G_LGROUP	0x0040		/* appear in large groups normally */
+#define G_GENO		0x0020		/* can be genocided */
+#define G_GENOD		0x0010		/* have been genocided */
+#define G_EXTINCT	0x0008		/* have been extinguished as
+					   population control */
+#define G_FREQ		0x0007		/* creation frequency mask */
+
+#endif /* MONSYM_H */

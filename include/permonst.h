@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)permonst.h	3.0	88/04/05
+/*	SCCS Id: @(#)permonst.h 3.1	92/11/21	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -18,81 +18,54 @@
  */
 
 struct attack {
-	uchar           aatyp;
-	uchar           adtyp, damn, damd;
+	uchar		aatyp;
+	uchar		adtyp, damn, damd;
 };
 
 /*	Max # of attacks for any given monster.
  */
 
-#define	NATTK	5
+#define NATTK		6
+
+/*	Weight of a human body
+ */
+
+#define WT_HUMAN	1450
 
 #include "monattk.h"
 #include "monflag.h"
+#ifndef ALIGN_H
+#include "align.h"
+#endif
 
 struct permonst {
-
-#if defined(SMALLDATA) && !defined(MAKEDEFS_C)
-	char		mname[24], mlet;		/* full name and sym */
-#else
 	const char	*mname;			/* full name */
 	char		mlet;			/* symbol */
-#endif
 	schar		mlevel,			/* base monster level */
 			mmove,			/* move speed */
 			ac,			/* (base) armor class */
-			mr,			/* (base) magic resistance */
-			maligntyp;		/* basic monster alignment */
+			mr;			/* (base) magic resistance */
+	aligntyp	maligntyp;		/* basic monster alignment */
 	unsigned	geno;			/* creation/geno mask value */
 	struct	attack	mattk[NATTK];		/* attacks matrix */
-	unsigned	cwt,			/* weight of corpse */
+	unsigned short	cwt,			/* weight of corpse */
 			cnutrit;		/* its nutritional value */
 	short		pxlth;			/* length of extension */
-	uchar		msound; 		/* noise it makes (6 bits) */
+	uchar		msound;			/* noise it makes (6 bits) */
 	uchar		msize;			/* physical size (3 bits) */
+	uchar		mresists;		/* resistances */
+	uchar		mconveys;		/* conveyed by eating */
 	long		mflags1,		/* boolean bitflags */
 			mflags2;		/* more boolean bitflags */
+	uchar		mflags3;		/* yet more boolean bitflags */
 # ifdef TEXTCOLOR
 	uchar		mcolor;			/* color to use */
 # endif
 };
 
 extern struct permonst
-#if defined(SMALLDATA) && !defined(MAKEDEFS_C)
-			*mons;
-#else
 	NEARDATA	mons[];		/* the master list of monster types */
-#endif
 extern struct permonst NEARDATA playermon, NEARDATA *uasmon;
 						/* you in the same terms */
 
-#if defined(SMALLDATA) && defined(MAKEDEFS_C)
-
-typedef struct pmpart {
-	char		mlet;			/* full name and sym */
-	schar		mlevel,			/* base monster level */
-			mmove,			/* move speed */
-			ac,			/* (base) armor class */
-			mr,			/* (base) magic resistance */
-			maligntyp;		/* basic monster alignment */
-	unsigned	geno;			/* creation/geno mask value */
-	struct	attack	mattk[NATTK];		/* attacks matrix */
-	unsigned	cwt,			/* weight of corpse */
-			cnutrit;		/* its nutritional value */
-	short		pxlth;			/* length of extension */
-	uchar		msound;			/* noise it makes */
-	long		mflags1,		/* boolean bitflags */
-			mflags2;		/* more boolean bitflags */
-# ifdef TEXTCOLOR
-	uchar		mcolor;			/* color to use */
-# endif
-} pmpart;
-
-typedef struct pmstr {
-	char		mname[24];		/* full name and sym */
-	pmpart		pmp;
-} pmstr;
-
-#endif
-
-#endif /* PERMONST_H /**/
+#endif /* PERMONST_H */

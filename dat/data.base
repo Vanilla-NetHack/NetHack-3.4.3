@@ -1,5 +1,6 @@
-	NetHack data file - version 3.0i
-	demons should all come first, before the *centaur line
+#	NetHack data file - version 3.1a
+#	The demons are all listed first because makedefs used to have to give
+#	them special handling for #ifndef INFERNO; it doesn't matter any more.
 balrog
 		...  It came to the edge of the fire and the light  faded as
 		if a  cloud had  bent over it.  Then  with a rush it  leaped
@@ -20,7 +21,7 @@ succubus
 		usually to the detriment of the mortals who  are  unwise  in
 		their dealings with them.
 erinyes
-		These female-seeming devils attack hand to hand  and  poison
+		These female-seeming devils  attack hand to hand  and poison
 		their unwary victims as well.
 marilith
 		The marilith, a type V demon, has a torso shaped  like  that
@@ -54,7 +55,7 @@ ice devil
 pit fiend
 		Pit fiends are among the more powerful of devils, capable of
 		attacking  twice with weapons as well as grabbing and crush-
-		ing the life out of  thise  unwary  enough  to  enter  their
+		ing the life out of  those  unwary  enough  to  enter  their
 		domains.
 juiblex
 jubilex
@@ -95,6 +96,12 @@ demogorgon
 		spread  a quickly fatal illness to his victims while rending
 		them.  He is a mighty spellcaster, and he can drain the life
 		of mortals with a touch of his tail.
+athame
+		The  consecrated ritual knife of  a Wiccan  initiate (one of
+		four  basic  tools,  together  with the  wand,  chalice  and
+		pentacle).   Traditionally, the  athame  is  a double-edged,
+		black-handled,  cross-hilted   dagger  of  between  six  and
+		eighteen inches length.
 *centaur
 		Of all the monsters put together by  the  Greek  imagination
 		the  Centaurs (Kentauroi) constituted a class in themselves.
@@ -180,7 +187,7 @@ gnomish wizard
 		'White magic. Run!' said the gnome ...
 				[ The Charwoman's Shadow, by Lord Dunsany. ]
 gold
-pile of gold
+gold piece
 		A metal of characteristic yellow colour, the  most  precious
 		metal  used as a common commercial medium of exchange.  Sym-
 		bol, Au; at.  no. 79; at. wt. 197.2.  It is the most  malle-
@@ -250,7 +257,7 @@ cave*man
 elf
 healer
 knight
-priest*
+*priest*
 rogue
 samurai
 tourist
@@ -278,6 +285,7 @@ imp
 		ghostly and the diabolic state.
 			       [ Katharine Briggs, A Dictionary of Fairies ]
 jabberwock
+vorpal*
 		"Beware the Jabberwock, my son!
 		  The jaws that bite, the claws that catch!
 		Beware the Jubjub bird, and shun
@@ -293,6 +301,11 @@ jabberwock
 		Came whiffling through the tulgey wood,
 		  And burbled as it came!
 					[ Jabberwocky, by Lewis Carroll ]
+katana
+		Also  known  as the  samurai  sword, the katana  is  a long,
+		single-edged  sword  with slightly curved  blade.   Its long
+		handle is designed to allow it to be wielded with either one
+		or two hands.
 *kobold*
 		The race of kobolds are reputed to be an artificial creation
 		of a master wizard (demi-god?).  They are about 3' tall with
@@ -342,6 +355,29 @@ medusa
 		of  snakes which  crown its head could  cause instant death.
 		The only  way to kill this  monstrosity is to turn its  gaze
 		back upon itself.
+mind flayer
+		This creature has a humanoid  body, but has tentacles around
+		its covered mouth and only three long fingers  on each hand.
+		Mind flayers are  telepathic, and love to devour intelligent
+		beings, especially humans.  If they hit their victim  with a
+		tentacle,  the mind flayer  will  slowly  drain  it  of  all
+		intelligence, eventually killing the victim.
+mithril*
+		_Mithril_!   All folk  desired it.  It could be  beaten like
+		copper, and polished like glass;  and the Dwarves could make
+		of it  a metal,  light and yet harder  than tempered  steel.
+		Its beauty was like to that of common silver, but the beauty
+		of _mithril_ did not tarnish  or grow dim.
+			   [ The Fellowship of the Ring, by J.R.R. Tolkien ]
+mumak*
+		... the Mumak of Harad was indeed  a beast of vast bulk, and
+		the like of him  does not walk now in Middle-Earth;  his kin
+		that live still in latter days are but memories of his girth
+		and  majesty.   On he came, ... his great legs  like  trees,
+		enormous sail-like ears spread out, long snout upraised like
+		a huge serpent  about to strike,  his small red eyes raging.
+		His upturned hornlike tusks ... dripped with blood.
+				       [ The Two Towers, by J.R.R. Tolkien ]
 *naga*
 		The naga is a mystical creature with the body of a snake and
 		the head of a man or woman.  They will fiercely  protect the
@@ -363,6 +399,8 @@ orcrist
 		Goblin-cleaver, but the goblins called it simply Biter. They
 		hated it and hated worse any one that carried it.
 					   [ The Hobbit, by J.R.R. Tolkien ]
+osaku
+		The osaku is a small tool for picking locks.
 piercer
 		Ye Piercer doth look like unto  a  stalactyte,  and  hangeth
 		from  the  roofs of caves and caverns.  Unto the height of a
@@ -385,6 +423,11 @@ rust monster
 		These strange creatures live on a   diet  of  metals.   They
 		will  turn  a  suit  of  armour into so much useless  rusted
 		scrap in no time at all.
+sasquatch
+		An ape-like humanoid  native to densely forested  mountains,
+		the sasquatch is  also known as "bigfoot".   Normally benign
+		are rarely seen,  this creature is reputed to be  a relative
+		of the ferocious yeti.
 snickersnee
 		Ah, never shall I forget the cry, 
 		    or the shriek that shrieked he,
@@ -397,9 +440,9 @@ sergeant
 lieutenant
 captain
 		The soldiers  of Yendor are  well-trained in the art of war,
-		many  trained by  the wizard himself.  Some say the soldiers
+		many  trained by  the Wizard himself.  Some say the soldiers
 		are explorers  who were  unfortunate enough  to be captured,
-		and  put under the wizard's spell.  Those who have  survived
+		and  put under the Wizard's spell.  Those who have  survived
 		encounters  with  soldiers   say  they  travel  together  in
 		platoons,  and are fierce fighters.  Because of the  load of
 		their  combat gear,  however,  one can usually run away from
@@ -412,6 +455,13 @@ tengu
 		belligerent tengus were supposed to have  been  man's  first
 		instructors in the use of arms.
 		[Mythical Beasts by Deirdre Headon (The Leprechaun Library)]
+tsurugi
+		The tsurugi,  also known  as  the long samurai sword,  is an
+		extremely  sharp,  two-handed blade favored  by the samurai.
+		It  is made of hardened steel,  and is manufactured  using a
+		special  process, causing it  to never rust.  The tsurugi is
+		rumored  to  be  so  sharp  that  it  can  occasionally  cut
+		opponents in half!
 *unicorn
 unicorn horn
 		Men have always sought the elusive unicorn, for  the  single
@@ -434,6 +484,9 @@ unicorn horn
 		in her lap, and in this docile mood, the maiden  may  secure
 		it with a golden rope.
 		[Mythical Beasts by Deirdre Headon (The Leprechaun Library)]
+wakizashi
+		The samurai  warrior  traditionally  wears  two  swords; the
+		wakizashi is the shorter of the two.  See also katana.
 *long worm
 worm tooth
 crysknife
@@ -468,6 +521,18 @@ xan
 		he flew along the row stinging all the seated men  until  he
 		knew the names of all twelve.
 				[ Popul Vuh, as translated by Ralph Nelson ]
+ya
+		The arrow  of  choice of the samurai,  ya  are  made of very
+		straight bamboo, and are  tipped  with hardened steel.
+yeti
+		An ape-like humanoid  native to inaccessible  mountain tops,
+		the yeti is also known as "the abominable snowman".  Whether
+		or not the title "man" is appropriate remains unknown.
+yumi
+		The samurai is highly  trained  with a special type  of bow,
+		the yumi.  Like the  ya, the yumi  is  made of bamboo.  With
+		the yumi-ya, the bow and arrow, the samurai is an  extremely
+		accurate and deadly warrior.
 *zombie
 		The zombi...  is a soulless human corpse,  still  dead,  but
 		taken	from  the  grave  and  endowed	by  sorcery  with  a

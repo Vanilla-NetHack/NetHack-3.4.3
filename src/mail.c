@@ -1,39 +1,19 @@
-/*	SCCS Id: @(#)mail.c	3.0	89/07/07
+/*	SCCS Id: @(#)mail.c	3.1	92/11/14	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
-/* block some unused #defines to avoid overloading some cpp's */
-#define MONATTK_H
-#include "hack.h"	/* mainly for index() which depends on BSD */
+#include "hack.h"
 
 #ifdef MAIL
-static void FDECL(mdrush,(struct monst *,int,int));
-static void FDECL(mdappear,(struct monst *,BOOLEAN_P));
-static void NDECL(newmail);
-
-# ifdef UNIX
-#  include <sys/stat.h>
-#  include <pwd.h>
-# endif
-# ifdef VMS
-#  include <descrip.h>
-#  include <ssdef.h>
-# endif
-
+#include "mail.h"
 /*
- * Notify user when new mail has arrived. [Idea from Merlyn Leroy, but
- * I don't know the details of his implementation.]
- * { Later note: he disliked my calling a general mailreader and felt that
- *   hack should do the paging itself. But when I get mail, I want to put it
- *   in some folder, reply, etc. - it would be unreasonable to put all these
- *   functions in hack. }
+ * Notify user when new mail has arrived.  Idea by Merlyn Leroy.
  *
  * The mail daemon can move with less than usual restraint.  It can:
  *	- move diagonally from a door
- *	- use secret doors
- *	- run thru a monster
- *
- * Its path should be longer when you are Telepat-hic and Blind.
+ *	- use secret and closed doors
+ *	- run through a monster ("Gangway!", etc.)
+ *	- run over pools & traps
  *
  * Possible extensions:
  *	- Open the file MAIL and do fstat instead of stat for efficiency.
@@ -41,22 +21,19 @@ static void NDECL(newmail);
  *	- Examine the mail and produce a scroll of mail named "From somebody".
  *	- Invoke MAILREADER in such a way that only this single letter is read.
  *	- Do something to the text when the scroll is enchanted or cancelled.
- */
-
-/*
- * { Note by Olaf Seibert: On the Amiga, we usually don't get mail.
- *   So we go through most of the effects at 'random' moments. }
- */
-
-/*
- * I found many bugs in this code, some dating back to Hack.
- * Here are some minor problems i didn't fix:  -3.
+ *	- Make the daemon always appear at a stairwell, and have it find a
+ *	  path to the hero.
  *
- *	- The code sometimes pops up the mail daemon next to you on
- *	  the corridor side of doorways when there are open spaces
- *	  within the room.
- *	- It may also do this with adjoining castle rooms.
+ * Note by Olaf Seibert: On the Amiga, we usually don't get mail.  So we go
+ *			 through most of the effects at 'random' moments.
  */
+
+static boolean FDECL(md_start,(coord *));
+static boolean FDECL(md_stop,(coord *, coord *));
+static boolean FDECL(md_rush,(struct monst *,int,int));
+static void FDECL(newmail, (struct mail_info *));
+
+extern char *viz_rmin, *viz_rmax;	/* line-of-sight limits (vision.c) */
 
 #ifdef OVL0
 
@@ -68,7 +45,17 @@ int mustgetmail = -1;
 #ifdef OVLB
 
 # ifdef UNIX
-extern struct passwd *getpwuid();
+#  include <sys/stat.h>
+#  include <pwd.h>
+/* DON'T trust all Unices to declare getpwuid() in <pwd.h> */
+#  if !defined(_BULL_SOURCE) && !defined(sgi)
+/* DO trust all SVR4 to typedef uid_t in <sys/types.h> (probably to a long) */
+#   if defined(POSIX_TYPES) || defined(SVR4)
+extern struct passwd *FDECL(getpwuid,(uid_t));
+#   else 
+extern struct passwd *FDECL(getpwuid,(int));
+#   endif
+#  endif
 static struct stat omstat,nmstat;
 static char *mailbox = NULL;
 static long laststattime;
@@ -76,22 +63,23 @@ static long laststattime;
 # ifdef AMS				/* Just a placeholder for AMS */
 #   define MAILPATH "/dev/null"
 # else
-#  ifdef BSD
+#  if defined(BSD) || defined(ULTRIX)
 #   define MAILPATH "/usr/spool/mail/"
 #  endif
-#  ifdef SYSV
+#  if defined(SYSV) || defined(HPUX)
 #   define MAILPATH "/usr/mail/"
 #  endif
 # endif /* AMS */
 
 void
-getmailstatus() {
+getmailstatus()
+{
 	if(!mailbox && !(mailbox = getenv("MAIL"))) {
 #  ifdef MAILPATH
 #   ifdef AMS
 	        struct passwd ppasswd;
 
-		bcopy(getpwuid(getuid()), &ppasswd, sizeof(struct passwd));
+		(void) memcpy(&ppasswd, getpwuid(getuid()), sizeof(struct passwd));
 		if (ppasswd.pw_dir) {
 		     mailbox = (char *) alloc((unsigned) strlen(ppasswd.pw_dir)+sizeof(AMS_MAILBOX));
 		     Strcpy(mailbox, ppasswd.pw_dir);
@@ -118,166 +106,301 @@ getmailstatus() {
 }
 # endif /* UNIX */
 
-# ifdef VMS
-extern unsigned long pasteboard_id;
-volatile int broadcasts = 0;
-#  define getmailstatus()
-# endif /* VMS */
-
-
-/* make mail daemon run through the dungeon */
-static void
-mdrush(md,fx,fy)
-struct monst *md;
-register int fx, fy;	/* origin, where the '&' is displayed */
+/*
+ * Pick coordinates for a starting position for the mail daemon.  Called
+ * from newmail() and newphone().
+ */
+static boolean
+md_start(startp)
+    coord *startp;
 {
-	register int tx = md->mx, ty = md->my;
-			/* real location, where the '&' is going */
+    coord testcc;	/* scratch coordinates */
+    int row;		/* current row we are checking */
+    int lax;		/* if TRUE, pick a position in sight. */
+    int dd;		/* distance to current point */
+    int max_distance;	/* max distance found so far */
 
-	tmp_at(-1, md->data->mlet);	/* open call */
-#ifdef TEXTCOLOR
-	tmp_at(-3, (int)md->data->mcolor);
-#endif
+    /*
+     * If blind and not telepathic, then it doesn't matter what we pick ---
+     * the hero is not going to see it anyway.  So pick a nearby position.
+     */
+    if (Blind && !Telepat) {
+	if (!enexto(startp, u.ux, u.uy, (struct permonst *) 0))
+	    return FALSE;	/* no good posiitons */
+	return TRUE;
+    }
 
-	while(fx != tx || fy != ty) {
-		register int dx, dy,		/* direction counters */
-			     nfx = fx, nfy = fy,/* next location */ 
-			     d1, d2;		/* shortest dist, eval */
+    /*
+     * Arrive at an up or down stairwell if it is in line of sight from the
+     * hero.
+     */
+    if (couldsee(upstair.sx, upstair.sy)) {
+	startp->x = upstair.sx;
+	startp->y = upstair.sy;
+	return TRUE;
+    }
+    if (couldsee(dnstair.sx, dnstair.sy)) {
+	startp->x = dnstair.sx;
+	startp->y = dnstair.sy;
+	return TRUE;
+    }
 
-		/* display the '&' at (fx,fy) */
-		tmp_at(fx,fy);
-
-		/* find location next to (fx,fy) closest to (tx,ty) */
-		d1 = dist2(fx,fy,tx,ty);
-		for(dx = -1; dx <= 1; dx++) for(dy = -1; dy <= 1; dy++)
-		    if((dx || dy) && isok(fx+dx,fy+dy) && 
-		       !IS_STWALL(levl[fx+dx][fy+dy].typ)) {
-			d2 = dist2(fx+dx,fy+dy,tx,ty);
-			if(d2 < d1) {
-			    d1 = d2;
-			    nfx = fx+dx;
-			    nfy = fy+dy;
-			}
-		    }
-
-		/* set (fx,fy) to next location, unless it stopped */
-		if(nfx != fx || nfy != fy) {
-		    fx = nfx;
-		    fy = nfy;
-		} else break;
-	}
-
-	tmp_at(-1,-1);			/* close call */
-}
-
-static void
-mdappear(md,away)
-struct monst *md;
-boolean away;
-{
-	static int fx, fy;			/* origin */
-	int tx = md->mx, ty = md->my;		/* destination */
-	register int uroom = inroom(u.ux, u.uy);/* room you're in */
-
-	/* if mail daemon is in same room as you */
-	if(uroom >= 0 && inroom(md->mx,md->my) == uroom && (!Blind || Telepat))
-		if(away) {
-			unpmon(md);
-			remove_monster(tx, ty);
-
-			/* fake "real" location to origin */
-			md->mx = fx; md->my = fy;
-
-			/* rush from destination */
-			mdrush(md,tx,ty);
-			return;
-		} else {
-			/* choose origin */
-			register int cnt = rooms[uroom].doorct;
-			register int tmp = rooms[uroom].fdoor;
-			register int dd = 0;
-
-			/* which door (or staircase) is farthest? */
-			while (cnt--) {
-				if(dd < dist(doors[tmp].x, doors[tmp].y)) {
-					fx = doors[tmp].x;
-					fy = doors[tmp].y;
-					dd = dist(tx,ty);
-				}
-				tmp++;
-			}
-			if (has_dnstairs(&rooms[uroom]))
-				if(dd < dist(xdnstair, ydnstair)) {
-					fx = xdnstair;
-					fy = ydnstair;
-					dd = dist(xdnstair, ydnstair);
-				}
-			if (has_upstairs(&rooms[uroom]))
-				if(dd < dist(xupstair, yupstair)) {
-					fx = xupstair;
-					fy = yupstair;
-				}
-
-			/* rush from origin */
-			mdrush(md,fx,fy);
+    /*
+     * Try to pick a location out of sight next to the farthest position away
+     * from the hero.  If this fails, try again, just picking the farthest
+     * position that could be seen.  What we really ought to be doing is
+     * finding a path from a stairwell...
+     *
+     * The arrays viz_rmin[] and viz_rmax[] are set even when blind.  These
+     * are the LOS limits for each row.
+     */
+    lax = 0;	/* be picky */
+    max_distance = -1;
+retry:
+    for (row = 0; row < ROWNO; row++) {
+	if (viz_rmin[row] < viz_rmax[row]) {
+	    /* There are valid positions on this row. */
+	    dd = distu(viz_rmin[row],row);
+	    if (dd > max_distance) {
+		if (lax) {
+		    max_distance = dd;
+		    startp->y = row;
+		    startp->x = viz_rmin[row];
+		    
+		} else if (enexto(&testcc, (xchar)viz_rmin[row], row,
+						(struct permonst *) 0) &&
+			   !cansee(testcc.x, testcc.y) &&
+			   couldsee(testcc.x, testcc.y)) {
+		    max_distance = dd;
+		    *startp = testcc;
 		}
+	    }
+	    dd = distu(viz_rmax[row],row);
+	    if (dd > max_distance) {
+		if (lax) {
+		    max_distance = dd;
+		    startp->y = row;
+		    startp->x = viz_rmax[row];
+		    
+		} else if (enexto(&testcc, (xchar)viz_rmax[row], row,
+						(struct permonst *) 0) &&
+			   !cansee(testcc.x,testcc.y) &&
+			   couldsee(testcc.x, testcc.y)) {
 
-	pmon(md);
+		    max_distance = dd;
+		    *startp = testcc;
+		}
+	    }
+	}
+    }
+
+    if (max_distance < 0) {
+	if (!lax) {
+	    lax = 1;		/* just find a position */
+	    goto retry;
+	}
+	return FALSE;
+    }
+
+    return TRUE;
 }
 
-static void
-newmail() {
-	struct obj *obj;
-	/* deliver a scroll of mail */
-	register boolean invload =
-		((inv_weight() + (int)objects[SCR_MAIL].oc_weight) > 0 ||
-			 Fumbling);
-	register struct monst *md = makemon(&mons[PM_MAIL_DAEMON], u.ux, u.uy);
+/*
+ * Try to choose a stopping point as near as possible to the starting
+ * position while still adjacent to the hero.  If all else fails, try
+ * enexto().  Use enexto() as a last resort because enexto() chooses
+ * its point randomly, which is not what we want.
+ */
+static boolean
+md_stop(stopp, startp)
+    coord *stopp;	/* stopping position (we fill it in) */
+    coord *startp;	/* starting positon (read only) */
+{
+    int x, y, distance, min_distance = -1;
 
-	if(!md)	return;
+    for (x = u.ux-1; x <= u.ux+1; x++)
+	for (y = u.uy-1; y <= u.uy+1; y++) {
+	    if (!isok(x, y) || (x == u.ux && y == u.uy)) continue;
 
-	mdappear(md,FALSE);
-
-# ifdef VMS
-	pline("\"Hello, %s!  I have a message for you.\"", plname);
-# else
-#  ifdef NO_MAILREADER
-	pline("\"Hello, %s!  You have some mail in the outside world.\"", plname);
-#  else
-	pline("\"Hello, %s!  I have some mail for you.\"", plname);
-# endif
-# endif
-
-# ifndef NO_MAILREADER
-	if(dist(md->mx,md->my) > 2)
-		verbalize("Catch!");
-	more();
-	obj = mksobj(SCR_MAIL, FALSE);
-	obj->known = obj->dknown = TRUE;
-	makeknown(SCR_MAIL);
-	if (!invload) obj = addinv(obj);
-	if(invload || inv_cnt() > 52) {
-		if (invload) dropy(obj);
-		else dropx(obj);
-		stackobj(fobj);		
-		verbalize("Oops!");
-	} else {
-		int savequan = obj->quan;
-		obj->quan = 1;
-		prinv(obj);
-		obj->quan = savequan;
+	    if (ACCESSIBLE(levl[x][y].typ) && !MON_AT(x,y)) {
+		distance = dist2(x,y,startp->x,startp->y);
+		if (min_distance < 0 || distance < min_distance ||
+			(distance == min_distance && rn2(2))) {
+		    stopp->x = x;
+		    stopp->y = y;
+		    min_distance = distance;
+		}
+	    }
 	}
+
+    /* If we didn't find a good spot, try enexto(). */
+    if (min_distance < 0 &&
+		!enexto(stopp, u.ux, u.uy, &mons[PM_MAIL_DAEMON]))
+	return FALSE;
+
+    return TRUE;
+}
+
+/* Let the mail daemon have a larger vocabulary. */
+static const char NEARDATA *mail_text[] = {
+    "Gangway!",
+    "Look out!",
+    "Pardon me!"
+};
+#define md_exclamations()	(mail_text[rn2(3)])
+
+/*
+ * Make the mail daemon run through the dungeon.  The daemon will run over
+ * any monsters that are in its path, but will replace them later.  Return
+ * FALSE if the md gets stuck in a position where there is a monster.  Return
+ * TRUE otherwise.
+ */
+static boolean
+md_rush(md,tx,ty)
+    struct monst *md;
+    register int tx, ty;		/* destination of mail daemon */
+{
+    struct monst *mon;			/* displaced monster */
+    register int dx, dy;		/* direction counters */
+    int fx = md->mx, fy = md->my;	/* current location */
+    int nfx = fx, nfy = fy,		/* new location */ 
+	d1, d2;				/* shortest distances */
+
+    /*
+     * It is possible that the monster at (fx,fy) is not the md when:
+     * the md rushed the hero and failed, and is now starting back.
+     */
+    if (m_at(fx, fy) == md) {
+	remove_monster(fx, fy);		/* pick up from orig position */
+	newsym(fx, fy);
+    }
+
+    /*
+     * At the beginning and exit of this loop, md is not placed in the
+     * dungeon.
+     */
+    while (1) {
+	/* Find a good location next to (fx,fy) closest to (tx,ty). */
+	d1 = dist2(fx,fy,tx,ty);
+	for (dx = -1; dx <= 1; dx++) for(dy = -1; dy <= 1; dy++)
+	    if ((dx || dy) && isok(fx+dx,fy+dy) && 
+				       !IS_STWALL(levl[fx+dx][fy+dy].typ)) {
+		d2 = dist2(fx+dx,fy+dy,tx,ty);
+		if (d2 < d1) {
+		    d1 = d2;
+		    nfx = fx+dx;
+		    nfy = fy+dy;
+		}
+	    }
+
+	/* Break if the md couldn't find a new position. */
+	if (nfx == fx && nfy == fy) break;
+
+	fx = nfx;			/* this is our new position */
+	fy = nfy;
+
+	/* Break if the md reaches its destination. */
+	if (fx == tx && fy == ty) break;
+
+	if ((mon = m_at(fx,fy)) != 0)	/* save monster at this position */
+	    verbalize(md_exclamations());
+	else if (fx == u.ux && fy == u.uy)
+	    verbalize("Excuse me.");
+
+	place_monster(md,fx,fy);	/* put md down */
+	newsym(fx,fy);			/* see it */
+	flush_screen(0);		/* make sure md shows up */
+	delay_output();			/* wait a little bit */
+
+	/* Remove md from the dungeon.  Restore original mon, if necessary. */
+	if (mon) {
+	    if ((mon->mx != fx) || (mon->my != fy))
+		place_worm_seg(mon, fx, fy);
+	    else
+		place_monster(mon, fx, fy);
+	} else
+	    remove_monster(fx, fy);
+	newsym(fx,fy);
+    }
+
+    /*
+     * Check for a monster at our stopping position (this is possible, but
+     * very unlikely).  If one exists, then have the md leave in disgust.
+     */
+    if ((mon = m_at(fx, fy)) != 0) {
+	place_monster(md, fx, fy);	/* display md with text below */
+	newsym(fx, fy);
+	verbalize("This place's too crowded.  I'm outta here.");
+
+	if ((mon->mx != fx) || (mon->my != fy))	/* put mon back */
+	    place_worm_seg(mon, fx, fy);
+	else
+	    place_monster(mon, fx, fy);
+
+	newsym(fx, fy);
+	return FALSE;
+    }
+
+    place_monster(md, fx, fy);	/* place at final spot */
+    newsym(fx, fy);
+    flush_screen(0);
+    delay_output();			/* wait a little bit */
+
+    return TRUE;
+}
+
+/* Deliver a scroll of mail. */
+/*ARGSUSED*/
+static void
+newmail(info)
+struct mail_info *info;
+{
+    struct monst *md;
+    coord start, stop;
+    boolean message_seen = FALSE;
+
+    /* Try to find good starting and stopping places. */
+    if (!md_start(&start) || !md_stop(&stop,&start)) goto give_up;
+
+    /* Make the daemon.  Have it rush towards the hero. */
+    if (!(md = makemon(&mons[PM_MAIL_DAEMON], start.x, start.y))) goto give_up;
+    if (!md_rush(md, stop.x, stop.y)) goto go_back;
+
+    message_seen = TRUE;
+# ifdef NO_MAILREADER
+    verbalize("Hello, %s!  You have some mail in the outside world.", plname);
+# else
+    verbalize("Hello, %s!  %s.", plname, info->display_txt);
+
+    if (info->message_typ) {
+	struct obj *obj = mksobj(SCR_MAIL, FALSE, FALSE);
+	if (distu(md->mx,md->my) > 2)
+	    verbalize("Catch!");
+	display_nhwindow(WIN_MESSAGE, FALSE);
+	if (info->object_nam) {
+	    obj = oname(obj, info->object_nam, FALSE);
+	    if (info->response_cmd) {	/*(hide extension of the obj name)*/
+		int namelth = info->response_cmd - info->object_nam - 1;
+		if ( namelth <= 0 || namelth >= (int) obj->onamelth )
+		    impossible("mail delivery screwed up");
+		else
+		    *(ONAME(obj) + namelth) = '\0';
+		/* Note: renaming object will discard the hidden command. */
+	    }
+	}
+	obj = hold_another_object(obj, "Oops!",
+				  (const char *)0, (const char *)0);
+    }
 # endif /* NO_MAILREADER */
 
-	/* disappear again */
-	mdappear(md,TRUE);
-	mongone(md);
-
-	/* force the graphics character set off */
-	nscr();
-# ifdef VMS
-	broadcasts--;
-# endif
+    /* zip back to starting location */
+go_back:
+    (void) md_rush(md, start.x, start.y);
+    mongone(md);
+    /* deliver some classes of messages even if no daemon ever shows up */
+give_up:
+    if (!message_seen && info->message_typ == MSG_OTHER)
+	pline("Hark!  \"%s.\"", info->display_txt);
 }
 
 #endif /* OVLB */
@@ -287,11 +410,19 @@ newmail() {
 #ifdef OVL0
 
 void
-ckmailstatus() {
-	if (mustgetmail < 0)
+ckmailstatus()
+{
+	if (u.uswallow) return;
+	if (mustgetmail < 0) {
+#ifdef AMIGA
+	    mustgetmail=(moves<2000)?(100+rn2(2000)):(2000+rn2(3000));
+#endif
 	    return;
+	}
 	if (--mustgetmail <= 0) {
-		newmail();
+		static struct mail_info
+			deliver = {MSG_MAIL,"I have some mail for you",0,0};
+		newmail(&deliver);
 		mustgetmail = -1;
 	}
 }
@@ -299,10 +430,24 @@ ckmailstatus() {
 #endif /* OVL0 */
 #ifdef OVLB
 
+/*ARGSUSED*/
 void
-readmail()
+readmail(otmp)
+struct obj *otmp;
 {
-	pline("It says:  \"Please disregard previous letter.\"");
+#ifdef AMIGA
+	char *junk[]={
+	"It reads:  \"Please disregard previous letter.\"",
+	"It reads:  \"Welcome to NetHack 3.1!\"",
+	"It reads:  \"Only Amiga makes it possible.\"",
+	"It reads:  \"CATS have all the answers.\"",
+	"It reads:  \"Report bugs to nethack-bugs@linc.cis.upenn.edu\""
+	};
+
+	pline(junk[rn2(SIZE(junk))]);
+#else
+	pline("It reads:  \"Please disregard previous letter.\"");
+#endif
 }
 
 #endif /* OVLB */
@@ -314,8 +459,9 @@ readmail()
 #ifdef OVL0
 
 void
-ckmailstatus() {
-	if(!mailbox
+ckmailstatus()
+{
+	if(!mailbox || u.uswallow
 #  ifdef MAILCKFREQ
 		    || moves < laststattime + MAILCKFREQ
 #  endif
@@ -331,29 +477,38 @@ ckmailstatus() {
 		nmstat.st_mtime = 0;
 #  endif
 	} else if(nmstat.st_mtime > omstat.st_mtime) {
-		if(nmstat.st_size)
-			newmail();
+		if(nmstat.st_size) {
+			static struct mail_info
+			    deliver = {MSG_MAIL,"I have some mail for you",0,0};
+			newmail(&deliver);
+		}
 		getmailstatus();	/* might be too late ... */
 	}
 }
 
 #endif /* OVL0 */
+
 #ifdef OVLB
 
+/*ARGSUSED*/
 void
-readmail() {
+readmail(otmp)
+struct obj *otmp;
+{
 #  ifdef DEF_MAILREADER			/* This implies that UNIX is defined */
-	register char *mr = 0;
-	more();
+	register const char *mr = 0;
+
+	display_nhwindow(WIN_MESSAGE, FALSE);
 	if(!(mr = getenv("MAILREADER")))
 		mr = DEF_MAILREADER;
+
 	if(child(1)){
 		(void) execl(mr, mr, NULL);
-		exit(1);
+		terminate(1);
 	}
 #  else
 #   ifndef AMS  			/* AMS mailboxes are directories */
-	(void) page_file(mailbox, FALSE);
+	display_file(mailbox, TRUE);
 #   endif /* AMS */
 #  endif /* DEF_MAILREADER */
 
@@ -370,31 +525,60 @@ readmail() {
 
 #ifdef OVL0
 
+volatile int broadcasts = 0;
+
 void
 ckmailstatus()
 {
-	if (broadcasts)
-		newmail();
+    struct mail_info *brdcst, *parse_next_broadcast();
+
+    if(u.uswallow) return;
+
+    while (broadcasts > 0) {	/* process all trapped broadcasts [until] */
+	broadcasts--;
+	if ((brdcst = parse_next_broadcast()) != 0) {
+	    newmail(brdcst);
+	    break;		/* only handle one real message at a time */
+	}
+    }
 }
 
 #endif /* OVL0 */
+
 #ifdef OVLB
 
 void
-readmail()
+readmail(otmp)
+struct obj *otmp;
 {
-	char buf[16384];	/* $BRKTHRU limits messages to 16350 bytes */
-	$DESCRIPTOR(message, buf);
-	short length;
+#  ifdef SHELL	/* can't access mail reader without spawning subprocess */
+    char *p, *cmd, buf[BUFSZ], qbuf[BUFSZ];
 
-	if (SMG$GET_BROADCAST_MESSAGE(&pasteboard_id, &message, &length)
-	    == SS$_NORMAL && length != 0) {
-		buf[length] = '\0';
-		pline("%s", buf);
-	}
+    /* there should be a command hidden beyond the object name */
+    p = otmp->onamelth ? ONAME(otmp) : "";
+    cmd = (strlen(p) + 1 < otmp->onamelth) ? eos(p) + 1 : (char *) 0;
+    if (!cmd || !*cmd) cmd = "SPAWN";
+
+    Sprintf(qbuf, "System command (%s)", cmd);
+    getlin(qbuf, buf);
+    clear_nhwindow(WIN_MESSAGE);
+    if (*buf != '\033') {
+	for (p = eos(buf); p > buf; *p = '\0')
+	    if (*--p != ' ') break;	/* strip trailing spaces */
+	if (*buf) cmd = buf;		/* use user entered command */
+	if (!strcmpi(cmd, "SPAWN") || !strcmp(cmd, "!"))
+	    cmd = (char *) 0;		/* interactive escape */
+
+	vms_doshell(cmd, TRUE);
+	(void) sleep(1);
+    }
+#  endif /* SHELL */
 }
-# endif /* VMS */
 
 #endif /* OVLB */
 
+# endif /* VMS */
+
 #endif /* MAIL */
+
+/*mail.c*/

@@ -1,7 +1,7 @@
 .ds h0 "NetHack Guidebook
 .ds h1
 .ds h2 %
-.ds vr "NetHack 3.0
+.ds vr "NetHack 3.1
 .ds f0 "\*(vr
 .ds f1
 .ds f2 "May 28, 1990
@@ -132,6 +132,7 @@ The bat bites!
 
 Player the Rambler         St:12 Dx:7 Co:18 In:11 Wi:9 Ch:15  Neutral
 Dlvl:1 G:0  HP:9(12) Pw:3(3) AC:10 Xp:1/19 T:257 Weak
+
 _
 .TE
 .ce 1
@@ -173,7 +174,7 @@ particular, it can affect the prices shopkeepers offer you.
 \fBLawful\fP, \fBNeutral\fP, or \fBChaotic\fP.  Basically, Lawful is
 good and Chaotic is evil.  Your alignment influences how other
 monsters react toward you.
-.lp Dungeon Level\ 
+.lp "Dungeon Level
 How deep you have gone into the dungeon.  It starts at one and
 increases as you go deeper into the dungeon.  The Amulet of Yendor is
 reputed to be somewhere beneath the twentieth level.
@@ -236,7 +237,7 @@ The walls of a room, or an open door.
 The floor of a room, or a doorless doorway.
 .lp #
 A corridor, or possibly a kitchen sink or drawbridge (if your dungeon
-has sinks or drawbridges).
+has sinks).
 .lp <
 A way to the previous level.
 .lp >
@@ -275,9 +276,9 @@ A boulder or statue.
 .lp 0
 An iron ball.
 .lp _
-An altar (if your dungeon has altars), or an iron chain.
+An altar, or an iron chain.
 .lp }
-A pool of water or moat.
+A pool of water or moat or a pool of lava.
 .lp {
 A fountain (your dungeon may not have fountains).
 .lp "\\\\
@@ -366,7 +367,7 @@ Prefix:  move without picking up any objects.
 Prefix:  move far, no pickup.
 .lp "g[yuhjklbn]
 Prefix:  move until something interesting is found.
-.lp G[yuhjklbn] or <CONTROL->[yuhjklbn]
+.lp "G[yuhjklbn] or <CONTROL->[yuhjklbn]
 Prefix:  same as `g', but forking of corridors is not considered interesting.
 .lp .
 Rest, do nothing for one turn.
@@ -517,11 +518,11 @@ depend on what features the game was compiled with.
 If your keyboard has a meta key (which, when pressed in combination
 with another key, modifies it by setting the `meta' [8th, or `high']
 bit), you can invoke the extended commands by meta-ing the first
-letter of the command.  In PC and ST NetHack, the `Alt' key
+letter of the command.  In OS/2, PC, and ST NetHack, the `Alt' key
 can be used in this fashion.
 .lp M-a
 Adjust inventory letters (the
-.op fixinvlet
+.op fixinv
 option must be ``on'' to do this).
 .lp M-c
 Talk to someone.
@@ -529,13 +530,15 @@ Talk to someone.
 Dip an object into something.
 .lp M-f
 Force a lock.
+.lp M-i
+Invoke an object's special powers.
 .lp M-j
 Jump to another location.
 .lp M-l
 Loot a box on the floor.
 .lp M-m
 Use a monster's special ability.
-.lp M-N
+.lp M-n
 Name an item or type of object.
 .lp M-o
 Offer a sacrifice to the gods.
@@ -571,11 +574,10 @@ Untrap a trapped object or door.  Same as ``#untrap'' or ``M-u''.
 .hn 1
 Rooms and corridors
 .pg
-Rooms in the dungeon are either lit or dark.  If you walk into a lit
-room, the entire room will be drawn on the screen.  If you walk into a
-dark room, only the areas you can see will be displayed.  In darkness,
-you can only see one space in all directions.  Corridors are always
-dark, but remain on the map as you explore them.
+Rooms and corridors in the dungeon are either lit or dark.
+Any lit areas within your line of sight will be displayed;  
+dark areas are only displayed if they are within one space of you.
+Walls and corridors remain on the map as you explore them.
 .pg
 Secret corridors are hidden.  You can find them with the `s' (search)
 command.
@@ -606,9 +608,9 @@ Traps (`^')
 .pg
 There are traps throughout the dungeon to snare the unwary delver.
 For example, you may suddenly fall into a pit and be stuck for a few
-turns.  Traps don't appear on your map until you trigger one by moving
-onto it, or you discover it with the `s' (search) command.  Monsters
-can fall prey to traps, too.
+turns.  Traps don't appear on your map until you see one triggered
+by moving onto it, or you discover it with the `s' (search) command.
+Monsters can fall prey to traps, too.
 
 .hn 1
 Monsters
@@ -947,9 +949,12 @@ behaves.
 .hn 2
 Setting the options
 .pg
-There are two ways to set the options.  The first is with the `O'
-command in NetHack; the second is with the ``NETHACKOPTIONS''
-environment variable.
+Options may be set in a number of ways.  Within the game, the `O'
+command allows you to view all options and change most of them.
+You can also set options automatically by placing them in the
+NETHACKOPTIONS environment variable or a configuration file.
+Some versions of NetHack also have front-end programs that allow
+you to set options before starting the game.
 .hn 2
 Using the NETHACKOPTIONS environment variable
 .pg
@@ -974,16 +979,46 @@ $ \fBexport NETHACKOPTIONS\fP
 .ed
 in \fIsh\fP or \fIksh\fP.
 .hn 2
+Using a configuration file
+.pg
+Any line in the configuration file starting with ``OPTIONS='' may be
+filled out with options in the same syntax as in NETHACKOPTIONS.
+Any line starting with ``GRAPHICS='', ``MONSTERS='', or ``OBJECTS=''
+is taken as defining the
+.op graphics,
+.op monsters,
+or
+.op objects
+options in a different syntax,
+a sequence of decimal numbers giving the character position
+in the current font to be used in displaying each entry.
+Such a sequence can be continued to multiple lines by putting a `\\'
+at the end of each line to be continued.
+Any line starting with `#' is treated as a comment.
+.pg
+The default name of the configuration file varies on different
+operating systems, but NETHACKOPTIONS can also be set to
+the full name of a file you want to use (possibly preceded by an `@').
+.hn 2
 Customization options
 .pg
 Here are explanations of the various options do.  Character strings
 longer than fifty characters are truncated.  Some of the options
 listed may be inactive in your dungeon.
+.lp BIOS\ \ \ \ 
+Use BIOS calls to update the screen
+display quickly and to read the keyboard (allowing the use of arrow
+keys to move) on machines with an IBM PC compatible BIOS ROM (default off,
+OS/2, PC, and ST NetHack only).
 .lp catname
 Name your starting cat (ex. ``catname:Morris'').
 Cannot be set with the `O' command.
+.lp checkpoint
+Save game state after each level change, for possible recovery after
+program crash (default on).
 .lp color\ \ \ 
-Use color for different monsters, objects, and dungeon features (default on).
+Use color for different monsters, objects, and dungeon features
+(default on for microcomputers).
 .lp confirm\ 
 Have user confirm attacks on pets, shopkeepers, and other
 peaceable creatures (default on).
@@ -992,17 +1027,16 @@ Use a predefined selection of characters from the DEC VT-xxx/DEC Rainbow/
 ANSI line-drawing character set to display the dungeon instead of having
 to define a full graphics set yourself (default off).
 Cannot be set with the `O' command.
+.lp disclose
+Offer to identify your inventory and intrinsics when the
+game ends (default on).
 .lp dogname
 Name your starting dog (ex. ``dogname:Fang'').
 Cannot be set with the `O' command.
-.lp endgame
-Control what parts of the score list you are shown at the end (ex.
-``endgame:5 top scores/4 around my score/own scores'').  Only the first
-letter of each category (`t', `a', or `o') is necessary.
 .lp female
 Set your sex (default off).
 Cannot be set with the `O' command.
-.lp fixinvlet
+.lp fixinv
 An object's inventory letter sticks to it when it's dropped (default on).
 If this is off, dropping an object shifts all the remaining inventory letters.
 .lp fruit\ \ \ 
@@ -1013,12 +1047,20 @@ appetizing than slime mold.  Apples, oranges, pears, bananas, and melons
 already exist in NetHack, so don't use those.
 .lp graphics
 Set the graphics symbols for screen displays
-(default `` |--------|||-\\\\/.-|+.#<>^"}{#\\\\_<>##'').  The
+(default \&`` |--
+.br
+.nf
+------||.-|++.##<><>\\^"_\\\\#{}.}..## #}|-\\\\/*!)(0#@*/-\\\\||\\\\-
+.fi
+//-\\\\| |\\\\-/'').
+If specified, the
 .op graphics
-option (if used) should come last, followed by a string of up to 35
+option should come last, followed by a string of 1-69
 characters to be used instead of the default map-drawing characters.
 The dungeon map will use the characters you specify instead of the
 default symbols.
+Remember that you may need to escape some of these characters
+if, for example, you use \fIcsh\fP.
 
 The
 .op DECgraphics
@@ -1038,18 +1080,28 @@ be doubled for the same effect now.  The special escape form `\\m'
 switches on the meta bit in the following character, and the `^'
 prefix causes the following character to be treated as a control
 character (so any `^' in your old graphics strings should be changed
-to `\\^' now).
+to `\\^' now).  Also note that there are more symbols in a different
+order than used for NetHack 3.0.
 
-The order of the symbols is:  solid rock, vertical wall, horizontal
+The order of the symbols is: solid rock, vertical wall, horizontal
 wall, upper left corner, upper right corner, lower left corner, lower
 right corner, cross wall, upward T wall, downward T wall, leftward T
-wall, rightward T wall, vertical beam, horizontal beam, left slant,
-right slant, no door, vertical open door, horizontal open door, closed
-door, floor of a room, corridor, stairs up, stairs down, trap, web,
-pool or moat, fountain, kitchen sink, throne, altar, ladder up, ladder
-down, vertical drawbridge, horizontal drawbridge.  
+wall, rightward T wall, no door, vertical open door, horizontal open
+door, vertical closed door, horizontal closed door, floor of a room,
+dark corridor, lit corridor, stairs up, stairs down, ladder up, ladder
+down, trap, web, altar, throne, kitchen sink, fountain, pool or moat,
+ice, lava, vertical lowered drawbridge, horizontal lowered drawbridge,
+vertical raised drawbridge, horizontal raised drawbridge, air, cloud,
+under water, vertical beam, horizontal beam, left slant, right slant,
+digging beam, camera flash beam, left boomerang, right boomerang, four
+glyphs giving the sequence for magic resistance displays; the eight
+surrounding glyphs for swallowed display; nine glyphs for explosions.
+An explosion consists of three rows (top, middle, and bottom) of three
+characters.  The explosion is centered in the center of this 3 by 3
+array.
+
 You might want to use `+' for the corners and T walls for a more
-esthetic, boxier display.  Note that in the next release, new symbols
+aesthetic, boxier display.  Note that in the next release, new symbols
 may be added, or the present ones rearranged.
 
 Cannot be set with the `O' command.
@@ -1059,19 +1111,53 @@ with the `/' command, ask if you want to see it (default on). Turning help
 off makes just looking at things faster, since you aren't interrupted with the
 ``More info?'' prompt, but it also means that you might miss some
 interesting and/or important information.
-.lp IBM_BIOS\ \ \ \ 
-Use BIOS calls to update the screen
-display quickly and to read the keyboard (allowing the use of arrow
-keys to move) on machines with an IBM PC compatible BIOS ROM (default off,
-PC and ST NetHack only).
+.lp hilite_pet
+Highlight pets when color is turned off (default off).
 .lp IBMgraphics
 Use a predefined selection of IBM extended ASCII characters to display the
 dungeon instead of having to define a full graphics set yourself (default off).
 Cannot be set with the `O' command.
 .lp ignintr
 Ignore interrupt signals, including breaks (default off).
+.lp legacy
+Display an introductory message when starting the game (default on).
+.lp lit_corridor
+Show corridor squares seen by night vision or a light source held by your
+character as lit (default off).
 .lp male\ \ \ \ 
 Set your sex (default on, most hackers are male).
+Cannot be set with the `O' command.
+.lp monsters
+Set the characters used to display monster classes (default
+``abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ@\ \\&;:~]'').
+This string is subjected to the same processing as the
+.op graphics
+option.
+The order of the symbols is
+ant or other insect, blob, cockatrice,
+dog or other canine, eye or sphere, feline,
+gremlin, humanoid, imp or minor demon,
+jelly, kobold, leprechaun,
+mimic, nymph, orc,
+piercer, quadruped, rodent,
+spider, trapper or lurker above, unicorn,
+vortex, worm, xan or other mythical/fantastic insect,
+light, zruty,
+angelic being, bat, centaur,
+dragon, elemental, fungus or mold,
+gnome, giant humanoid, invisible stalker,
+jabberwock, Keystone Kop, lich,
+mummy, naga, ogre,
+pudding or ooze, quantum mechanic, rust monster,
+snake, troll, umber hulk,
+vampire, wraith, xorn,
+yeti or ape or other large beast, zombie,
+human, ghost, golem,
+demon, sea monster, lizard,
+long worm tail, and mimic.
+Cannot be set with the `O' command.
+.lp msghistory
+The number of top line messages to save (and recall with ^P) (default 20).
 Cannot be set with the `O' command.
 .lp name\ \ \ \ 
 Set your character's name (defaults to your user name).  You can also
@@ -1083,14 +1169,29 @@ Cannot be set with the `O' command.
 Read the NetHack news file, if present (default on).
 Since the news is shown at the beginning of the game, there's no point
 in setting this with the `O' command.
-.lp number_pad
-Use the number keys to move instead of [yuhjklbn] (default off).
 .lp null\ \ \ \ 
 Send padding nulls to the terminal (default off).
+.lp number_pad
+Use the number keys to move instead of [yuhjklbn] (default off).
+.lp objects
+Set the characters used to display object classes
+(default ``])[="(%!?+/$*`0_.'').
+This string is subjected to the same processing as the
+.op graphics
+option.
+The order of the symbols is
+illegal-object (should never be seen), weapon, armor, ring, amulet, tool,
+food, potion, scroll, spell book, wand, gold, gem or rock, boulder or statue,
+iron ball, chain, and venom.
+Cannot be set with the `O' command.
 .lp packorder
-Specify the order to list object types in (default ``\\")[%?+/=!(*'0_'').
+Specify the order to list object types in (default ``\\")[%?+/=!(*`0_'').
 The value of this option should be a string containing the
 symbols for the various object types.
+.lp pettype
+Specify the type of your initial pet, if you are playing a character class
+that uses both types of pets.  Possible values are ``cat'' and ``dog''.
+Cannot be set with the `O' command.
 .lp pickup\ \ 
 Pick up things you move onto by default (default on).
 .lp rawio\ \ \ 
@@ -1102,6 +1203,14 @@ Cannot be set with the `O' command.
 Make the space bar a synonym for the `.' (rest) command (default off).
 .lp safe_pet
 Prevent you from (knowingly) attacking your pets (default on).
+.lp scores
+Control what parts of the score list you are shown at the end (ex.
+``scores:5 top scores/4 around my score/own scores'').  Only the first
+letter of each category (`t', `a', or `o') is necessary.
+.lp showexp
+Show your accumulated experience points on bottom line (default off).
+.lp showscore
+Show your approximate accumulated score on bottom line (default off).
 .lp silent\ \ 
 Suppress terminal beeps (default on).
 .lp sortpack
@@ -1114,9 +1223,10 @@ Show the elapsed game time in turns on bottom line (default off).
 Draw a tombstone graphic upon your death (default on).
 .lp verbose
 Provide more commentary during the game (default on).
-.pg
-In some versions, options may be set in a configuration file
-on disk as well as from NETHACKOPTIONS.
+.lp windowtype
+Select which windowing system to use, such as ``tty'' or ``X11''
+(default depends on version).
+Cannot be set with the `O' command.
 
 .hn 1
 Scoring
@@ -1140,7 +1250,7 @@ live, or quit and stop with whatever you have.  If you quit, you keep
 all your gold, but if you swing and live, you might find more.
 .pg
 If you just want to see what the current top players/games list is, you
-can type \fBnethack -s all\fP.
+can type \fBnethack -s all\fP on most versions.
 
 .hn 1
 Explore mode
@@ -1192,7 +1302,6 @@ producing ST Hack 1.03.
 incorporating many of the added features, and produced NetHack 1.4.
 He then coordinated a cast of thousands in enhancing and debugging
 NetHack 1.4 and released NetHack versions 2.2 and 2.3.
-2.3.
 .pg
 Later, Mike coordinated a major rewrite of the game, heading a
 team which included \fBKen Arromdee\fP, \fBJean-Christophe Collet\fP, \fBSteve
@@ -1210,6 +1319,36 @@ overlay code for PC NetHack 3.0.  \fBJohnny Lee\fP ported
 NetHack 3.0 to the Macintosh.  Along with various other Dungeoneers, they
 continued to enhance the PC, Macintosh, and Amiga ports through the later
 revisions of 3.0.
+.pg
+Headed by \fBMike Stephenson\fP and coordinated by \fBIzchak Miller\fP and
+\fBJanet Walz\fP, the development team which now included \fBKen Arromdee\fP,
+\fBDavid Cohrs\fP, \fBJean-Christophe Collet\fP, \fBKevin Darcy\fP,
+\fBMatt Day\fP, \fBTimo Hakulinen\fP, \fBSteve Linhart\fP, \fBDean Luick\fP,
+\fBPat Rankin\fP, \fBEric Raymond\fP, and \fBEric Smith\fP undertook a radical
+revision of 3.0.  They re-structured the game's design, and re-wrote major
+parts of the code.  They added multiple dungeons, a new display, special
+individual character quests, a new endgame and many other new features, and
+produced NetHack 3.1.
+.pg
+\fBKen Lorber\fP, \fBGregg Wonderly\fP and \fBGreg Olson\fP, with help
+from \fBRichard Addison\fP, \fBMike Passaretti\fP, and \fBOlaf Seibert\fP,
+developed NetHack 3.1 for the Amiga.
+.pg
+\fBNorm Meluch\fP and \fBKevin Smolkowski\fP, with help from
+\fBCarl Schelin\fP, \fBStephen Spackman\fP, \fBSteve VanDevender\fP,
+and \fBPaul Winner\fP, ported NetHack 3.1 to the PC.
+.pg
+\fBJon Watte\fP, with help from \fBRoss Brown\fP, \fBMike Engber\fP,
+\fBDavid Hairston\fP, \fBMichael Hamel\fP, \fBJonathan Handler\fP,
+\fBJohnny Lee\fP, \fBTim Lennan\fP, \fBRob Menke\fP, \fBAndy Swanson\fP, and
+especially from \fBHao-yang Wang\fP, developed NetHack 3.1 for the Macintosh.
+.pg
+\fBTimo Hakulinen\fP ported NetHack 3.1 to OS/2.  \fBEric Smith\fP
+ported NetHack 3.1 to the Atari.  \fBPat Rankin\fP, with help from
+\fBJoshua Delahunty\fP, is responsible for the VMS version of NetHack 3.1.
+.pg
+\fBDean Luick\fP, with help from \fBDavid Cohrs\fP, developed NetHack
+3.1 for X11.
 
 .pg
 From time to time, some depraved individual out there in netland sends a
@@ -1221,23 +1360,29 @@ in this, the list of Dungeoneers:
 .TS S
 center;
 c c c.
-Richard Addison	Bruce Holloway	Mike Passaretti
-Tom Almy	Richard P. Hughey	Pat Rankin
-Ken Arromdee	Ari Huttunen	Eric S. Raymond
-Eric Backus	Del Lamb	John Rupley
-John S. Bien	Greg Laskin	Olaf Seibert
-Ralf Brown	Johnny Lee	Kevin Sitze
-Jean-Christophe Collet	Merlyn LeRoy	Eric R. Smith
-Steve Creps	Steve Linhart	Kevin Smolkowski
-Kevin Darcy	Ken Lorber	Michael Sokolov
-Matthew Day	Benson I. Margulies	Stephen Spackman
-Joshua Delahunty	Pierre Martineau	Andy Swanson
-Jochen Erwied	Roland McGrath	Kevin Sweet
-David Gentzel	Norm Meluch	Scott R. Turner
-Mark Gooderum	Bruce Mewborne	Janet Walz
-David Hairston	Izchak Miller	Jon Watte
-Timo Hakulinen	Gil Neiger	Tom West
-Eric Hendrickson	Greg Olson	Gregg Wonderly
+Richard Addison	Eric Hendrickson	Mike Passaretti
+Tom Almy	Bruce Holloway	Pat Rankin
+Ken Arromdee	Richard P. Hughey	Eric S. Raymond
+Eric Backus	Ari Huttunen	Frederick Roeber
+John S. Bien	John Kallen	John Rupley
+Ralf Brown	Del Lamb	Carl Schelin
+Ross Brown	Greg Laskin	Olaf Seibert
+David Cohrs	Johnny Lee	Kevin Sitze
+Jean-Christophe Collet	Tim Lennan	Eric R. Smith
+Steve Creps	Merlyn LeRoy	Kevin Smolkowski
+Kevin Darcy	Steve Linhart	Michael Sokolov
+Matthew Day	Ken Lorber	Stephen Spackman
+Joshua Delahunty	Dean Luick	Andy Swanson
+Bill Dyer	Benson I. Margulies	Kevin Sweet
+Mike Engber	Pierre Martineau	Scott R. Turner
+Jochen Erwied	Roland McGrath	Steve VanDevender
+Mike Gallop	Norm Meluch	Janet Walz   
+David Gentzel	Rob Menke	Hao-yang Wang
+Mark Gooderum	Deron Meranda	Jon Watte
+David Hairston	Bruce Mewborne	Tom West
+Timo Hakulinen	Izchak Miller	Paul Winner
+Michael Hamel	Gil Neiger	Gregg Wonderly
+Jonathan Handler	Greg Olson
 .TE
 .ed
 

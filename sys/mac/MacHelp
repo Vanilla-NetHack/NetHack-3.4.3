@@ -1,85 +1,98 @@
-                             Macintosh Nethack Primer
+            Macintosh-specific help file for NetHack 3.1
 
-Movement
+The following are options, features, or concerns specific to the
+Macintosh port of NetHack 3.1.  Bug reports, suggestions, comments,
+and so on, should be addressed to:
 
-        y k u           7 8 9                 UP              the mouse
-         \|/             \|/                  |               cursor shows
-        h-.-l           4-.-6           LEFT<- ->RIGHT        which way
-         /|\             /|\                  |               you'll move
-        b j n           1 2 3                DOWN             when clicked.
-       keyboard       numberpad          cursor keys          mouse click
+To: nethack-bugs@linc.cis.upenn.edu
+Subject: Mac NetHack 3.1
 
-Move commands and modifiers:
-yuhjklbn: go one step in specified direction
-YUHJKLBN: go in specified direction until you
-          hit a wall or run into something.
-[CTRL]<dir>,
-g<dir>:   run in direction <dir> until something
-          interesting is seen.
-[SHIFT]<dir>,
-G<dir>:   same, except a branching corridor isn't considered
-              interesting.
-m<dir>:   move without picking up objects.
-
-For all Macintosh keyboards the [command] key (apple or pretzel key)
-functions as the [control] key and the [~] key functions as the [escape]
-key. The normal [control] and [escape] keys are also supported.
-
-The Number Pad
-When the window title shows "[MOVE]", the number keys may also be used
-to move your character, otherwise they act as a numeric keypad.
-
-The '5' key on the numberpad invokes the "open door" command.
-The '0' key on the numberpad invokes the "do inventory" command.
-
-The 'g', 'G', '[SHIFT]', [CTRL] and 'm' modifiers may also be used with
-the numberpad and the cursor keys.
-
-Press the clear key (or Num Lock) on the number pad to enable or disable
-using the number pad for movement.
-
-The Cursor
-Although NetHack was meant to be played from a keyboard, on the Macintosh
-you can essentially play NetHack using the mouse. The mouse cursor shows
-which direction you will try to move if you press the mouse button when
-the mouse is in the Nethack window. Of course, if you're confused this may
-be different. You may use the 'g', 'G', '[SHIFT]' and 'm' modifiers with
-the mouse button, too. Note that [SHIFT]-clicking on the spot where you're
-standing will "look" at the objects piled there. Holding down the mouse
-button will, after a delay, cause repeated moves in the indicated direction.
-
-The cursor will at times also indicate your current state of well-being.
-These auxiliary cursors may look better on a non-inverted screen (they
-look best against the standard white Macintosh background). The cursor
-madness can be controlled from the "Set Options" dialog (see below).
-
-Alerts
-Occasionally a mac alert will appear in response to some action of yours.
-These mac alerts typically require a "yes" or "no" (or alternate) response.
-You can accept the default response button (indicated by a surrounding
-hilite) by clicking on that button, hitting return or typing the first
-letter of that button (i.e. y for yes). The alternate response(s) can be
-chosen by clicking on them or typing their first letter, appropriately.
-
-Macintosh-specific Options
-MultiFinder AutoZoom: when enabled shrinks the NetHack window to icon size
-when the game is context-swapped out and restores the window upon return.
-
-Alternative Cursors: when enabled allows the standard NetHack arrow cursor
-set to be replaced by "hands" while blind a/o "strange" cursors while
-hallucinating, if not blind, and so on. This does not affect the randomly
-oriented cursors that appear when you're confused or stunned. A fatal
-skull-n-crossbones cursor set will appear if you become deathly sick.
-
-The other NetHack options are described elsewhere under the "?" command.
-The names may be slightly different on the options dialog.
-
-Miscellaneous
-The option key is the meta-key. For option-n, press option-shift-n and
-for option-u, press option-shift-u.
-
-Bug Reports
-Comments, questions, problems, etc. should be directed to (InterNet):
-nethack-bugs@linc.cis.upenn.edu
+Please include your machine-type, system software version and other
+relevant information (i.e. system extensions, monitor, accelerators
+and so on).
 
 
+=== Configuration of a playground
+    NetHack 3.1 is packaged in a Dungeon Folder which includes:
+    NetHack - the application file itself.
+    NetHack Defaults - text file for default option settings.
+    miscellaneous text files - Record and logfile.  logfile
+        will be created if it doesn't exist.
+    various special level files (with a ".lev" suffix).
+    various help and other utility NetHack documents.
+
+    During play another file type appears:
+    player level files (labelled "iName.n", i is a constant number,
+        Name is the player name and n is the dungeon level).
+
+    Two other types of files will appear in the Dungeon Folder
+        as a result of playing NetHack:
+    bones files (of previously deceased players).
+    saved games (labelled "save/iName", i is a number, same as above,
+        and Name is the player name).
+
+    The following files or file types may be thrown away:
+    logfile - if it becomes too large.  A new one will be generated.
+    player level files _not_ belonging to a game in progress.
+        Alternatively, these files may be processed by a utility
+        application, Recover (not included in this distribution).
+    Old bones files and saved games.
+
+=== Resuming a saved game
+    Double-click (or open) the desired saved game file or open NetHack
+        and answer the "Who are you?" dialog with the player name of
+        the saved game in the Dungeon Folder.
+
+=== Windows
+    Dungeon Map, Message and Status are the essential windows used
+        for play.  As needed, Info windows are generated and may be
+        dismissed (clicking the close box or hitting the space bar
+        when that window is frontmost) at any time.  Special inventory
+        and list windows also appear in the front from time to time
+        and are dismissed by hitting the space bar (or Return or
+        Enter keys).  Hitting the ESCape key will dismiss a window
+        without scrolling to the end.
+
+    The Extended command "Window Cleanup" may be used to restore the
+        the startup sizes and locations of the essential windows.  The
+        window positions are saved in a file labelled "NetHack Windows"
+        in the appropriate preferences folder.
+
+=== Default options
+    The following options are specific to the Macintosh port:
+    MACgraphics  - use enhanced dungeon map symbols [TRUE]
+    large_font   - use 12 point font instead of 9 point font [FALSE]
+    popup_dialog - use real dialogs for question prompts [FALSE]
+
+    large_font is currently a pre-game option and has no effect
+        after the Dungeon Map, Message and Status windows are created.
+
+    Default options may be set by editing the NetHack Defaults text
+        file (possibly using TeachText or your favorite editor).
+        Unix(tm)-style notation is used, as in:
+    OPTIONS=name:Arnold,time,!tombstone
+
+    See option help (?f or ?g) for more details.
+
+=== Movement by mouse
+    The shape (direction) of the cursor over the Dungeon Map window,
+    typically, indicates the direction that you desire to move in when
+    the mouse is clicked.  Modifier keys affect mouse-movement in the
+    same way that they affect keyboard movement.  Clicking on yourself
+    means rest one turn and Shift-clicking on yourself means "open door"
+    in the subsequently indicated direction.
+
+=== Sounds
+    Real sounds (resources) have been added for various instruments.
+    The option "silent" [FALSE] controls whether or not a sound will
+    be heard when an instrument is applied.
+
+=== Debugging-Mode
+    Open NetHack and answer "wizard" to the "Who are you?" dialog.
+    The debug-mode (wizard-mode) commands are then listed in the
+    help menu, ?k.
+
+    WARNING: This mode is only intended for developers and others
+    interested in characterizing bugs.  Using this mode for other
+    purposes will have confusing results and may significantly
+    decrease your enjoyment of the game!

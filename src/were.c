@@ -1,8 +1,8 @@
-/*	SCCS Id: @(#)were.c	3.0	88/07/06
+/*	SCCS Id: @(#)were.c	3.1	93/01/17	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
-#include	"hack.h"
+#include "hack.h"
 
 #ifdef OVL0
 
@@ -19,7 +19,7 @@ register struct monst *mon;
 		    new_were(mon);
 		    if(mons[pm].msound == MS_BARK && flags.soundok)
 			You("hear a %s howling at the moon.",
-			      pm == PM_WEREJACKAL ? "jackal" : "wolf");
+			    pm == PM_HUMAN_WEREJACKAL ? "jackal" : "wolf");
 		}
 	    } else if(!rn2(30) || Protection_from_shape_changers) new_were(mon);
 }
@@ -34,13 +34,13 @@ counter_were(pm)
 int pm;
 {
 	switch(pm) {
-	    case PM_WEREWOLF:	return(PM_WOLFWERE);
-	    case PM_WOLFWERE:	return(PM_WEREWOLF);
-	    case PM_WEREJACKAL:	return(PM_JACKALWERE);
-	    case PM_JACKALWERE:	return(PM_WEREJACKAL);
-	    case PM_WERERAT:	return(PM_RATWERE);
-	    case PM_RATWERE:	return(PM_WERERAT);
-	    default:		return(0);
+	    case PM_WEREWOLF:	      return(PM_HUMAN_WEREWOLF);
+	    case PM_HUMAN_WEREWOLF:   return(PM_WEREWOLF);
+	    case PM_WEREJACKAL:	      return(PM_HUMAN_WEREJACKAL);
+	    case PM_HUMAN_WEREJACKAL: return(PM_WEREJACKAL);
+	    case PM_WERERAT:	      return(PM_HUMAN_WERERAT);
+	    case PM_HUMAN_WERERAT:    return(PM_WERERAT);
+	    default:		      return(0);
 	}
 }
 
@@ -58,13 +58,24 @@ register struct monst *mon;
 
 	if(canseemon(mon))
 	    pline("%s changes into a %s.", Monnam(mon),
-			Hallucination ? rndmonnam() : mons[pm].mname);
+			Hallucination ? rndmonnam() :
+			is_human(&mons[pm]) ? "human" :
+			mons[pm].mname+4);
 
 	mon->data = &mons[pm];
+	if (mon->msleep || !mon->mcanmove) {
+	    /* transformation wakens and/or revitalizes */
+	    mon->msleep = 0;
+	    mon->mfrozen = 0;	/* not asleep or paralyzed */
+	    mon->mcanmove = 1;
+	}
 	/* regenerate by 1/4 of the lost hit points */
 	mon->mhp += (mon->mhpmax - mon->mhp) / 4;
-	unpmon(mon);
-	pmon(mon);		/* display new appearance */
+	newsym(mon->mx,mon->my);
+#ifdef MUSE
+	mon_break_armor(mon);
+	possibly_unwield(mon);
+#endif
 }
 
 boolean
@@ -82,15 +93,15 @@ register boolean yours;
 	   switch(pm) {
 
 		case PM_WERERAT:
-		case PM_RATWERE:
+		case PM_HUMAN_WERERAT:
 			typ = rn2(3) ? PM_SEWER_RAT : rn2(3) ? PM_GIANT_RAT : PM_RABID_RAT ;
 			break;
 		case PM_WEREJACKAL:
-		case PM_JACKALWERE:
+		case PM_HUMAN_WEREJACKAL:
 			typ = PM_JACKAL;
 			break;
 		case PM_WEREWOLF:
-		case PM_WOLFWERE:
+		case PM_HUMAN_WEREWOLF:
 			typ = rn2(5) ? PM_WOLF : PM_WINTER_WOLF ;
 			break;
 		default:
@@ -107,13 +118,16 @@ register boolean yours;
 #ifdef POLYSELF
 void
 you_were() {
+	char qbuf[80];
 	if(u.umonnum == u.ulycn) return;
 	if(Polymorph_control) {
-	    pline("Do you want to change into a %s? ", mons[u.ulycn].mname);
-	    if(yn() == 'n') return;
+	    Sprintf(qbuf,"Do you want to change into a %s? ", mons[u.ulycn].mname+4);
+	    if(yn(qbuf) == 'n') return;
 	}
 	(void) polymon(u.ulycn);
 }
 #endif
 
 #endif /* OVLB */
+
+/*were.c*/

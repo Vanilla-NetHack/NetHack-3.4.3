@@ -1,17 +1,34 @@
-/*	SCCS Id: @(#)tradstdc.h	3.0	89/07/12
+/*	SCCS Id: @(#)tradstdc.h	3.1	92/04/01	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #ifndef TRADSTDC_H
-#define	TRADSTDC_H
+#define TRADSTDC_H
 
-#ifdef DUMB
-#undef void
-#define void	int
+#if defined(DUMB) && !defined(NOVOID)
+#define NOVOID
 #endif
 
-#ifdef APOLLO	/* the Apollo C compiler claims to be __STDC__, but isn't */
-#undef __STDC__
+#ifdef NOVOID
+#define void int
+#endif
+
+#if defined(__STDC__) && !defined(NOTSTDC)
+#define NHSTDC
+#endif
+
+#if defined(ultrix) && defined(__STDC__) && !defined(__LANGUAGE_C)
+/* Ultrix seems to be in a constant state of flux.  This check attempts to
+ * set up ansi compatibility if it wasn't set up correctly by the compiler.
+ */
+#ifdef mips
+#define __mips mips
+#endif
+
+#ifdef LANGUAGE_C
+#define __LANGUAGE_C LANGUAGE_C
+#endif
+
 #endif
 
 /*
@@ -32,11 +49,12 @@
 /* #define USE_VARARGS		/* use <varargs.h> instead of <stdarg.h> */
 /* #define USE_OLDARGS		/* don't use any variable argument facilites */
 
-#ifdef __STDC__
-# if defined(__GNUC__) && defined(VMS)
-#   define USE_OLDARGS          /* <stdarg.h> is missing for some versions */
-# endif
-# if !defined(USE_VARARGS) && !defined(USE_OLDARGS)
+#if defined(apollo)             /* Apollos have stdarg(3) but not stdarg.h */
+# define USE_VARARGS
+#endif
+
+#if defined(NHSTDC) || defined(ULTRIX_PROTO) || defined(MAC)
+# if !defined(USE_VARARGS) && !defined(USE_OLDARGS) && !defined(USE_STDARG)
 #   define USE_STDARG
 # endif
 #endif
@@ -52,6 +70,9 @@
 # define VA_ARGS		the_args
 # define VA_START(x)		va_start(the_args, x)
 # define VA_END()		va_end(the_args)
+# if defined(ULTRIX_PROTO) && !defined(_VA_LIST_)
+#  define _VA_LIST_	/* prevents multiple def in stdio.h */
+# endif
 #else
 # ifdef USE_VARARGS
 #  include <varargs.h>
@@ -61,7 +82,7 @@
 		va_list the_args; typ1 var1; typ2 var2;
 #  define VA_ARGS		the_args
 #  define VA_START(x)		va_start(the_args)
-#  define VA_INIT(var1,typ1) 	var1 = va_arg(the_args, typ1)
+#  define VA_INIT(var1,typ1)	var1 = va_arg(the_args, typ1)
 #  define VA_NEXT(var1,typ1)	var1 = va_arg(the_args,typ1)
 #  define VA_END()		va_end(the_args)
 # else
@@ -78,11 +99,10 @@
 #endif
 #endif /* NEED_VARARGS */
 
+#if defined(NHSTDC) || defined(MSDOS) || defined(MAC) || defined(ULTRIX_PROTO)
 
-/* Unfortunately amiga aztec 5.0 doesn't handle prototyping chars correctly */
-#if (defined(__STDC__) && !defined(AZTEC_50)) || defined(MSDOS) || defined(THINKC4)
-
-/* Used for robust ANSI parameter forward declarations:
+/*
+ * Used for robust ANSI parameter forward declarations:
  * int VDECL(sprintf, (char *, const char *, ...));
  *
  * NDECL() is used for functions with zero arguments;
@@ -103,41 +123,130 @@
 #  define VDECL(f,p)	f()
 # endif
 
-# ifdef __TURBOC__	/* Cover for stupid Turbo C */
-#  define genericptr_t	void *
+/* generic pointer, always a macro; genericptr_t is usually a typedef */
+# define genericptr	void *
+
+# if defined(__TURBOC__) || (defined(ULTRIX_PROTO) && !defined(__GNUC__)) || defined(OS2_CSET2)
+/* Cover for stupid Turbo C */
+/* And Ultrix on a DECstation with 2.0 compiler, which coredumps on
+ *   typedef void * genericptr_t;
+ *   extern void a(void(*)(int, genericptr_t));
+ * Using the #define is OK for other compiler versions too.
+ */
+/* And IBM CSet/2.  The redeclaration of free hoses the compile. */
+#  define genericptr_t	genericptr
 # else
-typedef void *		genericptr_t;
-#  ifndef __STDC__
+#  if !defined(NHSTDC) && !defined(MAC)
 #   define const
 #   define signed
 #   define volatile
 #  endif
 # endif
 
-#else /* __STDC__ */	/* a "traditional" C  compiler */
+# if !defined(LATTICE) && !defined(MAC)
+		/* Lattice can't even PARSE the const below! */
+		/* MPW can parse but expects an identifier, not a keyword... */
+#  if defined(ULTRIX_PROTO) && !defined(NHSTDC) && !defined(const)
+#  define const		/* the system header files are *not* __STDC__ */
+#  endif
+#  if defined(apollo) && !defined(const)
+#  define const         /* too much trouble with printf(char *format, ...) */
+#  endif                 /* instead of printf(const char *format, ...) etc. */
+# endif
+
+#else /* NHSTDC */	/* a "traditional" C  compiler */
 
 # define NDECL(f)	f()
 # define FDECL(f,p)	f()
 # define VDECL(f,p)	f()
 
-# ifndef genericptr_t
-#  if defined(AMIGA) || defined(HPUX)
-typedef void *		genericptr_t;
-#  else
-typedef char *		genericptr_t;
-#  endif
+# if defined(AMIGA) || defined(HPUX) || defined(POSIX_TYPES) || defined(__DECC)
+#  define genericptr	void *
+# endif
+# ifndef genericptr
+#  define genericptr	char *
 # endif
 
-#ifndef AZTEC_50	/* Take out when aztec handles prototyping OK */
-# define const
+/*
+ * Traditional C compilers don't have "signed", "const", or "volatile".
+ */
 # define signed
+# define const
 # define volatile
+
+#endif /* NHSTDC */
+
+
+#ifndef genericptr_t
+typedef genericptr genericptr_t;	/* (void *) or (char *) */
 #endif
 
-#endif /* __STDC__ */
+
+/*
+ * According to ANSI, prototypes for old-style declarations must widen the
+ * arguments to int.  However, the MSDOS compilers accept shorter arguments
+ * (char, short, etc.) in prototypes and do typechecking with them.  Therefore
+ * this mess to allow the better typechecking while also allowing some
+ * prototypes for the ANSI compilers so people quit trying to fix the
+ * prototypes to match the standard and thus lose the typechecking.
+ */
+#if defined(MSDOS) && !defined(__TURBOC__) && !defined(__GO32__)
+#define UNWIDENED_PROTOTYPES
+#endif
+#if defined(AMIGA) && !defined(AZTEC_50)
+#define UNWIDENED_PROTOTYPES
+#endif
+#if defined(MAC) && !defined(THINK_C)
+#define UNWIDENED_PROTOTYPES
+#endif
+
+#if defined(ULTRIX_PROTO) && defined(ULTRIX_CC20)
+#define UNWIDENED_PROTOTYPES
+#endif
+#if defined(apollo)
+#define UNWIDENED_PROTOTYPES
+#endif
+
+#ifndef UNWIDENED_PROTOTYPES
+# if defined(NHSTDC) || defined(__TURBOC__) || defined(ULTRIX_PROTO) || defined(THINK_C)
+# define WIDENED_PROTOTYPES
+# endif
+#endif
+
+#if defined(sgi) && !defined(__GNUC__)
+/*
+ * As of IRIX 4.0.1, /bin/cc claims to be an ANSI compiler, but it thinks
+ * it's impossible for a prototype to match an old-style definition with
+ * unwidened argument types.  Thus, we have to turn off all NetHack
+ * prototypes, and avoid declaring several system functions, since the system
+ * include files have prototypes and the compiler also complains that
+ * prototyped and unprototyped declarations don't match.
+ */
+# undef NDECL
+# undef FDECL
+# undef VDECL
+# define NDECL(f)	f()
+# define FDECL(f,p)	f()
+# define VDECL(f,p)	f()
+#endif
+
 
 #ifdef __HC__	/* MetaWare High-C defaults to unsigned chars */
 # undef signed
 #endif
 
-#endif /* TRADSTDC_H /**/
+
+/*
+ * Allow gcc2 to check parameters of printf-like calls with -Wformat;
+ * append this to a prototype declaration (see pline() in extern.h).
+ */
+#ifdef __GNUC__
+# if __GNUC__ >= 2
+#define PRINTF_F(f,v) __attribute__ ((format (printf, f, v)))
+# endif
+#endif
+#ifndef PRINTF_F
+#define PRINTF_F(f,v)
+#endif
+
+#endif /* TRADSTDC_H */

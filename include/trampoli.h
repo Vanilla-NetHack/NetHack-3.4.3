@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)trampoli.h 	3.0	90/05/31	  */
+/*	SCCS Id: @(#)trampoli.h 	3.1	92/10/06	  */
 /* Copyright (c) 1989, by Norm Meluch and Stephen Spackman	  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -23,6 +23,7 @@
 #ifdef EXPLORE_MODE
 #define enter_explore_mode() enter_explore_mode_()
 #endif /* EXPLORE_MODE */
+#define doprev_message() doprev_message_()
 #define timed_occupation() timed_occupation_()
 #if defined(WIZARD) || defined(EXPLORE_MODE)
 #define wiz_attributes()   wiz_attributes_()
@@ -37,6 +38,8 @@
 #define wiz_wish()         wiz_wish_()
 #endif
 
+/* ### display.c ### */
+#define doredraw() doredraw_()
 
 /* ### do.c ### */
 #define doddrop()  doddrop_()
@@ -72,6 +75,10 @@
 #define take_off()    take_off_()
 
 
+/* ### dogmove.c ### */
+#define wantdoor(x, y, dummy) wantdoor_(x, y, dummy)
+
+
 /* ### dokick.c ### */
 #define dokick() dokick_()
 
@@ -82,7 +89,7 @@
 
 /* ### eat.c ### */
 #define Hear_again() Hear_again_()
-#define Meatdone()   Meatdone_()
+#define eatmdone()   eatmdone_()
 #define doeat()      doeat_()
 #define eatfood()    eatfood_()
 #define opentin()    opentin_()
@@ -103,6 +110,10 @@
 #define doengrave() doengrave_()
 
 
+/* ### fountain.c ### */
+#define gush(x, y, poolcnt) gush_(x, y, poolcnt)
+
+
 /* ### hack.c ### */
 #define dopickup() dopickup_()
 #define identify(x) identify_(x)
@@ -119,6 +130,7 @@
 #define doprtool()   doprtool_()
 #define doprwep()    doprwep_()
 #define dotypeinv()  dotypeinv_()
+#define doorganize() doorganize_()
 
 
 /* ### ioctl.c ### */
@@ -138,12 +150,16 @@
 
 
 /* ### mklev.c ### */
-#define comp(x, y)  comp_(x, y)
+#define do_comp(x, y)  comp_(x, y)
 
 
 /* ### mondata.c ### */
 /* See comment in trampoli.c before uncommenting canseemon. */
 /* #define canseemon(x)	canseemon_(x) */
+
+
+/* ### muse.c ### */
+#define mbhitm(x, y) mbhitm_(x, y)
 
 
 /* ### o_init.c ### */
@@ -153,6 +169,7 @@
 /* ### objnam.c ### */
 #define doname(x)   doname_(x)
 #define xname(x)    xname_(x)
+
 
 /* ### options.c ### */
 #define doset()          doset_()
@@ -164,17 +181,20 @@
 #define dohistory()  dohistory_()
 #ifdef UNIX
 #define intruph()    intruph_()
-# ifdef SHELL
-#define dosh()       dosh_()
-# endif /* SHELL */
 #endif /* UNIX */
 #define dowhatdoes() dowhatdoes_()
 #define dowhatis()   dowhatis_()
+#define doquickwhatis()   doquickwhatis_()
+
+
+/* ### pcsys.c ### */
+#ifdef SHELL
+#define dosh()       dosh_()
+#endif /* SHELL */
 
 
 /* ### pickup.c ### */
 #define ck_bag(x)        ck_bag_(x)
-#define ck_container(x)  ck_container_(x)
 #define doloot()         doloot_()
 #define in_container(x)  in_container_(x)
 #define out_container(x) out_container_(x)
@@ -186,19 +206,15 @@
 
 
 /* ### pray.c ### */
-#ifdef THEOLOGY
-#define dopray()      dopray_()
-#define dosacrifice() dosacrifice_()
-#endif /* THEOLOGY */
 #define doturn()      doturn_()
-
-
-/* ### pri.c ### */
-#define doredraw() doredraw_()
+#define dopray()      dopray_()
+#define prayer_done() prayer_done_()
+#define dosacrifice() dosacrifice_()
 
 
 /* ### read.c ### */
-#define doread() doread_()
+#define doread()	   doread_()
+#define set_lit(x, y, val) set_lit_(x, y, val)
 
 
 /* ### save.c ### */
@@ -206,8 +222,10 @@
 
 
 /* ### search.c ### */
-#define doidtrap() doidtrap_()
-#define dosearch() dosearch_()
+#define doidtrap()	     doidtrap_()
+#define dosearch()	     dosearch_()
+#define findone(zx, zy, num) findone_(zx, zy, num)
+#define openone(zx, zy, num) openone_(zx, zy, num)
 
 
 /* ### shk.c ### */
@@ -223,36 +241,86 @@
 
 
 /* ### spell.c ### */
-#ifdef SPELLS
 #define learn()    learn_()
 #define docast()   docast_()
 #define dovspell() dovspell_()
-#endif
 
 
 /* ### steal.c ### */
 #define stealarm() stealarm_()
 
 
-/* ### topl.c ### */
-#define doredotopl() doredotopl_()
-
 /* ### trap.c ### */
 #define dotele()     dotele_()
 #define dountrap()   dountrap_()
 #define float_down() float_down_()
 
+
 /* ### version.c ### */
 #define doversion()    doversion_()
 #define doextversion() doextversion_()
 
+
 /* ### wield.c ### */
 #define dowield() dowield_()
+
 
 /* ### zap.c ### */
 #define bhitm(x, y) bhitm_(x, y)
 #define bhito(x, y) bhito_(x, y)
 #define dozap()     dozap_()
+
+
+/* ### getline.c ### */
+#define tty_getlin(x,y)			tty_getlin_(x,y)
+#ifdef COM_COMPL
+#define tty_get_ext_cmd(x)		tty_get_ext_cmd_(x)
+#endif /* COM_COMPL */
+
+
+/* ### termcap.c ### */
+#define tty_nhbell()			tty_nhbell_()
+#define tty_number_pad(x)		tty_number_pad_(x)
+#define tty_delay_output()		tty_delay_output_()
+#define tty_start_screen()		tty_start_screen_()
+#define tty_end_screen()		tty_end_screen_()
+
+
+/* ### topl.c ### */
+#define tty_doprev_message()		tty_doprev_message_()
+#define tty_yn_function(x,y,z)		tty_yn_function_(x,y,z)
+
+
+/* ### wintty.c ### */
+#define tty_init_nhwindows()		tty_init_nhwindows_()
+#define tty_player_selection()		tty_player_selection_()
+#define tty_askname()			tty_askname_()
+#define tty_get_nh_event()		tty_get_nh_event_()
+#define tty_exit_nhwindows(x)		tty_exit_nhwindows_(x)
+#define tty_suspend_nhwindows(x)	tty_suspend_nhwindows_(x)
+#define tty_resume_nhwindows()		tty_resume_nhwindows_()
+#define tty_create_nhwindow(x)		tty_create_nhwindow_(x)
+#define tty_clear_nhwindow(x)		tty_clear_nhwindow_(x)
+#define tty_display_nhwindow(x,y)	tty_display_nhwindow_(x,y)
+#define tty_destroy_nhwindow(x)		tty_destroy_nhwindow_(x)
+#define tty_curs(x,y,z)			tty_curs_(x,y,z)
+#define tty_putstr(x,y,z)		tty_putstr_(x,y,z)
+#define tty_display_file(x,y)		tty_display_file_(x,y)
+#define tty_start_menu(x)		tty_start_menu_(x)
+#define tty_add_menu(a,b,c,d)		tty_add_menu_(a,b,c,d)
+#define tty_end_menu(a,b,c,d)		tty_end_menu_(a,b,c,d)
+#define tty_select_menu(x)		tty_select_menu_(x)
+#define tty_update_inventory()		tty_update_inventory_()
+#define tty_mark_synch()		tty_mark_synch_()
+#define tty_wait_synch()		tty_wait_synch_()
+#ifdef CLIPPING
+#define tty_cliparound(x,y)		tty_cliparound_(x,y)
+#endif
+#define tty_print_glyph(a,b,c,d)	tty_print_glyph_(a,b,c,d)
+#define tty_raw_print(x)		tty_raw_print_(x)
+#define tty_raw_print_bold(x)		tty_raw_print_bold_(x)
+#define tty_nhgetch()			tty_nhgetch_()
+#define tty_nh_poskey(x,y,z)		tty_nh_poskey_(x,y,z)
 
 #endif /* OVERLAY */
 

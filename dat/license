@@ -1,8 +1,8 @@
-		    NETHACK GENERAL PUBLIC LICENSE
-		 (Copyright 1989, 1990 M. Stephenson)
+                    NETHACK GENERAL PUBLIC LICENSE
+                    (Copyright 1989 M. Stephenson)
 
-	       (Based on the BISON general public license,
-		   copyright 1988 Richard M. Stallman)
+               (Based on the BISON general public license,
+                   copyright 1988 Richard M. Stallman)
 
  Everyone is permitted to copy and distribute verbatim copies of this
  license, but changing it is not allowed.  You can also use this wording to
@@ -36,7 +36,7 @@ the following terms which say what you must do to be allowed to distribute or
 change NetHack.
 
 
-			COPYING POLICIES
+                        COPYING POLICIES
 
   1. You may copy and distribute verbatim copies of NetHack source code as
 you receive it, in any medium, provided that you keep intact the notices on
@@ -87,10 +87,10 @@ from you with this License Agreement will not have their licenses terminated
 so long as such parties remain in full compliance.
 
 
-Stated plainly:  You are prohibited by the terms of this License Agreement from
-using NetHack for gainful purposes.  You are permitted to modify NetHack, or 
-otherwise use parts of NetHack, provided that you comply with the conditions 
-specified above; in particular, your modified NetHack or program containing
-parts of NetHack must remain freely available as provided in this License
-Agreement.  In other words, go ahead and share NetHack, but don't try to stop
-anyone else from sharing it farther.
+Stated plainly:  You are prohibited by the terms of this License Agreement
+from using NetHack for gainful purposes.  You are permitted to modify
+NetHack, or otherwise use parts of NetHack, provided that you comply with
+the conditions specified above; in particular, your modified NetHack or
+program containing parts of NetHack must remain freely available as provided
+in this License Agreement.  In other words, go ahead and share NetHack, but
+don't try to stop anyone else from sharing it farther.

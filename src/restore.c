@@ -1,52 +1,39 @@
-/*	SCCS Id: @(#)restore.c	3.0	88/10/25
+/*	SCCS Id: @(#)restore.c	3.1	93/01/23	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
 #include "lev.h"
+#include "termcap.h" /* for TERMLIB and ASCIIGRAPH */
 
-#ifdef WORM
-#include "wseg.h"
+#ifdef MICRO
+extern int dotcnt;	/* shared with save */
 #endif
 
-static void FDECL(stuff_objs, (struct obj *));
+#ifdef ZEROCOMP
+static int NDECL(mgetc);
+#endif
 static void NDECL(find_lev_obj);
 #ifndef NO_SIGNAL
 static void NDECL(inven_inuse);
 #endif
+static void FDECL(restlevchn, (int));
+static void FDECL(restdamage, (int,BOOLEAN_P));
 static struct obj * FDECL(restobjchn, (int,BOOLEAN_P));
 static struct monst * FDECL(restmonchn, (int,BOOLEAN_P));
 static void FDECL(restgenoinfo, (int));
+static boolean FDECL(restgamestate, (int, unsigned int *));
+static int FDECL(restlevelfile, (int,XCHAR_P));
+
+#ifdef MULDGN
+#include "quest.h"
+#endif
 
 boolean restoring = FALSE;
 #ifdef TUTTI_FRUTTI
 static struct fruit NEARDATA *oldfruit;
 #endif
 static long NEARDATA omoves;
-
-/*
- * "stuff" objects back into containers (relink the fcobj list).
- */
-static void
-stuff_objs(cobj)
-register struct obj *cobj;
-{
-	register struct obj *otmp, *otmp2;
-
-	for(; cobj; cobj = cobj->nobj)
-	    if(Is_container(cobj))
-
-		for(otmp = cobj->nobj;
-		    otmp && otmp->cobj == (struct obj *) -1; otmp = otmp2) {
-
-		    otmp2 = otmp->nobj;
-
-		    otmp->cobj = cobj;
-		    cobj->nobj = otmp2;
-		    otmp->nobj = fcobj;
-		    fcobj = otmp;
-		}
-}
 
 /* Recalculate level.objects[x][y], since this info was not saved. */
 static void
@@ -62,13 +49,13 @@ find_lev_obj()
 	/* Reverse the entire fobj chain, which is necessary so that we can
 	 * place the objects in the proper order.
 	 */
-	while(otmp = fobj) {
+	while ((otmp = fobj) != 0) {
 		fobj = otmp->nobj;
 		otmp->nobj = fobjtmp;
 		fobjtmp = otmp;
 	}
 	/* Set level.objects (as well as reversing the chain back again) */
-	while(otmp = fobjtmp) {
+	while ((otmp = fobjtmp) != 0) {
 		place_object(otmp, otmp->ox, otmp->oy);
 		fobjtmp = otmp->nobj;
 		otmp->nobj = fobj;
@@ -87,9 +74,14 @@ inven_inuse()
 
 	for(otmp = invent; otmp; otmp = otmp2) {
 		otmp2 = otmp->nobj;
-		if(otmp->olet != ARMOR_SYM && otmp->olet != WEAPON_SYM
-			&& otmp->otyp != PICK_AXE && otmp->otyp != UNICORN_HORN
-			&& otmp->in_use) {
+		if(otmp->in_use) {
+			/* in_use and oldcorpse share a bit, but we don't
+			 * want nasty messages for old corpses --
+			 * remove_cadavers() will clean them up nicely
+			 */
+			if (otmp->otyp == CORPSE &&
+					mons[otmp->corpsenm].mlet == S_TROLL)
+				continue;
 			pline("Finishing off %s...", xname(otmp));
 			useup(otmp);
 		}
@@ -97,18 +89,87 @@ inven_inuse()
 }
 #endif
 
+static void
+restlevchn(fd)
+register int fd;
+{
+	int cnt;
+	s_level	*tmplev, *x;
+
+	sp_levchn = (s_level *) 0;
+	mread(fd, (genericptr_t) &cnt, sizeof(int));
+	for(; cnt > 0; cnt--) {
+
+	    tmplev = (s_level *)alloc(sizeof(s_level));
+	    mread(fd, (genericptr_t) tmplev, sizeof(s_level));
+	    if(!sp_levchn) sp_levchn = tmplev;
+	    else {
+
+		for(x = sp_levchn; x->next; x = x->next);
+		x->next = tmplev;
+	    }
+	    tmplev->next = (s_level *)0;
+	}
+}
+
+static void
+restdamage(fd, ghostly)
+int fd;
+boolean ghostly;
+{
+	int counter;
+	struct damage *tmp_dam;
+
+	mread(fd, (genericptr_t) &counter, sizeof(counter));
+	if (!counter)
+	    return;
+	tmp_dam = (struct damage *)alloc(sizeof(struct damage));
+	while (1) {
+	    char damaged_shops[5], *shp = NULL;
+
+	    mread(fd, (genericptr_t) tmp_dam, sizeof(*tmp_dam));
+	    if (ghostly)
+		tmp_dam->when += (monstermoves - omoves);
+	    Strcpy(damaged_shops,
+		   in_rooms(tmp_dam->place.x, tmp_dam->place.y, SHOPBASE));
+	    if (u.uz.dlevel) {
+		/* when restoring, there are two passes over the current
+		 * level.  the first time, u.uz isn't set, so neither is
+		 * shop_keeper().  just wait and process the damage on
+		 * the second pass.
+		 */
+		for (shp = damaged_shops; *shp; shp++) {
+		    struct monst *shkp = shop_keeper(*shp);
+
+		    if (shkp && inhishop(shkp) && repair_damage(shkp, tmp_dam))
+			break;
+		}
+	    }
+	    if (!shp || !*shp) {
+		tmp_dam->next = level.damagelist;
+		level.damagelist = tmp_dam;
+		tmp_dam = (struct damage *)alloc(sizeof(*tmp_dam));
+	    }
+	    if (!(--counter)) {
+		free((genericptr_t)tmp_dam);
+		return;
+	    }
+	}
+}
+
 static struct obj *
 restobjchn(fd, ghostly)
 register int fd;
 boolean ghostly;
 {
 	register struct obj *otmp, *otmp2;
-	register struct obj *first = 0;
+	register struct obj *first = (struct obj *)0;
 #ifdef TUTTI_FRUTTI
 	register struct fruit *oldf;
 #endif
 	int xl;
-#if defined(LINT) || defined(__GNULINT__)
+
+#if defined(LINT) || defined(GCC_WARN)
 	/* suppress "used before set" warning from lint */
 	otmp2 = 0;
 #endif
@@ -118,7 +179,8 @@ boolean ghostly;
 		otmp = newobj(xl);
 		if(!first) first = otmp;
 		else otmp2->nobj = otmp;
-		mread(fd, (genericptr_t) otmp, (unsigned) xl + sizeof(struct obj));
+		mread(fd, (genericptr_t) otmp,
+					(unsigned) xl + sizeof(struct obj));
 		if(!otmp->o_id) otmp->o_id = flags.ident++;
 #ifdef TUTTI_FRUTTI
 		if(ghostly && otmp->otyp == SLIME_MOLD) {
@@ -128,11 +190,20 @@ boolean ghostly;
 			else otmp->spe = fruitadd(oldf->fname);
 		}
 #endif
-	/* Ghost levels get object age shifted from old player's clock to
-	 * new player's clock.  Assumption: new player arrived immediately
-	 * after old player died.
-	 */
-		if (ghostly) otmp->age = monstermoves-omoves+otmp->age;
+		/* Ghost levels get object age shifted from old player's clock
+		 * to new player's clock.  Assumption: new player arrived
+		 * immediately after old player died.
+		 */
+		if (ghostly && otmp->otyp != OIL_LAMP
+				&& otmp->otyp != BRASS_LANTERN
+				&& otmp->otyp != CANDELABRUM_OF_INVOCATION
+				&& !Is_candle(otmp))
+			otmp->age = monstermoves-omoves+otmp->age;
+
+		/* get contents of the container */
+		if (Is_container(otmp) || otmp->otyp == STATUE)
+		    otmp->cobj = restobjchn(fd,ghostly);
+
 		otmp2 = otmp;
 	}
 	if(first && otmp2->nobj){
@@ -140,7 +211,6 @@ boolean ghostly;
 		otmp2->nobj = 0;
 	}
 
-	stuff_objs(first);
 	return(first);
 }
 
@@ -150,7 +220,7 @@ register int fd;
 boolean ghostly;
 {
 	register struct monst *mtmp, *mtmp2;
-	register struct monst *first = 0;
+	register struct monst *first = (struct monst *)0;
 	int xl;
 	struct permonst *monbegin;
 	boolean moved;
@@ -159,7 +229,7 @@ boolean ghostly;
 	mread(fd, (genericptr_t)&monbegin, sizeof(monbegin));
 	moved = (monbegin != mons);
 
-#if defined(LINT) || defined(__GNULINT__)
+#if defined(LINT) || defined(GCC_WARN)
 	/* suppress "used before set" warning from lint */
 	mtmp2 = 0;
 #endif
@@ -178,6 +248,11 @@ boolean ghostly;
 		}
 		if(mtmp->minvent)
 			mtmp->minvent = restobjchn(fd, ghostly);
+#ifdef MUSE
+		if (mtmp->mw) mtmp->mw = mtmp->minvent;	/* wield 1st obj in inventory */
+#endif
+		if (mtmp->isshk) restshk(mtmp);
+
 		mtmp2 = mtmp;
 	}
 	if(first && mtmp2->nmon){
@@ -192,116 +267,103 @@ restgenoinfo(fd)
 register int fd;
 {
 	register int i;
+	unsigned genolist[NUMMONS];
+
+	mread(fd, (genericptr_t) genolist, sizeof(genolist));
 
 	for (i = 0; i < NUMMONS; i++)
-		mread(fd, (genericptr_t) &(mons[i].geno), sizeof(unsigned));
+		mons[i].geno = genolist[i];
 }
 
-int
-dorecover(fd)
+static
+boolean
+restgamestate(fd, mid)
 register int fd;
+unsigned int *mid;
 {
-	register int nfd;
-	int tmp;		/* not a register ! */
-	xchar ltmp;
-	unsigned int mid;		/* idem */
 	struct obj *otmp;
+	int tmp;		/* not a register ! */
+	struct flag oldflags;
 #ifdef TUTTI_FRUTTI
 	struct fruit *fruit;
 #endif
-	struct flag oldflags;
 
-	oldflags = flags;
-
-#ifdef ZEROCOMP
-	minit();
-#endif
-	restoring = TRUE;
-	getlev(fd, 0, (xchar)0, FALSE);
 	invent = restobjchn(fd, FALSE);
-	for(otmp = invent; otmp; otmp = otmp->nobj)
-		if(otmp->owornmask)
-			setworn(otmp, otmp->owornmask);
-	fallen_down = restmonchn(fd, FALSE);
+	migrating_objs = restobjchn(fd, FALSE);
+	migrating_mons = restmonchn(fd, FALSE);
 	restgenoinfo(fd);
+
 	mread(fd, (genericptr_t) &tmp, sizeof tmp);
 #ifdef WIZARD
 	if(!wizard)
 #endif
 	    if(tmp != getuid()) {		/* strange ... */
-		(void) close(fd);
-		(void) unlink(SAVEF);
-#ifdef AMIGA_WBENCH
-		ami_wbench_unlink(SAVEF);
-#endif
-		(void) puts("Saved game was not yours.");
-		restoring = FALSE;
-		return(0);
+		pline("Saved game was not yours.");
+		return(FALSE);
 	    }
+
+	oldflags = flags;
 	mread(fd, (genericptr_t) &flags, sizeof(struct flag));
 	/* Some config file and command line OPTIONS take precedence over
 	 * those in save file.
 	 */
+#ifdef TERMLIB
 	flags.DECgraphics = oldflags.DECgraphics;
+#endif
+#ifdef ASCIIGRAPH
 	flags.IBMgraphics = oldflags.IBMgraphics;
-#if defined(MSDOS) && defined(DGK)
+#endif
+#ifdef MICRO
 	flags.rawio = oldflags.rawio;
-	flags.IBMBIOS = oldflags.IBMBIOS;
+	flags.BIOS = oldflags.BIOS;
 #endif
 #ifdef TEXTCOLOR
 	flags.use_color = oldflags.use_color;
+	flags.hilite_pet = oldflags.hilite_pet;
+#endif
+#ifdef MAC_GRAPHICS_ENV
+	flags.MACgraphics = oldflags.MACgraphics;
+	flags.large_font = oldflags.large_font;
 #endif
 	/* these come from the current environment; ignore saved values */
+	flags.window_inited = oldflags.window_inited;
+	flags.msg_history = oldflags.msg_history;
 	flags.echo = oldflags.echo;
 	flags.cbreak = oldflags.cbreak;
 
-	mread(fd, (genericptr_t) &dlevel, sizeof dlevel);
-	mread(fd, (genericptr_t) &maxdlevel, sizeof maxdlevel);
-	mread(fd, (genericptr_t) &moves, sizeof moves);
-	mread(fd, (genericptr_t) &monstermoves, sizeof monstermoves);
-	mread(fd, (genericptr_t) &wiz_level, sizeof wiz_level);
-	mread(fd, (genericptr_t) &medusa_level, sizeof medusa_level);
-	mread(fd, (genericptr_t) &bigroom_level, sizeof bigroom_level);
-#ifdef ORACLE
-	mread(fd, (genericptr_t) &oracle_level, sizeof oracle_level);
-#endif
-#ifdef REINCARNATION
-	mread(fd, (genericptr_t) &rogue_level, sizeof rogue_level);
-	if (dlevel==rogue_level)
-		(void) memcpy((genericptr_t)savesyms,
-			      (genericptr_t)showsyms, sizeof savesyms);
-#endif
-#ifdef STRONGHOLD
-	mread(fd, (genericptr_t) &stronghold_level, sizeof stronghold_level);
-	mread(fd, (genericptr_t) &tower_level, sizeof tower_level);
-	mread(fd, (genericptr_t) tune, sizeof tune);
-#  ifdef MUSIC
-	mread(fd, (genericptr_t) &music_heard, sizeof music_heard);
-#  endif
-#endif
-	mread(fd, (genericptr_t) &is_maze_lev, sizeof is_maze_lev);
 	mread(fd, (genericptr_t) &u, sizeof(struct you));
 	if(u.uhp <= 0) {
-	    (void) close(fd);
-	    (void) unlink(SAVEF);
-#ifdef AMIGA_WBENCH
-	    ami_wbench_unlink(SAVEF);
-#endif
-	    (void) puts("You were not healthy enough to survive restoration.");
-	    restoring = FALSE;
-	    return(0);
+	    You("were not healthy enough to survive restoration.");
+	    /* wiz1_level.dlevel is used by mklev.c to see if lots of stuff is
+	     * uninitialized, so we only have to set it and not the other stuff.
+	     */
+	    wiz1_level.dlevel = 0;
+	    u.uz.dnum = 0;
+	    u.uz.dlevel = 1;
+	    return(FALSE);
 	}
-#ifdef SPELLS
-	mread(fd, (genericptr_t) spl_book, 
+
+	/* don't do this earlier to avoid complicating abort above */
+	for(otmp = invent; otmp; otmp = otmp->nobj)
+		if(otmp->owornmask)
+			setworn(otmp, otmp->owornmask);
+
+	restore_dungeon(fd);
+	mread(fd, (genericptr_t) &inv_pos, sizeof inv_pos);
+	restlevchn(fd);
+	mread(fd, (genericptr_t) &moves, sizeof moves);
+	mread(fd, (genericptr_t) &monstermoves, sizeof monstermoves);
+#ifdef MULDGN
+	mread(fd, (genericptr_t) &quest_status, sizeof(struct q_score));
+#endif
+	mread(fd, (genericptr_t) spl_book,
 				sizeof(struct spell) * (MAXSPELL + 1));
-#endif
-#ifdef NAMED_ITEMS
-	mread(fd, (genericptr_t) artiexist, 
-			(unsigned int)(sizeof(boolean) * artifact_num));
-#endif
+	restore_artifacts(fd);
+	restore_oracles(fd);
 	if(u.ustuck)
-		mread(fd, (genericptr_t) &mid, sizeof mid);
+		mread(fd, (genericptr_t) mid, sizeof (*mid));
 	mread(fd, (genericptr_t) pl_character, sizeof pl_character);
+
 #ifdef TUTTI_FRUTTI
 	mread(fd, (genericptr_t) pl_fruit, sizeof pl_fruit);
 	mread(fd, (genericptr_t) &current_fruit, sizeof current_fruit);
@@ -312,21 +374,107 @@ register int fd;
 		fruit->nextf = ffruit;
 		ffruit = fruit;
 	}
-	free((genericptr_t) fruit);
+	dealloc_fruit(fruit);
 #endif
-
 	restnames(fd);
-#if defined(DGK) || defined(MACOS)
-# ifdef MACOS
-#define msmsg printf
+	restore_waterlevel(fd);
+	return(TRUE);
+}
+
+/*ARGSUSED*/	/* fd used in MFLOPPY only */
+static int
+restlevelfile(fd, ltmp)
+register int fd;
+xchar ltmp;
+{
+	register int nfd;
+
+	nfd = create_levelfile(ltmp);
+
+	if (nfd < 0)	panic("Cannot open temp level %d!", ltmp);
+#ifdef MFLOPPY
+	if (!savelev(nfd, ltmp, COUNT_SAVE)) {
+
+		/* The savelev can't proceed because the size required
+		 * is greater than the available disk space.
+		 */
+		pline("Not enough space on `%s' to restore your game.",
+			levels);
+
+		/* Remove levels and bones that may have been created.
+		 */
+		(void) close(nfd);
+		eraseall(levels, alllevels);
+# ifndef AMIGA
+		eraseall(levels, allbones);
+
+		/* Perhaps the person would like to play without a
+		 * RAMdisk.
+		 */
+		if (ramdisk) {
+			/* PlaywoRAMdisk may not return, but if it does
+			 * it is certain that ramdisk will be 0.
+			 */
+			playwoRAMdisk();
+			/* Rewind save file and try again */
+			(void) lseek(fd, (off_t)0, 0);
+			return dorecover(fd);	/* 0 or 1 */
+		} else {
 # endif
-	msmsg("\n");
-	cl_end();
-	msmsg("You got as far as level %d%s.\n", maxdlevel,
-		flags.debug ? " in WIZARD mode" :
-		flags.explore ? " in discovery mode" : "");
-	cl_end();
-	msmsg("Restoring: ");
+			pline("Be seeing you...");
+			terminate(0);
+# ifndef AMIGA
+		}
+# endif
+	}
+#endif
+	bufon(nfd);
+	savelev(nfd, ltmp, WRITE_SAVE | FREE_SAVE);
+	bclose(nfd);
+	return(2);
+}
+
+int
+dorecover(fd)
+register int fd;
+{
+	unsigned int mid;		/* not a register */
+	xchar ltmp;
+	int rtmp;
+	struct obj *otmp;
+
+	minit();	/* ZEROCOMP */
+	restoring = TRUE;
+	getlev(fd, 0, (xchar)0, FALSE);
+	if (!restgamestate(fd, &mid)) {
+		(void) close(fd);
+		(void) delete_savefile();
+		restoring = FALSE;
+		return(0);
+	}
+#ifdef INSURANCE
+	savestateinlock();
+#endif
+	rtmp = restlevelfile(fd, ledger_no(&u.uz));
+	if (rtmp < 2) return(rtmp);  /* dorecover called recursively */
+
+#ifdef MICRO
+# ifdef AMIGA
+	{
+	extern winid WIN_BASE;
+	clear_nhwindow(WIN_BASE);	/* hack until there's a hook for this */
+	}
+# else
+	clear_nhwindow(WIN_MAP);
+# endif
+	clear_nhwindow(WIN_MESSAGE);
+	You("got as far as level %d in %s%s.",
+		depth(&u.uz), dungeons[u.uz.dnum].dname,
+		flags.debug ? " while in WIZARD mode" :
+		flags.explore ? " while in discovery mode" : "");
+	curs(WIN_MAP, 1, 1);
+	dotcnt = 0;
+	putstr(WIN_MAP, 0, "Restoring:");
 #endif
 	while(1) {
 #ifdef ZEROCOMP
@@ -336,87 +484,23 @@ register int fd;
 #endif
 			break;
 		getlev(fd, 0, ltmp, FALSE);
-		glo(ltmp);
-#if defined(DGK) || defined(MACOS)
-		msmsg(".");
+#ifdef MICRO
+		curs(WIN_MAP, 11 + dotcnt++, 1);
+		putstr(WIN_MAP, 0, ".");
 #endif
-#if defined(MSDOS) && !defined(TOS)
-		nfd = open(lock, O_WRONLY | O_BINARY | O_CREAT | O_TRUNC, FCMASK);
-#else
-# ifdef MACOS
-		{
-			Str255	fileName;
-			OSErr	er;
-			struct term_info	*t;
-			short	oldVolume;
-			extern WindowPtr	HackWindow;
-			
-			t = (term_info *)GetWRefCon(HackWindow);
-			(void)GetVol(&fileName, &oldVolume);
-			(void)SetVol(0L, t->system.sysVRefNum);
-			fileName[0] = (uchar)strlen(lock);
-			Strcpy((char *)&fileName[1], lock);
-			
-			if (er = Create(&fileName, 0, CREATOR, LEVEL_TYPE))
-				SysBeep(1);
-			msmsg(".");
-			nfd = open(lock, O_WRONLY | O_BINARY);
-			(void)SetVol(0L, oldVolume);
-		}
-# else
-		nfd = creat(lock, FCMASK);
-# endif /* MACOS */
-#endif
-		if (nfd < 0)	panic("Cannot open temp file %s!\n", lock);
-#if defined(DGK)
-		if (!savelev(nfd, ltmp, COUNT | WRITE)) {
-
-			/* The savelev can't proceed because the size required
-			 * is greater than the available disk space.
-			 */
-			msmsg("\nNot enough space on `%s' to restore your game.\n",
-				levels);
-
-			/* Remove levels and bones that may have been created.
-			 */
-			(void) close(nfd);
-			eraseall(levels, alllevels);
-			eraseall(levels, allbones);
-
-			/* Perhaps the person would like to play without a
-			 * RAMdisk.
-			 */
-			if (ramdisk) {
-				/* PlaywoRAMdisk may not return, but if it does
-				 * it is certain that ramdisk will be 0.
-				 */
-				playwoRAMdisk();
-				/* Rewind save file and try again */
-				(void) lseek(fd, (off_t)0, 0);
-				return dorecover(fd);
-			} else {
-				msmsg("Be seeing you...\n");
-				exit(0);
-			}
-		}
-#else
-		savelev(nfd, ltmp);
-#endif
-#ifdef ZEROCOMP
-		bflush(nfd);
-#endif
-		(void) close(nfd);
+		rtmp = restlevelfile(fd, ltmp);
+		if (rtmp < 2) return(rtmp);  /* dorecover called recursively */
 	}
+
 #ifdef BSD
 	(void) lseek(fd, 0L, 0);
 #else
 	(void) lseek(fd, (off_t)0, 0);
 #endif
-#ifdef ZEROCOMP
-	minit();
-#endif
+	minit();	/* ZEROCOMP */
 	getlev(fd, 0, (xchar)0, FALSE);
 	(void) close(fd);
+
 #if defined(WIZARD) || defined(EXPLORE_MODE)
 	if(
 # ifdef WIZARD
@@ -430,19 +514,9 @@ register int fd;
 # endif
 				)
 #endif
-		(void) unlink(SAVEF);
-#ifdef AMIGA_WBENCH
-		ami_wbench_unlink(SAVEF);
-#endif
+		(void) delete_savefile();
 #ifdef REINCARNATION
-	/* this can't be done earlier because we need to check the initial
-	 * showsyms against the one saved in each of the non-rogue levels */
-	if (dlevel==rogue_level) {
-		(void) memcpy((genericptr_t)showsyms,
-			      (genericptr_t)defsyms, sizeof showsyms);
-		showsyms[S_ndoor] = showsyms[S_vodoor] =
-		    showsyms[S_hodoor] = '+';
-	}
+	if (Is_rogue_level(&u.uz)) assign_rogue_graphics(TRUE);
 #endif
 	if(u.ustuck) {
 		register struct monst *mtmp;
@@ -453,11 +527,10 @@ register int fd;
 	monfnd:
 		u.ustuck = mtmp;
 	}
-	setsee();  /* only to recompute seelx etc. - these weren't saved */
-#ifdef DGK
+#ifdef MFLOPPY
 	gameDiskPrompt();
 #endif
-	max_rank_sz(); /* to recompute mrank_sz (pri.c) */
+	max_rank_sz(); /* to recompute mrank_sz (botl.c) */
 #ifdef POLYSELF
 	set_uasmon();
 #endif
@@ -467,14 +540,32 @@ register int fd;
 			setworn(otmp, otmp->owornmask);
 #ifndef NO_SIGNAL
 	/* in_use processing must be after:
-	 *  inven has been read so fcobj has been built and freeinv() works
-	 *  current level has been restored so billing information is available
+	 *    + The inventory has been read so that freeinv() works.
+	 *    + The current level has been restored so billing information
+	 *	is available.
 	 */
 	inven_inuse();
 #endif
+#ifdef MULDGN
+	load_qtlist();	/* re-load the quest text info */
+#endif
+	/* Set up the vision internals, after levl[] data is loaded */
+	/* but before docrt().					    */
+	vision_reset();
+	vision_full_recalc = 1;	/* recompute vision (not saved) */
 	docrt();
 	restoring = FALSE;
+	clear_nhwindow(WIN_MESSAGE);
 	return(1);
+}
+
+void
+trickery()
+{
+	pline("Strange, this map is not as I remember it.");
+	pline("Somebody is trying some trickery here...");
+	pline("This game is void.");
+	done(TRICKED);
 }
 
 void
@@ -483,29 +574,22 @@ int fd, pid;
 xchar lev;
 boolean ghostly;
 {
-	register struct gold *gold;
 	register struct trap *trap;
 	register struct monst *mtmp;
-#ifdef WORM
-	register struct wseg *wtmp;
-	register int tmp;
-#endif
-	long nhp;
+	branch *br;
 	int hpid;
 	xchar dlvl;
-	symbol_array osymbol;
 	int x, y;
-	uchar osym, nsym;
 #ifdef TOS
 	short tlev;
 #endif
 
-#if defined(MSDOS) && !defined(TOS) && !defined(LATTICE) && !defined(AZTEC_C)
-	setmode(fd, O_BINARY);	    /* is this required for TOS??? NO --ERS */
+#if defined(MSDOS) || defined(OS2)
+	setmode(fd, O_BINARY);
 #endif
 #ifdef TUTTI_FRUTTI
-	/* Load the old fruit info.  We have to do it first, so the infor-
-	 * mation is available when restoring the objects.  
+	/* Load the old fruit info.  We have to do it first, so the
+	 * information is available when restoring the objects.
 	 */
 	if (ghostly) {
 		struct fruit *fruit;
@@ -517,12 +601,13 @@ boolean ghostly;
 			fruit->nextf = oldfruit;
 			oldfruit = fruit;
 		}
-		free((genericptr_t) fruit);
+		dealloc_fruit(fruit);
 	}
 #endif
 
 	/* First some sanity checks */
 	mread(fd, (genericptr_t) &hpid, sizeof(hpid));
+/* CHECK:  This may prevent restoration */
 #ifdef TOS
 	mread(fd, (genericptr_t) &tlev, sizeof(tlev));
 	dlvl=tlev&0x00ff;
@@ -538,209 +623,45 @@ boolean ghostly;
 				pline("This is level %d, not %d!", dlvl, lev);
 		}
 #endif
-		pline("Strange, this map is not as I remember it.");
-		pline("Somebody is trying some trickery here...");
-		pline("This game is void.");
-		done(TRICKED);
+		trickery();
 	}
 
-#if defined(SMALLDATA) && defined(MACOS)
+#ifdef RLECOMP
 	{
-	/* this assumes that the size of a row of struct rm's is <128 */
-		short	i, length, j;
-		char	*ptr, *src, *p, *d;
+		short	i, j;
+		uchar	len;
+		struct rm r;
 		
-		d = calloc(ROWNO*COLNO, sizeof(struct rm));
-		p = d;
-		mread(fd, (genericptr_t)&j, sizeof(short));
-		mread(fd, (genericptr_t)d, j);
-		for (i = 0; i < COLNO; i++) {
-			length = (short)(*p++);
-			ptr = p;
-			src = (char *)&levl[i][0];
-			UnpackBits(&ptr, &src, ROWNO * sizeof(struct rm));
-			if ((ptr - p) != length) 
-			    panic("restore - corrupted file on unpacking\n");
-			p = ptr;
+		i = 0; j = 0; len = 0;
+		while(i < ROWNO) {
+		    while(j < COLNO) {
+			if(len > 0) {
+			    levl[j][i] = r;
+			    len -= 1;
+			    j += 1;
+			} else {
+			    mread(fd, (genericptr_t)&len, sizeof(uchar));
+			    mread(fd, (genericptr_t)&r, sizeof(struct rm));
+			}
+		    }
+		    j = 0;
+		    i += 1;
 		}
-		free(d);
 	}
 #else
 	mread(fd, (genericptr_t) levl, sizeof(levl));
-#endif
-	mread(fd, (genericptr_t) osymbol, sizeof(osymbol));
-#ifdef REINCARNATION
-	if (memcmp((genericptr_t) osymbol, ((dlevel==rogue_level)
-			? (genericptr_t)savesyms : (genericptr_t)showsyms),
-			sizeof (osymbol))
-		&& dlvl != rogue_level) {
-		/* rogue level always uses default syms.  Although showsyms
-		 * will be properly initialized from environment when restoring
-		 * a game, this routine is called upon saving as well as
-		 * restoring; when saving on the Rogue level, showsyms will
-		 * be wrong, so use savesyms (which is always right, both on
-		 * saving and restoring).
-		 */
-#else
-	if (memcmp((genericptr_t) osymbol,
-		   (genericptr_t) showsyms, sizeof (showsyms))) {
-#endif
-		for (x = 0; x < COLNO; x++)
-			for (y = 0; y < ROWNO; y++) {
-				osym = levl[x][y].scrsym;
-				nsym = 0;
-				switch (levl[x][y].typ) {
-				case STONE:
-				case SCORR:
-					if (osym == osymbol[S_stone])
-						nsym = showsyms[S_stone];
-					break;
-				case ROOM:
-#ifdef STRONGHOLD
-				case DRAWBRIDGE_DOWN:
-#endif /* STRONGHOLD /**/
-					if (osym == osymbol[S_room])
-						nsym = showsyms[S_room];
-					break;
-				case DOOR:
-					if (osym == osymbol[S_ndoor])
-						nsym = showsyms[S_ndoor];
-					else if (osym == osymbol[S_vodoor])
-						nsym = showsyms[S_vodoor];
-					else if (osym == osymbol[S_hodoor])
-						nsym = showsyms[S_hodoor];
-					else if (osym == osymbol[S_cdoor])
-						nsym = showsyms[S_cdoor];
-					break;
-				case CORR:
-					if (osym == osymbol[S_corr])
-						nsym = showsyms[S_corr];
-					break;
-				case VWALL:
-					if (osym == osymbol[S_vwall])
-						nsym = showsyms[S_vwall];
-#ifdef STRONGHOLD
-					else if (osym == osymbol[S_dbvwall])
-						nsym = showsyms[S_dbvwall];
-#endif
-					break;
-				case HWALL:
-					if (osym == osymbol[S_hwall])
-						nsym = showsyms[S_hwall];
-#ifdef STRONGHOLD
-					else if (osym == osymbol[S_dbhwall])
-						nsym = showsyms[S_dbhwall];
-#endif
-					break;
-				case TLCORNER:
-					if (osym == osymbol[S_tlcorn])
-						nsym = showsyms[S_tlcorn];
-					break;
-				case TRCORNER:
-					if (osym == osymbol[S_trcorn])
-						nsym = showsyms[S_trcorn];
-					break;
-				case BLCORNER:
-					if (osym == osymbol[S_blcorn])
-						nsym = showsyms[S_blcorn];
-					break;
-				case BRCORNER:
-					if (osym == osymbol[S_brcorn])
-						nsym = showsyms[S_brcorn];
-					break;
-				case SDOOR:
-					if (osym == osymbol[S_vwall])
-						nsym = showsyms[S_vwall];
-					else if (osym == osymbol[S_hwall])
-						nsym = showsyms[S_hwall];
-					break;
-				case CROSSWALL:
-					if (osym == osymbol[S_crwall])
-						nsym = showsyms[S_crwall];
-					break;
-				case TUWALL:
-					if (osym == osymbol[S_tuwall])
-						nsym = showsyms[S_tuwall];
-					break;
-				case TDWALL:
-					if (osym == osymbol[S_tdwall])
-						nsym = showsyms[S_tdwall];
-					break;
-				case TLWALL:
-					if (osym == osymbol[S_tlwall])
-						nsym = showsyms[S_tlwall];
-					break;
-				case TRWALL:
-					if (osym == osymbol[S_trwall])
-						nsym = showsyms[S_trwall];
-					break;
-				case STAIRS:
-					if (osym == osymbol[S_upstair])
-						nsym = showsyms[S_upstair];
-					else if (osym == osymbol[S_dnstair])
-						nsym = showsyms[S_dnstair];
-					break;
-#ifdef STRONGHOLD
-				case LADDER:
-					if (osym == osymbol[S_upladder])
-						nsym = showsyms[S_upladder];
-					else if (osym == osymbol[S_dnladder])
-						nsym = showsyms[S_dnladder];
-					break;
-#endif /* STRONGHOLD /**/
-				case POOL:
-				case MOAT:
-#ifdef STRONGHOLD
-				case DRAWBRIDGE_UP:
-#endif /* STRONGHOLD /**/
-					if (osym == osymbol[S_pool])
-						nsym = showsyms[S_pool];
-					break;
-#ifdef FOUNTAINS
-				case FOUNTAIN:
-					if (osym == osymbol[S_fountain])
-						nsym = showsyms[S_fountain];
-					break;
-#endif /* FOUNTAINS /**/
-#ifdef THRONES
-				case THRONE:
-					if (osym == osymbol[S_throne])
-						nsym = showsyms[S_throne];
-					break;
-#endif /* THRONES /**/
-#ifdef SINKS
-				case SINK:
-					if (osym == osymbol[S_sink])
-						nsym = showsyms[S_sink];
-					break;
-#endif /* SINKS /**/
-#ifdef ALTARS
-				case ALTAR:
-					if (osym == osymbol[S_altar])
-						nsym = showsyms[S_altar];
-					break;
-#endif /* ALTARS /**/
-				default:
-					break;
-				}
-				if (nsym)
-					levl[x][y].scrsym = nsym;
-			}
-	}
+#endif	/* RLECOMP */
 
 	mread(fd, (genericptr_t)&omoves, sizeof(omoves));
-	mread(fd, (genericptr_t)&xupstair, sizeof(xupstair));
-	mread(fd, (genericptr_t)&yupstair, sizeof(yupstair));
-	mread(fd, (genericptr_t)&xdnstair, sizeof(xdnstair));
-	mread(fd, (genericptr_t)&ydnstair, sizeof(ydnstair));
-#ifdef STRONGHOLD
-	mread(fd, (genericptr_t)&xupladder, sizeof(xupladder));
-	mread(fd, (genericptr_t)&yupladder, sizeof(yupladder));
-	mread(fd, (genericptr_t)&xdnladder, sizeof(xdnladder));
-	mread(fd, (genericptr_t)&ydnladder, sizeof(ydnladder));
-#endif
-	mread(fd, (genericptr_t)&fountsound, sizeof(fountsound));
-	mread(fd, (genericptr_t)&sinksound, sizeof(sinksound));
+	mread(fd, (genericptr_t)&upstair, sizeof(stairway));
+	mread(fd, (genericptr_t)&dnstair, sizeof(stairway));
+	mread(fd, (genericptr_t)&upladder, sizeof(stairway));
+	mread(fd, (genericptr_t)&dnladder, sizeof(stairway));
+	mread(fd, (genericptr_t)&sstairs, sizeof(stairway));
+	mread(fd, (genericptr_t)&updest, sizeof(dest_area));
+	mread(fd, (genericptr_t)&dndest, sizeof(dest_area));
+	mread(fd, (genericptr_t)&level.flags, sizeof(level.flags));
+
 	fmon = restmonchn(fd, ghostly);
 
 	/* regenerate animals while on another level */
@@ -748,9 +669,8 @@ boolean ghostly;
 	  register struct monst *mtmp2;
 
 	  for(mtmp = fmon; mtmp; mtmp = mtmp2) {
-
 		mtmp2 = mtmp->nmon;
-		if((mtmp->data->geno&G_GENOD) && !(mtmp->data->geno&G_UNIQ)) {
+		if(mtmp->data->geno & G_GENOD) {
 			/* mondead() would try to link the monster's objects
 			 * into fobj and the appropriate nexthere chain.
 			 * unfortunately, such things will not have sane
@@ -774,7 +694,7 @@ boolean ghostly;
 				mtmp->mpeaceful = peace_minded(mtmp->data);
 			set_malign(mtmp);
 		} else if (mtmp->mtame && tmoves > 250)
-		  	mtmp->mtame = mtmp->mpeaceful = 0;
+			mtmp->mtame = mtmp->mpeaceful = 0;
 
 		/* restore shape changers - Maarten Jan Huisjes */
 		if (mtmp->data == &mons[PM_CHAMELEON]
@@ -786,40 +706,40 @@ boolean ghostly;
 				mtmp->cham = 0;
 				(void) newcham(mtmp, &mons[PM_CHAMELEON]);
 			} else if(is_were(mtmp->data) && !is_human(mtmp->data))
-				(void) new_were(mtmp);
+				new_were(mtmp);
 		}
 
 		if (!ghostly) {
-			nhp = mtmp->mhp +
+			long nhp = mtmp->mhp +
 				(regenerates(mtmp->data) ? tmoves : tmoves/20);
+
 			if(!mtmp->mcansee && mtmp->mblinded) {
-				if (mtmp->mblinded < tmoves) mtmp->mblinded = 0;
-				else mtmp->mblinded -= tmoves;
+				if ((long) mtmp->mblinded <= tmoves) {
+					mtmp->mblinded = 0;
+					mtmp->mcansee = 1;
+				} else mtmp->mblinded -= tmoves;
 			}
 			if(!mtmp->mcanmove && mtmp->mfrozen) {
-				if (mtmp->mfrozen < tmoves) mtmp->mfrozen = 0;
-				else mtmp->mfrozen -= tmoves;
+				if ((long) mtmp->mfrozen <= tmoves) {
+					mtmp->mfrozen = 0;
+					mtmp->mcanmove = 1;
+				} else mtmp->mfrozen -= tmoves;
 			}
-			if(nhp > mtmp->mhpmax)
+			if(mtmp->mflee && mtmp->mfleetim) {
+				if ((long) mtmp->mfleetim <= tmoves) {
+					mtmp->mfleetim = 0;
+					mtmp->mflee = 0;
+				} else mtmp->mfleetim -= tmoves;
+			}
+			if(nhp >= mtmp->mhpmax)
 				mtmp->mhp = mtmp->mhpmax;
 			else
-#ifdef LINT	/* (long)newhp -> (schar = short int) mhp; ok in context of text above */
-				mtmp->mhp = 0;
-#else
 				mtmp->mhp = nhp;
-#endif
 		}
 	  }
 	}
 
-	fgold = 0;
-	while(gold = newgold(),
-	      mread(fd, (genericptr_t)gold, sizeof(struct gold)),
-	      gold->gx) {
-		gold->ngold = fgold;
-		fgold = gold;
-	}
-	free((genericptr_t) gold);
+	rest_worm(fd);	/* restore worm information */
 	ftrap = 0;
 	while (trap = newtrap(),
 	       mread(fd, (genericptr_t)trap, sizeof(struct trap)),
@@ -827,33 +747,26 @@ boolean ghostly;
 		trap->ntrap = ftrap;
 		ftrap = trap;
 	}
-	free((genericptr_t) trap);
+	dealloc_trap(trap);
 	fobj = restobjchn(fd, ghostly);
 	find_lev_obj();
 	billobjs = restobjchn(fd, ghostly);
 	rest_engravings(fd);
-	mread(fd, (genericptr_t)rooms, sizeof(rooms));
+	rest_rooms(fd);		/* No joke :-) */
 	mread(fd, (genericptr_t)doors, sizeof(doors));
-#ifdef WORM
-	mread(fd, (genericptr_t)wsegs, sizeof(wsegs));
-	for(tmp = 1; tmp < 32; tmp++) if(wsegs[tmp]){
-		wheads[tmp] = wsegs[tmp] = wtmp = newseg();
-		while(1) {
-			mread(fd, (genericptr_t)wtmp, sizeof(struct wseg));
-			if(!wtmp->nseg) break;
-			wheads[tmp]->nseg = wtmp = newseg();
-			wheads[tmp] = wtmp;
-		}
-	}
-	mread(fd, (genericptr_t)wgrowtime, sizeof(wgrowtime));
-#endif
 
 	/* reset level.monsters for new level */
 	for (x = 0; x < COLNO; x++)
 	    for (y = 0; y < ROWNO; y++)
 		level.monsters[x][y] = (struct monst *) 0;
-	for (mtmp = level.monlist; mtmp; mtmp = mtmp->nmon)
+	for (mtmp = level.monlist; mtmp; mtmp = mtmp->nmon) {
+	    if (mtmp->isshk)
+		set_residency(mtmp, FALSE);
 	    place_monster(mtmp, mtmp->mx, mtmp->my);
+	    if (mtmp->wormno) place_wsegs(mtmp);
+	}
+	restdamage(fd, ghostly);
+
 
 #ifdef TUTTI_FRUTTI
 	/* Now get rid of all the temp fruits... */
@@ -862,18 +775,13 @@ boolean ghostly;
 
 		while(oldfruit) {
 			fruit = oldfruit->nextf;
-			free((genericptr_t) oldfruit);
+			dealloc_fruit(oldfruit);
 			oldfruit = fruit;
 		}
 	}
 #endif
-	if(ghostly && lev > medusa_level
-#ifdef STRONGHOLD
-				&& lev < stronghold_level
-#else
-				&& !Inhell
-#endif
-				&& xdnstair == 0) {
+	if (ghostly && lev > ledger_no(&medusa_level) &&
+			lev < ledger_no(&stronghold_level) && xdnstair == 0) {
 		coord cc;
 
 		mazexy(&cc);
@@ -881,30 +789,58 @@ boolean ghostly;
 		ydnstair = cc.y;
 		levl[cc.x][cc.y].typ = STAIRS;
 	}
+	if (ghostly && (br = Is_branchlev(&u.uz)) && u.uz.dlevel == 1) {
+	    d_level ltmp;
+
+	    if (on_level(&u.uz, &br->end1))
+		assign_level(&ltmp, &br->end2);
+	    else
+		assign_level(&ltmp, &br->end1);
+
+	    switch(br->type) {
+	    case BR_STAIR:
+	    case BR_NO_END1:
+	    case BR_NO_END2: /* OK to assign to sstairs if it's not used */
+		assign_level(&sstairs.tolev, &ltmp);
+		break;		
+	    case BR_PORTAL: /* max of 1 portal per level */
+		{
+		    register struct trap *ttmp;
+		    for(ttmp = ftrap; ttmp; ttmp = ttmp->ntrap)
+			if (ttmp->ttyp == MAGIC_PORTAL)
+			    break;
+		    if (!ttmp) panic("getlev: need portal but none found");
+		    assign_level(&ttmp->dst, &ltmp);
+		}
+		break;
+	    }
+	}
 }
 
 #ifdef ZEROCOMP
-#define RLESC '\0' 	/* Leading character for run of RLESC's */
+#define RLESC '\0'	/* Leading character for run of RLESC's */
 
-static unsigned char NEARDATA inbuf[BUFSZ];
+#ifndef ZEROCOMP_BUFSIZ
+#define ZEROCOMP_BUFSIZ BUFSZ
+#endif
+static unsigned char NEARDATA inbuf[ZEROCOMP_BUFSIZ];
 static unsigned short NEARDATA inbufp = 0;
 static unsigned short NEARDATA inbufsz = 0;
 static short NEARDATA inrunlength = -1;
 static int NEARDATA mreadfd;
-static int NDECL(mgetc);
 
 static int
 mgetc()
 {
     if (inbufp >= inbufsz) {
-      inbufsz = read(mreadfd, (genericptr_t)inbuf, (int)sizeof inbuf);
-      if (!inbufsz) {
-	  if (inbufp > sizeof inbuf)
-	      error("EOF on file #%d.\n", mreadfd);
-	  inbufp = 1 + sizeof inbuf;  /* exactly one warning :-) */
-	  return -1;
-      }
-      inbufp = 0;
+	inbufsz = read(mreadfd, (genericptr_t)inbuf, sizeof inbuf);
+	if (!inbufsz) {
+	    if (inbufp > sizeof inbuf)
+		error("EOF on file #%d.\n", mreadfd);
+	    inbufp = 1 + sizeof inbuf;  /* exactly one warning :-) */
+	    return -1;
+	}
+	inbufp = 0;
     }
     return inbuf[inbufp++];
 }
@@ -926,22 +862,28 @@ register unsigned len;
     /*register int readlen = 0;*/
     mreadfd = fd;
     while (len--) {
-      if (inrunlength > 0) {
-	  inrunlength--;
-	  *(*((char **)&buf))++ = '\0';
-      } else {
-	  register short ch = mgetc();
-	  if (ch < 0) return -1; /*readlen;*/
-	  if ((*(*(char **)&buf)++ = ch) == RLESC) {
-	      inrunlength = mgetc();
-	  }
-      }
-      /*readlen++;*/
+	if (inrunlength > 0) {
+	    inrunlength--;
+	    *(*((char **)&buf))++ = '\0';
+	} else {
+	    register short ch = mgetc();
+	    if (ch < 0) return -1; /*readlen;*/
+	    if ((*(*(char **)&buf)++ = ch) == RLESC) {
+		inrunlength = mgetc();
+	    }
+	}
+	/*readlen++;*/
     }
     return 0; /*readlen;*/
 }
 
 #else /* ZEROCOMP */
+
+void
+minit()
+{
+    return;
+}
 
 void
 mread(fd, buf, len)
@@ -958,15 +900,15 @@ register unsigned int len;
 	rlen = read(fd, buf, (unsigned) len);
 	if((unsigned)rlen != len){
 #endif
-		pline("Read %d instead of %u bytes.\n", rlen, len);
+		pline("Read %d instead of %u bytes.", rlen, len);
 		if(restoring) {
-			(void) unlink(SAVEF);
-#ifdef AMIGA_WBENCH
-			ami_wbench_unlink(SAVEF);
-#endif
+			(void) close(fd);
+			(void) delete_savefile();
 			error("Error restoring old game.");
 		}
 		panic("Error reading level file.");
 	}
 }
 #endif /* ZEROCOMP */
+
+/*restore.c*/

@@ -34,7 +34,7 @@
 
 %.mt
 \title{\LARGE A Guide to the Mazes of Menace:\\
-\Large Guidebook for {\it NetHack\/} 3.0}
+\Large Guidebook for {\it NetHack\/} 3.1}
 
 %.au
 \author{Eric S. Raymond\\
@@ -43,7 +43,7 @@
 Thyrsus Enterprises\\
 Malvern, PA 19355
 }
-\date{May 28, 1990}
+\date{January 9, 1993}
 
 \maketitle
 
@@ -287,7 +287,6 @@ show only your experience level here.
 %.lp
 \item[\bb{Time}]
 The number of turns elapsed so far, displayed if you have the
-%.op
 {\it time\/} option set.
 %.lp
 \item[\bb{Hunger Status}]
@@ -318,9 +317,7 @@ just press the space bar.
 %.pg
 The rest of the screen is the map of the level as you have explored it
 so far.  Each symbol on the screen represents something.  You can set
-the
-%.op
-{\it graphics\/}
+the {\it graphics\/}
 option to change some of the symbols the game uses; otherwise, the
 game will use default symbols.  Here is a list of what the default
 symbols mean:
@@ -335,7 +332,7 @@ The floor of a room, or a doorless doorway.
 %.lp
 \item[\tb{\#}]
 A corridor, or possibly a kitchen sink or drawbridge (if your dungeon
-has sinks or drawbridges).
+has sinks).
 %.lp
 \item[\tb{<}]
 A way to the previous level.
@@ -393,10 +390,10 @@ A boulder or statue.
 An iron ball.
 %.lp
 \item[\tb{_}]
-An altar (if your dungeon has altars), or an iron chain.
+An altar, or an iron chain.
 %.lp
 \item[\tb{\}}]
-A pool of water or moat.
+A pool of water or moat or a pool of lava.
 %.lp
 \item[\tb{\{}]
 A fountain (your dungeon may not have fountains).
@@ -439,7 +436,6 @@ command.
 %.pg
 You can put a number before most commands to repeat them that many
 times; for example, ``{\tt 10s}'' will search ten times.  If you have the
-%.op
 {\it number\_pad\/}
 option set, you must type `{\tt n}' to prefix a count, so the example above
 would be typed ``{\tt n10s}'' instead.  Commands for which counts make no
@@ -459,11 +455,9 @@ Help menu:  display one of several help texts available.
 %.lp
 \item[\tb{/}]
 Tell what a symbol represents.  You may choose to specify a location
-or type a symbol (or even a whole word) to define.  If the
-%.op
-{\it help\/}
-option is on, and {\it NetHack\/} has some special information about an object or
-monster that you looked at, you'll be asked if you want ``{\tt More
+or type a symbol (or even a whole word) to define.  If the {\it help\/}
+option is on, and {\it NetHack\/} has some special information about an object
+or a monster that you looked at, you'll be asked if you want ``{\tt More
 info?}''.
 If {\it help\/} is off, then you'll only get the special information if you
 explicitly ask for it by typing in the name of the monster or object.
@@ -673,9 +667,7 @@ Look at what is here.
 Pick up some things.
 %.lp
 \item[\tb{@}]
-Toggle the
-%.op
-{\it pickup\/} option on and off.
+Toggle the {\it pickup\/} option on and off.
 %.lp
 \item[\tb{\^{}}]
 Ask for the type of a trap you found earlier.
@@ -719,15 +711,12 @@ depend on what features the game was compiled with.
 \nd If your keyboard has a meta key (which, when pressed in combination
 with another key, modifies it by setting the `meta' [8th, or `high']
 bit), you can invoke the extended commands by meta-ing the first
-letter of the command.  In {\it PC\/ {\rm and} ST NetHack}, the `Alt' key
-can be used in this fashion.
+letter of the command.  In {\it OS/2, PC\/ {\rm and} ST NetHack}, the `Alt'
+key can be used in this fashion.
 \blist{}
 %.lp
 \item[\tb{M-a}]
-Adjust inventory letters (the
-%.op
-{\it fixinvlet\/}
-option must be ``on'' to do this).
+Adjust inventory letters (the {\it fixinv\/} option must be ``on'' to do this).
 %.lp
 \item[\tb{M-c}]
 Talk to someone.
@@ -738,6 +727,9 @@ Dip an object into something.
 \item[\tb{M-f}]
 Force a lock.
 %.lp
+\item[\tb{M-i}]
+Invoke an object's special powers.
+%.lp
 \item[\tb{M-j}]
 Jump to another location.
 %.lp
@@ -747,7 +739,7 @@ Loot a box on the floor.
 \item[\tb{M-m}]
 Use a monster's special ability.
 %.lp
-\item[\tb{M-N}]
+\item[\tb{M-n}]
 Name an item or type of object.
 %.lp
 \item[\tb{M-o}]
@@ -776,9 +768,7 @@ Wipe off your face.
 \elist
 
 %.pg
-\nd If the
-%.op
-{\it number\_pad\/} option is on, some additional letter commands
+\nd If the {\it number\_pad\/} option is on, some additional letter commands
 are available:
 \blist{}
 %.lp
@@ -802,18 +792,17 @@ Untrap a trapped object or door.  Same as ``{\tt \#untrap}'' or ``{\tt M-u}''.
 \section{Rooms and corridors}
 
 %.pg
-Rooms in the dungeon are either lit or dark.  If you walk into a lit
-room, the entire room will be drawn on the screen.  If you walk into a
-dark room, only the areas you can see will be displayed.  In darkness,
-you can only see one space in all directions.  Corridors are always
-dark, but remain on the map as you explore them.
+Rooms and corridors in the dungeon are either lit or dark.
+Any lit areas within your line of sight will be displayed;
+dark areas are only displayed if they are within one space of you. 
+Walls and corridors remain on the map as you explore them.
 
 %.pg
 Secret corridors are hidden.  You can find them with the `{\tt s}' (search)
 command.
 
 %.hn 2
-\subsection*{Doorways (`{\tt +}')}
+\subsection*{Doorways}
 
 %.pg
 Doorways connect rooms and corridors.  Some doorways have no doors;
@@ -846,9 +835,9 @@ command.
 %.pg
 There are traps throughout the dungeon to snare the unwary delver.
 For example, you may suddenly fall into a pit and be stuck for a few
-turns.  Traps don't appear on your map until you trigger one by moving
-onto it, or you discover it with the `{\tt s}' (search) command.  Monsters
-can fall prey to traps, too.
+turns.  Traps don't appear on your map until you see one triggered
+by moving onto it, or you discover it with the `{\tt s}' (search) command.
+Monsters can fall prey to traps, too.
 
 %.hn 1
 \section{Monsters}
@@ -907,9 +896,7 @@ former player.
 %.pg
 When you find something in the dungeon, it is common to want to pick
 it up.  In {\it NetHack}, this is accomplished automatically by walking over
-the object (unless you turn off the
-%.op
-{\it pickup\/}
+the object (unless you turn off the {\it pickup\/}
 option (see below), or move with the `{\tt m}' prefix (see above)), or
 manually by using the `{\tt ,}' command.  If you're carrying too many
 things, {\it NetHack\/} will tell you so and won't pick up anything more.
@@ -974,7 +961,7 @@ have ``plusses,'' and items with charges.
 \subsection*{Weapons (`{\tt )}')}
 
 %.pg
-Given a chance, almost all monsters in the Mazes of Menace will
+Given a chance, most monsters in the Mazes of Menace will
 gratuitously kill you.  You need weapons for self-defense (killing
 them first).  Without a weapon, you do only 1--2 hit points of damage
 (plus bonuses, if any).
@@ -1066,7 +1053,6 @@ special powers when you eat them.  A good rule of thumb is ``you are
 what you eat.''
 %.pg
 You can name one food item after something you like to eat with the
-%.op
 {\it fruit\/} option, if your dungeon has it.
 
 %.pg
@@ -1150,10 +1136,10 @@ varying with the type of ring.
 The commands to use rings are `{\tt P}' (put on) and `{\tt R}' (remove).
 
 %.hn 2
-\subsection*{Spellbooks (`{\tt +}')}
+\subsection*{Spell books (`{\tt +}')}
 
 %.pg
-Spellbooks are tomes of mighty magic.  When studied with the `{\tt r}' (read)
+Spell books are tomes of mighty magic.  When studied with the `{\tt r}' (read)
 command, they bestow the knowledge of a spell---unless the attempt
 backfires.
 Reading a cursed spell book, or one with mystic runes beyond
@@ -1173,7 +1159,7 @@ familiarity with it will dwindle, until you eventually forget the
 details completely and must relearn it.
 
 %.pg
-The command to read a spellbook is the same as for scrolls, `{\tt r}'
+The command to read a spell book is the same as for scrolls, `{\tt r}'
 (read).  The `{\tt +}' command lists your current spells and the number of
 spell points they require.  The `{\tt Z}' (cast) command casts a spell.
 
@@ -1255,9 +1241,12 @@ behaves.
 \subsection*{Setting the options}
 
 %.pg
-There are two ways to set the options.  The first is with the `{\tt O}'
-command in {\it NetHack}; the second is with the ``NETHACKOPTIONS''
-environment variable.
+Options may be set in a number of ways.  Within the game, the `{\tt O}'
+command allows you to view all options and change most of them.
+You can also set options automatically by placing them in the
+``NETHACKOPTIONS'' environment variable or a configuration file.
+Some versions of {\it NetHack\/} also have front-end programs that allow
+you to set options before starting the game.
 
 %.hn 2
 \subsection*{Using the NETHACKOPTIONS environment variable}
@@ -1273,7 +1262,7 @@ the option name, a colon, and then the value of the string.  The value
 is terminated by the next comma or the end of string.
 
 %.pg
-For example, to set up an environment variable in UNIX so that {\it female\/}
+For example, to set up an environment variable so that {\it female\/}
 is on, {\it pickup\/} is off, the {\it name\/} is set to ``Blue Meanie'', and
 the {\it fruit\/} is set to ``papaya'', you would enter the command
 %.sd
@@ -1293,6 +1282,27 @@ the {\it fruit\/} is set to ``papaya'', you would enter the command
 \nd in {\it sh\/} or {\it ksh}.
 
 %.hn 2
+\subsection*{Using a configuration file}
+
+%.pg
+Any line in the configuration file starting with ``{\tt OPTIONS=}'' may be
+filled out with options in the same syntax as in NETHACKOPTIONS.
+Any line starting with ``{\tt GRAPHICS=}'', ``{\tt MONSTERS=}'', or
+``{\tt OBJECTS=}''
+is taken as defining the {\it graphics\/}, {\it monsters\/}, or
+{\it objects\/} options in a different syntax,
+a sequence of decimal numbers giving the character position
+in the current font to be used in displaying each entry.
+Such a sequence can be continued to multiple lines by putting a
+`{\tt \verb+\+}' at the end of each line to be continued.
+Any line starting with `{\tt \#}' is treated as a comment.
+
+%.pg
+The default name of the configuration file varies on different
+operating systems, but NETHACKOPTIONS can also be set to
+the full name of a file you want to use (possibly preceded by an `{\tt @}').
+
+%.hn 2
 \subsection*{Customization options}
 
 %.pg
@@ -1302,12 +1312,22 @@ listed may be inactive in your dungeon.
 
 \blist{}
 %.lp
+\item[\ib{BIOS}]
+Use BIOS calls to update the screen display quickly and to read the keyboard
+(allowing the use of arrow keys to move) on machines with an IBM PC
+compatible BIOS ROM (default off, {\it OS/2, PC\/ {\rm and} ST NetHack\/} only).
+%.lp
 \item[\ib{catname}]
 Name your starting cat (ex.\ ``{\tt catname:Morris}'').
 Cannot be set with the `{\tt O}' command.
 %.lp
+\item[\ib{checkpoint}]
+Save game state after each level change, for possible recovery after
+program crash (default on).
+%.lp
 \item[\ib{color}]
-Use color for different monsters, objects, and dungeon features (default on).
+Use color for different monsters, objects, and dungeon features
+(default on for microcomputers).
 %.lp
 \item[\ib{confirm}]
 Have user confirm attacks on pets, shopkeepers, and other
@@ -1319,19 +1339,18 @@ ANSI line-drawing character set to display the dungeon instead of having
 to define a full graphics set yourself (default off).
 Cannot be set with the `{\tt O}' command.
 %.lp
+\item[\ib{disclose}]
+Offer to identify your inventory and intrinsics when the
+game ends (default on).
+%.lp
 \item[\ib{dogname}]
 Name your starting dog (ex.\ ``{\tt dogname:Fang}'').
 Cannot be set with the `{\tt O}' command.
 %.lp
-\item[\ib{endgame}]
-Control what parts of the score list you are shown at the end (ex.\
-``{\tt endgame:5top scores/4around my score/own scores}'').  Only the first
-letter of each category (`{\tt t}', `{\tt a}' or `{\tt o}') is necessary.
-%.lp
 \item[\ib{female}]
 Set your sex (default off). Cannot be set with the `{\tt O}' command.
 %.lp
-\item[\ib{fixinvlet}]
+\item[\ib{fixinv}]
 An object's inventory letter sticks to it when it's dropped (default on).
 If this is off, dropping an object shifts all the remaining inventory letters.
 %.lp
@@ -1344,20 +1363,17 @@ melons already exist in {\it NetHack}, so don't use those.
 %.lp
 \item[\ib{graphics}]
 Set the graphics symbols for screen displays (default
-``\verb&|--------|||-\\/.-|+.#<>& \verb&^"}{#\\_<>##&''). The
-%.op
-{\it graphics\/}
-option (if used) should come last, followed by a string of up to 35
+``\verb& |--------||.-|++.##<>&
+\verb&<>\^"_\\#{}.}..## #}|-\\/*!)(0#@*/-\\||\\-//-\\| |\\-/&'').
+If specified, the {\it graphics\/}
+option should come last, followed by a string of 1--69
 characters to be used instead of the default map-drawing characters.
 The dungeon map will use the characters you specify instead of the
 default symbols.
+Remember that you may need to escape some of these characters
+if, for example, you use {\it csh}.
 
-The
-%.op
-{\it DECgraphics\/}
-and
-%.op
-{\it IBMgraphics\/}
+The {\it DECgraphics\/} and {\it IBMgraphics\/}
 options use predefined selections of graphics symbols, so you need not
 go to the trouble of setting up a full graphics string for these common
 cases.  These two options also set up proper handling of graphics
@@ -1372,33 +1388,41 @@ it must be doubled for the same effect now.  The special escape form
 `\verb+\m+' switches on the meta bit in the following character, and the
 `{\tt \^{}}' prefix causes the following character to be treated as a control
 character (so any `{\tt \^{}}' in your old graphics strings should be changed
-to `\verb+\^+' now).
+to `\verb+\^+' now).  Also note that there are more symbols in a different
+order than used for {\it NetHack\/} 3.0.
 
-The order of the symbols is:  solid rock, vertical wall, horizontal
+The order of the symbols is: solid rock, vertical wall, horizontal
 wall, upper left corner, upper right corner, lower left corner, lower
 right corner, cross wall, upward T wall, downward T wall, leftward T
-wall, rightward T wall, vertical beam, horizontal beam, left slant,
-right slant, no door, vertical open door, horizontal open door, closed
-door, floor of a room, corridor, stairs up, stairs down, trap, web,
-pool or moat, fountain, kitchen sink, throne, altar, ladder up, ladder
-down, vertical drawbridge, horizontal drawbridge.
+wall, rightward T wall, no door, vertical open door, horizontal open
+door, vertical closed door, horizontal closed door, floor of a room,
+dark corridor, lit corridor, stairs up, stairs down, ladder up, ladder
+down, trap, web, altar, throne, kitchen sink, fountain, pool or moat,
+ice, lava, vertical lowered drawbridge, horizontal lowered drawbridge,
+vertical raised drawbridge, horizontal raised drawbridge, air, cloud,
+under water, vertical beam, horizontal beam, left slant, right slant,
+digging beam, camera flash beam, left boomerang, right boomerang, four
+glyphs giving the sequence for magic resistance displays; the eight
+surrounding glyphs for swallowed display; nine glyphs for explosions.
+An explosion consists of three rows (top, middle, and bottom) of three
+characters.  The explosion is centered in the center of this $3 \times 3$
+array.
+
 You might want to use `{\tt +}' for the corners and T walls for a more
-esthetic, boxier display.  Note that in the next release, new symbols
+aesthetic, boxier display.  Note that in the next release, new symbols
 may be added, or the present ones rearranged.
 
 Cannot be set with the `{\tt O}' command.
 %.lp
 \item[\ib{help}]
 If more information is available for an object looked at
-with the `{\tt /}' command, ask if you want to see it (default on). Turning help
-off makes just looking at things faster, since you aren't interrupted with the
-``{\tt More info?}'' prompt, but it also means that you might miss some
-interesting and/or important information.
+with the `{\tt /}' command, ask if you want to see it (default on).
+Turning help off makes just looking at things faster, since you aren't
+interrupted with the ``{\tt More info?}'' prompt, but it also means that you
+might miss some interesting and/or important information.
 %.lp
-\item[\ib{IBM\_BIOS}]
-Use BIOS calls to update the screen display quickly and to read the keyboard
-(allowing the use of arrow keys to move) on machines with an IBM PC
-compatible BIOS ROM (default off, {\it PC\/ {\rm and} ST NetHack\/} only).
+\item[\ib{hilite\_pet}]
+Highlight pets when color is turned off (default off).
 %.lp
 \item[\ib{IBMgraphics}]
 Use a predefined selection of IBM extended ASCII characters to display the
@@ -1408,9 +1432,49 @@ Cannot be set with the `{\tt O}' command.
 \item[\ib{ignintr}]
 Ignore interrupt signals, including breaks (default off).
 %.lp
+\item[\ib{legacy}]
+Display an introductory message when starting the game (default on).
+%.lp
+\item[\ib{lit\_corridor}]
+Show corridor squares seen by night vision or a light source held by your
+character as lit (default off).
+%.lp
 \item[\ib{male}]
 Set your sex (default on, most hackers are male).
 Cannot be set with the `{\tt O}' command.
+%.lp
+\item[\ib{monsters}]
+Set the characters used to display monster classes (default
+``\verb+abcdefghijklmnopqrstuv+
+\verb+wxyzABCDEFGHIJKLMNOPQRSTUVWXYZ@ \\&;:~]+'').
+This string is subjected to the same processing as the {\it graphics\/} option.
+The order of the symbols is
+ant or other insect, blob, cockatrice,
+dog or other canine, eye or sphere, feline,
+gremlin, humanoid, imp or minor demon,
+jelly, kobold, leprechaun,
+mimic, nymph, orc,
+piercer, quadruped, rodent,
+spider, trapper or lurker above, unicorn,
+vortex, worm, xan or other mythical/fantastic insect,
+light, zruty,
+angelic being, bat, centaur,
+dragon, elemental, fungus or mold,
+gnome, giant humanoid, invisible stalker,
+jabberwock, Keystone Kop, lich,
+mummy, naga, ogre,
+pudding or ooze, quantum mechanic, rust monster,
+snake, troll, umber hulk,
+vampire, wraith, xorn,
+yeti or ape or other large beast, zombie,
+human, ghost, golem,
+demon, sea monster, lizard,
+long worm tail, and mimic.
+Cannot be set with the `{\tt O}' command.
+%.lp
+\item[\ib{msghistory}]
+The number of top line messages to save (and recall with `{\tt \^{}P}')
+(default 20). Cannot be set with the `{\tt O}' command.
 %.lp
 \item[\ib{name}]
 Set your character's name (defaults to your user name).  You can also
@@ -1424,22 +1488,38 @@ Read the {\it NetHack\/} news file, if present (default on).
 Since the news is shown at the beginning of the game, there's no point
 in setting this with the `{\tt O}' command.
 %.lp
-\item[\ib{number\_pad}]
-Use the number keys to move instead of {\tt [yuhjklbn]} (default off).
-%.lp
 \item[\ib{null}]
 Send padding nulls to the terminal (default off).
 %.lp
+\item[\ib{number\_pad}]
+Use the number keys to move instead of {\tt [yuhjklbn]} (default off).
+%.lp
+\item[\ib{objects}]
+Set the characters used to display object classes (default
+``\verb&])[="(%!?+/$*`0_.&'').
+This string is subjected to the same processing as the {\it graphics\/} option.
+The order of the symbols is
+illegal-object (should never be seen), weapon, armor, ring, amulet, tool,
+food, potion, scroll, spell book, wand, gold, gem or rock, boulder or statue,
+iron ball, chain, and venom.
+Cannot be set with the `{\tt O}' command.
+%.lp
 \item[\ib{packorder}]
 Specify the order to list object types in (default
-``\verb&\")[\%?+/=!(*'0_&''). The value of this option should be a string
+``\verb&\")[\%?+/=!(*`0_&''). The value of this option should be a string
 containing the symbols for the various object types.
+%.lp
+\item[\ib{pettype}]
+Specify the type of your initial pet, if you are playing a character class
+that uses both types of pets.  Possible values are ``{\tt cat}''
+and ``{\tt dog}''.
+Cannot be set with the `{\tt O}' command.
 %.lp
 \item[\ib{pickup}]
 Pick up things you move onto by default (default on).
 %.lp
 \item[\ib{rawio}]
-Force raw (non-cbreak) mode for faster output and more
+Force raw (non-ctrl-break) mode for faster output and more
 bulletproof input (MS-DOS sometimes treats `{\tt \^{}P}' as a printer toggle
 without it) (default off).  Note:  DEC Rainbows hang if this is turned on.
 Cannot be set with the `{\tt O}' command.
@@ -1449,6 +1529,17 @@ Make the space bar a synonym for the `{\tt .}' (rest) command (default off).
 %.lp
 \item[\ib{safe\_pet}]
 Prevent you from (knowingly) attacking your pets (default on).
+%.lp
+\item[\ib{scores}]
+Control what parts of the score list you are shown at the end (ex.\
+``{\tt scores:5top scores/4around my score/own scores}'').  Only the first
+letter of each category (`{\tt t}', `{\tt a}' or `{\tt o}') is necessary.
+%.lp
+\item[\ib{showexp}]
+Show your accumulated experience points on bottom line (default off).
+%.lp
+\item[\ib{showscore}]
+Show your approximate accumulated score on bottom line (default off).
 %.lp
 \item[\ib{silent}]
 Suppress terminal beeps (default on).
@@ -1467,11 +1558,12 @@ Draw a tombstone graphic upon your death (default on).
 %.lp
 \item[\ib{verbose}]
 Provide more commentary during the game (default on).
+%.lp
+\item[\ib{windowtype}]
+Select which windowing system to use, such as ``{\tt tty}'' or ``{\tt X11}''
+(default depends on version).
+Cannot be set with the `{\tt O}' command.
 \elist
-
-%.pg
-\nd In some versions, options may be set in a configuration file
-on disk as well as from NETHACKOPTIONS.
 
 %.hn 1
 \section{Scoring}
@@ -1502,6 +1594,7 @@ can type
 \begin{verbatim}
     nethack -s all
 \end{verbatim}
+on most versions.
 
 %.hn 1
 \section{Explore mode}
@@ -1515,9 +1608,7 @@ paltry cost of not getting on the high score list.
 
 %.pg
 There are two ways of enabling explore mode.  One is to start the game
-with the
-%.op
-{\tt -X}
+with the {\tt -X}
 switch.  The other is to issue the `{\tt X}' command while already playing
 the game.  The other benefits of explore mode are left for the trepid
 reader to discover.
@@ -1526,8 +1617,9 @@ reader to discover.
 \section{Credits}
 %.pg
 The original %
-{\it hack\/} game was modeled on the Berkeley UNIX
+{\it hack\/} game was modeled on the Berkeley
 %.ux
+UNIX
 {\it rogue\/} game.  Large portions of this paper were shamelessly
 cribbed from %
 {\it A Guide to the Dungeons of Doom}, by Michael C. Toy
@@ -1593,6 +1685,48 @@ continued to enhance the PC, Macintosh, and Amiga ports through the later
 revisions of 3.0.
 
 %.pg
+\medskip
+\nd Headed by {\it Mike Stephenson\/} and coordinated by {\it Izchak Miller\/} and
+{\it Janet Walz}, the development team which now included {\it Ken Arromdee},
+{\it David Cohrs}, {\it Jean-Christophe Collet}, {\it Kevin Darcy},
+{\it Matt Day}, {\it Timo Hakulinen}, {\it Steve Linhart}, {\it Dean Luick},
+{\it Pat Rankin}, {\it Eric Raymond}, and {\it Eric Smith\/} undertook a radical
+revision of 3.0.  They re-structured the game's design, and re-wrote major
+parts of the code.  They added multiple dungeons, a new display, special
+individual character quests, a new endgame and many other new features, and
+produced {\it NetHack\/} 3.1.
+
+%.pg
+\medskip
+\nd {\it Ken Lorber}, {\it Gregg Wonderly\/} and {\it Greg Olson}, with help
+from {\it Richard Addison}, {\it Mike Passaretti}, and {\it Olaf Seibert},
+developed {\it NetHack\/} 3.1 for the Amiga.
+
+%.pg
+\medskip
+\nd {\it Norm Meluch\/} and {\it Kevin Smolkowski}, with help from
+{\it Carl Schelin}, {\it Stephen Spackman}, {\it Steve VanDevender},
+and {\it Paul Winner}, ported {\it NetHack\/} 3.1 to the PC.
+
+%.pg
+\medskip
+\nd {\it Jon W\"atte}, with help from {\it Ross Brown}, {\it Mike Engber},
+{\it David Hairston}, {\it Michael Hamel}, {\it Jonathan Handler},
+{\it Johnny Lee}, {\it Tim Lennan}, {\it Rob Menke}, {\it Andy Swanson}, and
+especially from {\it Hao-yang Wang}, developed {\it NetHack\/} 3.1 for the Macintosh.
+
+%.pg
+\medskip
+\nd {\it Timo Hakulinen\/} ported {\it NetHack\/} 3.1 to OS/2.  {\it Eric Smith\/}
+ported {\it NetHack\/} 3.1 to the Atari.  {\it Pat Rankin}, with help from
+{\it Joshua Delahunty}, is responsible for the VMS version of {\it NetHack\/} 3.1.
+
+%.pg
+\medskip
+\nd {\it Dean Luick}, with help from {\it David Cohrs}, developed {\it NetHack\/}
+3.1 for X11.
+
+%.pg
 \bigskip
 \nd From time to time, some depraved individual out there in netland sends a
 particularly intriguing modification to help out with the game.  The Gods of
@@ -1602,38 +1736,45 @@ in this, the list of Dungeoneers:
 %.sd
 \begin{center}
 \begin{tabular}{lll}
-Richard Addison         & Bruce Holloway        & Mike Passaretti \\
-Tom Almy                & Richard P. Hughey     & Pat Rankin      \\
-Ken Arromdee            & Ari Huttunen          & Eric S. Raymond \\
-Eric Backus             & Del Lamb              & John Rupley     \\
-John S. Bien            & Greg Laskin           & Olaf Seibert    \\
-Ralf Brown              & Johnny Lee            & Kevin Sitze     \\
-Jean-Christophe Collet  & Merlyn LeRoy          & Eric R. Smith   \\
-Steve Creps             & Steve Linhart         & Kevin Smolkowski\\
-Kevin Darcy             & Ken Lorber            & Michael Sokolov \\
-Matthew Day             & Benson I. Margulies   & Stephen Spackman\\
-Joshua Delahunty        & Pierre Martineau      & Andy Swanson    \\
-Jochen Erwied           & Roland McGrath        & Kevin Sweet     \\
-David Gentzel           & Norm Meluch           & Scott R. Turner \\
-Mark Gooderum           & Bruce Mewborne        & Janet Walz      \\
-David Hairston          & Izchak Miller         & Jon W\"atte     \\
-Timo Hakulinen          & Gil Neiger            & Tom West        \\
-Eric Hendrickson        & Greg Olson            & Gregg Wonderly
+Richard Addison        & Eric Hendrickson    & Mike Passaretti   \\
+Tom Almy               & Bruce Holloway      & Pat Rankin        \\
+Ken Arromdee           & Richard P. Hughey   & Eric S. Raymond   \\
+Eric Backus            & Ari Huttunen        & Frederick Roeber  \\
+John S. Bien           & John Kallen         & John Rupley       \\
+Ralf Brown             & Del Lamb            & Carl Schelin      \\
+Ross Brown             & Greg Laskin         & Olaf Seibert      \\
+David Cohrs            & Johnny Lee          & Kevin Sitze       \\
+Jean-Christophe Collet & Tim Lennan          & Eric R. Smith     \\
+Steve Creps            & Merlyn LeRoy        & Kevin Smolkowski  \\
+Kevin Darcy            & Steve Linhart       & Michael Sokolov   \\
+Matthew Day            & Ken Lorber          & Stephen Spackman  \\
+Joshua Delahunty       & Dean Luick          & Andy Swanson      \\
+Bill Dyer              & Benson I. Margulies & Kevin Sweet       \\
+Mike Engber            & Pierre Martineau    & Scott R. Turner   \\
+Jochen Erwied          & Roland McGrath      & Steve VanDevender \\
+Mike Gallop            & Norm Meluch         & Janet Walz        \\
+David Gentzel          & Rob Menke           & Hao-yang Wang     \\
+Mark Gooderum          & Deron Meranda       & Jon W\"atte       \\
+David Hairston         & Bruce Mewborne      & Tom West          \\
+Timo Hakulinen         & Izchak Miller       & Paul Winner       \\
+Michael Hamel          & Gil Neiger          & Gregg Wonderly    \\
+Jonathan Handler       & Greg Olson          &
 \end{tabular}
 \end{center}
 %.ed
 
-\vfill
-\begin{flushleft}
-\small
-Microsoft and MS-DOS are registered trademarks of Microsoft Corporation.\\
-%%Don't need next line if a UNIX macro automatically inserts footnotes.
-UNIX is a registered trademark of AT\&T.\\
-Lattice is a trademark of Lattice, Inc.\\
-Atari and 1040ST are trademarks of Atari, Inc.\\
-AMIGA is a trademark of Commodore-Amiga, Inc.\\
-%.sm
-Brand and product names are trademarks or registered trademarks
-of their respective holders.
-\end{flushleft}
+%\vfill
+%\begin{flushleft}
+%\small
+%Microsoft and MS-DOS are registered trademarks of Microsoft Corporation.\\
+%%%Don't need next line if a UNIX macro automatically inserts footnotes.
+%UNIX is a registered trademark of AT\&T.\\
+%Lattice is a trademark of Lattice, Inc.\\
+%Atari and 1040ST are trademarks of Atari, Inc.\\
+%AMIGA is a trademark of Commodore-Amiga, Inc.\\
+%%.sm
+%Brand and product names are trademarks or registered trademarks
+%of their respective holders.
+%\end{flushleft}
+
 \end{document}

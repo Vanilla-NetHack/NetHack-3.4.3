@@ -1,5 +1,5 @@
 #!/bin/sh
-#	SCCS Id: @(#)nethack.sh	3.0	89/08/11
+#	SCCS Id: @(#)nethack.sh	3.1	90/02/26
 
 HACKDIR=/usr/games/lib/nethackdir
 HACK=$HACKDIR/nethack
@@ -50,9 +50,9 @@ fi
 cd $HACKDIR
 case $1 in
 	-s*)
-		exec $HACK $@
+		exec $HACK "$@"
 		;;
 	*)
-		exec $HACK $@ $MAXNROFPLAYERS
+		exec $HACK "$@" $MAXNROFPLAYERS
 		;;
 esac

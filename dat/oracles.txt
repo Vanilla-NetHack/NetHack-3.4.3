@@ -1,38 +1,37 @@
+-----
 If thy wand hath run out of charges, thou mayst zap it again and again; though
 naught will happen at first, verily, thy persistence shall be rewarded, as
 one last charge may yet be wrested from it!
 -----
-To complete thy quest, thou needs must enter the infernal regions.  If thou
-hast not immunity to fire, such a trip will surely prove to be thy last;
-prepare thyself in advance.
------
 Though the shopkeepers be wary, thieves have nevertheless stolen much by using
 their digging wands to hasten exits through the pavement.
 -----
-If thou hast had trouble with rust on thy armor or weapons, thou shouldst know
-that thou canst prevent this by, while in a confused state, reading the magical
-parchments which normally are used to cause their enchantment.
+If thou hast had trouble with rust on thy armor or weapons, thou shouldst
+know that thou canst prevent this by, while in a confused state, reading the
+magical parchments which normally are used to cause their enchantment.
 -----
 Behold the cockatrice, whose diminutive stature belies its hidden might.  The
 cockatrice can petrify any ordinary being it contacts--save those wise
 adventurers who eat a dead lizard or blob of acid when they feel themselves
 slowly turning to stone.
 -----
-While some armor protects against magical attacks, few types compare to the
-items which come from the elven regions, though iron or crystalline plate
-mail have similar good qualities.
+While some wayfarers rely on finding finished armour in the dungeon, the
+resourceful consider dragon scales as truly enchanting raw material and
+realize that dragon scale mail is an excellent investment.
 -----
 It is well known among travelers that extra-healing draughts may clear thy
 senses when thou art addled by hallucinations.  But never forget, the lowly
 potion which makes one sick may be used for the same purpose.
 -----
-If thou hast been confused, thy head may be set straight if thou eatest a
-dead lizard and waitest, or drinkest water of the utmost holiness.
+While the consumption of lizard flesh or water beloved of the gods may
+straighten thy head after confusion, the application of the horn of a
+creature of utmost purity can alleviate many other afflictions as well.
 -----
-If thou wishest to reach deep levels, thou must be able to control thy tele-
-ports, and be confused, and read the scroll which usually teleports thyself
-around on the level.  Daring adventurers have also performed the same feat
-sans need for scrolls or potions by stepping on the correct type of trap.
+If thou wishest to travel quickly between distant levels, thou must be
+able to control thy teleports, and be confused, and read the scroll
+which usually teleports thyself around on the level.  Daring adventurers
+have also performed the same feat sans need for scrolls or potions by
+stepping on the correct type of trap.
 -----
 Almost all adventurers who come this way hope to pass the dread Medusa.  To
 do this, the best advice is to keep thine eyes blindfolded and to cause the
@@ -47,7 +46,7 @@ It is well known that wily shopkeepers doth raise their prices whene'er they
 espy the garish apparel of the approaching tourist or the countenance of a
 disfavored patron.  They favor the gentle of manner and the fair of face.
 The boor may expect unprofitable transactions.
------
+----- SINKS
 The cliche of the kitchen sink swallowing any unfortunate rings that contact
 its pernicious surface reflecteth greater truth than many homilies, yet
 even so, few hath developed the skill to identify enchanted rings by the
@@ -63,15 +62,31 @@ make this information available to mortals who request it at their places of
 worship, or elsewhere for those mortals who devote themselves to the service
 of the gods.
 -----
-The elven dagger Sting is famed for its abilities against all creatures of the
-orcish race.  It will glow when such monsters approach, and cause them special
-injury.
+At times, the gods may favor worthy supplicants with named blades whose
+powers echo throughout legend.  Learned wayfarers can reproduce blades of
+elven lineage, hated of the orcs, without the need for such intervention.
 -----
 Adventurers searching for Medusa or the Wizard of Yendor needst not wait until
 their dungeon level corresponds with their enemies' to know their location.
 Eat a floating eye, blind thyself, and use a mirror in thine own direction,
 and provided thou art lucky, thou shalt know the approximate locations of
 thine enemies.
+-----
+There are many stories of a mighty amulet, the origins of which are said
+to be ancient Yendor.  This amulet doth have awesome power, and the gods
+desireth it greatly.  Mortals mayst tap only portions of its terrible
+abilities.  The stories tell of mortals seeing what their eyes cannot
+see and seeking places of magical transportation, while having this
+amulet in their possession.  Others say a mortal must wear the amulet to
+obtain these powers.  But verily, such power comes at great cost, to
+preserve the balance.
+-----
+It is said that thou mayst gain entry to Moloch's sanctuary, if thou
+darest, from a place where the ground vibrates in the deepest depths of
+Gehennom.  Thou needs must have the aid of three magical items.  The
+pure sound of a silver bell shall announce thee.  The terrible runes,
+read from Moloch's book, shall cause the earth to tremble mightily.  The
+light of an enchanted candelabrum shall show thee the way.
 -----
 In the nethermost recesses of the dungeon, there standeth a castle, wherein
 layeth a wand of wishes.  If thou wouldst gain entry, bear with thee an
@@ -80,3 +95,9 @@ melody.  What notes comprise it only the gods know, but a musical mastermind
 may yet succeed by witful improvization.  However, the less perspicacious are
 not without recourse, should they be prepared to circumambulate the castle to
 the postern.
+----- ELBERETH
+The name of Elbereth may strike fear into the hearts of thine enemies, if
+thou doest write it upon the ground at thy feet.  If thou maintain the utmost
+calm, thy safety will be aided greatly, but beware lest thy clumsy feet scuff
+the inscription, cancelling its potence.
+-----

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mcastu.c	3.0	88/04/13
+/*	SCCS Id: @(#)mcastu.c	3.1	90/09/21
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -40,7 +40,7 @@ cursetxt(mtmp)
 	    else
 		pline("%s points at you, then curses.", Monnam(mtmp));
 	} else if((!(moves%4) || !rn2(4)) && flags.soundok) 
-		You("hear a mumbled curse.");
+		Norep("You hear a mumbled curse.");
 }
 
 #endif /* OVL0 */
@@ -51,7 +51,7 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 	register struct monst *mtmp;
 	register struct attack *mattk;
 {
-	int	dmg = 0, ml = mtmp->m_lev;
+	int	dmg, ml = mtmp->m_lev;
 
 	if(mtmp->mcan || mtmp->mspec_used || !ml) {  /* could not attack */
 	    cursetxt(mtmp);
@@ -75,6 +75,7 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 	if (mattk->damd)
 		dmg = d((int)((ml/3) + mattk->damn), (int)mattk->damd);
 	else dmg = d((int)((ml/3) + 1), 6);
+	if (Half_spell_damage) dmg = (dmg+1) / 2;
 
 	switch(mattk->adtyp)   {
 
@@ -94,7 +95,6 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 			dmg = 0;
 		}
 		break;
-#ifdef INFERNO
 	    case AD_MAGM:
 		You("are hit by a shower of missiles!");
 		if(Antimagic) {
@@ -103,7 +103,6 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 			dmg = 0;
 		} else dmg = d((int)mtmp->m_lev/2 + 1,6);
 		break;
-#endif
 	    case AD_SPEL:	/* random spell */
 
 		mtmp->mspec_used = 10 - mtmp->m_lev;
@@ -113,15 +112,16 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 		    case 21:
 		    case 20:
 			pline("Oh no, %s's using the touch of death!",
-			      is_female(mtmp) ? "she" :
-			      is_human(mtmp->data) ? "he" : "it"
+			      humanoid(mtmp->data)
+				  ? (mtmp->female ? "she" : "he")
+				  : "it"
 			     );
 #ifdef POLYSELF
 			if (is_undead(uasmon))
 			    You("seem no deader than before.");
 			else
 #endif
-			if(!Antimagic && rn2(ml) > 12)  {
+			if (!Antimagic && rn2(ml) > 12) {
 
 			    if(Hallucination)
 				You("have an out of body experience.");
@@ -147,11 +147,9 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 		    case 17:
 		    case 16:
 		    case 15:
-			if(mtmp->iswiz && flags.soundok)
-			    pline("\"Destroy the thief, my pets!\"");
-#ifdef HARD
-			nasty();	/* summon something nasty */
-#endif
+			if(mtmp->iswiz)
+			    verbalize("Destroy the thief, my pets!");
+			nasty(mtmp);	/* summon something nasty */
 			/* fall into the next case */
 		    case 14:		/* aggravate all monsters */
 		    case 13:
@@ -166,7 +164,7 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 			break;
 		    case 9:
 		    case 8:		/* destroy armor */
-			if(Antimagic) {
+			if (Antimagic) {
 				shieldeff(u.ux, u.uy);
 				pline("A field of force surrounds you!");
 			} else if(!destroy_arm(some_armor()))
@@ -180,7 +178,9 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 			    You("feel momentarily weakened.");
 			} else {
 			    You("suddenly feel weaker!");
-			    losestr(rnd(ml - 6));
+			    dmg = ml - 6;
+			    if(Half_spell_damage) dmg = (dmg+1) / 2;
+			    losestr(rnd(dmg));
 			    if(u.uhp < 1)
 				done_in_by(mtmp);
 			}
@@ -193,7 +193,7 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 				pline("%s suddenly disappears!",
 				      Monnam(mtmp));
 			    mtmp->minvis = 1;
-			    unpmon(mtmp);
+			    newsym(mtmp->mx,mtmp->my);
 			    dmg = 0;
 			    break;
 			} /* else fall into the next case */
@@ -204,9 +204,13 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 				You("feel momentarily disoriented.");
 			    make_stunned(1L, FALSE);
 			} else {
-			    if (Stunned)	You("struggle to keep your balance.");
-			    else		You("reel...");
-			    make_stunned(HStun + d(ACURR(A_DEX) < 12 ? 6 : 4, 4), FALSE);
+			    if (Stunned)
+				You("struggle to keep your balance.");
+			    else
+				You("reel....");
+			    dmg = d(ACURR(A_DEX) < 12 ? 6 : 4, 4);
+			    if(Half_spell_damage) dmg = (dmg+1) / 2;
+			    make_stunned(HStun + dmg, FALSE);
 			}
 			dmg = 0;
 			break;
@@ -249,7 +253,9 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 			    shieldeff(u.ux, u.uy);
 			    You("feel momentarily dizzy.");
 			} else {
-			    make_confused(HConfusion + (long)mtmp->m_lev, TRUE);
+			    dmg = (int)mtmp->m_lev;
+			    if(Half_spell_damage) dmg = (dmg+1) / 2;
+			    make_confused(HConfusion + dmg, TRUE);
 			}
 			dmg = 0;
 			break;
@@ -265,15 +271,17 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 			   left, go for (sticks to) snakes.  -3. */
 			{
 			int i;
-			struct permonst *pm = mkclass(S_ANT);
+			struct permonst *pm = mkclass(S_ANT,0);
 			struct monst *mtmp2;
 			char let = (pm ? S_ANT : S_SNAKE);
   
-			for (i = 0; i <= mtmp->m_lev; i++)
-			   if ((pm = mkclass(let)) &&
-					(mtmp2 = makemon(pm, u.ux, u.uy)))
+			for (i = 0; i <= (int) mtmp->m_lev; i++)
+			   if ((pm = mkclass(let,0)) &&
+					(mtmp2 = makemon(pm, u.ux, u.uy))) {
 				mtmp2->msleep = mtmp2->mpeaceful =
 					mtmp2->mtame = 0;
+				set_malign(mtmp2);
+			    }
 			}			
 			dmg = 0;
 			break;
@@ -281,7 +289,7 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 		    case 7:		/* blindness */
 			if (!Blinded) {
 			    pline("Scales cover your eyes!");
-			    make_blinded(200L, FALSE);
+			    make_blinded(Half_spell_damage ? 100L:200L, FALSE);
 			    dmg = 0;
 			    break;
 			}
@@ -294,6 +302,7 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 			} else {
 			    pline("Wounds appear on your body!");
 			    dmg = d(2,8) + 1;
+			    if (Half_spell_damage) dmg = (dmg+1) / 2;
 			}
 			break;
 		    case 3:		/* hold */
@@ -305,7 +314,9 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 		 	} else {
 			    if (multi >= 0)	
 			        You("are frozen in place!");
-			    nomul(-4 - (int)mtmp->m_lev);
+			    dmg = 4 + (int)mtmp->m_lev;
+			    if (Half_spell_damage) dmg = (dmg+1) / 2;
+			    nomul(-dmg);
 			}
 			dmg = 0;
 			break;
@@ -350,3 +361,4 @@ buzzmu(mtmp, mattk)		/* monster uses spell (ranged) */
 
 #endif /* OVL0 */
 
+/*mcastu.c*/

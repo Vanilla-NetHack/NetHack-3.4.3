@@ -1,35 +1,90 @@
-/*	SCCS Id: @(#)def_os2.h	3.0	89/08/13
+/*	SCCS Id: @(#)def_os2.h	3.1	93/01/19	*/
+/*	Copyright (c) Timo Hakulinen, 1990, 1991, 1992, 1993. */
+/*	NetHack may be freely redistributed.  See license for details. */
 
-/*  OS/2 defines based on MSC 5.1 OS/2 include files.
-    Only a small portion of all OS/2 defines are needed,
-    so the actual include files are not used.
-
-    Timo Hakulinen
+/*
+ *	Only a small portion of all OS/2 defines are needed, so the
+ *	actual include files often need not be used.  In fact,
+ *	including the full headers may stall the compile in DOS.
  */
 
-#define APIENTRY pascal far
+#ifdef OS2_USESYSHEADERS
 
-#define CHAR	char		/* ch  */
-#define SHORT	int		/* s   */
-#define LONG	long		/* l   */
-#define INT	int		/* i   */
+# define INCL_NOPMAPI
+# define INCL_DOSFILEMGR
+# define INCL_DOS
+# define INCL_SUB
 
-typedef unsigned char UCHAR;	/* uch */
-typedef unsigned int  USHORT;	/* us  */
-typedef unsigned long ULONG;	/* ul  */
-typedef unsigned int  UINT;	/* ui  */
+# include <os2.h>
 
-typedef unsigned char BYTE;	/* b   */
-typedef BYTE   far *PBYTE;
+#else
 
-typedef unsigned short	SHANDLE;
-typedef SHANDLE 	HKBD;
-typedef SHANDLE 	HVIO;
-typedef SHANDLE 	HDIR;	/* hdir */
-typedef HDIR far *PHDIR;
+typedef char CHAR;
+typedef void VOID;
 
-typedef USHORT far *PUSHORT;
-typedef char far *PSZ;
+typedef unsigned char UCHAR;
+typedef unsigned short USHORT;
+typedef unsigned int UINT;
+typedef unsigned long ULONG;
+typedef unsigned char BYTE;
+
+# ifdef OS2_32BITAPI
+
+typedef unsigned long SHANDLE;
+typedef USHORT HKBD;
+typedef USHORT HVIO;
+
+#  define CCHMAXPATHCOMP 256
+
+#  ifdef OS2_CSET2
+#   define API16 _Far16 _Pascal
+#   define DAT16
+#   define API32 _System
+#   define KbdGetStatus KBD16GETSTATUS
+#   define KbdSetStatus KBD16SETSTATUS
+#   define KbdCharIn    KBD16CHARIN
+#   define KbdPeek      KBD16PEEK
+#   define VioGetMode   VIO16GETMODE
+#   define VioSetCurPos VIO16SETCURPOS
+#  else
+#   define API16
+#   define DAT16
+#   define API32
+#  endif
+
+#  define DAT
+
+# else /* OS2_32BITAPI */
+
+typedef unsigned short SHANDLE;
+typedef SHANDLE HKBD;
+typedef SHANDLE HVIO;
+
+#  define CCHMAXPATHCOMP 13
+
+#  ifdef OS2_MSC
+#   define API16 pascal far
+#   define DAT16
+#  endif
+
+#  define DAT DAT16
+
+# endif /* OS2_32BITAPI */
+
+typedef USHORT * DAT16 PUSHORT;
+typedef BYTE * DAT16 PBYTE;
+typedef ULONG * DAT PULONG;
+typedef VOID * DAT PVOID;
+
+typedef SHANDLE HDIR;
+typedef HDIR * DAT PHDIR;
+
+typedef char * DAT16 PCH;
+typedef char * DAT PSZ;
+
+/* all supported compilers understand this */
+
+# pragma pack(2)
 
 typedef struct {
 	UCHAR  chChar;
@@ -39,25 +94,43 @@ typedef struct {
 	USHORT fsState;
 	ULONG  time;
 } KBDKEYINFO;
-typedef KBDKEYINFO far *PKBDKEYINFO;
+
+typedef KBDKEYINFO * DAT16 PKBDKEYINFO;
 
 /* File time and date types */
 
-typedef struct _FTIME { 	/* ftime */
-    unsigned twosecs : 5;
-    unsigned minutes : 6;
-    unsigned hours   : 5;
+typedef struct {
+	UINT twosecs : 5;
+	UINT minutes : 6;
+	UINT hours   : 5;
 } FTIME;
-typedef FTIME far *PFTIME;
 
-typedef struct _FDATE { 	/* fdate */
-    unsigned day     : 5;
-    unsigned month   : 4;
-    unsigned year    : 7;
+typedef struct {
+	UINT day     : 5;
+	UINT month   : 4;
+	UINT year    : 7;
 } FDATE;
-typedef FDATE far *PFDATE;
 
-typedef struct _FILEFINDBUF {	/* findbuf */
+# ifdef OS2_32BITAPI
+
+typedef struct {
+	ULONG oNextEntryOffset;
+	FDATE fdateCreation;
+	FTIME ftimeCreation;
+	FDATE fdateLastAccess;
+	FTIME ftimeLastAccess;
+	FDATE fdateLastWrite;
+	FTIME ftimeLastWrite;
+	ULONG cbFile;
+	ULONG cbFileAlloc;
+	ULONG attrFile;
+	UCHAR cchName;
+	CHAR  achName[CCHMAXPATHCOMP];
+} FILEFINDBUF3;
+
+# else
+
+typedef struct {
 	FDATE  fdateCreation;
 	FTIME  ftimeCreation;
 	FDATE  fdateLastAccess;
@@ -68,22 +141,32 @@ typedef struct _FILEFINDBUF {	/* findbuf */
 	ULONG  cbFileAlloc;
 	USHORT attrFile;
 	UCHAR  cchName;
-	CHAR   achName[13];
+	CHAR   achName[CCHMAXPATHCOMP];
 } FILEFINDBUF;
-typedef FILEFINDBUF far *PFILEFINDBUF;
 
-/* KBDINFO structure, for KbdSet/GetStatus */
-typedef struct _KBDINFO {	/* kbst */
+typedef FILEFINDBUF * DAT16 PFILEFINDBUF;
+
+# endif /* OS2_32BITAPI */
+
+typedef struct {
+	ULONG  idFileSystem;
+	ULONG  cSectorUnit;
+	ULONG  cUnit;
+	ULONG  cUnitAvail;
+	USHORT cbSector;
+} FSALLOCATE;
+
+typedef struct {
 	USHORT cb;
 	USHORT fsMask;
 	USHORT chTurnAround;
 	USHORT fsInterim;
 	USHORT fsState;
 } KBDINFO;
-typedef KBDINFO far *PKBDINFO;
 
-/* VIOMODEINFO structure, for VioGetMode */
-typedef struct _VIOMODEINFO {
+typedef KBDINFO * DAT16 PKBDINFO;
+
+typedef struct {
 	USHORT cb;
 	UCHAR  fbType;
 	UCHAR  color;
@@ -93,17 +176,37 @@ typedef struct _VIOMODEINFO {
 	USHORT vres;
 	UCHAR  fmt_ID;
 	UCHAR  attrib;
+	ULONG  buf_addr;
+	ULONG  buf_length;
+	ULONG  full_length;
+	ULONG  partial_length;
+	PCH    ext_data_addr;
 } VIOMODEINFO;
-typedef VIOMODEINFO far *PVIOMODEINFO;
+
+typedef VIOMODEINFO * DAT16 PVIOMODEINFO;
+
+# pragma pack()
 
 /* OS2 API functions */
 
-USHORT APIENTRY KbdGetStatus(PKBDINFO, HKBD);
-USHORT APIENTRY KbdSetStatus(PKBDINFO, HKBD);
-USHORT APIENTRY KbdCharIn(PKBDKEYINFO, USHORT, HKBD );
-USHORT APIENTRY DosQFSInfo(USHORT, USHORT, PBYTE, USHORT);
-USHORT APIENTRY DosFindFirst(PSZ, PHDIR, USHORT, PFILEFINDBUF, USHORT, PUSHORT, ULONG);
-USHORT APIENTRY DosFindNext(HDIR, PFILEFINDBUF, USHORT, PUSHORT);
-USHORT APIENTRY DosSelectDisk(USHORT);
-USHORT APIENTRY VioGetMode(PVIOMODEINFO, HVIO);
-USHORT APIENTRY VioSetCurPos(USHORT, USHORT, HVIO);
+USHORT API16 KbdGetStatus(PKBDINFO, HKBD);
+USHORT API16 KbdSetStatus(PKBDINFO, HKBD);
+USHORT API16 KbdCharIn(PKBDKEYINFO, USHORT, HKBD);
+USHORT API16 KbdPeek(PKBDKEYINFO, HKBD);
+
+USHORT API16 VioGetMode(PVIOMODEINFO, HVIO);
+USHORT API16 VioSetCurPos(USHORT, USHORT, HVIO);
+
+# ifdef OS2_32BITAPI
+ULONG API32 DosQueryFSInfo(ULONG, ULONG, PVOID, ULONG);
+ULONG API32 DosFindFirst(PSZ, PHDIR, ULONG, PVOID, ULONG, PULONG, ULONG);
+ULONG API32 DosFindNext(HDIR, PVOID, ULONG, PULONG);
+ULONG API32 DosSetDefaultDisk(ULONG);
+# else
+USHORT API16 DosQFSInfo(USHORT, USHORT, PBYTE, USHORT);
+USHORT API16 DosFindFirst(PSZ, PHDIR, USHORT, PFILEFINDBUF, USHORT, PUSHORT, ULONG);
+USHORT API16 DosFindNext(HDIR, PFILEFINDBUF, USHORT, PUSHORT);
+USHORT API16 DosSelectDisk(USHORT);
+# endif /* OS2_32BITAPI */
+
+#endif /* OS2_USESYSHEADERS */

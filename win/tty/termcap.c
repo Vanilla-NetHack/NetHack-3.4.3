@@ -1,23 +1,11 @@
-/*	SCCS Id: @(#)termcap.c	3.0	88/11/20
+/*	SCCS Id: @(#)termcap.c	3.1	92/11/15	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
-#define MONATTK_H	/* comment line for pre-compiled headers */
-/* block some unused #defines to avoid overloading some cpp's */
-#include "hack.h"	/* for ROWNO, COLNO, *HI, *HE, *AS, *AE */
-
-#include <ctype.h>	/* for isdigit() */
+#include "hack.h"
+#include "wintty.h"
 
 #include "termcap.h"
-
-#if (!defined(SYSV) && !defined(HPUX)) || defined(TOS) || defined(UNIXPC)
-# ifndef LINT
-extern			/* it is defined in libtermlib (libtermcap) */
-# endif
-	short ospeed;	/* terminal baudrate; used by tputs */
-#else
-short	ospeed = 0;	/* gets around "not defined" error message */
-#endif
 
 
 #ifdef MICROPORT_286_BUG
@@ -26,19 +14,28 @@ short	ospeed = 0;	/* gets around "not defined" error message */
 #define Tgetstr(key) (tgetstr(key,&tbufptr))
 #endif /* MICROPORT_286_BUG **/
 
-STATIC_DCL void FDECL(nocmov, (int, int));
+void FDECL(cmov, (int, int));
+void FDECL(nocmov, (int, int));
 #ifdef TEXTCOLOR
 # ifdef TERMLIB
 #  ifdef OVLB
+#   ifndef TOS
+static void FDECL(analyze_seq, (char *, int *, int *));
+#   endif
 static void NDECL(init_hilite);
 #  endif /* OVLB */
 # endif
 #endif
 
-STATIC_VAR char *HO, *CL, *CE, *UP, *CM, *ND, *XD, *BC, *SO, *SE, *TI, *TE;
-STATIC_VAR char *VS, *VE, *US, *UE;
-STATIC_VAR char *MR, *ME;
+#ifdef OVLB
+	/* (see termcap.h) -- CM, ND, CD, HI,HE, US,UE, ul_hack */
+struct tc_lcl_data tc_lcl_data = { 0, 0, 0, 0,0, 0,0, FALSE };
+#endif /* OVLB */
+
+STATIC_VAR char *HO, *CL, *CE, *UP, *XD, *BC, *SO, *SE, *TI, *TE;
+STATIC_VAR char *VS, *VE;
 #if 0
+STATIC_VAR char *MR, *ME;
 STATIC_VAR char *MB, *MH;
 STATIC_VAR char *MD;     /* may already be in use below */
 #endif
@@ -53,6 +50,14 @@ STATIC_OVL char PC = '\0';
 STATIC_DCL char PC;
 #endif /* OVLB */
 STATIC_VAR char tbuf[512];
+#endif
+
+#ifdef TEXTCOLOR
+# ifdef TOS
+const char *hilites[MAXCOLORS];	/* terminal escapes for the various colors */
+# else
+char NEARDATA *hilites[MAXCOLORS]; /* terminal escapes for the various colors */
+# endif
 #endif
 
 #ifdef OVLB
@@ -72,7 +77,8 @@ STATIC_VAR char tgotobuf[20];
 #ifdef OVLB
 
 void
-startup()
+tty_startup(wid, hgt)
+    int *wid, *hgt;
 {
 #ifdef TERMLIB
 	register const char *term;
@@ -83,17 +89,10 @@ startup()
 
 #ifdef TERMLIB
 # ifdef VMS
-	term = verify_termcap();	/* jump thru some hoops */
-	if (!term) term = getenv("NETHACK_TERM");
-	if (!term) term = getenv("EMACS_TERM");
-	if (!term)
+	if (!(term = verify_termcap()))
 # endif
 	term = getenv("TERM");
 #endif
-	/* Set the default map symbols */
-	(void) memcpy((genericptr_t) showsyms, 
-		(genericptr_t) defsyms, sizeof showsyms);
-
 
 #ifdef TERMLIB
 	if(!term)
@@ -101,50 +100,11 @@ startup()
 #if defined(TOS) && defined(__GNUC__) && defined(TERMLIB)
 		term = "builtin";		/* library has a default */
 #else
-# ifdef MACOS
-	/* dummy termcap for the Mac */
-	HO = "\033[H";
-	CL = "\033[2J";     /* a pseudo-ANSI termcap */
-	CE = "\033[K";
-	CM = "\033[%d;%dH"; /* not used */
-	UP = "\033[A";
-	ND = "\033[C";
-	XD = "\033[B";
- 	BC = "\033[D";
- 	TI = TE = SE = UE = US = HE = "\033[0m";
- 	SO = "\033[1m";
- 	AS = VS = VE = AE = "";
- 	CO = COLNO;
- 	LI = ROWNO + 3;
- 	/* use special font ? */
-	{
- 	   extern short macflags;
- 	   if (macflags & fUseCustomFont)
-	    {
-		Handle  theRes;
-		unsigned char   *sym;
-		short   i;
-
-		sym = &showsyms[S_stone];
-		theRes = GetResource(HACK_DATA,102);
-		HLock(theRes);
-		strncpy((char *)sym,(char *)(*theRes),32);
-		HUnlock(theRes);
-		ReleaseResource(theRes);
-	    }
-	}
-#  ifdef TEXTCOLOR
-	for (i = 0; i < MAXCOLORS; i++) {
-	    hilites[i] = (char *) alloc(sizeof("E[cc"));
-	    Sprintf(hilites[i], "\033[c%c", (char)(i+'a'));
-	}
-#  endif
-# else /* MACOS */
-# ifdef ANSI_DEFAULT
-#  ifdef TOS
+#  ifdef ANSI_DEFAULT
+#   ifdef TOS
 	{
 		CO = 80; LI = 25;
-		TI = VS = VE = TE = "";
+		TI = VS = VE = TE = nullstr;
 		HO = "\033H";
 		CL = "\033E";		/* the VT52 termcap */
 		CE = "\033K";
@@ -155,82 +115,85 @@ startup()
 		BC = "\033D";
 		SO = "\033p";
 		SE = "\033q";
+	/* HI and HE will be updated in init_hilite if we're using color */
 		HI = "\033p";
-#ifdef TEXTCOLOR
-		HE = "\033q\033b\017";
-		for (i = 0; i < SIZE(hilites); i++) {
-			hilites[i] = (char *) alloc(sizeof("Eb1"));
-			Sprintf(hilites[i], (i%4)?"\033b%c" : "\033p", i);
-		}
-#else
 		HE = "\033q";
-#endif
 	}
-#  else /* TOS */
+#   else /* TOS */
 	{
-#   ifdef DGK
+#    ifdef MICRO
 		get_scr_size();
+#     ifdef CLIPPING
 		if(CO < COLNO || LI < ROWNO+3)
 			setclipped();
-#   endif
+#     endif
+#    endif
 		HO = "\033[H";
 		CL = "\033[2J";		/* the ANSI termcap */
 /*		CD = "\033[J"; */
 		CE = "\033[K";
-#   ifndef TERMLIB
+#    ifndef TERMLIB
 		CM = "\033[%d;%dH";
-#   else
+#    else
 		CM = "\033[%i%d;%dH";
-#   endif
+#    endif
 		UP = "\033[A";
 		ND = "\033[C";
 		XD = "\033[B";
-#   ifdef MSDOS	/* backspaces are non-destructive */
+#    ifdef MICRO	/* backspaces are non-destructive */
 		BC = "\b";
-#   else
+#    else
 		BC = "\033[D";
-#   endif
+#    endif
 		HI = SO = "\033[1m";
 		US = "\033[4m";
+#    if 0
 		MR = "\033[7m";
-		TI = HE = SE = UE = ME = "\033[0m";
+		ME = "\033[0m";
+#    endif
+		TI = HE = SE = UE = "\033[0m";
 		/* strictly, SE should be 2, and UE should be 24,
 		   but we can't trust all ANSI emulators to be
 		   that complete.  -3. */
-#   if !defined(MSDOS) || (defined(TERMLIB) && defined(AMIGA))
+#    ifndef MICRO
 		AS = "\016";
 		AE = "\017";
-#   endif
-		TE = VS = VE = "";
-#   ifdef TEXTCOLOR
-		for (i = 0; i < MAXCOLORS / 2; i++) {
-			hilites[i] = (char *) alloc(sizeof("\033[0;3%dm"));
-			hilites[i+BRIGHT] = (char *) alloc(sizeof("\033[1;3%dm"));
-#    ifdef MSDOS
-			Sprintf(hilites[i], (i == BLUE ? "\033[1;3%dm" : "\033[0;3%dm"), i);
-#    else
-			Sprintf(hilites[i], "\033[0;3%dm", i);
 #    endif
-			Sprintf(hilites[i+BRIGHT], "\033[1;3%dm", i);
-		}
-#   endif
+		TE = VS = VE = nullstr;
+#    ifdef TEXTCOLOR
+		for (i = 0; i < MAXCOLORS / 2; i++)
+		    if (i != BLACK) {
+			hilites[i|BRIGHT] = (char *) alloc(sizeof("\033[1;3%dm"));
+			Sprintf(hilites[i|BRIGHT], "\033[1;3%dm", i);
+			if (i != GRAY)
+#     ifdef MICRO
+			    if (i == BLUE) hilites[BLUE] = hilites[BLUE|BRIGHT];
+			    else
+#     endif
+			    {
+				hilites[i] = (char *) alloc(sizeof("\033[0;3%dm"));
+				Sprintf(hilites[i], "\033[0;3%dm", i);
+			    }
+		    }
+#    endif
+		*wid = CO;
+		*hgt = LI;
 		return;
 	}
-#  endif /* TOS */
-# else
+#   endif /* TOS */
+#  else
 		error("Can't get TERM.");
-# endif /* ANSI_DEFAULT */
-# endif /* MACOS */
+#  endif /* ANSI_DEFAULT */
 #endif /* __GNUC__ && TOS && TERMCAP */
 #ifdef TERMLIB
 	tptr = (char *) alloc(1024);
 
 	tbufptr = tbuf;
 	if(!strncmp(term, "5620", 4))
-		flags.nonull = 1;	/* this should be a termcap flag */
+		flags.null = FALSE;	/* this should be a termcap flag */
 	if(tgetent(tptr, term) < 1)
 		error("Unknown terminal type: %s.", term);
-	if(pc = Tgetstr("pc"))
+	if ((pc = Tgetstr("pc")) != 0)
 		PC = *pc;
 
 	if(!(BC = Tgetstr("le")))	/* both termcap and terminfo use le */	
@@ -238,7 +201,7 @@ startup()
 	    error("Terminal must backspace.");
 # else
 	    if(!(BC = Tgetstr("bc"))) {	/* termcap also uses bc/bs */
-#  if !defined(MINIMAL_TERM) && !defined(HISX)
+#  if !defined(MINIMAL_TERM)
 		if(!tgetflag("bs"))
 			error("Terminal must backspace.");
 #  endif
@@ -258,7 +221,7 @@ startup()
 	 * the kernel has values for either we should use them rather than
 	 * the values from TERMCAP ...
 	 */
-# ifndef DGK
+# ifndef MICRO
 	if (!CO) CO = tgetnum("co");
 	if (!LI) LI = tgetnum("li");
 # else
@@ -275,13 +238,17 @@ startup()
 	}
 #  endif
 # endif
+# ifdef CLIPPING
 	if(CO < COLNO || LI < ROWNO+3)
 		setclipped();
+# endif
 	if(!(CL = Tgetstr("cl")))
 		error("Hack needs CL.");
 	ND = Tgetstr("nd");
 	if(tgetflag("os"))
 		error("Hack can't have OS.");
+	if(tgetflag("ul"))
+		ul_hack = TRUE;
 	CE = Tgetstr("ce");
 	UP = Tgetstr("up");
 	/* It seems that xd is no longer supported, and we should use
@@ -293,8 +260,8 @@ startup()
 	if(!(CM = Tgetstr("cm"))) {
 		if(!UP && !HO)
 			error("Hack needs CM or UP or HO.");
-		Printf("Playing hack on terminals without cm is suspect...\n");
-		getret();
+		tty_raw_print("Playing hack on terminals without cm is suspect...");
+		tty_wait_synch();
 	}
 	SO = Tgetstr("so");
 	SE = Tgetstr("se");
@@ -311,12 +278,12 @@ startup()
 	KS = Tgetstr("ks");	/* keypad start (special mode) */
 	KE = Tgetstr("ke");	/* keypad end (ordinary mode [ie, digits]) */
 # if 0
+	MR = Tgetstr("mr");	/* reverse */
 	MB = Tgetstr("mb");	/* blink */
 	MD = Tgetstr("md");	/* boldface */
 	MH = Tgetstr("mh");	/* dim */
-# endif
-	MR = Tgetstr("mr");	/* reverse */
 	ME = Tgetstr("me");
+# endif
 
 	/* Get rid of padding numbers for HI and HE.  Hope they
 	 * aren't really needed!!!  HI and HE are ouputted to the
@@ -326,10 +293,10 @@ startup()
 	    HI = (char *) alloc((unsigned)(strlen(SO)+1));
 	    HE = (char *) alloc((unsigned)(strlen(SE)+1));
 	    i = 0;
-	    while(isdigit(SO[i])) i++;
+	    while (digit(SO[i])) i++;
 	    Strcpy(HI, &SO[i]);
 	    i = 0;
-	    while(isdigit(SE[i])) i++;
+	    while (digit(SE[i])) i++;
 	    Strcpy(HE, &SE[i]);
 	AS = Tgetstr("as");
 	AE = Tgetstr("ae");
@@ -337,21 +304,24 @@ startup()
 # ifdef TEXTCOLOR
 	MD = Tgetstr("md");
 # endif
-	set_whole_screen();		/* uses LI and CD */
 	if(tbufptr-tbuf > sizeof(tbuf)) error("TERMCAP entry too big...\n");
 	free((genericptr_t)tptr);
 # ifdef TEXTCOLOR
-	init_hilite();
 #  if defined(TOS) && defined(__GNUC__)
-	if (!strcmp(term, "builtin"))
-		HE="\033q\033b3\033c0";	/* to turn off colors, too */
+	if (!strcmp(term, "builtin") || !strcmp(term, "tw52")) {
+		init_hilite();
+	}
+#  else
+	init_hilite();
 #  endif
 # endif
 #endif /* TERMLIB */
+	*wid = CO;
+	*hgt = LI;
 }
 
 void
-number_pad(state)
+tty_number_pad(state)
 int state;
 {
 	switch (state) {
@@ -367,29 +337,54 @@ int state;
 	}
 }
 
+#ifdef TERMLIB
+extern void NDECL((*decgraphics_mode_callback));    /* defined in drawing.c */
+static void NDECL(tty_decgraphics_termcap_fixup);
+
+/*
+   We call this routine whenever DECgraphics mode is enabled, even if it
+   has been previously set, in case the user manages to reset the fonts.
+   The actual termcap fixup only needs to be done once, but we can't
+   call xputs() from the option setting or graphics assigning routines,
+   so this is a convenient hook.
+ */
+static void
+tty_decgraphics_termcap_fixup()
+{
+	static char ctrlN[]   = "\016";
+	static char ctrlO[]   = "\017";
+	static char appMode[] = "\033=";
+	static char numMode[] = "\033>";
+
+	/* these values are missing from some termcaps */
+	if (!AS) AS = ctrlN;	/* ^N (shift-out [graphics font]) */
+	if (!AE) AE = ctrlO;	/* ^O (shift-in  [regular font])  */
+	if (!KS) KS = appMode;	/* ESC= (application keypad mode) */
+	if (!KE) KE = numMode;	/* ESC> (numeric keypad mode)	  */
+	/*
+	 * Select the line-drawing character set as the alternate font.
+	 * Do not select NA ASCII as the primary font since people may
+	 * reasonably be using the UK character set.
+	 */
+	if (flags.DECgraphics) xputs("\033)0");
+}
+#endif
+
 void
-start_screen()
+tty_start_screen()
 {
 	xputs(TI);
 	xputs(VS);
-	if (flags.DECgraphics) {
-		/* select the line-drawing character set as the alternate
-		 * character set
-		 * do not select NA ASCII as the primary character set
-		 * since people may reasonably be using the UK set
-		 */
-		xputs("\033)0");
-		/* these values are missing from some termcaps */
-		if (!AS) AS = "\016";	/* ^N (shift-out [graphics font]) */
-		if (!AE) AE = "\017";	/* ^O (shift-in  [regular font])  */
-		if (!KS) KS = "\033=";	/* ESC= (application keypad mode) */
-		if (!KE) KE = "\033>";	/* ESC> (numeric keypad mode)	  */
-	}
-	if (flags.num_pad) number_pad(1);	/* make keypad send digits */
+#ifdef TERMLIB
+	if (flags.DECgraphics) tty_decgraphics_termcap_fixup();
+	/* set up callback in case option is not set yet but toggled later */
+	decgraphics_mode_callback = tty_decgraphics_termcap_fixup;
+#endif
+	if (flags.num_pad) tty_number_pad(1);	/* make keypad send digits */
 }
 
 void
-end_screen()
+tty_end_screen()
 {
 	clear_screen();
 	xputs(VE);
@@ -399,99 +394,57 @@ end_screen()
 /* Cursor movements */
 
 #endif /* OVLB */
-#ifdef OVL0
 
-#ifdef CLIPPING
-/* if (x,y) is currently viewable, move the cursor there and return TRUE */
-boolean
-win_curs(x, y)
-int x, y;
-{
-	if (clipping && (x<=clipx || x>=clipxmax || y<=clipy || y>=clipymax))
-		return FALSE;
-	y -= clipy;
-	x -= clipx;
-	curs(x, y+2);
-	return TRUE;
-}
-#endif
-
-#endif /* OVL0 */
-#ifdef OVLB
-void
-curs(x, y)
-register int x, y;	/* not xchar: perhaps xchar is unsigned and
-			   curx-x would be unsigned as well */
-{
-	if (y == cury && x == curx)
-		return;
-	if(!ND && (curx != x || x <= 3)) {	/* Extremely primitive */
-		cmov(x, y);			/* bunker!wtm */
-		return;
-	}
-	if(abs(cury-y) <= 3 && abs(curx-x) <= 3)
-		nocmov(x, y);
-	else if((x <= 3 && abs(cury-y)<= 3) || (!CM && x<abs(curx-x))) {
-		(void) putchar('\r');
-		curx = 1;
-		nocmov(x, y);
-	} else if(!CM) {
-		nocmov(x, y);
-	} else
-		cmov(x, y);
-}
-
-#endif /* OVLB */
 #ifdef OVL0
 /* Note to OVLx tinkerers.  The placement of this overlay controls the location
-   of the function xputc().  This function is not currnently in trampoli.[ch]
+   of the function xputc().  This function is not currently in trampoli.[ch]
    files for what is deemed to be performance reasons.  If this define is moved
    and or xputc() is taken out of the ROOT overlay, then action must be taken
    in trampoli.[ch]. */
 
-STATIC_OVL void
+void
 nocmov(x, y)
 int x,y;
 {
-	if (cury > y) {
+	if ((int) ttyDisplay->cury > y) {
 		if(UP) {
-			while (cury > y) {	/* Go up. */
+			while ((int) ttyDisplay->cury > y) {	/* Go up. */
 				xputs(UP);
-				cury--;
+				ttyDisplay->cury--;
 			}
 		} else if(CM) {
 			cmov(x, y);
 		} else if(HO) {
 			home();
-			curs(x, y);
+			tty_curs(BASE_WINDOW, x+1, y);
 		} /* else impossible("..."); */
-	} else if (cury < y) {
+	} else if ((int) ttyDisplay->cury < y) {
 		if(XD) {
-			while(cury < y) {
+			while((int) ttyDisplay->cury < y) {
 				xputs(XD);
-				cury++;
+				ttyDisplay->cury++;
 			}
 		} else if(CM) {
 			cmov(x, y);
 		} else {
-			while(cury < y) {
+			while((int) ttyDisplay->cury < y) {
 				xputc('\n');
-				curx = 1;
-				cury++;
+				ttyDisplay->curx = 0;
+				ttyDisplay->cury++;
 			}
 		}
 	}
-	if (curx < x) {		/* Go to the right. */
+	if ((int) ttyDisplay->curx < x) {		/* Go to the right. */
 		if(!ND) cmov(x, y); else	/* bah */
 			/* should instead print what is there already */
-		while (curx < x) {
+		while ((int) ttyDisplay->curx < x) {
 			xputs(ND);
-			curx++;
+			ttyDisplay->curx++;
 		}
-	} else if (curx > x) {
-		while (curx > x) {	/* Go to the left. */
+	} else if ((int) ttyDisplay->curx > x) {
+		while ((int) ttyDisplay->curx > x) {	/* Go to the left. */
 			xputs(BC);
-			curx--;
+			ttyDisplay->curx--;
 		}
 	}
 }
@@ -500,60 +453,54 @@ void
 cmov(x, y)
 register int x, y;
 {
-#ifdef MACOS
-	mcurs(x-1, y-1);
-#else
-	xputs(tgoto(CM, x-1, y-1));
-#endif
-	cury = y;
-	curx = x;
+	xputs(tgoto(CM, x, y));
+	ttyDisplay->cury = y;
+	ttyDisplay->curx = x;
 }
 
 /* See note at OVLx ifdef above.   xputc() is a special function. */
 void
 xputc(c)
-char c;
-{
-#ifdef MACOS
-	mputc(c);
+#if defined(apollo)
+int c;
 #else
-	(void) fputc(c, stdout);
+char c;
 #endif
+{
+	(void) putchar(c);
 }
 
 void
 xputs(s)
 const char *s;
 {
-#ifndef MACOS
 # ifndef TERMLIB
 	(void) fputs(s, stdout);
 # else
-#  ifdef __STDC__
+#  if defined(NHSTDC) || defined(ULTRIX_PROTO)
 	tputs(s, 1, (int (*)())xputc);
 #  else
 	tputs(s, 1, xputc);
 #  endif
 # endif
-#else
-	mputs(s);
-#endif
 }
 
 void
-cl_end() {
+cl_end()
+{
 	if(CE)
 		xputs(CE);
 	else {	/* no-CE fix - free after Harold Rynes */
 		/* this looks terrible, especially on a slow terminal
 		   but is better than nothing */
-		register int cx = curx, cy = cury;
+		register int cx = ttyDisplay->curx+1;
 
-		while(curx < CO) {
+		while(cx < CO) {
 			xputc(' ');
-			curx++;
+			cx++;
 		}
-		curs(cx, cy);
+		tty_curs(BASE_WINDOW, (int)ttyDisplay->curx+1,
+						(int)ttyDisplay->cury);
 	}
 }
 
@@ -561,9 +508,15 @@ cl_end() {
 #ifdef OVLB
 
 void
-clear_screen() {
-	xputs(CL);
-	home();
+clear_screen()
+{
+	/* note: if CL is null, then termcap initialization failed,
+		so don't attempt screen-oriented I/O during final cleanup.
+	 */
+	if (CL) {
+		xputs(CL);
+		home();
+	}
 }
 
 #endif /* OVLB */
@@ -577,8 +530,8 @@ home()
 	else if(CM)
 		xputs(tgoto(CM, 0, 0));
 	else
-		curs(1, 1);	/* using UP ... */
-	curx = cury = 1;
+		tty_curs(BASE_WINDOW, 1, 0);	/* using UP ... */
+	ttyDisplay->curx = ttyDisplay->cury = 0;
 }
 
 void
@@ -593,13 +546,13 @@ standoutend()
 	if(SE) xputs(SE);
 }
 
+#if 0	/* if you need one of these, uncomment it (here and in extern.h) */
 void
 revbeg()
 {
 	if(MR) xputs(MR);
 }
 
-#if 0	/* if you need one of these, uncomment it (here and in extern.h) */
 void
 boldbeg()
 {
@@ -618,13 +571,13 @@ dimbeg()
 {
 	if(MH) xputs(MH);
 }
-#endif
 
 void
 m_end()
 {
 	if(ME) xputs(ME);
 }
+#endif
 
 #endif /* OVL0 */
 #ifdef OVLB
@@ -636,7 +589,7 @@ backsp()
 }
 
 void
-bell()
+tty_nhbell()
 {
 	if (flags.silent) return;
 	(void) putchar('\007');		/* curx does not change */
@@ -661,7 +614,7 @@ graph_off() {
 #endif /* OVL0 */
 #ifdef OVL1
 
-#if !defined(MSDOS) && !defined(MACOS)
+#if !defined(MICRO)
 # ifdef VMS
 static const short tmspc10[] = {		/* from termcap */
 	0, 2000, 1333, 909, 743, 666, 333, 166, 83, 55, 50, 41, 27, 20, 13, 10,
@@ -675,28 +628,29 @@ static const short tmspc10[] = {		/* from termcap */
 #endif
 
 void
-delay_output() {
+tty_delay_output()
+{
 	/* delay 50 ms - could also use a 'nap'-system call */
 	/* BUG: if the padding character is visible, as it is on the 5620
 	   then this looks terrible. */
-#if defined(MSDOS) || defined(MACOS)
+#if defined(MICRO)
 	/* simulate the delay with "cursor here" */
 	register int i;
 	for (i = 0; i < 3; i++) {
-		cmov(curx, cury);
+		cmov(ttyDisplay->curx, ttyDisplay->cury);
 		(void) fflush(stdout);
 	}
-#else /* MSDOS || MACOS */
-	if(!flags.nonull)
+#else /* MICRO */
+	if(flags.null)
 # ifdef TERMINFO
 		/* cbosgd!cbcephus!pds for SYS V R2 */
-#  ifdef __STDC__
+#  ifdef NHSTDC
 		tputs("$<50>", 1, (int (*)())xputc);
 #  else
 		tputs("$<50>", 1, xputc);
 #  endif
 # else
-#  ifdef __STDC__
+#  if defined(NHSTDC) || defined(ULTRIX_PROTO)
 		tputs("50", 1, (int (*)())xputc);
 #  else
 		tputs("50", 1, xputc);
@@ -705,15 +659,15 @@ delay_output() {
 
 	else if(ospeed > 0 && ospeed < SIZE(tmspc10)) if(CM) {
 		/* delay by sending cm(here) an appropriate number of times */
-		register int cmlen = strlen(tgoto(CM, curx-1, cury-1));
+		register int cmlen = strlen(tgoto(CM, ttyDisplay->curx, ttyDisplay->cury));
 		register int i = 500 + tmspc10[ospeed]/2;
 
 		while(i > 0) {
-			cmov(curx, cury);
+			cmov((int)ttyDisplay->curx, (int)ttyDisplay->cury);
 			i -= cmlen*tmspc10[ospeed];
 		}
 	}
-#endif /* MSDOS || MACOS */
+#endif /* MICRO */
 }
 
 #endif /* OVL1 */
@@ -726,23 +680,23 @@ cl_eos()			/* free after Robert Viduya */
 	if(CD)
 		xputs(CD);
 	else {
-		register int cx = curx, cy = cury;
-		while(cury <= LI-2) {
+		register int cy = ttyDisplay->cury+1;
+		while(cy <= LI-2) {
 			cl_end();
 			xputc('\n');
-			curx = 1;
-			cury++;
+			cy++;
 		}
 		cl_end();
-		curs(cx, cy);
+		tty_curs(BASE_WINDOW, (int)ttyDisplay->curx+1,
+						(int)ttyDisplay->cury);
 	}
 }
 
 #if defined(TEXTCOLOR) && defined(TERMLIB)
-# ifdef UNIX
+# if defined(UNIX) && defined(TERMINFO)
 /*
  * Sets up color highlighting, using terminfo(4) escape sequences (highlight
- * code found in pri.c).  It is assumed that the background color is black.
+ * code found in print.c).  It is assumed that the background color is black.
  */
 /* terminfo indexes for the basic colors it guarantees */
 #define COLOR_BLACK   1		/* fake out to avoid black on black */
@@ -763,101 +717,178 @@ static void
 init_hilite()
 {
 	register int c;
-#  ifdef TERMINFO
 	char *setf, *scratch;
 	extern char *tparm();
-#  endif
 
-	for (c = 0; c < MAXCOLORS; c++)
+	for (c = 0; c < SIZE(hilites); c++)
 		hilites[c] = HI;
+	hilites[GRAY] = hilites[NO_COLOR] = NULL;
 
-#  ifdef TERMINFO
-	if (tgetnum("Co") < 8 || (setf = tgetstr("Sf", 0)) == NULL)
+	if (tgetnum("Co") < 8 || (setf = tgetstr("Sf", (char **)0)) == NULL)
 		return;
 
 	for (c = 0; c < MAXCOLORS / 2; c++) {
   		scratch = tparm(setf, ti_map[c]);
-		hilites[c] = (char *) alloc(strlen(scratch) + 1);
-		hilites[c+BRIGHT] = (char*) alloc(strlen(scratch)+strlen(MD)+1);
-		Strcpy(hilites[c], scratch);
-		Strcpy(hilites[c+BRIGHT], MD);
-		Strcat(hilites[c+BRIGHT], scratch);
+		if (c != GRAY) {
+			hilites[c] = (char *) alloc(strlen(scratch) + 1);
+			Strcpy(hilites[c], scratch);
+		}
+		if (c != BLACK) {
+			hilites[c|BRIGHT] = (char*) alloc(strlen(scratch)+strlen(MD)+1);
+			Strcpy(hilites[c|BRIGHT], MD);
+			Strcat(hilites[c|BRIGHT], scratch);
+	        }
+		
 	}
-#  endif
 }
 
-# else /* UNIX */
+# else /* UNIX && TERMINFO */
+
+#  ifndef TOS
+/* find the foreground and background colors set by HI or HE */
+static void
+analyze_seq (str, fg, bg)
+char *str;
+int *fg, *bg;
+{
+	register int c, code;
+	int len;
+
+#   ifdef MICRO
+	*fg = GRAY; *bg = BLACK;
+#   else
+	*fg = *bg = NO_COLOR;
+#   endif
+
+	if (str[0] != '\033' || str[1] != '[' ||
+	    str[len = strlen(str) - 1] != 'm' || len < 3)
+		return;
+
+	c = 2;
+	while (c < len) {
+	    if ((code = atoi(&str[c])) == 0) { /* reset */
+		/* this also catches errors */
+#   ifdef MICRO
+		*fg = GRAY; *bg = BLACK;
+#   else
+		*fg = *bg = NO_COLOR;
+#   endif
+	    } else if (code == 1) { /* bold */
+		*fg |= BRIGHT;
+#   if 0
+	/* I doubt we'll ever resort to using blinking characters,
+	   unless we want a pulsing glow for something.  But, in case
+	   we do... - 3. */
+	    } else if (code == 5) { /* blinking */
+		*fg |= BLINK;
+	    } else if (code == 25) { /* stop blinking */
+		*fg &= ~BLINK;
+#   endif
+	    } else if (code == 7 || code == 27) { /* reverse */
+		code = *fg & ~BRIGHT;
+		*fg = *bg | (*fg & BRIGHT);
+		*bg = code;
+	    } else if (code >= 30 && code <= 37) { /* hi_foreground RGB */
+		*fg = code - 30;
+	    } else if (code >= 40 && code <= 47) { /* hi_background RGB */
+		*bg = code - 40;
+	    }
+	    while (digit(str[++c]));
+	    c++;
+	}
+}
+#  endif
 
 /*
  * Sets up highlighting sequences, using ANSI escape sequences (highlight code
- * found in pri.c).  The termcap entry for HI (from SO) is scanned to find the
- * background color.
+ * found in print.c).  The HI and HE sequences (usually from SO) is scanned to
+ * find foreground and background colors.
  */
 
 static void
 init_hilite()
 {
+	register int c;
 #  ifdef TOS
-	int c;
+	extern unsigned long tos_numcolors;	/* in tos.c */
+	static const char NOCOL[] = "\033b0", COLHE[] = "\033q\033b0";
+
+	HI = "\033p";
 #  else
-	int backg = BLACK, foreg = WHITE, len;
-	register int c, color;
+	int backg, foreg, hi_backg, hi_foreg;
 #  endif
 
 	for (c = 0; c < SIZE(hilites); c++)
-		hilites[c] = HI;
+	    hilites[c] = HI;
+	hilites[GRAY] = hilites[NO_COLOR] = NULL;
 
 #  ifdef TOS
-	hilites[BROWN] = "\033b0\033c1";
-	hilites[RED] = "\033b1";
-	hilites[MAGENTA] = hilites[MAGENTA|BRIGHT] = "\033b1\033c2";
-	hilites[CYAN] = hilites[CYAN|BRIGHT] = "\033b3\033c2";
-	hilites[BLUE] = hilites[BLUE|BRIGHT] = "\033b2";
-	hilites[GREEN] = hilites[GREEN|BRIGHT] = "\033b2\033c3";
-	hilites[GRAY] = "\033b3\033c0";
-	hilites[ORANGE_COLORED] = "\033b3\033c1";
-	hilites[YELLOW] = "\033b1\033c3";
-	hilites[WHITE] = "\033b0\033c3";
-#  else /* TOS */
-	/* find the background color, HI[len] == 'm' */
-	len = strlen(HI) - 1;
-
-	if (HI[len] != 'm' || len < 3) return;
-
-	c = 2;
-	while (c < len) {
-	    if ((color = atoi(&HI[c])) == 0) {
-		/* this also catches errors */
-		foreg = WHITE; backg = BLACK;
-	    /*
-	    } else if (color == 1) {
-		foreg |= BRIGHT;
-	    */
-	    } else if (color >= 30 && color <= 37) {
-		foreg = color - 30;
-	    } else if (color >= 40 && color <= 47) {
-		backg = color - 40;
-	    }
-	    while (isdigit(HI[++c]));
-	    c++;
+	if (tos_numcolors <= 2) {
+		return;
+	}
+/* Under TOS, the "bright" and "dim" colors are reversed. Moreover,
+ * on the Falcon the dim colors are *really* dim; so we make most
+ * of the colors the bright versions, with a few exceptions where
+ * the dim ones look OK.
+ */
+	hilites[0] = NOCOL;
+	for (c = 1; c < SIZE(hilites); c++) {
+		hilites[c] = (char *) alloc(sizeof("\033b0"));
+		if (tos_numcolors > 4)
+			Sprintf(hilites[c], "\033b%c", (c&~BRIGHT)+'0');
+		else
+			Strcpy(hilites[c], HI);
 	}
 
-	for (c = 0; c < MAXCOLORS / 2; c++)
+	if (tos_numcolors == 4) {
+		TI = "\033b0\033c3\033E\033e";
+		TE = "\033b3\033c0\033J";
+		HE = COLHE;
+		hilites[GREEN] = hilites[GREEN|BRIGHT] = "\033b2";
+		hilites[RED] = hilites[RED|BRIGHT] = "\033b1";
+	} else {
+		sprintf(hilites[BROWN], "\033b%c", (BROWN^BRIGHT)+'0');
+		sprintf(hilites[GREEN], "\033b%c", (GREEN^BRIGHT)+'0');
+
+		TI = "\033b0\033c\017\033E\033e";
+		TE = "\033b\017\033c0\033J";
+		HE = COLHE;
+		hilites[WHITE] = hilites[BLACK] = NOCOL;
+		hilites[NO_COLOR] = hilites[GRAY];
+	}
+
+#  else /* TOS */
+	analyze_seq(HI, &hi_foreg, &hi_backg);
+	analyze_seq(HE, &foreg, &backg);
+
+	for (c = 0; c < SIZE(hilites); c++)
 	    /* avoid invisibility */
-	    if (foreg != c && backg != c) {
-		hilites[c] = (char *) alloc(sizeof("\033[0;3%d;4%dm"));
-		hilites[c+BRIGHT] = (char *) alloc(sizeof("\033[1;3%d;4%dm"));
-#ifdef MSDOS    /* brighten low-visibility colors */
-		if (c == BLUE)
-		    Sprintf(hilites[c], "\033[1;3%d;4%dm", c, backg);
-		else
-#endif
-		Sprintf(hilites[c], "\033[0;3%d;4%dm", c, backg);
-		Sprintf(hilites[c+BRIGHT], "\033[1;3%d;4%dm", c, backg);
+	    if ((backg & ~BRIGHT) != c) {
+#   ifdef MICRO
+		if (c == BLUE) continue;
+#   endif
+		if (c == foreg)
+		    hilites[c] = NULL;
+		else if (c != hi_foreg && backg != hi_backg) {
+		    hilites[c] = (char *) alloc(sizeof("\033[%d;3%d;4%dm"));
+		    Sprintf(hilites[c], "\033[%d", !!(c & BRIGHT));
+		    if ((c | BRIGHT) != (foreg | BRIGHT))
+			Sprintf(eos(hilites[c]), ";3%d", c & ~BRIGHT);
+		    if (backg != BLACK)
+			Sprintf(eos(hilites[c]), ";4%d", backg & ~BRIGHT);
+		    Strcat(hilites[c], "m");
+		}
 	    }
+
+#   ifdef MICRO
+	/* brighten low-visibility colors */
+	hilites[BLUE] = hilites[BLUE|BRIGHT];
+#   endif
 #  endif /* TOS */
 }
 # endif /* UNIX */
 #endif /* TEXTCOLOR */
 
 #endif /* OVLB */
+
+/*termcap.c*/

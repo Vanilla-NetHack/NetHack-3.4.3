@@ -12,9 +12,9 @@
 # These two options should be used for most setups.  If you're machine isn't
 # very IBM-compatible, and NetHack doesn't work, try commenting out this line.
 #
-OPTIONS=rawio,IBM_BIOS,IBMgraphics
+OPTIONS=rawio,BIOS,IBMgraphics
 # DEC Rainbows will hang if rawio is set, so they should instead use:
-#OPTIONS=IBM_BIOS,DECgraphics
+#OPTIONS=BIOS,DECgraphics
 #
 #
 # Some options to set personal preferences.  Uncomment and change these to
@@ -22,7 +22,7 @@ OPTIONS=rawio,IBM_BIOS,IBMgraphics
 # configuration, options like these should not be set.
 #
 #OPTIONS=name:Janet-V,female,dogname:Fido,catname:Morris,fruit:apricot
-#OPTIONS=packorder:")[%?+/=!(*0_`,endgame:10 top/2 around/own
+#OPTIONS=packorder:")[%?+/=!(*0_`,scores:10 top/2 around/own
 #
 #
 # Other general options.  You might also set "silent" so as not to attract
@@ -43,6 +43,9 @@ HACKDIR=c:\games\nethack
 #   appending a ";n" to SAVE means don't prompt to insert a disk.
 SAVE=;n
 #
+# Note that RAMDISK must *not* be the same (or even implicitly
+# get expanded to the same path by the OS) as HACKDIR.
+#
 #RAMDISK=d:
 
 
@@ -56,17 +59,38 @@ SAVE=;n
 
 # *** CHARACTER GRAPHICS ***
 #
-# The 32 GRAPHICS characters (0-31) are:
-# stone, vertical wall, horizontal wall, top left corner, top right corner, 
-# bottom left corner, bottom right corner, crosswall, up T wall, down T wall, 
-# left T wall, right T wall, vertical beam, horizontal beam, left slant, right
-# slant, no door, vertical open door, horizontal open door, closed door,
-# floor, corridor, up stairs, down stairs, trap, web, pool,
-# fountain, sink, throne, altar, up ladder, down ladder, vertical drawbridge
-# wall, horizontal drawbridge wall 
+# The 69 GRAPHICS characters (0-68) are:
 #
-# If you specify less that 35 ASCII values, the remaining characters will be
-# set to their respective defaults.
+# stone,
+# walls: vertical, horizontal,
+#	 4 corners: top left, top right, bottom left, bottom right,
+#	 cross wall,
+#	 4 T walls: upward, downward, left, right,
+# doors: no door,
+#	 open doors: vertical, horizontal,
+#	 closed doors: vertical, horizontal,
+# floor,
+# corridors: unlit, lit,
+# stairs up, stairs down, ladder up, ladder down,
+# trap, web, altar, throne, sink, fountain, pool/moat, ice, lava,
+# lowered drawbridge: vertical, horizontal,
+# raised drawbridge: vertical, horizontal,
+# air, cloud, water,
+# 4 beams: vertical, horizontal, left slant, right slant,
+# digging beam, camera flash beam, left boomerang, right boomerang,
+# 4 magic shield display symbols,
+# 8 swallowed: top left/middle/right, mid left/right, bottom left/mid/right,
+# 9 explosion: [3 rows (top, middle, bottom) of 3 characters]
+#
+# If you specify fewer that 69 ASCII values, the remaining characters will be
+# set to their respective defaults:
+#	   ' '  |   -   -   -   -   -   -   -   -
+#           |   |   .   -   |   +   +   .   #   #
+#	    <   >   <   >   ^   "   _   \   #   {
+#	    }   .   }   .   .   #   #  ' '  #   }
+#	    |   -   \   /   *   !   )   (   0   #
+#	    @   *   /   -   \   |   |   \   -   /
+#	    /   -   \   |  ' '  |   \   -   /
 #
 # If you merely set the IBMgraphics option as above, NetHack will use IBM
 # extended ASCII for dungeon characters.  If you don't like the selections,
@@ -75,11 +99,23 @@ SAVE=;n
 # processing.
 #
 # An example using the IBM graphics character set:
-#	   ' '  |   -   .   .   `   '   -   -   -   -   -   |   -   \   /   .   -   |   +   .   #   <   >   ^   "   }   {   #   \   _   <   >   #   #
-#GRAPHICS = 032 179 196 218 191 192 217 197 193 194 180 195 179 196 092 047 249 239 239 254 249 177 060 062 094 157 247 244 035 190 220 060 062 186 205
+#GRAPHICS= 032 179 196 218 191 192 217 197 193 194 \
+#	   180 195 249 239 239 254 254 249 177 177 \
+#	   060 062 060 062 094 157 220 190 035 244 \
+#	   247 249 247 042 042 186 205 046 035 247 \
+#	   179 196 092 047 042 033 041 040 048 035 \
+#	   064 042 047 045 092 058 058 092 045 047 \
+#	   047 045 092 058 032 058 092 045 047
 # An alternative:
-#GRAPHICS= 032 186 205 201 187 200 188 206 202 203 185 204 179 196 092 047 249 239 239 254 249 177 060 062 094 034 247 244 035 092 095 060 062 179 196
+#GRAPHICS= 032 186 205 201 187 200 188 206 202 203 \
+#	   185 204 249 239 239 254 254 249 177 177 \
+#	   060 062 060 062 094 034 095 092 035 244 \
+#	   247 249 247 042 042 179 196 046 035 247 \
+#	   179 196 092 047 042 033 041 040 048 035 \
+#	   064 042 047 045 092 058 058 092 045 047 \
+#	   047 045 092 058 032 058 092 045 047
 #
+
 #
 # Using the DEC Rainbow/ANSI line-drawing character set:
 #
@@ -90,4 +126,6 @@ SAVE=;n
 # adding 128 to the value of any line-drawing character you want to use.
 # (But you should still set DECgraphics to get the correct processing.)
 #
-#GRAPHICS= 032 248 241 236 235 237 234 238 246 247 245 244 248 241 092 047 254 241 248 043 254 225
+#GRAPHICS= 032 248 241 236 235 237 234 238 246 247 \
+#	   245 244 248 241 092 047 254 241 248 043 \
+#	   254 225

@@ -1,24 +1,29 @@
-/*	SCCS Id: @(#)panic.c	3.0	89/11/15
- * Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985.
- *
+/*	SCCS Id: @(#)panic.c	3.1	93/01/07	*/
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* NetHack may be freely redistributed.  See license for details. */
+
+/*
  *	This code was adapted from the code in end.c to run in a standalone
  *	mode for the makedefs / drg code.
  */
-/* NetHack may be freely redistributed.  See license for details. */
 
-#define NEED_VARARGS /* Uses ... */	/* comment line for pre-compiled headers */
+#define NEED_VARARGS
 #include	"config.h"
 
-#ifdef MSDOS
+#ifdef MICRO
 #undef exit
 extern void FDECL(exit, (int));
 #endif
 #ifdef AZTEC
 #define abort() exit()
 #endif
+#ifdef VMS
+extern void NDECL(vms_abort);
+#endif
  
 /*VARARGS1*/
 boolean panicking;
+void VDECL(panic, (char *,...));
 
 void
 panic VA_DECL(char *,str)
@@ -31,7 +36,7 @@ panic VA_DECL(char *,str)
 		abort();    /* avoid loops - this should never happen*/
 
 	(void) fputs(" ERROR:  ", stderr);
-	Vprintf(str,VA_ARGS);
+	Vfprintf(stderr, str, VA_ARGS);
 	(void) fflush(stderr);
 #if defined(UNIX) || defined(VMS)
 # ifdef SYSV
@@ -43,3 +48,27 @@ panic VA_DECL(char *,str)
 	exit(1);		/* redundant */
 	return;
 }
+
+#ifdef ALLOCA_HACK
+extern long *alloc();
+/*
+ * In case bison generated foo_yacc.c tries to use alloca(); if we don't
+ * have it then just use malloc() instead.  This may not work on some
+ * systems, but they should either use yacc or get a real alloca routine.
+ */
+long *alloca(cnt)
+unsigned cnt;
+{
+	static long dummy;
+	/*
+	 * Assumption:  result returned by alloca() will never be freed.
+	 *	alloca(0) may be used as a trigger to release memory; we cant
+	 *	oblige it, and we don't want to attempt to allocate 0 bytes
+	 *	or return a NULL pointer, so return pointer to `dummy' rather
+	 *	than allocating at least one byte.
+	 */
+	return cnt ? alloc(cnt) : &dummy;
+}
+#endif
+
+/*panic.c*/

@@ -1,0 +1,321 @@
+#	SCCS Id: @(#)MakeMSC.utl	 3.1	 93/01/18
+# Copyright (c) NetHack PC Development Team 1992, 1993.
+# NetHack may be freely redistributed.  See license for details.
+#
+# PC NetHack 3.1 Utilities Source Code Makefile for Microsoft(tm) "C" >= 6.0ax
+#
+#	In addition to your C compiler,
+#
+#	if you want to change		you will need a
+#	files with suffix		workalike for
+#	       .y			    yacc
+#	       .l			    lex
+
+#
+#	Executables.
+#
+
+CC	= cl
+LINK	= link
+MAKEBIN	= make45l
+
+#
+#	Yacc/Lex ... if you got 'em.
+#	(Note: if you don't, leave the top pair uncommented.)
+#
+
+YACC	= yacc
+LEX	= lex
+# YACC	= bison -y
+# LEX	= flex
+
+YTABC	= y_tab.c
+YTABH	= y_tab.h
+LEXYYC	= lexyy.c
+
+#
+#	Flags.
+#
+
+#
+#	+ prepare for CodeView symbolic debugger.
+#
+
+CDFLAGS	=
+#CDFLAGS = /Zi
+
+LDFLAGS =
+#LDFLAGS = /CO
+
+#
+#	CC
+#
+
+CPPFLAGS = /E /AL /c /Os /Gs /Gt20 /Zp1 /W0 /I$(INCL) $(CDFLAGS)
+CFLAGS	 = /AL /c /Os /Gs /Gt20 /Zp1 /W0 /I$(INCL) $(CDFLAGS)
+
+#
+#	Link
+#
+
+LFLAGS	= /noi /seg:512 /map /st:5120 $(LDFLAGS)
+
+#
+#	Directories
+#
+
+INCL	= ..\include
+DAT	= ..\dat
+SRC	= ..\src
+OBJ	= $(SRC)\o
+
+default: all
+#
+#	If you have yacc and lex programs and make any changes, comment
+#	out the upper two targets and uncomment the lower two.
+#
+
+do_yacc: yacc_msg
+do_lex:  lex_msg
+# do_yacc: yacc_act
+# do_lex:  lex_act
+
+#
+#	Optional C library specifier for those with non-standard
+#	libraries or a multiple-target library setup.
+#
+
+# CLIB	   = llibcer /nod
+CLIB	 =
+
+#############################################################################
+#
+# nothing below this line should have to be changed
+#
+
+#
+#	Utility Objects.
+#
+
+MAKESRC     =	makedefs.c
+
+SPLEVSRC    =   lev_yacc.c  lev_$(LEX).c  lev_main.c  panic.c
+
+DGNCOMPSRC  =   dgn_yacc.c  dgn_$(LEX).c  dgn_main.c
+
+MAKEOBJS    =	makedefs.o	  $(OBJ)\monst.o    $(OBJ)\objects.o
+
+SPLEVOBJS   =	lev_yacc.o	  lev_$(LEX).o	    lev_main.o \
+		$(OBJ)\alloc.o	  $(OBJ)\decl.o     $(OBJ)\drawing.o \
+		$(OBJ)\monst.o    $(OBJ)\objects.o  panic.o
+
+DGNCOMPOBJS =	dgn_yacc.o	  dgn_$(LEX).o	    dgn_main.o \
+		$(OBJ)\alloc.o	  panic.o
+
+RECOVOBJS   =	recover.o
+
+#
+#	Header Objects.
+#
+
+CONFIG_H   = $(GLOBAL_H)           $(INCL)\tradstdc.h $(INCL)\config.h
+DECL_H     = $(YOU_H)              $(INCL)\quest.h    $(INCL)\spell.h  \
+             $(INCL)\color.h       $(INCL)\obj.h      $(INCL)\onames.h \
+             $(INCL)\pm.h          $(INCL)\decl.h
+DGN_FILE_H = $(INCL)\align.h       $(INCL)\dgn_file.h
+DISPLAY_H  = $(MONDATA_H)          $(INCL)\vision.h   $(INCL)\display.h
+DUNGEON_H  = $(INCL)\align.h       $(INCL)\dungeon.h
+EMIN_H     = $(DUNGEON_H)          $(INCL)\emin.h
+EPRI_H     = $(DUNGEON_H)          $(INCL)\align.h    $(INCL)\epri.h
+ESHK_H     = $(DUNGEON_H)          $(INCL)\eshk.h
+GLOBAL_H   = $(PCCONF_H)           $(INCL)\coord.h    $(INCL)\global.h
+HACK_H     = $(CONFIG_H)           $(DUNGEON_H)       $(DECL_H)          \
+             $(DISPLAY_H)          $(RM_H)            $(INCL)\monsym.h   \
+             $(INCL)\mkroom.h      $(INCL)\objclass.h $(INCL)\trap.h     \
+             $(INCL)\flag.h        $(INCL)\vision.h   $(INCL)\wintype.h  \
+             $(INCL)\engrave.h     $(INCL)\rect.h     $(INCL)\winprocs.h \
+             $(INCL)\trampoli.h    $(INCL)\hack.h
+MONDATA_H  = $(INCL)\align.h       $(INCL)\mondata.h
+MONST_H    = $(INCL)\align.h       $(INCL)\monst.h
+PCCONF_H   = $(INCL)\micro.h       $(INCL)\system.h   $(INCL)\pcconf.h
+PERMONST_H = $(INCL)\monattk.h     $(INCL)\monflag.h  $(INCL)\align.h \
+             $(INCL)\permonst.h
+RM_H       = $(INCL)\align.h       $(INCL)\rm.h
+SP_LEV_H   = $(INCL)\align.h       $(INCL)\sp_lev.h
+VAULT_H    = $(DUNGEON_H)          $(INCL)\vault.h
+YOU_H      = $(MONST_H)            $(YOUPROP_H)       $(INCL)\align.h \
+             $(INCL)\attrib.h      $(INCL)\you.h
+YOUPROP_H  = $(PERMONST_H)         $(MONDATA_H)       $(INCL)\prop.h \
+             $(INCL)\pm.h          $(INCL)\youprop.h
+
+#
+#	Make Rules.
+#
+
+.SUFFIXES:  .exe .o .c .y .l
+
+.c.o:
+	$(CC) $(CFLAGS) /Fo$*.o $*.c
+
+#
+#	Primary Targets.
+#
+all:	utility.tag
+
+utility.tag: $(OBJ)             $(INCL)\onames.h     $(INCL)\pm.h \
+             $(SRC)\monstr.c    $(SRC)\vis_tab.c     lev_comp.exe \
+             dgn_comp.exe       recover.exe
+             echo utilities made > utility.tag
+
+$(OBJ):
+	if not exist $(OBJ)\*.* mkdir $(OBJ)
+
+clean:
+	del *.o
+	del *.map
+
+spotless: clean
+	if exist utility.tag	   del utility.tag
+	if exist makedefs.exe	   del makedefs.exe
+	if exist lev_comp.exe	   del lev_comp.exe
+	if exist dgn_comp.exe	   del dgn_comp.exe
+	if exist recover.exe	   del recover.exe
+	if exist $(INCL)\date.h	   del $(INCL)\date.h
+	if exist $(INCL)\onames.h  del $(INCL)\onames.h
+	if exist $(INCL)\pm.h	   del $(INCL)\pm.h
+	if exist $(INCL)\vis_tab.h del $(INCL)\vis_tab.h
+	if exist $(SRC)\monstr.c   del $(SRC)\monstr.c
+	if exist $(SRC)\vis_tab.c  del $(SRC)\vis_tab.c
+
+#
+#	Secondary Targets.
+#
+
+$(INCL)\onames.h: makedefs.exe
+	.\makedefs -o
+
+$(INCL)\pm.h: makedefs.exe
+	.\makedefs -p
+
+$(SRC)\monstr.c: makedefs.exe
+	.\makedefs -m
+
+$(SRC)\vis_tab.h: makedefs.exe
+	.\makedefs -z
+
+$(SRC)\vis_tab.c: makedefs.exe
+	.\makedefs -z
+
+#
+#	Makedefs Stuff
+#
+
+makedefs.exe:	$(MAKEOBJS)
+	$(LINK) $(LFLAGS) $(MAKEOBJS), $*.exe,, $(CLIB);
+
+makedefs.o:	$(CONFIG_H)	    $(PERMONST_H)      $(INCL)\objclass.h \
+		$(INCL)\monsym.h    $(INCL)\qtext.h
+
+#
+#	Level Compiler Dependencies
+#
+
+lev_comp.exe:	$(SPLEVOBJS)
+	$(LINK) $(LFLAGS) $(SPLEVOBJS),lev_comp.exe,, $(CLIB);
+
+lev_yacc.o:	$(HACK_H)   $(SP_LEV_H)    lev_yacc.c
+	$(CC) $(CFLAGS) /Fo$*.o $*.c
+
+lev_$(LEX).o:	$(HACK_H)   $(SP_LEV_H)    $(INCL)\lev_comp.h \
+		lev_$(LEX).c
+	$(CC) $(CFLAGS) /Fo$*.o $*.c
+
+lev_main.o:	$(HACK_H)   $(SP_LEV_H)
+
+$(INCL)\lev_comp.h: lev_yacc.c
+
+lev_yacc.c:	lev_comp.y
+	$(MAKEBIN) YY=lev do_yacc
+
+lev_$(LEX).c:	lev_comp.l
+	$(MAKEBIN) YY=lev do_lex
+
+#
+#	Dungeon Dependencies
+#
+
+dgn_comp.exe:	$(DGNCOMPOBJS)
+	$(LINK) $(LFLAGS) $(DGNCOMPOBJS),$*.exe,, $(CLIB);
+
+dgn_yacc.o:	$(HACK_H)   $(DGN_FILE_H)  dgn_yacc.c
+	$(CC) $(CFLAGS) /Fo$*.o $*.c
+
+dgn_$(LEX).o:	$(HACK_H)   $(DGN_FILE_H)  $(INCL)\dgn_comp.h \
+		dgn_$(LEX).c
+	$(CC) $(CFLAGS) /Fo$*.o $*.c
+
+dgn_main.o:	$(HACK_H)
+
+$(INCL)\dgn_comp.h:	dgn_yacc.c
+
+dgn_yacc.c: dgn_comp.y
+	$(MAKEBIN) YY=dgn do_yacc
+
+dgn_$(LEX).c:  dgn_comp.l
+	$(MAKEBIN) YY=dgn do_lex
+
+#
+#	Yacc & Lex Magic.
+#
+
+yacc_msg:
+	@echo $(YY)_comp.y has changed. To update $(YY)_yacc.c and $(YY)_comp.h run $(YACC).
+
+yacc_act:
+	$(YACC) -d $(YY)_comp.y
+	copy $(YTABC) $(YY)_yacc.c
+	copy $(YTABH) $(INCL)\$(YY)_comp.h
+	del $(YTABC)
+	del $(YTABH)
+
+lex_msg:
+	@echo $(YY)_comp.l has changed. To update $(YY)_$(LEX).c run $(LEX).
+
+lex_act:
+	$(LEX) $(YY)_comp.l
+	copy $(LEXYYC) $(YY)_$(LEX).c
+	del $(LEXYYC)
+
+#
+#	Recover Utility
+#
+
+recover.exe:	$(RECOVOBJS)
+	$(LINK) $(LFLAGS) $*.o,$*.exe,, $(CLIB);
+
+recover.o:	$(CONFIG_H)	recover.c
+	$(CC) $(CFLAGS) /Fo$*.o $*.c
+
+#
+#	Other Dependencies.
+#
+
+$(OBJ)\alloc.o:	$(CONFIG_H)	$(SRC)\alloc.c
+	$(CC) $(CFLAGS) /Fo$(OBJ)\$*.o $(SRC)\$*.c
+
+$(OBJ)\decl.o:  $(HACK_H)       $(INCL)\quest.h   $(SRC)\decl.c
+	$(CC) $(CFLAGS) /Fo$(OBJ)\$*.o $(SRC)\$*.c
+
+$(OBJ)\drawing.o: $(HACK_H)     $(INCL)\termcap.h $(SRC)\drawing.c
+	$(CC) $(CFLAGS) /Fo$(OBJ)\$*.o $(SRC)\$*.c
+
+$(OBJ)\monst.o: $(CONFIG_H)	     $(PERMONST_H)	$(ESHK_H)	 \
+		$(EPRI_H)	     $(VAULT_H)		$(INCL)\monsym.h \
+		$(INCL)\color.h    $(SRC)\monst.c
+	$(CC) $(CFLAGS) /Fo$(OBJ)\$*.o $(SRC)\$*.c
+
+$(OBJ)\objects.o: $(CONFIG_H)	     $(INCL)\obj.h	$(INCL)\objclass.h \
+		  $(INCL)\prop.h     $(INCL)\color.h	$(SRC)\objects.c
+	$(CC) $(CFLAGS) /Fo$(OBJ)\$*.o $(SRC)\$*.c
+
+panic.o:	$(CONFIG_H)

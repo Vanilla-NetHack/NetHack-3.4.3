@@ -1,0 +1,94 @@
+! The display_file and tombstone windows should use a fixed width font ---
+! the text they display is formatted for a tty terminal.  For the same
+! reason, you may also also want a fixed-width font for the menu and text
+! windows.  However, the formatting is not nearly as critical.
+!
+NetHack*font:				variable
+NetHack*display_file*font:		fixed
+NetHack*tombstone*font:			fixed
+!NetHack*menu*font:			fixed
+!NetHack*text*font:			fixed
+NetHack*map*font:			nh10
+
+! The icon to use; supported values are nh72, nh56, and nh32; nh72 is the
+! default.  Some window managers may not support the larger icon sizes.
+! It is not guaranteed that the window manager will honor the icon selection.
+!NetHack*icon: nh56
+!
+! If True, a popup for y/n questions is _not_ used.
+!NetHack*slow: True
+!
+! If True, the message window has a line that seperates old and new messages.
+!NetHack*message_line: True
+!
+! If True, force keyboard to attach to popup windows.  Some window managers
+! enforce a click-to-focus-keyboard policy (e.g. the DECwindows wm).  NetHack
+! has a lot of popups and is almost unplayable without some kind of autofocus.
+!NetHack*autofocus: True
+!
+! Specify the number of rows and columns of the map window.  The default
+! is the standard 80x21 window.  Note: this _does_not_ change nethack's
+! level size, only what you see of it.
+!NetHack*map*rows:	21
+!NetHack*map*columns:	80
+
+! Parts of the fancy status display.
+!
+NetHack*status_condition.borderWidth:	0
+NetHack*status_info*borderWidth:	0
+
+! Sample color screen entries.
+!
+NetHack*nethack.background: 	wheat
+NetHack*map*yellow:		gold
+NetHack*map*brown:		tan
+NetHack*map*grey:		grey85
+NetHack*map*foreground:		wheat
+NetHack*map*background:		grey40
+
+NetHack*fancy_status.background:	wheat
+NetHack*status_info*foreground:		Sienna
+NetHack*status_info*background:		wheat
+NetHack*status_info.background:		wheat
+NetHack*status_attributes*foreground:	black
+NetHack*status_attributes*background:	white
+NetHack*status_condition*foreground:	red
+NetHack*status_condition*background:	wheat
+NetHack*Scrollbar*foreground:		Sienna
+NetHack*Scrollbar*background:		wheat
+
+NetHack*player_selection*random.borderColor:	blue
+NetHack*player_selection*random.foreground:	blue
+NetHack*player_selection*quit.borderColor:	blue
+NetHack*player_selection*quit.foreground:	blue
+NetHack*player_selection*Command.borderColor:	red
+NetHack*player_selection*Command.foreground:	red
+
+NetHack*extended_commands*dismiss.borderColor:	blue
+NetHack*extended_commands*dismiss.foreground:	blue
+NetHack*extended_commands*help.borderColor:	blue
+NetHack*extended_commands*help.foreground:	blue
+NetHack*extended_commands*Command.borderColor:	red
+NetHack*extended_commands*Command.foreground:	red
+!
+!
+! The following are the default 15 colors that the nethack map uses.
+! If they don't look good on your screen, change them.
+!
+! The foreground color is used as "no color".
+!
+!NetHack*map*black:		"black"
+!NetHack*map*red:		"red"
+!NetHack*map*green:		"pale green"
+!NetHack*map*brown:		"brown"
+!NetHack*map*blue:		"blue"
+!NetHack*map*magenta:		"magenta"
+!NetHack*map*cyan:		"light cyan"
+!NetHack*map*gray:		"gray"
+!NetHack*map*orange:		"orange"
+!NetHack*map*bright_green:	"green"
+!NetHack*map*yellow:		"yellow"
+!NetHack*map*bright_blue:	"royal blue"
+!NetHack*map*bright_magenta:	"violet"
+!NetHack*map*bright_cyan:	"cyan"
+!NetHack*map*white:		"white"

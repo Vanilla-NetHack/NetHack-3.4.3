@@ -1,36 +1,66 @@
-/*	SCCS Id: @(#)config.h	3.0	89/06/23
+/*	SCCS Id: @(#)config.h	3.1	92/08/29	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #ifndef CONFIG_H /* make sure the compiler does not see the typedefs twice */
-#define	CONFIG_H
+#define CONFIG_H
 
 
 /*
  * Section 1:	OS selection.
  *		Select the version of the OS you are using.
  *		For "UNIX" select either SYSV or BSD in unixconf.h.
- *		A "VMS" option is not needed since the VMS C-compiler
- *              provides it (no need to change sec#1, vmsconf.h handles it).
+ *		A "VMS" option is not needed since the VMS C-compilers
+ *		provide it (no need to change sec#1, vmsconf.h handles it).
  */
 
 #define UNIX		/* delete if no fork(), exec() available */
 
-#ifdef __MSDOS__	/* Turbo C auto-defines __MSDOS__, MSC defines MSDOS */
-#define MSDOS		/* define for MS-DOS (in case compiler doesn't) */
-#else
-/* #define MSDOS	/* define for MS-DOS and most other micros */
-			/* DO NOT define for AMIGA - MSDOS will be
-			 * automatically defined at the right place. */
-# ifdef AZTEC_C 	/* Manx auto-defines this */
-#  ifdef MCH_AMIGA	/* Manx auto-defines this for AMIGA */
-#   ifndef AMIGA
-#define AMIGA		/* define for Commodore-Amiga */
-#   endif		/* (Lattice auto-defines AMIGA) */
-/* #define AZTEC_36	/* define for version 3.6 of manx */
-#define AZTEC_50	/* define for version 5.0 of manx */
-#  endif
+/*
+ * MS DOS - compilers
+ *
+ * Microsoft C auto-defines MSDOS,
+ * Borland C   auto-defines __TURBOC__,
+ * DJGPP       auto-defines MSDOS.
+ */
+
+/* #define MSDOS	/* use if not defined by compiler or cases below */
+
+#ifdef __TURBOC__
+# define MSDOS
+#endif
+
+#ifdef MSDOS
+# undef UNIX
+#endif
+
+/*
+ * Mac Stuff.
+ */
+
+#ifdef applec		/*	MPW auto-defined symbol			*/
+# define MAC
+# undef UNIX		/*	Just in case				*/
+#endif
+/* #define MAC		/*	We're on some mac-ish platform	*/
+
+#ifdef MAC
+# ifdef THINK_C
+#  define NEED_VARARGS
 # endif
+#endif
+
+/*
+ * Amiga setup.
+ */
+#ifdef AZTEC_C 	/* Manx auto-defines this */
+# ifdef MCH_AMIGA	/* Manx auto-defines this for AMIGA */
+#  ifndef AMIGA
+#define AMIGA		/* define for Commodore-Amiga */
+#  endif		/* (Lattice auto-defines AMIGA) */
+#define AZTEC_50	/* define for version 5.0 of manx */
+# endif
+#endif
 #ifdef LATTICE
 # define NEARDATA __near /* put some data close */
 # define NO_SCAN_BRACK	/* scanf doesn't handle [] (this define available
@@ -38,12 +68,36 @@
 #else
 # define NEARDATA
 #endif
-/* #define TOS		/* define for Atari 1040ST */
+#ifdef AMIGA
+# ifdef UNIX
+	"Please re-read the compilation documentation.  Thank you."
+# endif
+#endif
+
+/*
+ * Atari auto-detection
+ */
+
+#ifdef atarist
+# undef UNIX
+# define TOS
+#else
+# ifdef __MINT__
+#  undef UNIX
+#  define TOS
+# endif
+#endif
+
+/*
+ * and other systems...
+ */
+
+/* #define OS2		/* define for OS/2 */
+
+/* #define TOS		/* define for Atari ST/TT */
 
 /* #define STUPID	/* avoid some complicated expressions if
 			   your C compiler chokes on them */
-/* #define STUPID_CPP	/* use many small functions instead of macros to
-			   avoid overloading limited preprocessors */
 /* #define TERMINFO	/* uses terminfo rather than termcap */
 			/* should be defined for HPUX and most, but not all,
 			   SYSV */
@@ -52,55 +106,40 @@
 			 * library in the makefile */
 /* #define MINIMAL_TERM	/* if a terminal handles highlighting or tabs poorly,
 			   try this define, used in pager.c and termcap.c */
-/* #define MACOS 	/* define for Apple Macintosh */
-#endif
+/* #define ULTRIX_CC20	/* define only if using cc v2.0 on a DECstation */
+/* #define ULTRIX_PROTO	/* define for Ultrix 4.0 (or higher) on a DECstation;
+			 * if you get compiler errors, don't define this. */
+			/* Hint: if you're not developing code, don't define
+			   ULTRIX_PROTO. */
 
 #ifdef AMIGA
-#define NEED_VARARGS
-# ifdef AZTEC_36
-#  define KR1ED		/* Aztec 3.6 needs extra help for defined() */
-# endif
-# ifdef AZTEC_50
-#  define USE_OLDARGS	/* Aztec 5.0 prototypes aren't quite right */
-# endif
+# define NEED_VARARGS
 #endif
 
-#ifdef MACOS
-#define THINKC4		/* for the Think C 4.0 compiler */
-/* #define LSC		/* for the Lightspeed C 3.01p4 compiler */
-/* #define AZTEC	/* for the Manx Aztec C 3.6c compiler */
-#define SMALLDATA	/* for Mac compilers with 32K global data limit */
-#define CUSTOM_IO	/* uncomment only while compiling Nethack */
-/* #define MAKEDEFS_C	/* uncomment only while compiling makedefs */
-# ifndef MAKEDEFS_C
-#  ifndef NEED_VARARGS
-#define NEED_VARARGS	/* if you're using precompiled headers */
-#  endif
-# endif
-# ifdef LSC
-#define KR1ED	/* for compilers which can't handle defined() */
-# endif
-# ifdef AZTEC
-#define KR1ED	/* Lightspeed C & Aztec can't handle defined() yet */
-# endif
-#endif	/* MACOS */
-
-#ifdef VMS      /* really old compilers need special handling, detected here */
-# ifdef VAXC    /* must use CC/DEFINE=ANCIENT_VAXC for vaxc v2.2 or older */
-#  ifdef ANCIENT_VAXC   /* vaxc v2.2 and earlier [lots of warnings to come] */
-#   define KR1ED        /* simulate defined() */
-#   define USE_VARARGS
-#  else                 /* vaxc v2.3,2.4,or 3.x */
-#   if defined(PROTOTYPING_ON)  /* this breaks 2.2 (*forces* use of ANCIENT)*/
-#    define __STDC__ 0  /* vaxc is not yet ANSI compliant, but close enough */
-#    define signed      /* well, almost close enough */
+#ifdef VMS	/* really old compilers need special handling, detected here */
+# undef UNIX
+# ifdef __DECC		/* buggy early versions want widened prototypes	*/
+#  define NOTSTDC	/* except when typedefs are involved		*/
+#  define USE_VARARGS
+#  undef __HIDE_FORBIDDEN_NAMES	/* need non-ANSI library support functions */
+# else
+#  ifdef VAXC	/* must use CC/DEFINE=ANCIENT_VAXC for vaxc v2.2 or older */
+#   ifdef ANCIENT_VAXC	/* vaxc v2.2 and earlier [lots of warnings to come] */
+#    define KR1ED	/* simulate defined() */
+#    define USE_VARARGS
+#   else		/* vaxc v2.3,2.4,or 3.x, or decc in vaxc mode */
+#     if defined(USE_PROTOTYPES) /* this breaks 2.2 (*forces* use of ANCIENT)*/
+#      define __STDC__ 0 /* vaxc is not yet ANSI compliant, but close enough */
+#      define signed	 /* well, almost close enough */
 #include <stddef.h>
+#      define UNWIDENED_PROTOTYPES
+#     endif
+#     define USE_STDARG
 #   endif
-#   define USE_STDARG
-#  endif
-# endif /*VAXC*/
-# ifdef VERYOLD_VMS     /* v4.5 or earlier */
-#  define USE_OLDARGS   /* <varargs.h> is there, vprintf & vsprintf aren't */
+#  endif /*VAXC*/
+# endif /*__DECC*/
+# ifdef VERYOLD_VMS	/* v4.5 or earlier; no longer available for testing */
+#  define USE_OLDARGS	/* <varargs.h> is there, vprintf & vsprintf aren't */
 #  ifdef USE_VARARGS
 #   undef USE_VARARGS
 #  endif
@@ -110,6 +149,15 @@
 # endif
 #endif /*VMS*/
 
+#ifdef vax
+/* just in case someone thinks a DECstation is a vax. It's not, it's a mips */
+# ifdef ULTRIX_PROTO
+#  undef ULTRIX_PROTO
+# endif
+# ifdef ULTRIX_CC20
+#  undef ULTRIX_CC20
+# endif
+#endif
 
 #ifdef KR1ED		/* For compilers which cannot handle defined() */
 #define defined(x) (-x-1 != -1)
@@ -127,6 +175,39 @@
  */
 #endif
 
+/* Windowing systems...
+ * Define all of those you want supported in your binary.
+ * Some combinations make no sense.  See the installation document.
+ */
+#define TTY_GRAPHICS	/* good old tty based graphics */
+/* #define X11_GRAPHICS	/* X11 interface */
+
+/*
+ * Define the default window system.  This should be one that is compiled
+ * into your system (see defines above).  Known window systems are:
+ *
+ *	tty, X11, mac, amii
+ */
+
+/* MAC also means MAC windows */
+#ifdef MAC
+# ifndef	AUX
+#  undef TTY_GRAPHICS
+#  undef X11_GRAPHICS
+#  define DEFAULT_WINDOW_SYS "mac"
+# endif
+#endif
+
+/* no options yet: Amiga also means Intuition windows */
+#ifdef AMIGA
+# undef TTY_GRAPHICS
+# define DEFAULT_WINDOW_SYS "amii"
+#endif
+
+#ifndef DEFAULT_WINDOW_SYS
+# define DEFAULT_WINDOW_SYS "tty"
+#endif
+
 
 
 /*
@@ -138,10 +219,10 @@
 
 #ifndef WIZARD		/* allow for compile-time or Makefile changes */
 # ifndef KR1ED
-#define WIZARD  "izchak" /* the person allowed to use the -D option */
+#  define WIZARD  "wizard" /* the person allowed to use the -D option */
 # else
-#define WIZARD
-#define WIZARD_NAME "izchak"
+#  define WIZARD
+#  define WIZARD_NAME "wizard"
 # endif
 #endif
 
@@ -150,20 +231,30 @@
 
 /*
  *	If COMPRESS is defined, it should contain the full path name of your
- *	'compress' program.  Defining ZEROCOMP causes NetHack to do simpler
- *	zero-run compression internally.  Both COMPRESS and ZEROCOMP create
- *	smaller bones/level/save files, but require additional code and time.
+ *	'compress' program.  Defining INTERNAL_COMP causes NetHack to do
+ *	simpler byte-stream compression internally.  Both COMPRESS and
+ *	INTERNAL_COMP create smaller bones/level/save files, but require
+ *	additional code and time.  Currently, only UNIX fully implements
+ *	COMPRESS; other ports should be able to uncompress save files a
+ *	la unixmain.c if so inclined.
  */
 
-#ifndef MACOS
-#define COMPRESS "/usr/local/compress"  /* path name for 'compress' */
-# ifndef COMPRESS
-#define ZEROCOMP	/* Use only if COMPRESS is not used -- Olaf Seibert */
-# endif
+#ifdef UNIX
+# define COMPRESS "/usr/ucb/compress"  /* path name for 'compress' */
+#endif
+#ifndef COMPRESS
+# define INTERNAL_COMP	/* control use of NetHack's compression routines */
 #endif
 
-#ifndef MACOS
-#define CHDIR		/* delete if no chdir() available */
+/*
+ *	Defining INSURANCE slows down level changes, but allows games that
+ *	died due to program or system crashes to be resumed from the point
+ *	of the last level change, after running a utility program.
+ */
+#define INSURANCE	/* allow crashed game recovery */
+
+#ifndef MAC
+# define CHDIR		/* delete if no chdir() available */
 #endif
 
 #ifdef CHDIR
@@ -187,7 +278,7 @@
  * simultaneously, define HACKDIR, SECURE and MAX_NR_OF_PLAYERS.
  * #define MAX_NR_OF_PLAYERS 6
  */
-#endif /* CHDIR /**/
+#endif /* CHDIR */
 
 
 
@@ -202,7 +293,14 @@
  * 'void' type (and thus would give all sorts of compile errors without
  * this definition).
  */
-/* #define void int			/* define if no "void" data type. */
+/* #define NOVOID			/* define if no "void" data type. */
+
+/*
+ * Uncomment the following line if your compiler falsely claims to be
+ * a standard C compiler (i.e., defines __STDC__ without cause).
+ * Examples are Apollo's cc (in some versions) and possibly SCO UNIX's rcc.
+ */
+/* #define NOTSTDC			/* define for lying compilers */
 
 #include "tradstdc.h"
 
@@ -216,7 +314,7 @@
  *	typedef short int schar;
  */
 #ifdef AZTEC
-#define schar	char
+# define schar	char
 #else
 typedef signed char	schar;
 #endif
@@ -242,6 +340,35 @@ typedef unsigned char	uchar;
  */
 #define BITFIELDS	/* Good bitfield handling */
 
+/* #define STRNCMPI /* compiler/library has the strncmpi function */
+
+/*
+ * There are various choices for the NetHack vision system.  There is a
+ * choice of two algorithms with the same behavior.  Defining VISION_TABLES
+ * creates huge (60K) tables at compile time, drastically increasing data
+ * size, but runs slightly faster than the alternate algorithm.  (MSDOS in
+ * particular cannot tolerate the increase in data size; other systems can
+ * flip a coin weighted to local conditions.)
+ *
+ * If VISION_TABLES is defined, two-dimensional tables will be generated.
+ * Some compilers need braces around the rows of such arrays; some need
+ * them not to be there.  Known preferences:
+ *	Braces:		Sun, DEC vaxen (Ultrix), DEC Mips
+ *			Bull DPX/2 K&R (Green Hills)
+ *	No Braces:	gcc, hc (IBM High C compiler), AT&T 3B, MSC 5.1
+ *			Bull DPX/2 Ansi (Green Hills/-Xa option), MPW C
+ * If VISION_TABLES is not defined, things will be faster if you can use
+ * MACRO_CPATH.  Some cpps, however, cannot deal with the size of the
+ * functions that have been macroized.
+ */
+
+/*#define VISION_TABLES	/* use vision tables generated at compile time */
+#ifdef VISION_TABLES
+# define BRACES		/* put braces around rows of 2d arrays */
+#else
+# define MACRO_CPATH	/* use clear_path macros instead of functions */
+#endif
+
 
 
 /*
@@ -250,61 +377,45 @@ typedef unsigned char	uchar;
  * Conditional compilation of special options are controlled here.
  * If you define the following flags, you will add not only to the
  * complexity of the game but also to the size of the load module.
- */ 
+ *
+ * Note:  Commenting MULDGN will yield a game similar to 3.0, without
+ * Quest dungeons and tasks, and without some other special dungeons. 
+ */
 
 /* game features */
-#define POLYSELF      /* Polymorph self code by Ken Arromdee */
-#define THEOLOGY      /* Smarter gods - The Unknown Hacker */
-#define SOUNDS        /* Add more life to the dungeon */
-#define KICK          /* Allow kicking things besides doors -Izchak Miller */
+#define POLYSELF	/* Polymorph self code by Ken Arromdee */
+#define SOUNDS		/* Add more life to the dungeon */
 /* dungeon features */
-#define THRONES       /* Thrones and Courts by M. Stephenson */
-#define FOUNTAINS     /* Fountain code by SRT (+ GAN + EB) */
-#define SINKS         /* Kitchen sinks - Janet Walz */
-#define ALTARS        /* Sacrifice sites - Jean-Christophe Collet */
+#define SINKS		/* Kitchen sinks - Janet Walz */
 /* dungeon levels */
-#define WALLIFIED_MAZE /* Fancy mazes - Jean-Christophe Collet */
-#define REINCARNATION /* Rogue-like levels */
-#define STRONGHOLD    /* Challenging special levels - Jean-Christophe Collet*/
+#define WALLIFIED_MAZE	/* Fancy mazes - Jean-Christophe Collet */
+#define REINCARNATION	/* Special Rogue-like levels */
 /* monsters & objects */
-#define ORACLE        /* Include another source of information */
-#define MEDUSA        /* Mirrors and the Medusa by Richard P. Hughey */
-#define KOPS          /* Keystone Kops by Scott R. Turner */
-#define ARMY          /* Soldiers, barracks by Steve Creps */
-#define WORM          /* Long worms */
-#define GOLEMS        /* Golems, by KAA */
-#define INFERNO       /* Demons & Demonlords */
-#ifdef INFERNO
-#define SEDUCE        /* Succubi/incubi additions, by KAA, suggested by IM */
-#endif
-#define TOLKIEN       /* More varieties of objects and monsters */
-#define PROBING       /* Wand of probing code by Gil Neiger */
-#define WALKIES       /* Leash code by M. Stephenson */
-#define SHIRT         /* Hawaiian shirt code by Steve Linhart */
-#define MUSIC         /* Musical instruments - Jean-Christophe Collet */
-#define TUTTI_FRUTTI  /* Fruits as in Rogue, but which work... -KAA */
-#define SPELLS        /* Spell casting by M. Stephenson */
-#define NAMED_ITEMS   /* Special named items handling */
+#define KOPS		/* Keystone Kops by Scott R. Turner */
+#define ARMY		/* Soldiers, barracks by Steve Creps */
+#define SEDUCE		/* Succubi/incubi seduction, by KAA, suggested by IM */
+#define WALKIES		/* Leash code by M. Stephenson */
+#define TOURIST		/* Tourist players with cameras and Hawaiian shirts */
+#define TUTTI_FRUTTI	/* fruit option as in Rogue, but which works, by KAA */
+#define MUSE		/* Let monsters use more things - KAA */
+#define MULDGN		/* Multi-branch dungeons MRS & IM */
 /* difficulty */
-#define ELBERETH      /* Allow for disabling the E word - Mike 3point */
-#define EXPLORE_MODE  /* Allow non-scoring play with additional powers */
-#define HARD          /* Enhanced wizard code by M. Stephenson */
+#define ELBERETH	/* Engraving the E-word repels monsters */
+#define EXPLORE_MODE	/* Allow non-scoring play with additional powers */
 /* I/O */
-#define REDO          /* support for redoing last command - DGK */
-#define COM_COMPL     /* Command line completion by John S. Bien */
+#define REDO		/* support for redoing last command - DGK */
+#define COM_COMPL	/* Command line completion by John S. Bien */
 #ifndef AMIGA
-#define CLIPPING      /* allow smaller screens -- ERS */
+# define CLIPPING	/* allow smaller screens -- ERS */
 #endif
 
 #ifdef REDO
-#define DOAGAIN '\001'		/* The "redo" key used in tty.c and cmd.c */
+# define DOAGAIN '\001'	/* ^A, the "redo" key used in cmd.c and getline.c */
 #endif
 
 #define EXP_ON_BOTL	/* Show experience on bottom line */
 /* #define SCORE_ON_BOTL	/* added by Gary Erickson (erickson@ucivax) */
 
-
-
 #include "global.h"	/* Define everything else according to choices above */
 
-#endif /* CONFIG_H /**/
+#endif /* CONFIG_H */
