@@ -1,5 +1,5 @@
-/* 	SCCS Id: @(#)multi.c 3.1	93/01/08
-/*	Copyright (c) Kenneth Lorber, Bethesda, Maryland, 1992, 1993  */
+/* 	SCCS Id: @(#)multi.c 3.1	95/07/25
+/*	Copyright (c) Kenneth Lorber, Bethesda, Maryland, 1992, 1993, 1995  */
 /* NetHack may be freely redistributed.  See license for details. */
 
 /*
@@ -8,19 +8,25 @@
  */
 #include <exec/types.h>
 #include <exec/memory.h>
-#include <proto/dos.h>
-#include <proto/exec.h>
-#include <dos.h>
+#ifdef _DCC
+# include <clib/dos_protos.h>
+# include <clib/exec_protos.h>
+#else
+# include <proto/dos.h>
+# include <proto/exec.h>
+# include <dos.h>
+#endif
 #include <string.h>
 #include <assert.h>
+#include <ctype.h>
 #include "multi.h"
 
-static int start_next_file(multifh *);	/* should return enum */
+static int start_next_file(multifh *);	/* XXX should return enum */
 BPTR
 MultiOpen(char *dirfile, ULONG mode, union multiopts *mo){
 	multifh *retval;
 
-	assert(mode==MODE_OLDFILE);	/* no chioce this version */
+	assert(mode==MODE_OLDFILE);	/* XXX no chioce this version */
 	retval=(multifh *)AllocMem(sizeof(multifh),MEMF_CLEAR);
 	if(retval){
 		retval->mfh_dirfh=Open(dirfile,MODE_OLDFILE);
@@ -37,7 +43,8 @@ MultiOpen(char *dirfile, ULONG mode, union multiopts *mo){
 }
 
 ULONG
-MultiRead(BPTR xmfp, ULONG *where, ULONG len){
+MultiRead(BPTR xmfp, void *where0, ULONG len){
+	char *where = (char*)where0;
 	multifh *mfp=(multifh *)xmfp;
 	ULONG sofar=0;
 	ULONG this;
@@ -68,8 +75,8 @@ MultiClose(BPTR xmfp){
 	FreeMem(mfp,sizeof(multifh));
 }
 
-/* return 0==no more data, -1 error.  else more data available unless file
- * is empty
+/* Return 0==no more data, -1 error.  Else more data available unless file
+ * is empty.
  */
 static
 start_next_file(multifh *mfp){

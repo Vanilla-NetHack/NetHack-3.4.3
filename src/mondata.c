@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mondata.c	3.1	93/03/16	*/
+/*	SCCS Id: @(#)mondata.c	3.2	95/07/29	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -8,6 +8,25 @@
 
 /*	These routines provide basic data for any type of monster. */
 
+#ifdef OVLB
+
+void
+set_mon_data(mon, ptr, flag)
+struct monst *mon;
+struct permonst *ptr;
+int flag;
+{
+    mon->data = ptr;
+    if (flag == -1) return;		/* "don't care" */
+
+    if (flag == 1)
+	mon->mintrinsics |= (ptr->mresists & 0x00FF);
+    else
+	mon->mintrinsics = (ptr->mresists & 0x00FF);
+    return;
+}
+
+#endif /* OVLB */
 #ifdef OVL0
 
 boolean
@@ -31,15 +50,43 @@ poly_when_stoned(ptr)
     struct permonst *ptr;
 {
     return((boolean)(is_golem(ptr) && ptr != &mons[PM_STONE_GOLEM] &&
-	    !(mons[PM_STONE_GOLEM].geno & G_GENOD)));	/* allow G_EXTINCT */
+	    !(mvitals[PM_STONE_GOLEM].mvflags & G_GENOD)));
+	    /* allow G_EXTINCT */
 }
 
 boolean
-resists_drli(ptr)	/* returns TRUE if monster is drain-life resistant */
-
-	register struct permonst *ptr;
+resists_drli(mon)	/* returns TRUE if monster is drain-life resistant */
+struct monst *mon;
 {
-	return((boolean)(is_undead(ptr) || is_demon(ptr) || is_were(ptr)));
+	struct permonst *ptr = mon->data;
+	struct obj *wep = ((mon == &youmonst) ? uwep : MON_WEP(mon));
+
+	return (boolean)(is_undead(ptr) || is_demon(ptr) || is_were(ptr) ||
+			 ptr == &mons[PM_DEATH] ||
+			 (wep && wep->oartifact && defends(AD_DRLI, wep)));
+}
+
+boolean
+resists_magm(mon)	/* TRUE if monster is magic-missile resistant */
+struct monst *mon;
+{
+	struct permonst *ptr = mon->data;
+	struct obj *o;
+
+	/* as of 3.2.0:  gray dragons, Angels, Oracle, Yeenoghu */
+	if (dmgtype(ptr, AD_MAGM) || ptr == &mons[PM_BABY_GRAY_DRAGON] ||
+		dmgtype(ptr, AD_RBRE))	/* Chromatic Dragon */
+	    return TRUE;
+	/* check for magic resistance granted by wielded weapon */
+	o = (mon == &youmonst) ? uwep : MON_WEP(mon);
+	if (o && o->oartifact && defends(AD_MAGM, o))
+	    return TRUE;
+	/* check for magic resistance granted by worn or carried items */
+	for (o = mon->minvent; o; o = o->nobj)
+	    if ((o->owornmask && objects[o->otyp].oc_oprop == ANTIMAGIC) ||
+		    (o->oartifact && protects(AD_MAGM, o)))
+		return TRUE;
+	return FALSE;
 }
 
 #endif /* OVLB */
@@ -91,13 +138,12 @@ can_track(ptr)		/* returns TRUE if monster can track well */
 #endif /* OVL1 */
 #ifdef OVLB
 
-#if defined(POLYSELF) || defined(MUSE)
 boolean
 sliparm(ptr)	/* creature will slide out of armor */
 	register struct permonst *ptr;
 {
 	return((boolean)(is_whirly(ptr) || ptr->msize <= MZ_SMALL ||
-		ptr == &mons[PM_GHOST]));
+			 noncorporeal(ptr)));
 }
 
 boolean
@@ -112,7 +158,6 @@ breakarm(ptr)	/* creature will break out of armor */
 	 * bigmonst.
 	 */
 }
-#endif
 #endif /* OVLB */
 #ifdef OVL1
 
@@ -149,10 +194,10 @@ max_passive_dmg(mdef, magr)
     for(i = 0; i < NATTK; i++)
 	if(mdef->data->mattk[i].aatyp == AT_NONE) {
 	    adtyp = mdef->data->mattk[i].adtyp;
-	    if((adtyp == AD_ACID && !resists_acid(magr->data)) ||
-		    (adtyp == AD_COLD && !resists_cold(magr->data)) ||
-		    (adtyp == AD_FIRE && !resists_fire(magr->data)) ||
-		    (adtyp == AD_ELEC && !resists_elec(magr->data))) {
+	    if ((adtyp == AD_ACID && !resists_acid(magr)) ||
+		    (adtyp == AD_COLD && !resists_cold(magr)) ||
+		    (adtyp == AD_FIRE && !resists_fire(magr)) ||
+		    (adtyp == AD_ELEC && !resists_elec(magr))) {
 		dmg = mdef->data->mattk[i].damn;
 		if(!dmg) dmg = mdef->data->mlevel+1;
 		dmg *= mdef->data->mattk[i].damd;
@@ -172,11 +217,13 @@ monsndx(ptr)		/* return an index into the mons array */
 {
 	register int	i;
 
-	if(ptr == &playermon) return(-1);
+	if (ptr == &playermon) return PM_PLAYERMON;
 
 	i = (int)(ptr - &mons[0]);
-	if(i < 0 || i >= NUMMONS) {    
-	    panic("monsndx - could not index monster (%lx)", (long)ptr);
+	if (i < LOW_PM || i >= NUMMONS) {
+		/* ought to switch this to use `fmt_ptr' */
+	    panic("monsndx - could not index monster (%lx)",
+		  (unsigned long)ptr);
 	    return FALSE;		/* will not get here */
 	}
 
@@ -188,8 +235,8 @@ monsndx(ptr)		/* return an index into the mons array */
 
 
 int
-name_to_mon(str)
-char *str;
+name_to_mon(in_str)
+const char *in_str;
 {
 	/* Be careful.  We must check the entire string in case it was
 	 * something such as "ettin zombie corpse".  The calling routine
@@ -204,34 +251,15 @@ char *str;
 	 * or 'es'.  Other plurals must still be handled explicitly.
 	 */
 	register int i;
-	register int mntmp = -1;
-	register char *s;
+	register int mntmp = NON_PM;
+	register char *s, *str;
 	char buf[BUFSZ];
 	int len, slen;
 
-	Strcpy(buf, str);
-	str = buf;
+	str = strcpy(buf, in_str);
 	if (!strncmp(str, "a ", 2)) str += 2;
 	else if (!strncmp(str, "an ", 3)) str += 3;
 
-	/* Alternate spellings */
-	if (!strncmpi(str, "grey dragon", 11)) return PM_GRAY_DRAGON;
-	if (!strncmpi(str, "baby grey dragon", 16)) return PM_BABY_GRAY_DRAGON;
-	if (!strncmpi(str, "grey unicorn", 12)) return PM_GRAY_UNICORN;
-	if (!strncmpi(str, "grey ooze", 9)) return PM_GRAY_OOZE;
-
-	/* Some irregular plurals */
-	if (!strncmpi(str, "incubi", 6)) return PM_INCUBUS;
-	if (!strncmpi(str, "succubi", 7)) return PM_SUCCUBUS;
-	if (!strncmpi(str, "violet fungi", 12)) return PM_VIOLET_FUNGUS;
-	if (!strncmpi(str, "homunculi", 9)) return PM_HOMUNCULUS;
-	if (!strncmpi(str, "baluchitheria", 13)) return PM_BALUCHITHERIUM;
-	if (!strncmpi(str, "lurkers above", 13)) return PM_LURKER_ABOVE;
-	if (!strncmpi(str, "cavemen", 7)) return PM_CAVEMAN;
-	if (!strncmpi(str, "cavewomen", 9)) return PM_CAVEWOMAN;
-	if (!strncmpi(str, "zruties", 7)) return PM_ZRUTY;
-	if (!strncmpi(str, "djinn", 5)) return PM_DJINNI;
-	if (!strncmpi(str, "mumakil", 7)) return PM_MUMAK;
 	if ((s = strstri(str, "vortices")) != 0)
 	    Strcpy(s+4, "ex");
 	/* be careful with "ies"; "priest", "zombies" */
@@ -242,8 +270,51 @@ char *str;
 	else if ((s = strstri(str, "ves")) != 0)
 	    Strcpy(s, "f");
 
+    {
+	static const struct alt_spl { const char* name; short pm_val; }
+	    names[] = {
+	    /* Alternate spellings */
+		{ "grey dragon",	PM_GRAY_DRAGON },
+		{ "baby grey dragon",	PM_BABY_GRAY_DRAGON },
+		{ "grey unicorn",	PM_GRAY_UNICORN },
+		{ "grey ooze",		PM_GRAY_OOZE },
+		{ "gray-elf",		PM_GREY_ELF },
+	    /* Hyphenated names */
+		{ "ki rin",		PM_KI_RIN },
+		{ "uruk hai",		PM_URUK_HAI },
+		{ "orc captain",	PM_ORC_CAPTAIN },
+		{ "woodland elf",	PM_WOODLAND_ELF },
+		{ "green elf",		PM_GREEN_ELF },
+		{ "grey elf",		PM_GREY_ELF },
+		{ "gray elf",		PM_GREY_ELF },
+		{ "elf lord",		PM_ELF_LORD },
+		{ "high elf",		PM_HIGH_ELF },
+		{ "olog hai",		PM_OLOG_HAI },
+	    /* Some irregular plurals */
+		{ "incubi",		PM_INCUBUS },
+		{ "succubi",		PM_SUCCUBUS },
+		{ "violet fungi",	PM_VIOLET_FUNGUS },
+		{ "homunculi",		PM_HOMUNCULUS },
+		{ "baluchitheria",	PM_BALUCHITHERIUM },
+		{ "lurkers above",	PM_LURKER_ABOVE },
+		{ "cavemen",		PM_CAVEMAN },
+		{ "cavewomen",		PM_CAVEWOMAN },
+		{ "zruties",		PM_ZRUTY },
+		{ "djinn",		PM_DJINNI },
+		{ "mumakil",		PM_MUMAK },
+		{ "erinyes",		PM_ERINYS },
+	    /* end of list */
+		{ 0, 0 }
+	};
+	register const struct alt_spl *namep;
+
+	for (namep = names; namep->name; namep++)
+	    if (!strncmpi(str, namep->name, (int)strlen(namep->name)))
+		return namep->pm_val;
+    }
+
 	slen = strlen(str);
-	for (len = 0, i = 0; i < NUMMONS; i++) {
+	for (len = 0, i = LOW_PM; i < NUMMONS; i++) {
 	    register int m_i_len = strlen(mons[i].mname);
 	    if (m_i_len > len && !strncmpi(mons[i].mname, str, m_i_len)) {
 		if (m_i_len == slen) return i;	/* exact match */
@@ -258,21 +329,19 @@ char *str;
 		}
 	    }
 	}
-	if (mntmp == -1) mntmp = title_to_mon(str, (int *)0, (int *)0);
+	if (mntmp == NON_PM) mntmp = title_to_mon(str, (int *)0, (int *)0);
 	return mntmp;
 }
 
 #endif /* OVL1 */
 #ifdef OVLB
 
-#ifdef POLYSELF
 boolean
 webmaker(ptr)   /* creature can spin a web */
 	register struct permonst *ptr;
 {
 	return((boolean)(ptr->mlet == S_SPIDER && ptr != &mons[PM_SCORPION]));
 }
-#endif
 
 #endif /* OVLB */
 #ifdef OVL2
@@ -286,12 +355,14 @@ register struct monst *mtmp;
 	return mtmp->female;
 }
 
-/* like gender(), but lower animals and such are still "it" */
+/* Like gender(), but lower animals and such are still "it". */
+/* This is the one we want to use when printing messages. */
 int
 pronoun_gender(mtmp)
 register struct monst *mtmp;
 {
-	if (Blind || !humanoid(mtmp->data)) return 2;
+	if (!canspotmon(mtmp) || !humanoid(mtmp->data))
+		return 2;
 	return mtmp->female;
 }
 
@@ -309,7 +380,7 @@ register struct monst *mtmp;
 struct permonst *
 player_mon()
 {
-	switch (pl_character[0]) {
+	switch (u.role) {
 		case 'A': return &mons[PM_ARCHEOLOGIST];
 		case 'B': return &mons[PM_BARBARIAN];
 		case 'C': if (flags.female) return &mons[PM_CAVEWOMAN];
@@ -331,38 +402,37 @@ player_mon()
 	}
 }
 
-const int grownups[][2] = { {PM_LITTLE_DOG, PM_DOG}, {PM_DOG, PM_LARGE_DOG},
-	{PM_HELL_HOUND_PUP, PM_HELL_HOUND}, {PM_KITTEN, PM_HOUSECAT},
-	{PM_HOUSECAT, PM_LARGE_CAT}, {PM_BABY_GRAY_DRAGON, PM_GRAY_DRAGON},
+static const short grownups[][2] = {
+	{PM_LITTLE_DOG, PM_DOG}, {PM_DOG, PM_LARGE_DOG},
+	{PM_HELL_HOUND_PUP, PM_HELL_HOUND},
+	{PM_KITTEN, PM_HOUSECAT}, {PM_HOUSECAT, PM_LARGE_CAT},
 	{PM_KOBOLD, PM_LARGE_KOBOLD}, {PM_LARGE_KOBOLD, PM_KOBOLD_LORD},
 	{PM_GNOME, PM_GNOME_LORD}, {PM_GNOME_LORD, PM_GNOME_KING},
 	{PM_DWARF, PM_DWARF_LORD}, {PM_DWARF_LORD, PM_DWARF_KING},
-	{PM_SMALL_MIMIC, PM_LARGE_MIMIC}, {PM_LARGE_MIMIC, PM_GIANT_MIMIC},
-	{PM_BAT, PM_GIANT_BAT},
-	{PM_LICH, PM_DEMILICH}, {PM_DEMILICH, PM_MASTER_LICH},
 	{PM_OGRE, PM_OGRE_LORD}, {PM_OGRE_LORD, PM_OGRE_KING},
-	{PM_VAMPIRE, PM_VAMPIRE_LORD},
+	{PM_LICH, PM_DEMILICH}, {PM_DEMILICH, PM_MASTER_LICH},
+	{PM_VAMPIRE, PM_VAMPIRE_LORD}, {PM_BAT, PM_GIANT_BAT},
+	{PM_BABY_GRAY_DRAGON, PM_GRAY_DRAGON},
 	{PM_BABY_RED_DRAGON, PM_RED_DRAGON},
 	{PM_BABY_WHITE_DRAGON, PM_WHITE_DRAGON},
-	{PM_BABY_BLUE_DRAGON, PM_BLUE_DRAGON},
-	{PM_BABY_GREEN_DRAGON, PM_GREEN_DRAGON},
 	{PM_BABY_ORANGE_DRAGON, PM_ORANGE_DRAGON},
 	{PM_BABY_BLACK_DRAGON, PM_BLACK_DRAGON},
+	{PM_BABY_BLUE_DRAGON, PM_BLUE_DRAGON},
+	{PM_BABY_GREEN_DRAGON, PM_GREEN_DRAGON},
 	{PM_BABY_YELLOW_DRAGON, PM_YELLOW_DRAGON},
 	{PM_RED_NAGA_HATCHLING, PM_RED_NAGA},
 	{PM_BLACK_NAGA_HATCHLING, PM_BLACK_NAGA},
 	{PM_GOLDEN_NAGA_HATCHLING, PM_GOLDEN_NAGA},
 	{PM_GUARDIAN_NAGA_HATCHLING, PM_GUARDIAN_NAGA},
-	{PM_BABY_PURPLE_WORM, PM_PURPLE_WORM},
 	{PM_BABY_LONG_WORM, PM_LONG_WORM},
-#ifdef ARMY
+	{PM_BABY_PURPLE_WORM, PM_PURPLE_WORM},
+	{PM_BABY_CROCODILE, PM_CROCODILE},
 	{PM_SOLDIER, PM_SERGEANT},
 	{PM_SERGEANT, PM_LIEUTENANT},
 	{PM_LIEUTENANT, PM_CAPTAIN},
-#endif
 	{PM_WATCHMAN, PM_WATCH_CAPTAIN},
-	{PM_BABY_CROCODILE, PM_CROCODILE},
-	{-1,-1}
+	{PM_SMALL_MIMIC, PM_LARGE_MIMIC}, {PM_LARGE_MIMIC, PM_GIANT_MIMIC},
+	{NON_PM,NON_PM}
 };
 
 int
@@ -372,7 +442,7 @@ int montype;
 #ifndef AIXPS2_BUG
 	register int i;
 	
-	for(i=0; grownups[i][0] >= 0; i++)
+	for (i = 0; grownups[i][0] >= LOW_PM; i++)
 		if(montype == grownups[i][0]) return grownups[i][1];
 	return montype;
 #else
@@ -385,9 +455,9 @@ int montype;
 	int monvalue;
 
 	monvalue = montype;
-	for(i=0; grownups[i][0] >= 0; i++)
+	for (i = 0; grownups[i][0] >= LOW_PM; i++)
 		if(montype == grownups[i][0]) monvalue = grownups[i][1];
-	
+
 	return monvalue;
 #endif
 }
@@ -398,7 +468,7 @@ int montype;
 {
 	register int i;
 	
-	for(i=0; grownups[i][0] >= 0; i++)
+	for (i = 0; grownups[i][0] >= LOW_PM; i++)
 		if(montype == grownups[i][1]) return grownups[i][0];
 	return montype;
 }

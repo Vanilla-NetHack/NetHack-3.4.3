@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dungeon.h	3.1	93/01/17	*/
+/*	SCCS Id: @(#)dungeon.h	3.2	95/12/08	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -14,7 +14,9 @@ typedef struct d_flags {	/* dungeon/level type flags */
 	Bitfield(unused, 1);	/* etc... */
 } d_flags;
 
+#ifndef ALIGN_H
 #include "align.h"
+#endif
 
 typedef struct d_level {	/* basic dungeon level element */
 	xchar	dnum;		/* dungeon number */
@@ -118,14 +120,51 @@ typedef struct branch {
 #define Is_rogue_level(x)	(on_level(x, &rogue_level))
 #define Is_stronghold(x)	(on_level(x, &stronghold_level))
 #define Is_bigroom(x)		(on_level(x, &bigroom_level))
-#ifdef MULDGN
 #define Is_qstart(x)		(on_level(x, &qstart_level))
 #define Is_qlocate(x)		(on_level(x, &qlocate_level))
 #define Is_nemesis(x)		(on_level(x, &nemesis_level))
 #define Is_knox(x)		(on_level(x, &knox_level))
-#endif
 
 #define Inhell			In_hell(&u.uz)	/* now gehennom */
 #define In_endgame(x)		((x)->dnum == astral_level.dnum)
+#define within_bounded_area(X,Y,LX,LY,HX,HY) \
+		((X) >= (LX) && (X) <= (HX) && (Y) >= (LY) && (Y) <= (HY))
+
+/* monster and object migration codes */
+
+#define MIGR_NOWHERE	      (-1)	/* failure flag for down_gate() */
+#define MIGR_RANDOM		0
+#define MIGR_APPROX_XY		1	/* approximate coordinates */
+#define MIGR_EXACT_XY		2	/* specific coordinates */
+#define MIGR_STAIRS_UP		3
+#define MIGR_STAIRS_DOWN	4
+#define MIGR_LADDER_UP		5
+#define MIGR_LADDER_DOWN	6
+#define MIGR_SSTAIRS		7	/* dungeon branch */
+#define MIGR_PORTAL		8	/* magic portal */
+#define MIGR_NEAR_PLAYER	9	/* mon: followers; obj: trap door */
+
+/* level information (saved via ledger number) */
+
+struct linfo {
+	unsigned char	flags;
+#define VISITED		0x01	/* hero has visited this level */
+#define FORGOTTEN	0x02	/* hero will forget this level when reached */
+#define LFILE_EXISTS	0x04	/* a level file exists for this level */
+/*
+ * Note:  VISITED and LFILE_EXISTS are currently almost always set at the
+ * same time.  However they _mean_ different things.
+ */
+
+#ifdef MFLOPPY
+# define FROMPERM        1      /* for ramdisk use */
+# define TOPERM          2      /* for ramdisk use */
+# define ACTIVE          1
+# define SWAPPED         2
+	int	where;
+	long	time;
+	long	size;
+#endif /* MFLOPPY */
+};
 
 #endif /* DUNGEON_H */

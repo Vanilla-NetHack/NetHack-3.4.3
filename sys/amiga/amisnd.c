@@ -1,5 +1,5 @@
-/*	SCCS Id: @(#)amisnd.c	3.1	92/11/28	*/
-/* 	Copyright (c) 1992, 1993 by Gregg Wonderly */
+/*	SCCS Id: @(#)amisnd.c	3.2	95/7/23	*/
+/* 	Copyright (c) 1992, 1993, 1995 by Gregg Wonderly */
 /* NetHack may be freely redistributed.  See license for details. */
 
 /*
@@ -10,6 +10,7 @@
  */
 
 #include "hack.h"
+#include "dlb.h"
 
 #undef red
 #undef blue
@@ -105,7 +106,7 @@ void
 amii_speaker( struct obj *instr, char *melody, int vol )
 {
 	int typ = instr->otyp;
-	const char * actualn = OBJ_NAME( objects[typ] ) ;
+	char * actualn = (char *)OBJ_NAME( objects[typ] ) ;
 
 	/* Make volume be relative to users volume level, with 60 being the
 	 * average level that will be passed to us.
@@ -121,7 +122,7 @@ makesound ( char *actualn , char * melody, int vol )
 {
 	char *t;
 	int c, cycles, dot, dlay;
-	FILE *fp = 0;
+	dlb *stream = 0;
 	IFFHEAD iffhead;
 	struct IOAudio *AudioIO = 0;
 	struct MsgPort *AudioMP = 0;
@@ -140,18 +141,16 @@ makesound ( char *actualn , char * melody, int vol )
 		clock = 3579545;
 
 	/*
-	 * Is this a known instrument ?
-	 *
+	 * Convert type to file name - if there's nothing to play we
+	 * shouldn't be here in the first place.
 	 */
-	sprintf ( name, "NetHack:sounds/%s", actualn ) ;
+	strncpy(name, actualn,sizeof(name) ) ;
 	for( t = strchr( name, ' ' ); t; t = strchr( name, ' ' ) )
 		*t = '_';
-	if( (fp = fopen( name, "r" )) == NULL )
+	if( (stream = dlb_fopen( name, "r" )) == NULL )
 	{
-	    if((fp=fopen(&name[15],"r"))==NULL){
-		perror( name );
-		return;
-	    }
+	    perror( name );
+	    return;
 	}
 
 	AudioIO = (struct IOAudio *)
@@ -175,24 +174,24 @@ makesound ( char *actualn , char * melody, int vol )
 	if( device != 0 )
 		goto killaudio;
 
-	if( fread( &iffhead, sizeof( iffhead ), 1, fp ) != 1 )
+	if( dlb_fread( (genericptr_t)&iffhead, sizeof( iffhead ), 1, stream ) != 1 )
 		goto killaudio;
 
 	/* This is an even number of bytes long */
-	if( fread( name, (iffhead.namelen+1) & ~1, 1, fp ) != 1 )
+	if( dlb_fread( name, (iffhead.namelen+1) & ~1, 1, stream ) != 1 )
 		goto killaudio;
 
-	if( fread( &samples, 4, 1, fp ) != 1 )
+	if( dlb_fread( (genericptr_t)&samples, 4, 1, stream ) != 1 )
 		goto killaudio;
 
-	if( fread( &samples, 4, 1, fp ) != 1 )
+	if( dlb_fread( (genericptr_t)&samples, 4, 1, stream ) != 1 )
 		goto killaudio;
 
 	waveptr = AllocMem( samples, MEMF_CHIP|MEMF_PUBLIC );
 	if( !waveptr )
 		goto killaudio;
 
-	if( fread( waveptr, samples, 1, fp ) != 1 )
+	if( dlb_fread( waveptr, samples, 1, stream ) != 1 )
 		goto killaudio;
 
 	while( melody[0] && melody[1] )
@@ -277,7 +276,7 @@ makesound ( char *actualn , char * melody, int vol )
 	}
 
 	killaudio:
-	if( fp ) fclose( fp );
+	if( stream ) dlb_fclose( stream );
 	if( waveptr ) FreeMem( waveptr, samples );
 	if( device == 0 ) CloseDevice( (struct IORequest *)AudioIO );
 	if( AudioMP ) DeletePort( AudioMP );

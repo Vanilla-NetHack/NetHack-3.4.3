@@ -1,4 +1,4 @@
-#	SCCS Id: @(#)knox.des	3.1	90/02/26
+#	SCCS Id: @(#)knox.des	3.2	94/08/20
 #	Copyright (c) 1989 by Jean-Christophe Collet
 #	Copyright (c) 1992 by Izchak Miller
 # NetHack may be freely redistributed.  See license for details.
@@ -36,7 +36,7 @@ BRANCH:(08,16,08,16),(0,0,0,0)
 REGION:(37,08,46,11),lit,"throne"
 MONSTER:'@',"Croesus",(43,10),hostile
 #   The Vault
-#   Using unfilled morgue for 
+#   Using unfilled morgue for
 #   identification in mkmaze.c
 REGION:(21,08,35,11),lit,"morgue",unfilled
 #   Corner towers
@@ -46,6 +46,9 @@ REGION:(19,13,21,13),lit,"ordinary"
 REGION:(46,13,48,13),lit,"ordinary"
 #   A welcoming committee
 REGION:(03,10,07,13),lit,"zoo",filled,true
+#   arrival chamber; needs to be a real room to control migrating monsters,
+#   and `unfilled' is a kludge to force an ordinary room to remain a room
+REGION:(06,15,09,16),unlit,"ordinary",unfilled
 #   Barracks
 REGION:(62,03,71,04),lit,"barracks",filled,true
 # Doors

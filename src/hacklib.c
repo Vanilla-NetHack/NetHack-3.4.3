@@ -1,9 +1,9 @@
-/*	SCCS Id: @(#)hacklib.c	 3.1	 91/11/25	*/
+/*	SCCS Id: @(#)hacklib.c	3.2	95/08/04	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* Copyright (c) Robert Patrick Rankin, 1991		  */
 /* NetHack may be freely redistributed.  See license for details. */
 
-/* We could only include config.h, except for the overlay definitions... */
+/* We could include only config.h, except for the overlay definitions... */
 #include "hack.h"
 /*=
     Assorted 'small' utility routines.	They're virtually independent of
@@ -17,7 +17,7 @@ NetHack, except that rounddiv may call panic().
 	char *		lcase		(char *)
 	char *		eos		(char *)
 	char *		s_suffix	(const char *)
-	char *		xcrypt		(const char *)
+	char *		xcrypt		(const char *, char *)
 	boolean		onlyspace	(const char *)
 	char *		tabexpand	(char *)
 	char *		visctrl		(char)
@@ -33,7 +33,7 @@ NetHack, except that rounddiv may call panic().
 	char *		strstri		(const char *, const char *)
 	void		setrandom	(void)
 	int		getyear		(void)
-	char *		get_date	(void)
+	char *		yymmdd		(time_t)
 	int		phase_of_the_moon	(void)
 	boolean		friday_13th	(void)
 	int		night		(void)
@@ -116,10 +116,10 @@ s_suffix(s)		/* return a name converted to possessive */
 }
 
 char *
-xcrypt(str)		/* trivial text encryption routine (see makedefs) */
+xcrypt(str, buf)	/* trivial text encryption routine (see makedefs) */
 const char *str;
+char *buf;
 {
-    Static char buf[BUFSZ];
     register const char *p;
     register char *q;
     register int bitmask;
@@ -330,24 +330,9 @@ strncmpi(s1, s2, n)	/* case insensitive counted string comparison */
 #ifdef OVLB
 #ifndef STRSTRI
 
-/* A note on the #ifndef GCC_WARN: "const" unfortunately has two different
- * meanings. One meaning for "const char *str" is that the data pointed
- * to by "str" happens not to be modified by this function. That is true
- * for strstri. Another meaning is that "str" is (or may be) a pointer
- * to a constant string that must never be modified. gcc takes the latter
- * interpretation, and warns us about possible subversion of the const
- * modifier. Actually, that warning can be useful (we could accidentally
- * turn a constant string into a non-constant one with this function)
- * and so we note the fact that we're returning "str" as a non-const
- * by declaring it as non-const if GCC_WARN is defined.
- */
-
 char *
 strstri(str, sub)	/* case insensitive substring search */
-#ifndef GCC_WARN
-    const
-#endif
-    char *str;
+    const char *str;
     const char *sub;
 {
     register const char *s1, *s2;
@@ -396,7 +381,7 @@ strstri(str, sub)	/* case insensitive substring search */
  *	- determination of what files are "very old"
  */
 
-#if defined(AMIGA) && !defined(AZTEC_C) && !defined(__SASC_60)
+#if defined(AMIGA) && !defined(AZTEC_C) && !defined(__SASC_60) && !defined(_DCC)
 extern struct tm *FDECL(localtime,(time_t *));
 #endif
 static struct tm *NDECL(getlt);
@@ -453,15 +438,23 @@ getyear()
 }
 
 char *
-get_date()
+yymmdd(date)
+time_t date;
 {
 	Static char datestr[7];
-	register struct tm *lt = getlt();
+	struct tm *lt;
 
-	Sprintf(datestr, "%2d%2d%2d",
+	if (date == 0)
+		lt = getlt();
+	else
+#if (defined(ULTRIX) && !(defined(ULTRIX_PROTO) || defined(NHSTDC))) || defined(BSD)
+		lt = localtime((long *)(&date));
+#else
+		lt = localtime(&date);
+#endif
+
+	Sprintf(datestr, "%02d%02d%02d",
 		lt->tm_year, lt->tm_mon + 1, lt->tm_mday);
-	if(datestr[2] == ' ') datestr[2] = '0';
-	if(datestr[4] == ' ') datestr[4] = '0';
 	return(datestr);
 }
 

@@ -2,9 +2,9 @@
 /* Copyright (c) Gregg Wonderly, Naperville, Illinois,  1991,1992,1993. */
 /* NetHack may be freely redistributed.  See license for details. */
 
-#include "amiga:windefs.h"
-#include "amiga:winext.h"
-#include "amiga:winproto.h"
+#include "NH:sys/amiga/windefs.h"
+#include "NH:sys/amiga/winext.h"
+#include "NH:sys/amiga/winproto.h"
 
 /* Put a string into the indicated window using the indicated attribute */
 
@@ -14,16 +14,13 @@ amii_putstr(window,attr,str)
     int attr;
     const char *str;
 {
+    int fudge;
+    int len;
     struct Window *w;
     register struct amii_WinDesc *cw;
     char *ob;
     int i, j, n0, bottom, totalvis, wheight;
 
-#ifdef	VIEWWINDOW
-    /* Never write text in MAP it would be too small to read */
-    if( window == WIN_MAP )
-	window = WIN_MESSAGE;
-#endif
     /* Always try to avoid a panic when there is no window */
     if( window == WIN_ERR )
     {
@@ -49,16 +46,9 @@ amii_putstr(window,attr,str)
 
     if( w )
     {
-	/* Force the drawing mode and pen colors */
-
+	/* Set the drawing mode and pen colors */
 	SetDrMd( w->RPort, JAM2 );
-	if( cw->type == NHW_STATUS )
-	    SetAPen( w->RPort, attr ? C_WHITE : C_RED );
-	else if( cw->type == NHW_MESSAGE )
-	    SetAPen( w->RPort, attr ? C_RED : C_WHITE );
-	else
-	    SetAPen( w->RPort, attr ? C_RED : C_WHITE );
-	SetBPen( w->RPort, C_BLACK );
+	amii_sethipens( w, cw->type, attr );
     }
     else if( cw->type != NHW_MENU && cw->type != NHW_TEXT )
     {
@@ -69,37 +59,28 @@ amii_putstr(window,attr,str)
 
     switch(cw->type)
     {
-#define MORE_FUDGE  10  /* 8 for --more--, 1 for preceeding sp, 1 for */
-		/* putstr pad */
     case NHW_MESSAGE:
-    	/* Calculate the bottom line */
+	if( WINVERS_AMIV )
+	    fudge = 2;
+	else
+	{
+	    /* 8 for --more--, 1 for preceeding sp, 1 for putstr pad */
+	    fudge = 10;
+	}
+
+    	/* There is a one pixel border at the borders, so subtract two */
     	bottom = amii_msgborder( w );
 
 	wheight = ( w->Height - w->BorderTop -
 			    w->BorderBottom - 3 ) / w->RPort->TxHeight;
 	
-	if( attr != -1 && scrollmsg )
-	{
-	    if( ++cw->disprows > wheight )
-	    {
-		outmore( cw );
-		cw->disprows = 1; /* count this line... */
-	    }
-	    else
-	    {
-		ScrollRaster( w->RPort, 0, w->RPort->TxHeight,
-			w->BorderLeft-1, w->BorderTop+1,
-			w->Width - w->BorderRight-1,
-			w->Height - w->BorderBottom - 1 );
-	    }
-	    amii_curs( WIN_MESSAGE, 1, bottom );
-	}
+	amii_scrollmsg( w, cw );
 
 	strncpy( toplines, str, BUFSZ );
 	toplines[ BUFSZ - 1 ] = 0;
 
 	/* For initial message to be visible, we need to explicitly position the
-	 * cursor.  This flag, cw->curx == -1 is used elsewhere to force the
+	 * cursor.  This flag, cw->curx == -1 is set elsewhere to force the
 	 * cursor to be repositioned to the "bottom".
 	 */
 	if( cw->curx == -1 )
@@ -109,7 +90,6 @@ amii_putstr(window,attr,str)
 	}
 
 	/* If used all of history lines, move them down */
-
 	if( cw->maxrow >= flags.msg_history )
 	{
 	    if( cw->data[ 0 ] )
@@ -129,53 +109,69 @@ amii_putstr(window,attr,str)
 	    strcpy( cw->data[ i = cw->maxrow++ ] +
 				SOFF + (scrollmsg!=0), toplines );
 	}
-	cw->data[ i ][0] = 1;
-	cw->data[ i ][1] = attr;
+	cw->data[ i ][ SEL_ITEM ] = 1;
+	cw->data[ i ][ VATTR ] = attr+1;
 
 	if( scrollmsg )
+	{
+	    cw->curx = 0;
 	    cw->data[ i ][2] = (cw->wflags & FLMSG_FIRST ) ? '>' : ' ';
+	}
 
 	str = cw->data[i] + SOFF;
-	if( strlen(str) >= (cw->cols-MORE_FUDGE) )
+	if( strlen(str) >= (cw->cols-fudge) )
 	{
 	    int i;
+	    char *ostr = (char *)str;
 	    char *p;
 
-	    while( strlen( str ) >= (cw->cols-MORE_FUDGE) )
+	    while( strlen( str ) >= (cw->cols-fudge) )
 	    {
-		for(p=(&str[ cw->cols ])-MORE_FUDGE; !isspace(*p) && p != str;)
-		{
+		for(p=((char *)&str[ cw->cols ])-fudge; !isspace(*p) && p != str;)
 		    --p;
-		}
+
 		if( p == str )
-		    p = &str[ cw->cols ];
-		outsubstr( cw, str, i = (long)p-(long)str );
+		    p = (char *)&str[ cw->cols ];
+
+		i = (long)p-(long)str;
 		cw->curx += i;
-		amii_cl_end( cw, cw->curx );
-		str = p+1;
+
+		if( str != ostr )
+		{
+		    outsubstr( cw, "+", 1, fudge );
+		    cw->curx+=2;
+		}
+		outsubstr( cw, (char *)str, i, fudge );
+		str = p+(isspace(*p)!= 0);
+		if(*str)
+		    amii_scrollmsg( w, cw );
 	    }
 
 	    if( *str )
 	    {
-		outsubstr( cw, str, i = strlen( str ) );
+		if( str != ostr )
+		{
+		    outsubstr( cw, "+", 1, fudge );
+		    cw->curx+=2;
+		}
+		if( isspace( *str ) )
+		    ++str;
+		outsubstr( cw, (char *)str, i = strlen( (char *)str ), fudge );
 		cw->curx += i;
 		amii_cl_end( cw, cw->curx );
 	    }
 	}
 	else
 	{
-	    outsubstr( cw, str, i = strlen( str ) );
+	    outsubstr( cw, (char *)str, i = strlen( (char *)str ), fudge );
 	    cw->curx += i;
 	    amii_cl_end( cw, cw->curx );
 	}
 	cw->wflags &= ~FLMSG_FIRST;
-	for( totalvis = i = 0; i < cw->maxrow; ++i )
-	{
-	    if( cw->data[i][1] == 0 )
-		++totalvis;
-	}
+	len = 0;
 	if( scrollmsg )
 	{
+	    totalvis = CountLines( window );
 	    SetPropInfo( w, &MsgScroll,
 	      ( w->Height-w->BorderTop-w->BorderBottom ) / w->RPort->TxHeight,
 	      totalvis, totalvis );
@@ -193,7 +189,7 @@ amii_putstr(window,attr,str)
 
 	    /* Display when beam at top to avoid flicker... */
 	WaitTOF();
-	Text(w->RPort,str,strlen(str));
+	Text(w->RPort,(char *)str,strlen((char *)str));
 	if( cw->cols > strlen( str ) )
 	    TextSpaces( w->RPort, cw->cols - strlen( str ) );
 
@@ -203,12 +199,10 @@ amii_putstr(window,attr,str)
 	cw->curx = 0;
 	break;
 
-    case NHW_VIEWBOX:
-    case NHW_VIEW:
     case NHW_MAP:
     case NHW_BASE:
 	amii_curs(window, cw->curx+1, cw->cury);
-	Text(w->RPort,str,strlen(str));
+	Text(w->RPort,(char *)str,strlen((char *)str));
 	cw->curx = 0;
 	    /* CR-LF is automatic in these windows */
 	cw->cury++;
@@ -219,7 +213,8 @@ amii_putstr(window,attr,str)
 
 	/* always grows one at a time, but alloc 12 at a time */
 
-	if( cw->cury >= cw->rows || !cw->data ) {
+	if( cw->cury >= cw->rows || !cw->data )
+	{
 	    char **tmp;
 
 		/* Allocate 12 more rows */
@@ -265,6 +260,36 @@ amii_putstr(window,attr,str)
     }
 }
 
+void
+amii_scrollmsg( w, cw )
+    register struct Window *w;
+    register struct amii_WinDesc *cw;
+{
+    int bottom, wheight;
+
+    bottom = amii_msgborder( w );
+
+    wheight = ( w->Height - w->BorderTop -
+			w->BorderBottom - 3 ) / w->RPort->TxHeight;
+	
+    if( scrollmsg )
+    {
+	if( ++cw->disprows > wheight )
+	{
+	    outmore( cw );
+	    cw->disprows = 1; /* count this line... */
+	}
+	else
+	{
+	    ScrollRaster( w->RPort, 0, w->RPort->TxHeight,
+		    w->BorderLeft, w->BorderTop + 1,
+		    w->Width - w->BorderRight-1,
+		    w->Height - w->BorderBottom - 1 );
+	}
+	amii_curs( WIN_MESSAGE, 1, bottom );
+    }
+}
+
 int
 amii_msgborder( w )
     struct Window *w;
@@ -294,10 +319,10 @@ outmore( cw )
 	    bottom = amii_msgborder( w );
 
 	    ScrollRaster( w->RPort, 0, w->RPort->TxHeight,
-			w->BorderLeft-1, w->BorderTop+1,
+			w->BorderLeft, w->BorderTop+1,
 			w->Width - w->BorderRight-1,
 			w->Height - w->BorderBottom - 1 );
-	    amii_curs( WIN_MESSAGE, 1, bottom );
+	    amii_curs( WIN_MESSAGE, 1, bottom ); /* -1 for inner border */
 	    Text( w->RPort, "--more--", 8 );
 	}
 	else
@@ -319,10 +344,11 @@ outmore( cw )
 }
 
 void
-outsubstr( cw, str, len )
+outsubstr( cw, str, len, fudge )
     register struct amii_WinDesc *cw;
     char *str;
     int len;
+    int fudge;
 {
     struct Window *w = cw->win;
 
@@ -331,12 +357,12 @@ outsubstr( cw, str, len )
 	/* Check if this string and --more-- fit, if not,
 	 * then put out --more-- and wait for a key.
 	 */
-	if( (len + MORE_FUDGE ) + cw->curx >= cw->cols )
+	if( (len + fudge ) + cw->curx >= cw->cols )
 	{
 	    if( !scrollmsg )
 		outmore( cw );
 	}
-	else if(topl_addspace)
+	else
 	{
 	    /* Otherwise, move and put out a blank separator */
 	    Text( w->RPort, spaces, 1 );
@@ -355,20 +381,24 @@ amii_putsym( st, i, y, c )
     int i, y;
     CHAR_P c;
 {
-    char buf[ 2 ];
     amii_curs( st, i, y );
-    buf[ 0 ] = c;
-    buf[ 1 ] = 0;
-    amii_putstr( st, 0, buf );
+    Text(amii_wins[st]->win->RPort, &c, 1);
 }
 
-/* Add a line in the message window */
+/* Add to the last line in the message window */
 
 void
 amii_addtopl(s)
     const char *s;
 {
-    amii_putstr(WIN_MESSAGE,0,s);   /* is this right? */
+    register struct amii_WinDesc *cw = amii_wins[WIN_MESSAGE];
+
+    while(*s) {
+	if(cw->curx == cw->cols - 1)
+	    amii_putstr(WIN_MESSAGE, 0, "");
+	amii_putsym(WIN_MESSAGE, cw->curx + 1, amii_msgborder(cw->win), *s++);
+	cw->curx++;
+    }
 }
 
 void
@@ -436,7 +466,7 @@ amii_doprev_message()
 	    while( (--topidx) >= 0 && i < wheight/2 )
 	    {
 		SetPropInfo( w, &MsgScroll, wheight, total, topidx );
-		DisplayData( WIN_MESSAGE, topidx, -1 );
+		DisplayData( WIN_MESSAGE, topidx );
 		++i;
 	    }
 	}

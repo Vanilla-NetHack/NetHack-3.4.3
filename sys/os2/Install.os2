@@ -1,14 +1,24 @@
-             Instructions for compiling and installing NetHack 3.1
+             Instructions for compiling and installing NetHack 3.2
                                on an OS/2 system
              =====================================================
                                 Timo Hakulinen
-                          Last revision: 31 May 1993
+                        Last revision: 29 February 1996
+
+NOTE:  All instructions given in this file for building NetHack 3.2 for
+OS/2 should be considered tentative.  They are in fact virtually unchanged
+from the notes for NetHack 3.1.  This is due to the fact that, unfortunately,
+the DevTeam currently has no access to a machine running OS/2 and, thus,
+no way of verifying the correct procedures.  If you build NetHack using the
+included makefile, please send the changes you had to make, if any, to
+nethack-bugs@linc.cis.upenn.edu.  Also, please report any information given
+in this file which you find incorrect or inaccurate.  If nothing needs to
+be changed (unlikely), it would be nice to know that too.
 
 0.  Read this entire file before starting, and come back to the Notes below if
     you have any problems.
 
 1.  Make sure all the NetHack files are in the appropriate directory
-    structure.  You should have a top directory (e.g. nh31, or whatever you
+    structure.  You should have a top directory (e.g. nh32, or whatever you
     like) with subdirectories dat, doc, include, src, util, sys\share,
     sys\os2, and win\tty.  You may have other subdirectories under sys and
     win, but they will not affect compilation for an OS/2 system.  If you do
@@ -50,7 +60,7 @@
 
     Note that code compiled for OS/2 versions 1.0-1.3 runs unmodified in OS/2
     versions 2.0 and up.  In principle it should be possible to cross compile
-    NetHack 3.1 for OS/2 in DOS using NDMAKE and MSC, but this is not
+    NetHack 3.2 for OS/2 in DOS using NDMAKE and MSC, but this is not
     recommended (see note 3).
 
     If you're using some other compiler than one listed above, you will have
@@ -64,11 +74,11 @@
 3.  Go to the include subdirectory.  First edit config.h according to the
     comments to match your system and desired set of features.  In particular,
     make sure that OS2 is defined, and that UNIX, HACKDIR, and COMPRESS are
-    *not* defined.  If your compiler is ANSI compliant (like practically all
-    OS/2 compilers are), it's probable that nothing else needs to be
-    configured in config.h.  However, if you have VISION_TABLES defined and
-    get a compilation error while processing vis_tab.c, you may have to
-    uncomment BRACES too.
+    *not* defined.  If you want to try out the new DLB data file library
+    scheme, uncomment DLB.  Note that although the makefile contains some
+    support for this scheme, it's new in NetHack 3.2 and hasn't been tested.
+    If your compiler is ANSI compliant (like practically all OS/2 compilers
+    are), it's probable that nothing else needs to be configured in config.h.
 
     Next look at os2conf.h.  This file shouldn't need much changing.  If you
     want to use the hardcoded OS/2 system definitions in def_os2.h instead of
@@ -156,18 +166,19 @@
     T-filla.lev    T-fillb.lev    T-goal.lev     T-locate.lev   T-start.lev
     V-filla.lev    V-fillb.lev    V-goal.lev     V-locate.lev   V-start.lev
     W-filla.lev    W-fillb.lev    W-goal.lev     W-locate.lev   W-start.lev
-    air.lev        asmodeus.lev   astral.lev     baalz.lev      bigroom.lev
-    castle.lev     cmdhelp        data           dungeon        earth.lev
-    fakewiz1.lev   fakewiz2.lev   fire.lev       help           hh
-    history        juiblex.lev    knox.lev       license        medusa-1.lev
-    medusa-2.lev   mine_end.lev   minefill.lev   minetown.lev   nethack.cmd
-    nethack.cnf    nethack.exe    nethack.ico    opthelp        options
-    oracle.lev     oracles        orcus.lev      quest.dat      recover.exe
-    rumors         sanctum.lev    tower1.lev     tower2.lev     tower3.lev
-    valley.lev     water.lev      wizard1.lev    wizard2.lev    wizard3.lev
-    wizhelp
+    air.lev        asmodeus.lev   astral.lev     baalz.lev      bigrm-1.lev
+    bigrm-2.lev	   bigrm-3.lev    bigrm-4.lev    bigrm-5.lev    castle.lev
+    cmdhelp        data           dungeon        earth.lev      fakewiz1.lev
+    fakewiz2.lev   fire.lev       help           hh             history
+    juiblex.lev    knox.lev       license        medusa-1.lev   medusa-2.lev
+    minefill.lev   minend-1.lev   minend-2.lev   minetn-1.lev   minetn-2.lev
+    nethack.cmd    nethack.cnf    nethack.exe    nethack.ico    opthelp
+    options        oracle.lev     oracles        orcus.lev      quest.dat
+    recover.exe    rumors         sanctum.lev    tower1.lev     tower2.lev
+    tower3.lev     valley.lev     water.lev      wizard1.lev    wizard2.lev
+    wizard3.lev    wizhelp
 
-    Yes.  It's 106 files for a full featured NetHack 3.1.  If any of the files
+    Yes.  It's 112 files for a full featured NetHack 3.2.  If any of the files
     are missing, try to rerun make.  If that doesn't help, you'll have to try
     to decipher the makefile to find out how to manually create the missing
     files.  These kinds of troubles shouldn't happen except for two reasons:
@@ -176,8 +187,8 @@
     should get some warnings from the make, though.
 
     If you have old record, logfile, or news files in the game directory, they
-    are not overwritten.  Of course, old records from NetHack 3.0 are not
-    worth keeping with 3.1, since these games are really quite different.
+    are not overwritten.  Of course, old records from NetHack 3.0 and 3.1 are
+    not worth keeping with 3.2, since these games are really quite different.
 
     Edit file nethack.cnf in the game directory to reflect your particular
     setup and personal preferences, following the comments there.  More info
@@ -187,7 +198,7 @@
     file to your game directory.
 
 8.  If you'll be running NetHack from a different subdirectory, you will want
-    to "set HACKDIR=c:\games\nh31" (or whatever directory you want to use).
+    to "set HACKDIR=c:\games\nh32" (or whatever directory you want to use).
     Add it to your config.sys, if you'll be playing often.
 
     You can also create a special NetHack entry in your Presentation Manager /
@@ -195,10 +206,10 @@
     The following is a sample program description for OS/2 1.3 desktop, but
     it's similar for OS/2 2.0:
 
-    Program title:          NetHack 3.1
-    Path and file name:     c:\games\nh31\nethack.cmd
+    Program title:          NetHack 3.2
+    Path and file name:     c:\games\nh32\nethack.cmd
     Parameters:
-    Working directory:      c:\games\nh31
+    Working directory:      c:\games\nh32
     Program type:           OS/2 Full screen
 
     Naturally you must fill in your own game directory and parameters if you
@@ -222,7 +233,7 @@ Notes
 -----
 
 1)  Save-files and bones-files from previous versions will not work with
-    NetHack 3.1.  Don't bother trying to keep them.
+    NetHack 3.2.  Don't bother trying to keep them.
 
 2)  To install an update of NetHack after changing something, enter "make"
     from the src directory.  If you add, delete, or reorder monsters or
@@ -259,7 +270,7 @@ Notes
 
 5)  When compiling with MSC 6.0, the maintenance version 6.0A should be used
     instead of the original 6.0, which was all too buggy to successfully build
-    NetHack 3.1.
+    NetHack.
 
 6)  Note that emx 0.8f is the first version of GCC for OS/2 that can properly
     compile NetHack.  Earlier versions do not work, because they don't support

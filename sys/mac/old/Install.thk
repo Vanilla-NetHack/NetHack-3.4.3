@@ -1,15 +1,15 @@
-Notes on Building NH3.1.3 with Think C
+Notes on Building NH3.2 with Think C
 
 In General
 
 	What is different between MPW and Think C?
 
 	Think C does not have a shell, :-(.  MPW does.  Ugh.  The lack of
-shell requires the cumbersome task of result file management.  Our approach
-has been to move all result files into the topmost directory.  This is done
-so that NetHack can be compiled and run from the topmost directory.  (In
-the future, we want to modify the compilers to place to result files into a
-result directory, and NetHack to look for its files in the result directory).
+shell requires the cumbersome task of building the pieces by hand.
+We build NetHack in the top directory but all files are placed in a result
+directory.  The final executable will need to be moved to this result
+directory.  Eventually we hope to modify NetHack to look for its files
+in its resources.
 
 	Life without a shell also requires the NetHack resource file to 
 be put together by hand.  This is one area that Think C 6.0 has improved our
@@ -19,98 +19,95 @@ dot r files will be compiled and then added.  For those who are without Think
 6.0, good luck.  The best approach is to use the resource compiler to compile
 the dot r file, and name the result as the projects rsrc file.
 
-	Makedefs is another story.  When run, a command window pops up.  Just
-type in the options you require.  When the files are generated, some of the
-result files will have to be moved to the top level directory (data files) or
-to the include area (header files).
+	Makedefs is another story.  When run, a command window pops up.  Hit return
+to perform all options.  Otherwise, type in the options you require.
 
 	Needless to say, all of the above stuff that we must do because of
 the lack of shell also implies no Makefile, so we must be aware of what
 files that we have modified and which files are dependent upon these modified
 files.  In other words, we must constantly ask ourselves "gee, do we need to
-run Makedefs again?".  Life is tuff; this is to help you get used to it.
+run Makedefs again?".  Life is tough; this is to help you get used to it.
 
-	What follows are most of the steps that we take in compiling NH3.1.3.
-If some are left out, blame it on late night TV and a small PB screen.  If
-you find something left out, or think a little more detail is needed, send us
-some mail.
-
-	This is the second release of these notes.  We are sure stuff has
-been left out.  So if you hit a snag, feel free to contact us.  We want and
-need to debug this port.
-
-	We can be reached at nethack-bugs@linc.cis.upenn.edu
+	What follows are most of the steps that we take in compiling NH3.2 using
+Think C 6.  If you find something left out, or think a little more detail is
+needed, send us some mail.  We can be reached at nethack-bugs@linc.cis.upenn.edu
 
 The Steps
 
-	-2.	Read the Think C manuals.  Know your compiler and your
-environment.  They are your friends and you are stuck with them.
+	-2. Read the Think C manuals.  Know your compiler and your
+	    environment.  They are your friends and you are stuck with them.
 	
-	-1.	Get Think Reference or buy a bunch of books that cover
-Macintosh programming (the correct number of books can be determined when you
-start seeing the same stuff over and over again -- or you run out of cash).
+	-1. Get Think Reference or buy a bunch of books that cover
+	    Macintosh programming (the correct number of books can be
+	    determined when you start seeing the same stuff over and over
+	    again -- or you run out of cash).
 		
-	0.	Learn C and the standard io library.
+	0. Learn C and the standard io library.
 	
 	From here, we will assume that you know how to build and compile
 projects, how file names are resolved, what a project's resource file is
 for, and how the resource compiler works.  If you don't, repeat the above
 steps.
 	
-	1.	Grab the sources, maintaining the directory structure.  We will
+	1. Grab the sources, maintaining the directory structure.  We will
 refer to the top most directory as 'top'.
 
-	2.	Move the project files to top.  The projects are MakeDefs.proj,
+	2. Move the project files in :sys:mac to top.  The projects are MakeDefs.proj,
 DgnComp.proj, LevComp.proj and NetHack.proj.
 	
-	3. Modify the source
+	3. Delete (or rename) 'sys:mac:hack.h'.  It is used in the MPW
+build and will interfere with the Think C compile.
 
-	sys:mac:hack.h
-		a. this should be deleted.  It is needed for the MPW build
-		   and will interfere with the Think C compile.
-		   
-	include:hack.h
-		a. this file should be renamed 'include:realhack.h'.
-		b. create a new file 'sys:mac:NetHack Headers.c'
-		 with a single line :
-			#include "realhack.h"
-		c. precompile this new file and save the precompile output
-		   as 'include:hack.h'
+	4. Create a directory "lib" at the top level.
 
-	sys:share:lev_lex.c sys:share:lev_yacc.c sys:share:lev_main.c
-		a. change inclusion of 'hack.h' to 'realhack.h'
+	5. Build and run MakeDefs.
 
-	4. Move and/or rename files
+		You will be presented with a list of options.  Initially choose them all (the
+		default).  Later you may wish to only run a few of them.  The options are
+		"odemvpqrhz", each of which makes a file:
 
-		a. move top:sys:mac:MacHelp to top:MacHelp
-		b. move top:sys:mac:News to top:News
-		c. move and rename top:sys:mac:NHDeflts to
-		 top:sys:mac:NetHack Defaults
+				-o creates :include:onames.h
+				-p creates :include:pm.h
+				-z creates :src:vis_tab.c
+				-m creates :src:monstr.c
+				-e creates :dat:dundeon.pdf
+				-v creates :lib:options
+				-d creates :lib:data
+				-r creates :lib:rumors
+				-h creates :lib:oracles
+				-q creates :lib:quest.dat
 
-	5. Build and run MakeDefs
+	6. Make a precompiled header.  This step is optional.  If you do it, you
+	   will speed up your compile, but it adds complexity.  If you change any
+	   header, you will need to redo this step.  Change the following files:
 
-		a. -v to build 'options'.
-		b. -o to create 'onames.h'.
-		c. -p to create 'pm.h'.
-		d. -z to create 'vis_tab.c'.
-		e. -e to create 'dundeon.pdf'.
-		f. -m to create 'monstr.c'.
-		g. -d to create 'data'.
-		Move 'top:dat:data' to 'top:data'.
-		h. -r to create 'rumors'.
-		Move 'top:dat:rumors' to 'top:rumors'.
-		i. -h to create 'oracles'.
-		Move 'top:dat:oracles' to 'top:oracles'.
-		j. -q to create 'quest.dat'.
-		Move 'top:dat:quest.dat' to 'top:quest.dat'.
+		include:hack.h
+			a. this file should be renamed 'include:realhack.h'.
+			b. create a new file 'sys:mac:NetHack Headers.c'
+			   with a single line:
+				#include 'realhack.h'
+			c. precompile this new file and save the precompile output
+			   as 'include:hack.h'
+	
+		sys:share:lev_lex.c, sys:share:lev_yacc.c, util:lev_main.c
+			a. change inclusion of 'hack.h' to 'realhack.h'
 
-		
-	6. Compile and run LevComp.
+	7. Copy the following files.  You may want to change News or NHDeflts.
 
-	7. Compile and run DgnComp.
-		Move 'top:dat:dungeon' to 'top:dungeon'.
+		a. copy ':sys:mac:MacHelp' to ':lib:MacHelp'
+		b. copy ':sys:mac:News' to ':lib:News'
+		c. copy ':sys:mac:NHDeflts' to ':lib:NetHack Defaults'
 
-	8. Compile and run NetHack.
+	8. Build and run DgnComp.
+		This will create a file "dungeon" in the lib directory.
+
+	9. Build and run LevComp.
+		This will build the level files (*.lev) in the lib directory.
+
+	10. Build NetHack.
+		Move NetHack in the lib directory.
+
+
 
 Appendix
 
@@ -152,6 +149,7 @@ MacTraps, ANSI, and unix.
 			lev_lex.c
 			lev_yacc.c
 			macerrs.c
+			macfile.c
 			decl.c
 			lev_main.c
 			
@@ -192,6 +190,7 @@ MacTraps, ANSI, and unix.
 			hack.c
 			hacklib.c
 			invent.c
+			light.c
 			lock.c
 			maccurs.c
 			macerrs.c
@@ -261,7 +260,7 @@ MacTraps, ANSI, and unix.
 			vault.c
 			version.c
 			vision.c
-			vis_tab.c	NOTE:generated by Makedefs
+			vis_tab.c	NOTE: generated by Makedefs -z
 			weapon.c
 			were.c
 			wield.c

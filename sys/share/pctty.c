@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)pctty.c	3.1	90/22/02
+/*	SCCS Id: @(#)pctty.c	3.2	90/22/02
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -20,8 +20,11 @@ gettty(){
 	erase_char = '\b';
 	kill_char = 21;		/* cntl-U */
 	flags.cbreak = TRUE;
-#if !defined(TOS)
+#if !defined(TOS) 
 	disable_ctrlP();	/* turn off ^P processing */
+#endif
+#if defined(MSDOS) && defined(NO_TERMS)
+	gr_init();
 #endif
 }
 
@@ -30,11 +33,15 @@ void
 settty(s)
 const char *s;
 {
+#if defined(MSDOS) && defined(NO_TERMS)
+	gr_finish();
+#endif
 	end_screen();
 	if(s) raw_print(s);
 #if !defined(TOS)
 	enable_ctrlP();		/* turn on ^P processing */
 #endif
+
 }
 
 /* called by init_nhwindows() and resume_nhwindows() */
@@ -43,6 +50,21 @@ setftty()
 {
 	start_screen();
 }
+
+#if defined(TIMED_DELAY) && defined(_MSC_VER)
+void
+msleep(mseconds)
+unsigned mseconds;
+{
+	/* now uses clock() which is ANSI C */
+	clock_t goal;
+
+	goal = mseconds + clock();
+	while ( goal > clock()) {
+	    /* do nothing */
+	}
+}
+#endif
 
 /* fatal error */
 /*VARARGS1*/
@@ -57,7 +79,7 @@ error VA_DECL(const char *,s)
 	Vprintf(s,VA_ARGS);
 	putchar('\n');
 	VA_END();
-	exit(1);
+	exit(EXIT_FAILURE);
 }
 
 /*pctty.c*/

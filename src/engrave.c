@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)engrave.c	3.1	92/06/16	*/
+/*	SCCS Id: @(#)engrave.c	3.2	96/03/11	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -12,37 +12,124 @@ STATIC_DCL void FDECL(del_engr, (struct engr *));
 
 #ifdef OVLB
 /* random engravings */
-const char *random_mesg[] = {
-	"Elbereth", "ad ae?ar um",
-	"?la? ?as he??",
+static const char *random_mesg[] = {
+	"Elbereth",
+	/* trap engravings */
+	"Vlad was here", "ad aerarium",
 	/* take-offs and other famous engravings */
-	"Owlbreath", "?ala??iel",
-	"?ilroy wa? h?re",
+	"Owlbreath", "Galadriel",
+	"Kilroy was here",
 	"A.S. ->", "<- A.S.", /* Journey to the Center of the Earth */
-	"Y?u won t get i? up ?he ste?s", /* Adventure */
-	"Lasc?ate o?ni sp?ranz? o vo? c?'en?rate", /* Inferno */
+	"You won't get it up the steps", /* Adventure */
+	"Lasciate ogni speranza o voi ch'entrate.", /* Inferno */
 	"Well Come", /* Prisoner */
-	"W? ap?l???ze for t?e inc?nve??e?ce", /* So Long... */
-	"S?e you n?xt Wed?esd?y", /* Thriller */
-	"Fo? a ?ood time c?ll 8?7-53?9",
+	"We apologize for the inconvenience.", /* So Long... */
+	"See you next Wednesday", /* Thriller */
+	"notary sojak", /* Smokey Stover */
+	"For a good time call 8?7-5309",
 };
 
-const char *
-random_engraving()
+char *
+random_engraving(outbuf)
+char *outbuf;
 {
-	char *rumor, *s;
+	const char *rumor;
 
-/* a random engraving may come from the "rumors" file, or from the
-   list above */
-	rumor = getrumor(0);
-	if (rn2(4) && *rumor) {
-		for (s = rumor; *s; s++)
-			if (!rn2(7) && *s != ' ') *s = '?';
-		if (s[-1] == '.') s[-1] = 0;
-		return (const char *)rumor;
+	/* a random engraving may come from the "rumors" file,
+	   or from the list above */
+	if (!rn2(4) || !(rumor = getrumor(0, outbuf)) || !*rumor)
+	    Strcpy(outbuf, random_mesg[rn2(SIZE(random_mesg))]);
+
+	wipeout_text(outbuf, (int)(strlen(outbuf) / 4), 0);
+	return outbuf;
+}
+
+/* Partial rubouts for engraving characters. -3. */
+static const struct {
+	char		wipefrom;
+	const char *	wipeto;
+} rubouts[] = {
+	{'A', "^"},     {'B', "Pb["},   {'C', "("},     {'D', "|)["},
+	{'E', "|FL[_"}, {'F', "|-"},    {'G', "C("},    {'H', "|-"},
+	{'I', "|"},     {'K', "|<"},    {'L', "|_"},    {'M', "|"},
+	{'N', "|\\"},   {'O', "C("},    {'P', "F"},     {'Q', "C("},
+	{'R', "PF"},    {'T', "|"},     {'U', "J"},     {'V', "/\\"},
+	{'W', "V/\\"},  {'Z', "/"},
+	{'b', "|"},     {'d', "c|"},    {'e', "c"},     {'g', "c"},
+	{'h', "n"},     {'j', "i"},     {'k', "|"},     {'l', "|"},
+	{'m', "nr"},    {'n', "r"},     {'o', "c"},     {'q', "c"},
+	{'w', "v"},     {'y', "v"},
+	{':', "."},     {';', ","},
+	{'0', "C("},    {'1', "|"},     {'6', "o"},     {'7', "/"},
+	{'8', "3o"}
+};
+
+void
+wipeout_text(engr, cnt, seed)
+char *engr;
+int cnt;
+unsigned seed;		/* for semi-controlled randomization */
+{
+	char *s;
+	int i, j, nxt, use_rubout, lth = (int)strlen(engr);
+
+	if (lth && cnt > 0) {
+	    while (cnt--) {
+		/* pick next character */
+		if (!seed) {
+		    /* random */
+		    nxt = rn2(lth);
+		    use_rubout = rn2(4);
+		} else {
+		    /* predictable; caller can reproduce the same sequence by
+		       supplying the same arguments later, or a pseudo-random
+		       sequence by varying any of them (but see the "pick one"
+		       comment below for a caveat about "the same sequence") */
+		    nxt = seed % lth;
+		    seed *= 31,  seed %= (BUFSZ-1);
+		    use_rubout = seed & 3;
+		}
+		s = &engr[nxt];
+		if (*s == ' ') continue;
+
+		/* rub out unreadable & small punctuation marks */
+		if (index("?.,'`-|_", *s)) {
+		    *s = ' ';
+		    continue;
+		}
+
+		if (!use_rubout)
+		    i = SIZE(rubouts);
+		else
+		    for (i = 0; i < SIZE(rubouts); i++)
+			if (*s == rubouts[i].wipefrom) {
+			    /*
+			     * Pick one of the substitutes at random.
+			     * For the `seed' pseudo-random case, this can
+			     * produce minor variations each time when/if the
+			     * caller tries to regenerate the scrambled text.
+			     * That's deemed acceptable for intended usage....
+			     */
+			    j = rn2(strlen(rubouts[i].wipeto));
+			    *s = rubouts[i].wipeto[j];
+			    break;
+			}
+
+		/* didn't pick rubout; use '?' for unreadable character */
+		if (i == SIZE(rubouts)) *s = '?';
+	    }
 	}
-	else
-		return random_mesg[rn2(SIZE(random_mesg))];
+
+	/* trim trailing spaces */
+	while (lth && engr[lth-1] == ' ') engr[--lth] = 0;
+}
+
+boolean
+can_reach_floor()
+{
+	return (boolean)(!u.uswallow &&
+			 (!Levitation ||
+			  Is_airlevel(&u.uz) || Is_waterlevel(&u.uz)));
 }
 #endif /* OVLB */
 #ifdef OVL0
@@ -53,7 +140,10 @@ register int x, y;
 {
 	register struct rm *lev = &levl[x][y];
 
-	if (IS_AIR(lev->typ))
+	if ((x == u.ux) && (y == u.uy) && u.uswallow &&
+		is_animal(u.ustuck->data))
+	    return "maw";
+	else if (IS_AIR(lev->typ))
 	    return "air";
 	else if (is_pool(x,y))
 	    return "water";
@@ -63,6 +153,8 @@ register int x, y;
 	    return "lava";
 	else if (lev->typ == DRAWBRIDGE_DOWN)
 	    return "bridge";
+	else if(IS_ALTAR(levl[x][y].typ))
+	    return "altar";
 	else if ((IS_ROOM(lev->typ) && !Is_earthlevel(&u.uz)) ||
 		 IS_WALL(lev->typ) || IS_DOOR(lev->typ) || lev->typ == SDOOR)
 	    return "floor";
@@ -70,9 +162,41 @@ register int x, y;
 	    return "ground";
 }
 
+const char *
+ceiling(x, y)
+register int x, y;
+{
+	register struct rm *lev = &levl[x][y];
+	const char *what;
+
+	/* other room types will no longer exist when we're interested --
+	 * see check_special_room()
+	 */
+	if (*in_rooms(x,y,VAULT))
+	    what = "vault's ceiling";
+	else if (*in_rooms(x,y,TEMPLE))
+	    what = "temple's ceiling";
+	else if (*in_rooms(x,y,SHOPBASE))
+	    what = "shop's ceiling";
+	else if (IS_AIR(lev->typ))
+	    what = "sky";
+	else if (Underwater)
+	    what = "water's surface";
+	else if ((IS_ROOM(lev->typ) && !Is_earthlevel(&u.uz)) ||
+		 IS_WALL(lev->typ) || IS_DOOR(lev->typ) || lev->typ == SDOOR)
+	    what = "ceiling";
+	else
+	    what = "rock above";
+
+	return what;
+}
+
 struct engr *
-engr_at(x,y) register xchar x,y; {
-register struct engr *ep = head_engr;
+engr_at(x, y)
+xchar x, y;
+{
+	register struct engr *ep = head_engr;
+
 	while(ep) {
 		if(x == ep->engr_x && y == ep->engr_y)
 			return(ep);
@@ -82,29 +206,18 @@ register struct engr *ep = head_engr;
 }
 
 #ifdef ELBERETH
+/* decide whether a particular string is engraved at a specified location;
+   a case-insensitive substring match used */
 int
-sengr_at(s,x,y)
-	register const char *s;
-	register xchar x,y;
+sengr_at(s, x, y)
+	const char *s;
+	xchar x, y;
 {
 	register struct engr *ep = engr_at(x,y);
-	register char *t;
-	register int n;
 
-	if(ep && ep->engr_time <= moves) {
-		t = ep->engr_txt;
-/*
-		if(!strcmp(s,t)) return(1);
-*/
-		n = strlen(s);
-		while(*t) {
-			if(!strncmp(s,t,n)) return(1);
-			t++;
-		}
-	}
-	return(0);
+	return (ep && ep->engr_time <= moves && strstri(ep->engr_txt, s) != 0);
 }
-#endif
+#endif /* ELBERETH */
 
 #endif /* OVL0 */
 #ifdef OVL2
@@ -113,7 +226,7 @@ void
 u_wipe_engr(cnt)
 register int cnt;
 {
-	if(!u.uswallow && !Levitation)
+	if (can_reach_floor())
 		wipe_engr_at(u.ux, u.uy, cnt);
 }
 
@@ -121,26 +234,17 @@ register int cnt;
 #ifdef OVL1
 
 void
-wipe_engr_at(x,y,cnt) register xchar x,y,cnt; {
-register struct engr *ep = engr_at(x,y);
-register int lth,pos;
-char ch;
+wipe_engr_at(x,y,cnt)
+register xchar x,y,cnt;
+{
+	register struct engr *ep = engr_at(x,y);
+
 	if(ep){
-	    if(ep->engr_type != BURN) {
+	    if(ep->engr_type != BURN || is_ice(x,y)) {
 		if(ep->engr_type != DUST && ep->engr_type != BLOOD) {
 			cnt = rn2(1 + 50/(cnt+1)) ? 0 : 1;
 		}
-		lth = strlen(ep->engr_txt);
-		if(lth && cnt > 0 ) {
-			while(cnt--) {
-				pos = rn2(lth);
-				if((ch = ep->engr_txt[pos]) == ' ')
-					continue;
-				ep->engr_txt[pos] = (ch != '?') ? '?' : ' ';
-			}
-		}
-		while(lth && ep->engr_txt[lth-1] == ' ')
-			ep->engr_txt[--lth] = 0;
+		wipeout_text(ep->engr_txt, (int)cnt, 0);
 		while(ep->engr_txt[0] == ' ')
 			ep->engr_txt++;
 		if(!ep->engr_txt[0]) del_engr(ep);
@@ -163,19 +267,20 @@ register int x,y;
 	    case DUST:
 		if(!Blind) {
 			sensed = 1;
-			pline("Something is written here in the %s.",
+			pline("%s is written here in the %s.", Something,
 				is_ice(x,y) ? "frost" : "dust");
 		}
 		break;
 	    case ENGRAVE:
-		if(!Blind || !Levitation) {
+		if (!Blind || can_reach_floor()) {
 			sensed = 1;
-			pline("Something is engraved here on the %s.",
+			pline("%s is engraved here on the %s.",
+				Something,
 				surface(x,y));
 		}
 		break;
 	    case BURN:
-		if(!Blind || !Levitation) {
+		if (!Blind || can_reach_floor()) {
 			sensed = 1;
 			pline("Some text has been %s into the %s here.",
 				is_ice(x,y) ? "melted" : "burned",
@@ -200,7 +305,8 @@ register int x,y;
 		}
 		break;
 	    default:
-		impossible("Something is written in a very strange way.");
+		impossible("%s is written in a very strange way.",
+				Something);
 		sensed = 1;
 	    }
 	    if (sensed) {
@@ -279,26 +385,20 @@ static NEARDATA const char styluses[] =
  * Devaluation of less hard gems is not easily possible because obj struct
  * does not contain individual oc_cost currently. 7/91
  *
- * dilithium  - ??			* jade	    -  5-6	(nephrite)
- * diamond    - 10			* turquoise -  5-6
- * ruby	      -  9	(corundum)	* opal	    -  5-6
- * sapphire   -  9	(corundum)	* iron	    -  4-5
- * topaz      -  8			* fluorite  -  4
- * emerald    -  7.5-8	(beryl)		* brass     -  3-4
- * aquamarine -  7.5-8	(beryl)		* gold	    -  2.5-3
- * garnet     -  7.25	(var. 6.5-8)	* silver    -  2.5-3
- * agate      -  7	(quartz)	* copper    -  2.5-3
- * amethyst   -  7	(quartz)	* amber     -  2-2.5
- * jasper     -  7	(quartz)	*	
- * onyx	      -  7 	(quartz)	* steel     -  5-8.5	(usu. weapon)
- * moonstone  -  6	(orthoclase)	*
+ * steel     -	5-8.5	(usu. weapon)
+ * diamond    - 10			* jade	     -	5-6	 (nephrite)
+ * ruby       -  9	(corundum)	* turquoise  -	5-6
+ * sapphire   -  9	(corundum)	* opal	     -	5-6
+ * topaz      -  8			* glass      - ~5.5
+ * emerald    -  7.5-8	(beryl)		* dilithium  -	4-5??
+ * aquamarine -  7.5-8	(beryl)		* iron	     -	4-5
+ * garnet     -  7.25	(var. 6.5-8)	* fluorite   -	4
+ * agate      -  7	(quartz)	* brass      -	3-4
+ * amethyst   -  7	(quartz)	* gold	     -	2.5-3
+ * jasper     -  7	(quartz)	* silver     -	2.5-3
+ * onyx       -  7	(quartz)	* copper     -	2.5-3
+ * moonstone  -  6	(orthoclase)	* amber      -	2-2.5
  */
-
-static NEARDATA const short hard_gems[] =
-	{ DIAMOND, RUBY, SAPPHIRE, TOPAZ, EMERALD, AQUAMARINE, GARNET, 0 };
-
-static NEARDATA const char *hard_ring_names[] =
-	{"diamond", "ruby", "sapphire", "emerald", "topaz", ""};
 
 /* return 1 if action took 1 (or more) moves, 0 if error or aborted */
 int
@@ -326,6 +426,7 @@ doengrave()
 	register struct engr *oep = engr_at(u.ux,u.uy);
 				/* The current engraving */
 	register struct obj *otmp; /* Object selected with which to engrave */
+	char *writer;
 
 
 	multi = 0;		/* moves consumed */
@@ -343,28 +444,26 @@ doengrave()
 			pline("What would you write?  \"Jonah was here\"?");
 			return(0);
 		} else if (is_whirly(u.ustuck->data)) {
-			You("can't reach the %s.", surface(u.ux,u.uy));
+			You_cant("reach the %s.", surface(u.ux,u.uy));
 			return(0);
-		} else 
+		} else
 			jello = TRUE;
 	} else if (is_lava(u.ux, u.uy)) {
-		You("can't write on the lava!");
+		You_cant("write on the lava!");
 		return(0);
 	} else if (is_pool(u.ux,u.uy) || IS_FOUNTAIN(levl[u.ux][u.uy].typ)) {
-		You("can't write on the water!");
+		You_cant("write on the water!");
 		return(0);
 	}
 	if(Is_airlevel(&u.uz) || Is_waterlevel(&u.uz)/* in bubble */) {
-		You("can't write in thin air!");
+		You_cant("write in thin air!");
 		return(0);
 	}
-#ifdef POLYSELF
 	if (cantwield(uasmon)) {
-		You("can't even hold anything!");
+		You_cant("even hold anything!");
 		return(0);
 	}
-#endif
-	if (check_capacity(NULL)) return (0);
+	if (check_capacity((char *)0)) return (0);
 
 	/* One may write with finger, or weapon, or wand, or..., or...
 	 * Edited by GAN 10/20/86 so as not to change weapon wielded.
@@ -372,6 +471,9 @@ doengrave()
 
 	otmp = getobj(styluses, "write with");
 	if(!otmp) return(0);		/* otmp == zeroobj if fingers */
+
+	if (otmp == &zeroobj) writer = makeplural(body_part(FINGER));
+	else writer = xname(otmp);
 
 	/* There's no reason you should be able to write with a wand
 	 * while both your hands are tied up.
@@ -382,14 +484,17 @@ doengrave()
 	}
 
 	if (jello) {
-		You("tickle %s with your %s.", mon_nam(u.ustuck), 
-		    (otmp == &zeroobj) ? makeplural(body_part(FINGER)) :
-			xname(otmp));
+		You("tickle %s with your %s.", mon_nam(u.ustuck), writer);
 		Your("message dissolves...");
 		return(0);
 	}
-	if(Levitation && otmp->oclass != WAND_CLASS){		/* riv05!a3 */
-		You("can't reach the %s!", surface(u.ux,u.uy));
+	if (otmp->oclass != WAND_CLASS && !can_reach_floor()) {
+		You_cant("reach the %s!", surface(u.ux,u.uy));
+		return(0);
+	}
+	if (IS_ALTAR(levl[u.ux][u.uy].typ)) {
+		You("make a motion towards the altar with your %s.", writer);
+		altar_wrath(u.ux, u.uy);
 		return(0);
 	}
 
@@ -405,37 +510,24 @@ doengrave()
 
 	    case RING_CLASS:
 		/* "diamond" rings and others should work */
-		{
-		    register int i, j;
-
-		    for (i=0, j=strlen(hard_ring_names[i]); j; i++)
-			if ( !strncmp(hard_ring_names[i],
-			     OBJ_DESCR(objects[otmp->otyp]),
-			     j=strlen(hard_ring_names[i])) ) {
-			    type = ENGRAVE;
-			    break;
-			}
-		}
-		break;
-
 	    case GEM_CLASS:
-		/* diamonds & other gems should work */
-		{
-		    register int i;
-
-		    for (i=0; hard_gems[i]; i++)
-			if (otmp->otyp == hard_gems[i]) {
-			    type = ENGRAVE;
-			    break;
-			}
+		/* diamonds & other hard gems should work */
+		if (objects[otmp->otyp].oc_tough) {
+			type = ENGRAVE;
+			break;
 		}
 		break;
 
+	    case ARMOR_CLASS:
+		if (is_boots(otmp)) {
+			type = DUST;
+			break;
+		}
+		/* fall through */
 	    /* Objects too large to engrave with */
 	    case BALL_CLASS:
 	    case ROCK_CLASS:
-	    case ARMOR_CLASS:
-		You("can't engrave with such a large object!");
+		You_cant("engrave with such a large object!");
 		ptext = FALSE;
 		break;
 
@@ -474,11 +566,11 @@ doengrave()
 		    case WAN_SECRET_DOOR_DETECTION:
 		    case WAN_CREATE_MONSTER:
 		    case WAN_WISHING:
-	  		zapnodir(otmp);
+			zapnodir(otmp);
 			break;
 
 			/* IMMEDIATE wands */
-	    		/* If wand is "IMMEDIATE", remember to affect the
+			/* If wand is "IMMEDIATE", remember to affect the
 			 * previous engraving even if turning to dust.
 			 */
 		    case WAN_STRIKING:
@@ -504,7 +596,7 @@ doengrave()
 			if(oep)  {
 			    if (!Blind) {
 				type = (xchar)0;	/* random */
-				Strcpy(buf,random_engraving());
+				(void) random_engraving(buf);
 			    }
 			    dengr = TRUE;
 			}
@@ -546,7 +638,7 @@ doengrave()
 		    case WAN_MAKE_INVISIBLE:
 			if(oep) {
 			    if (!Blind)
-				pline("The engraving on the %s vanishes!",
+				pline_The("engraving on the %s vanishes!",
 					surface(u.ux,u.uy));
 			    dengr = TRUE;
 			}
@@ -554,7 +646,7 @@ doengrave()
 		    case WAN_TELEPORTATION:
 			if (oep) {
 			    if (!Blind)
-				pline("The engraving on the %s vanishes!",
+				pline_The("engraving on the %s vanishes!",
 					surface(u.ux,u.uy));
 			    teleengr = TRUE;
 			}
@@ -565,16 +657,16 @@ doengrave()
 			ptext = TRUE;
 			type  = ENGRAVE;
 			if(!objects[otmp->otyp].oc_name_known) {
-	    		    if (flags.verbose)
+			    if (flags.verbose)
 				pline("This %s is a wand of digging!",
 				xname(otmp));
 			    doknown = TRUE;
 			}
 			if (!Blind)
 			    Strcpy(post_engr_text,
-				is_ice(u.ux,u.uy) ? 
+				is_ice(u.ux,u.uy) ?
 				"Ice chips fly up from the ice surface!" :
-			        "Gravel flies up from the floor.");
+				"Gravel flies up from the floor.");
 			else
 			    Strcpy(post_engr_text, "You hear drilling!");
 			break;
@@ -584,7 +676,7 @@ doengrave()
 			ptext = TRUE;
 			type  = BURN;
 			if(!objects[otmp->otyp].oc_name_known) {
-	    		if (flags.verbose)
+			if (flags.verbose)
 			    pline("This %s is a wand of fire!", xname(otmp));
 			    doknown = TRUE;
 			}
@@ -596,7 +688,7 @@ doengrave()
 			ptext = TRUE;
 			type  = BURN;
 			if(!objects[otmp->otyp].oc_name_known) {
-	    		    if (flags.verbose)
+			    if (flags.verbose)
 				pline("This %s is a wand of lightning!",
 					xname(otmp));
 			    doknown = TRUE;
@@ -613,8 +705,8 @@ doengrave()
 		    /* type = BLOOD wands */
 		    }
 		} else /* end if zappable */
-		    if (Levitation) {
-			You("can't reach the %s!", surface(u.ux,u.uy));
+		    if (!can_reach_floor()) {
+			You_cant("reach the %s!", surface(u.ux,u.uy));
 			return(0);
 		    }
 		break;
@@ -641,7 +733,7 @@ doengrave()
 			    type = MARK;
 			break;
 		    case TOWEL:
- 			/* Can't really engrave with a towel */
+			/* Can't really engrave with a towel */
 			ptext = FALSE;
 			if (oep)
 			    if ((oep->engr_type == DUST ) ||
@@ -687,28 +779,19 @@ doengrave()
 	}
 
 	if (teleengr) {
-	    register int tx,ty;
-
-	    do  {
- 		tx = rn1(COLNO-3,2);
-		ty = rn2(ROWNO);
-	    } while(!goodpos(tx,ty, (struct monst *)0, (struct permonst *)0));
-
-	    oep->engr_x = tx;
-	    oep->engr_y = ty;
-
+	    rloc_engr(oep);
 	    oep = (struct engr *)0;
 	}
 
 	if (dengr) {
-	    del_engr (oep);
+	    del_engr(oep);
 	    oep = (struct engr *)0;
 	}
 
 	/* Something has changed the engraving here */
 	if (*buf) {
 	    make_engr_at(u.ux, u.uy, buf, moves, type);
-	    pline("The engraving now reads: \"%s\".", buf);
+	    pline_The("engraving now reads: \"%s\".", buf);
 	    ptext = FALSE;
 	}
 
@@ -722,8 +805,8 @@ doengrave()
 	}
 
 	if (!ptext) {		/* Early exit for some implements. */
-	    if (Levitation && (otmp->oclass == WAND_CLASS))
-		You("can't reach the %s!", surface(u.ux,u.uy));
+	    if (otmp->oclass == WAND_CLASS && !can_reach_floor())
+		You_cant("reach the %s!", surface(u.ux,u.uy));
 	    return(1);
 	}
 
@@ -738,7 +821,7 @@ doengrave()
 
 	    if ( (type == oep->engr_type) && (!Blind ||
 		 (oep->engr_type == BURN) || (oep->engr_type == ENGRAVE)) ) {
-	    	c = yn_function("Do you want to add to the current engraving?",
+		c = yn_function("Do you want to add to the current engraving?",
 				ynqchars, 'y');
 		if (c == 'q') {
 		    pline("Never mind.");
@@ -764,13 +847,13 @@ doengrave()
 		    if ( (type == DUST) || (type == MARK) || (type == BLOOD) ) {
 			You(
 			 "cannot wipe out the message that is %s the %s here.",
-			 oep->engr_type == BURN ? 
+			 oep->engr_type == BURN ?
 			   (is_ice(u.ux,u.uy) ? "melted into" : "burned into") :
 			   "engraved in", surface(u.ux,u.uy));
 			return(1);
 		    } else
 			if ( (type != oep->engr_type) || (c == 'n') ) {
-			    if (!Blind || !Levitation)
+			    if (!Blind || can_reach_floor())
 				You("will overwrite the current message.");
 			    eow = TRUE;
 			}
@@ -792,9 +875,9 @@ doengrave()
 				       "engrave in");
 		break;
 	    case BURN:
-		everb = (oep && !eow ? 
+		everb = (oep && !eow ?
 			( is_ice(u.ux,u.uy) ? "add to the text melted into" :
-			                      "add to the text burned into") :
+					      "add to the text burned into") :
 			( is_ice(u.ux,u.uy) ? "melt into" : "burn into"));
 		break;
 	    case MARK:
@@ -835,7 +918,7 @@ doengrave()
 	    if (zapwand) {
 		if (!Blind)
 		    pline("%s glows, then fades.", The(xname(otmp)));
-	    	return(1);
+		return(1);
 	    } else {
 		pline("Never mind.");
 		return(0);
@@ -876,7 +959,7 @@ doengrave()
 			 */
 		    Your("%s dull.", aobjnam(otmp, "get"));
 		    if (len > maxelen) {
-		    	multi = -maxelen;
+			multi = -maxelen;
 			otmp->spe = -3;
 		    } else
 			if (len > 1) otmp->spe -= len >> 1;
@@ -927,7 +1010,7 @@ doengrave()
 	}
 
 	/* Add to existing engraving */
-	if (oep) Strcpy(buf, oep->engr_txt);	
+	if (oep) Strcpy(buf, oep->engr_txt);
 
 	(void) strncat(buf, ebuf, (BUFSZ - (int)strlen(buf) - 1));
 
@@ -949,27 +1032,21 @@ int fd, mode;
 {
 	register struct engr *ep = head_engr;
 	register struct engr *ep2;
-#ifdef GCC_WARN
-	static long nulls[] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-#endif
-	while(ep) {
+	unsigned no_more_engr = 0;
+
+	while (ep) {
 	    ep2 = ep->nxt_engr;
-	    if(ep->engr_lth && ep->engr_txt[0]){
+	    if (ep->engr_lth && ep->engr_txt[0] && perform_bwrite(mode)) {
 		bwrite(fd, (genericptr_t)&(ep->engr_lth), sizeof(ep->engr_lth));
 		bwrite(fd, (genericptr_t)ep, sizeof(struct engr) + ep->engr_lth);
 	    }
-	    if (mode & FREE_SAVE)
+	    if (release_data(mode))
 		dealloc_engr(ep);
 	    ep = ep2;
 	}
-
-#ifdef GCC_WARN
-	bwrite(fd, (genericptr_t)nulls, sizeof(unsigned));
-#else
-	bwrite(fd, (genericptr_t)nul, sizeof(unsigned));
-#endif
-
-	if (mode & FREE_SAVE)
+	if (perform_bwrite(mode))
+	    bwrite(fd, (genericptr_t)&no_more_engr, sizeof no_more_engr);
+	if (release_data(mode))
 	    head_engr = 0;
 }
 
@@ -977,8 +1054,9 @@ void
 rest_engravings(fd)
 int fd;
 {
-register struct engr *ep;
-unsigned lth;
+	register struct engr *ep;
+	unsigned lth;
+
 	head_engr = 0;
 	while(1) {
 		mread(fd, (genericptr_t) &lth, sizeof(unsigned));
@@ -1015,6 +1093,24 @@ register struct engr *ep;
 		}
 	}
 	dealloc_engr(ep);
+}
+
+/* randomly relocate an engraving */
+void
+rloc_engr(ep)
+struct engr *ep;
+{
+	int tx, ty, tryct = 200;
+
+	do  {
+	    if (--tryct < 0) return;
+	    tx = rn1(COLNO-3,2);
+	    ty = rn2(ROWNO);
+	} while (engr_at(tx, ty) ||
+		!goodpos(tx, ty, (struct monst *)0, (struct permonst *)0));
+
+	ep->engr_x = tx;
+	ep->engr_y = ty;
 }
 
 #endif /* OVLB */

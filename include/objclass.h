@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)objclass.h	3.1	92/10/18	*/
+/*	SCCS Id: @(#)objclass.h	3.2	95/08/13	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -17,18 +17,47 @@ struct objclass {
 				/* otherwise, obj->dknown and obj->bknown */
 				/* tell all, and obj->known should always */
 				/* be set for proper merging behavior */
+	Bitfield(oc_pre_discovered,1);	/* Already known at start of game; */
+					/* won't be listed as a discovery. */
 	Bitfield(oc_magic,1);	/* inherently magical object */
 	Bitfield(oc_charged,1);	/* may have +n or (n) charges */
 	Bitfield(oc_unique,1);	/* special one-of-a-kind object */
 	Bitfield(oc_nowish,1);	/* cannot wish for this object */
+
 	Bitfield(oc_big,1);
-#define oc_bimanual	oc_big	/* for weapons */
+#define oc_bimanual	oc_big	/* for weapons & tools used as weapons */
 #define oc_bulky	oc_big	/* for armor */
+	Bitfield(oc_tough,1);	/* hard gems/rings */
 
 	Bitfield(oc_dir,2);
-#define	NODIR		1
-#define	IMMEDIATE	2
-#define	RAY		3
+#define NODIR		1	/* for wands/spells: non-directional */
+#define IMMEDIATE	2	/*		     directional */
+#define RAY		3	/*		     zap beams */
+
+#define PIERCE		1	/* for weapons & tools used as weapons */
+#define SLASH		2
+#define WHACK		0
+
+	Bitfield(oc_subtyp,3);
+#define oc_armcat	oc_subtyp   /* for armor */
+#define oc_weptool	oc_subtyp   /* for tools, must be one of below */
+#define oc_wepcat	oc_subtyp   /* for weapons, tools, gems */
+
+#define ARM_SHIELD	1	/* needed for special wear function */
+#define ARM_HELM	2
+#define ARM_GLOVES	3
+#define ARM_BOOTS	4
+#define ARM_CLOAK	5
+#define ARM_SHIRT	6
+#define ARM_SUIT	0
+
+#define WEP_BOW		1
+#define WEP_AMMO	2
+#define WEP_MISSILE	3
+#define WEP_SPEAR	4	/* not used at present */
+#define WEP_POLEARM	5	/* not used at present */
+#define WEP_BLADE	6
+#define WEP_SWORD	7
 
 	Bitfield(oc_material,5);
 #define LIQUID		1	/* currently only for venom */
@@ -55,7 +84,7 @@ struct objclass {
 
 #define is_organic(otmp)	(objects[otmp->otyp].oc_material <= WOOD)
 #define is_metallic(otmp)	(objects[otmp->otyp].oc_material >= IRON && \
-				 objects[otmp->otyp].oc_material <= PLATINUM)
+				 objects[otmp->otyp].oc_material <= MITHRIL)
 #define is_corrodeable(otmp)	(objects[otmp->otyp].oc_material == COPPER)
 #define is_rustprone(otmp)	(objects[otmp->otyp].oc_material == IRON)
 
@@ -72,14 +101,14 @@ struct objclass {
 /* for weapons, and tools, rocks, and gems useful as weapons */
 	schar	oc_wsdam, oc_wldam;	/* max small/large monster damage */
 	schar	oc_oc1, oc_oc2;
-#define	oc_hitbon	oc_oc1		/* weapons: "to hit" bonus */
+#define oc_hitbon	oc_oc1		/* weapons: "to hit" bonus */
 #define w_propellor	oc_oc2		/* weapons: negative value = bow */
 #define WP_BOW		1
 #define WP_SLING	2
 #define WP_CROSSBOW	3
 
-#define	a_ac		oc_oc1	/* armor class, used in ARM_BONUS in do.c */
-#define	a_can		oc_oc2		/* armor: used in mhitu.c */
+#define a_ac		oc_oc1	/* armor class, used in ARM_BONUS in do.c */
+#define a_can		oc_oc2		/* armor: used in mhitu.c */
 #define oc_level	oc_oc2		/* books: spell level */
 
 	unsigned short	oc_nutrition;	/* food value */
@@ -97,29 +126,31 @@ extern NEARDATA struct objdescr obj_descr[];
  * All objects have a class. Make sure that all classes have a corresponding
  * symbol below.
  */
-#define	RANDOM_CLASS	 0	/* used for generating random objects */
-#define	ILLOBJ_CLASS	 1
-#define	WEAPON_CLASS	 2
-#define	ARMOR_CLASS	 3
-#define	RING_CLASS	 4
-#define	AMULET_CLASS	 5
-#define	TOOL_CLASS	 6
-#define	FOOD_CLASS	 7
-#define	POTION_CLASS	 8
-#define	SCROLL_CLASS	 9
-#define	SPBOOK_CLASS	10	/* actually SPELL-book */
-#define	WAND_CLASS	11
-#define	GOLD_CLASS	12
-#define	GEM_CLASS	13
-#define	ROCK_CLASS	14
-#define	BALL_CLASS	15
-#define	CHAIN_CLASS	16
-#define	VENOM_CLASS	17
+#define RANDOM_CLASS	 0	/* used for generating random objects */
+#define ILLOBJ_CLASS	 1
+#define WEAPON_CLASS	 2
+#define ARMOR_CLASS	 3
+#define RING_CLASS	 4
+#define AMULET_CLASS	 5
+#define TOOL_CLASS	 6
+#define FOOD_CLASS	 7
+#define POTION_CLASS	 8
+#define SCROLL_CLASS	 9
+#define SPBOOK_CLASS	10	/* actually SPELL-book */
+#define WAND_CLASS	11
+#define GOLD_CLASS	12
+#define GEM_CLASS	13
+#define ROCK_CLASS	14
+#define BALL_CLASS	15
+#define CHAIN_CLASS	16
+#define VENOM_CLASS	17
 #define MAXOCLASSES     18
 
 #define ALLOW_COUNT	(MAXOCLASSES+1)	/* Can be used in the object class */
 #define ALL_CLASSES	(MAXOCLASSES+2)	/* input to getobj().		   */
 #define ALLOW_NONE	(MAXOCLASSES+3)	/*				   */
+
+#define BURNING_OIL	(MAXOCLASSES+1)	/* Can be used as input to explode. */
 
 #if 0	/* moved to decl.h so that makedefs.c won't see them */
 extern const char def_oc_syms[MAXOCLASSES];	/* default class symbols */
@@ -128,25 +159,24 @@ extern uchar oc_syms[MAXOCLASSES];		/* current class symbols */
 
 /* Default definitions of all object-symbols (must match classes above). */
 
-#define	ILLOBJ_SYM	']'	/* should be same as S_MIMIC_DEF      */
-#define	WEAPON_SYM	')'
-#define	ARMOR_SYM	'['
-#define	RING_SYM	'='
-#define	AMULET_SYM	'"'
-#define	TOOL_SYM	'('
-#define	FOOD_SYM	'%'
-#define	POTION_SYM	'!'
-#define	SCROLL_SYM	'?'
-#define	SPBOOK_SYM	'+'
-#define	WAND_SYM	'/'
-#define	GOLD_SYM	'$'
-#define	GEM_SYM		'*'
-#define	ROCK_SYM	'`'
-#define	BALL_SYM	'0'
-#define	CHAIN_SYM	'_'
-#define	VENOM_SYM	'.'
+#define ILLOBJ_SYM	']'	/* should be same as S_MIMIC_DEF      */
+#define WEAPON_SYM	')'
+#define ARMOR_SYM	'['
+#define RING_SYM	'='
+#define AMULET_SYM	'"'
+#define TOOL_SYM	'('
+#define FOOD_SYM	'%'
+#define POTION_SYM	'!'
+#define SCROLL_SYM	'?'
+#define SPBOOK_SYM	'+'
+#define WAND_SYM	'/'
+#define GOLD_SYM	'$'
+#define GEM_SYM		'*'
+#define ROCK_SYM	'`'
+#define BALL_SYM	'0'
+#define CHAIN_SYM	'_'
+#define VENOM_SYM	'.'
 
-#ifdef TUTTI_FRUTTI
 struct fruit {
 	char fname[PL_FSIZ];
 	int fid;
@@ -154,7 +184,6 @@ struct fruit {
 };
 #define newfruit() (struct fruit *)alloc(sizeof(struct fruit))
 #define dealloc_fruit(rind) free((genericptr_t) (rind))
-#endif
 
 #define OBJ_NAME(obj)  (obj_descr[(obj).oc_name_idx].oc_name)
 #define OBJ_DESCR(obj) (obj_descr[(obj).oc_descr_idx].oc_descr)

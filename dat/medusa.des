@@ -1,4 +1,4 @@
-#       SCCS Id: @(#)medusa.des 3.1             91/10/30
+#	SCCS Id: @(#)medusa.des	3.2	96/02/14
 #	Copyright (c) 1989 by Jean-Christophe Collet
 #	Copyright (c) 1990, 1991 by M. Stephenson
 # NetHack may be freely redistributed.  See license for details.
@@ -31,12 +31,11 @@ MAP
 }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
 }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
 ENDMAP
-# Initialize Random Registers
-RANDOM_MONSTERS:';','S','g'
 # Dungeon Description
+# (must maintain one room definition; `unfilled' forces its room to be kept)
 REGION:(00,00,74,19),lit,"ordinary"
 REGION:(31,07,45,07),unlit,"ordinary"
-REGION:(35,09,41,10),lit,"ordinary"
+REGION:(35,09,41,10),unlit,"ordinary",unfilled
 REGION:(31,12,45,12),unlit,"ordinary"
 # Teleport: down to up stairs island, up to Medusa's island
 TELEPORT_REGION:(01,01,05,17),(0,0,0,0),down
@@ -54,13 +53,17 @@ BRANCH:levregion(01,00,79,20),(30,06,46,13)
 # Non diggable walls
 NON_DIGGABLE:(30,06,46,13)
 # Objects
-OBJECT:'`',"statue",random
-OBJECT:'`',"statue",random
-OBJECT:'`',"statue",random
-OBJECT:'`',"statue",random
-OBJECT:'`',"statue",random
-OBJECT:'`',"statue",random
-OBJECT:'`',"statue",random
+CONTAINER:'`',"statue",(36,10),uncursed,"knight",0,"Perseus"
+OBJECT:'[',"shield of reflection",contained
+# These aren't really containers, but specifying CONTAINER forces them to be
+# empty, since CONTAINERs contain only what is explicitly specified.
+CONTAINER:'`',"statue",random
+CONTAINER:'`',"statue",random
+CONTAINER:'`',"statue",random
+CONTAINER:'`',"statue",random
+CONTAINER:'`',"statue",random
+CONTAINER:'`',"statue",random
+CONTAINER:'`',"statue",random
 OBJECT:random,random,random
 OBJECT:random,random,random
 OBJECT:random,random,random
@@ -79,11 +82,11 @@ TRAP:"board",(38,07)
 TRAP:"board",(38,12)
 # Random monsters
 MONSTER:'@',"Medusa",(36,10),asleep
-MONSTER:';',random,(11,06)
-MONSTER:';',random,(23,13)
-MONSTER:';',random,(29,02)
-MONSTER:';',random,(52,04)
-MONSTER:';',random,(64,11)
+MONSTER:';',"giant eel",(11,06)
+MONSTER:';',"giant eel",(23,13)
+MONSTER:';',"giant eel",(29,02)
+MONSTER:'T',"water troll",(51,03)
+MONSTER:'T',"water troll",(64,11)
 MONSTER:'S',random,(38,07)
 MONSTER:'S',random,(38,12)
 MONSTER:random,random,random
@@ -122,8 +125,6 @@ MAP
 }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
 }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
 ENDMAP
-# Initialize Random Registers
-RANDOM_MONSTERS:';','S','g'
 # Dungeon Description
 REGION:(00,00,74,19),lit,"ordinary"
 REGION:(02,03,05,16),unlit,"ordinary"
@@ -144,14 +145,16 @@ BRANCH:levregion(01,00,79,20),(59,01,73,17)
 NON_DIGGABLE:(01,02,06,17)
 NON_DIGGABLE:(60,02,73,17)
 # Objects
-OBJECT:'`',"statue",(64,08)
-OBJECT:'`',"statue",(65,08)
-OBJECT:'`',"statue",(64,09)
-OBJECT:'`',"statue",(65,09)
-OBJECT:'`',"statue",(64,10)
-OBJECT:'`',"statue",(65,10)
-OBJECT:'`',"statue",(64,11)
-OBJECT:'`',"statue",(65,11)
+CONTAINER:'`',"statue",(68,10),uncursed,"knight",0,"Perseus"
+OBJECT:'[',"shield of reflection",contained
+CONTAINER:'`',"statue",(64,08)
+CONTAINER:'`',"statue",(65,08)
+CONTAINER:'`',"statue",(64,09)
+CONTAINER:'`',"statue",(65,09)
+CONTAINER:'`',"statue",(64,10)
+CONTAINER:'`',"statue",(65,10)
+CONTAINER:'`',"statue",(64,11)
+CONTAINER:'`',"statue",(65,11)
 OBJECT:'`',"boulder",(04,04)
 OBJECT:'/',random,(52,09)
 OBJECT:'`',"boulder",(52,09)

@@ -2,11 +2,9 @@
 /* Copyright (c) Jon W{tte */
 /* NetHack may be freely redistributed.  See license for details. */
 
-#ifdef applec
+#if defined(applec)
 
 extern int strlen ( char * ) ;
-char * PtoCstr ( unsigned char * ) ;
-unsigned char * PtoCstr ( char * ) ;
 
 char *
 PtoCstr ( unsigned char * p )
@@ -32,7 +30,7 @@ CtoPstr ( char * p )
 	unsigned char * ret = ( unsigned char * ) p ;
 
 	p += len ;
-	while ( p > ret ) {
+	while ( (unsigned char *)p > ret ) {
 
 		* p = p [ -1 ] ;
 		p -- ;

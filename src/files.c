@@ -1,8 +1,9 @@
-/*	SCCS Id: @(#)files.c	3.1	93/06/27	*/
+/*	SCCS Id: @(#)files.c	3.2	95/08/04	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
+#include "dlb.h"
 
 #include <ctype.h>
 
@@ -32,18 +33,14 @@ extern int errno;
 char bones[FILENAME];		/* pathname of bones files */
 char lock[FILENAME];		/* pathname of level files */
 #else
-static char bones[] = "bonesnn.xxxx";
 # ifdef VMS
+char bones[] = "bonesnn.xxx;1";
 char lock[PL_NSIZ+17] = "1lock"; /* long enough for _uid+name+.99;1 */
 # else
+char bones[] = "bonesnn.xxx";
 char lock[PL_NSIZ+14] = "1lock"; /* long enough for uid+name+.99 */
-# endif
-#endif
-
-#ifdef MAC
-#include <files.h>
-MacDirs theDirs ;
-#endif
+# endif	/* VMS */
+#endif	/* MFLOPPY */
 
 #ifdef UNIX
 #define SAVESIZE	(PL_NSIZ + 13)	/* save/99999player.e */
@@ -59,15 +56,30 @@ char SAVEF[SAVESIZE];	/* holds relative path of save file from playground */
 #ifdef MICRO
 char SAVEP[SAVESIZE];	/* holds path of directory for save file */
 #endif
+
 #ifdef AMIGA
 extern char PATH[];	/* see sys/amiga/amidos.c */
+extern char bbs_id[];
+static int lockptr;
+# ifdef __SASC_60
+#include <proto/dos.h>
+# endif
+
+#include <libraries/dos.h>
 #endif
 
 extern int n_dgns;		/* from dungeon.c */
 
-static char * FDECL(set_bonesfile_name, (char *,d_level*));
+static char *FDECL(set_bonesfile_name, (char *,d_level*));
+static char *NDECL(set_bonestemp_name);
+static char *FDECL(make_lockname, (const char *,char *));
+static FILE *FDECL(fopen_config_file, (const char *));
+static int FDECL(get_uchars, (FILE *,char *,char *,uchar *,int,const char *));
+int FDECL(parse_config_line, (FILE *,char *,char *,char *));
+
 
 /* fopen a file, with OS-dependent bells and whistles */
+/* NOTE: a simpler version of this routine also exists in util/dlb_main.c */
 FILE *
 fopen_datafile(filename, mode)
 const char *filename, *mode;
@@ -89,7 +101,6 @@ const char *filename, *mode;
 	return fp;
 }
 
-
 /* ----------  BEGIN LEVEL FILE HANDLING ----------- */
 
 #ifdef MFLOPPY
@@ -103,6 +114,9 @@ set_lock_and_bones()
 	}
 	append_slash(permbones);
 	append_slash(levels);
+#ifdef AMIGA
+	strncat(levels, bbs_id, PATHLEN);
+#endif
 	append_slash(bones);
 	Strcat(bones, "bonesnn.*");
 	Strcpy(lock, levels);
@@ -155,6 +169,9 @@ int lev;
 # endif
 #endif /* MICRO */
 
+	if (fd >= 0)
+	    level_info[lev].flags |= LFILE_EXISTS;
+
 	return fd;
 }
 
@@ -168,7 +185,7 @@ int lev;
 	set_levelfile_name(lock, lev);
 #ifdef MFLOPPY
 	/* If not currently accessible, swap it in. */
-	if (fileinfo[lev].where != ACTIVE)
+	if (level_info[lev].where != ACTIVE)
 		swapin_file(lev);
 #endif
 #ifdef MAC
@@ -184,20 +201,25 @@ void
 delete_levelfile(lev)
 int lev;
 {
-	set_levelfile_name(lock, lev);
-	(void) unlink(lock);
+	/*
+	 * Level 0 might be created by port specific code that doesn't
+	 * call create_levfile(), so always assume that it exists.
+	 */
+	if (lev == 0 || (level_info[lev].flags & LFILE_EXISTS)) {
+		set_levelfile_name(lock, lev);
+		(void) unlink(lock);
+		level_info[lev].flags &= ~LFILE_EXISTS;
+	}
 }
 
 
 void
 clearlocks()
 {
-#ifdef MFLOPPY
+#if defined(MFLOPPY) && !defined(AMIGA)
 	eraseall(levels, alllevels);
-# ifndef AMIGA
 	if (ramdisk)
 		eraseall(permbones, alllevels);
-# endif
 #else
 	register int x;
 
@@ -215,6 +237,9 @@ clearlocks()
 
 /* ----------  BEGIN BONES FILE HANDLING ----------- */
 
+/* set up "file" to be file name for retrieving bones, and return a
+ * bonesid to be read/written in the bones file.
+ */
 static char *
 set_bonesfile_name(file, lev)
 char *file;
@@ -225,11 +250,7 @@ d_level *lev;
 
 	if (!dptr) dptr = eos(file);
 	*(dptr-2) = dungeons[lev->dnum].boneid;
-#ifdef MULDGN
 	*(dptr-1) = In_quest(lev) ? pl_character[0] : '0';
-#else
-	*(dptr-1) = '0';
-#endif
 	if ((sptr = Is_special(lev)) != 0)
 	    Sprintf(dptr, ".%c", sptr->boneid);
 	else
@@ -240,25 +261,47 @@ d_level *lev;
 	return(dptr-2);
 }
 
+/* set up temporary file name for writing bones, to avoid another game's
+ * trying to read from an uncompleted bones file.  we want an uncontentious
+ * name, so use one in the namespace reserved for this game's level files.
+ * (we are not reading or writing level files while writing bones files, so
+ * the same array may be used instead of copying.)
+ */
+static char *
+set_bonestemp_name()
+{
+	char *tf;
+
+	tf = rindex(lock, '.');
+	if (!tf) tf = eos(lock);
+	Sprintf(tf, ".bn");
+#ifdef VMS
+	Strcat(tf, ";1");
+#endif
+	return lock;
+}
+
 int
 create_bonesfile(lev, bonesid)
 d_level *lev;
 char **bonesid;
 {
+	char *file;
 	int fd;
 
 	*bonesid = set_bonesfile_name(bones, lev);
+	file = set_bonestemp_name();
 
 #ifdef MICRO
 	/* Use O_TRUNC to force the file to be shortened if it already
 	 * exists and is currently longer.
 	 */
-	fd = open(bones, O_WRONLY |O_CREAT | O_TRUNC | O_BINARY, FCMASK);
+	fd = open(file, O_WRONLY |O_CREAT | O_TRUNC | O_BINARY, FCMASK);
 #else
 # ifdef MAC
-	fd = maccreat(bones, BONE_TYPE);
+	fd = maccreat(file, BONE_TYPE);
 # else
-	fd = creat(bones, FCMASK);
+	fd = creat(file, FCMASK);
 # endif
 # if defined(VMS) && !defined(SECURE)
 	/*
@@ -269,11 +312,50 @@ char **bonesid;
 	   ANDs the mask with the user's default protection, which usually
 	   denies some or all access to world.
 	 */
-	(void) chmod(bones, FCMASK | 007);  /* allow other users full access */
+	(void) chmod(file, FCMASK | 007);  /* allow other users full access */
 # endif /* VMS && !SECURE */
 #endif /* MICRO */
 
 	return fd;
+}
+
+#ifdef MFLOPPY
+/* remove partial bonesfile in process of creation */
+void
+cancel_bonesfile()
+{
+	char *tempname;
+
+	tempname = set_bonestemp_name();
+	(void) unlink(tempname);
+}
+#endif /* MFLOPPY */
+
+/* move completed bones file to proper name */
+void
+commit_bonesfile(lev)
+d_level *lev;
+{
+	char *tempname;
+	int ret;
+
+	(void) set_bonesfile_name(bones, lev);
+	tempname = set_bonestemp_name();
+
+#if (defined(SYSV) && !defined(SVR4)) || defined(GENIX)
+	/* old SYSVs don't have rename.  Some SVR3's may, but since they
+	 * also have link/unlink, it doesn't matter. :-)
+	 */
+	(void) unlink(bones);
+	ret = link(tempname, bones);
+	ret += unlink(tempname);
+#else
+	ret = rename(tempname, bones);
+#endif
+#ifdef WIZARD
+	if (wizard && ret != 0)
+		pline("couldn't rename %s to %s", tempname, bones);
+#endif
 }
 
 
@@ -329,6 +411,9 @@ set_savefile_name()
 #else
 # ifdef MICRO
 	Strcpy(SAVEF, SAVEP);
+#  ifdef AMIGA
+	strncat(SAVEF, bbs_id, PATHLEN);
+#  endif
 	{
 		int i = strlen(SAVEP);
 #  ifdef AMIGA
@@ -440,9 +525,36 @@ delete_savefile()
 	ami_wbench_unlink(SAVEF);
 #endif
 	(void) unlink(SAVEF);
-	return 0;	/* for xxxmain.c test */
+	return 0;	/* for restore_saved_game() (ex-xxxmain.c) test */
 }
 
+
+/* try to open up a save file and prepare to restore it */
+int
+restore_saved_game()
+{
+	int fd;
+
+	set_savefile_name();
+#ifdef MFLOPPY
+	if (
+# ifdef AMIGA
+	    !(FromWBench || saveDiskPrompt(1))
+# else
+	    !saveDiskPrompt(1)
+# endif
+	  ) return -1;
+#endif /* MFLOPPY */
+
+	uncompress(SAVEF);
+	if ((fd = open_savefile()) < 0) return fd;
+
+	if (!uptodate(fd, SAVEF)) {
+	    (void) close(fd),  fd = -1;
+	    (void) delete_savefile();
+	}
+	return fd;
+}
 
 /* ----------  END SAVE FILE HANDLING ----------- */
 
@@ -450,7 +562,21 @@ delete_savefile()
 /* ----------  BEGIN FILE COMPRESSION HANDLING ----------- */
 
 #ifdef COMPRESS
-/* 
+
+void
+redirect(filename, mode, stream, uncomp)
+char *filename, *mode;
+FILE *stream;
+boolean uncomp;
+{
+	if (freopen(filename, mode, stream) == (FILE *)0) {
+		(void) fprintf(stderr, "freopen of %s for %scompress failed\n",
+			filename, uncomp ? "un" : "");
+		terminate(EXIT_FAILURE);
+	}
+}
+
+/*
  * using system() is simpler, but opens up security holes and causes
  * problems on at least Interactive UNIX 3.0.1 (SVR3.2), where any
  * setuid is renounced by /bin/sh, so the files cannot be accessed.
@@ -462,12 +588,25 @@ docompress_file(filename, uncomp)
 char *filename;
 boolean uncomp;
 {
-	char *args[10];
+	char cfn[80];
+	FILE *cf;
+	const char *args[10];
 # ifdef COMPRESS_OPTIONS
 	char opts[80];
 # endif
 	int i = 0;
 	int f;
+
+	Strcpy(cfn, filename);
+# ifdef COMPRESS_EXTENSION
+	Strcat(cfn, COMPRESS_EXTENSION);
+# endif
+	/* when compressing, we know the file exists */
+	if (uncomp) {
+	    if ((cf = fopen(cfn, RDBMODE)) == (FILE *)0)
+		    return;
+	    (void) fclose(cf);
+	}
 
 	args[0] = COMPRESS;
 	if (uncomp) args[++i] = "-d";	/* uncompress */
@@ -493,18 +632,34 @@ boolean uncomp;
 	    }
 	}
 # endif
-	args[++i] = filename;
-	args[++i] = NULL;
+	args[++i] = (char *)0;
 
 	f = fork();
 	if (f == 0) {	/* child */
-		(void) execv(args[0], args);
-		perror(NULL);
-		pline("Exec to %scompress %s failed.",
+		/* run compressor without privileges, in case other programs
+		 * have surprises along the line of gzip once taking filenames
+		 * in GZIP.
+		 */
+		/* assume all compressors will compress stdin to stdout
+		 * without explicit filenames.  this is true of at least
+		 * compress and gzip, those mentioned in config.h.
+		 */
+		if (uncomp) {
+			redirect(cfn, RDBMODE, stdin, uncomp);
+			redirect(filename, WRBMODE, stdout, uncomp);
+		} else {
+			redirect(filename, RDBMODE, stdin, uncomp);
+			redirect(cfn, WRBMODE, stdout, uncomp);
+		}
+		(void) setgid(getgid());
+		(void) setuid(getuid());
+		(void) execv(args[0], (char *const *) args);
+		perror((char *)0);
+		(void) fprintf(stderr, "Exec to %scompress %s failed.\n",
 			uncomp ? "un" : "", filename);
-		exit(1);
+		terminate(EXIT_FAILURE);
 	} else if (f == -1) {
-		perror(NULL);
+		perror((char *)0);
 		pline("Fork to %scompress %s failed.",
 			uncomp ? "un" : "", filename);
 		return;
@@ -516,8 +671,13 @@ boolean uncomp;
 # ifdef WIZARD
 	if (wizard) (void) signal(SIGQUIT, SIG_DFL);
 # endif
+	/* remove file left behind */
+	if (uncomp)
+		(void) unlink(cfn);
+	else
+		(void) unlink(filename);
 }
-#endif
+#endif	/* COMPRESS */
 
 /* compress file */
 void
@@ -542,17 +702,7 @@ const char *filename;
 #endif
 {
 #ifdef COMPRESS
-	char cfn[80];
-	int fd;
-
-	Strcpy(cfn, filename);
-# ifdef COMPRESS_EXTENSION
-	Strcat(cfn, COMPRESS_EXTENSION);
-# endif
-	if ((fd = open(cfn, O_RDONLY)) >= 0) {
-		(void) close(fd);
-		docompress_file(cfn, TRUE);
-	}
+	docompress_file(filename, TRUE);
 #endif
 }
 
@@ -561,19 +711,20 @@ const char *filename;
 
 /* ----------  BEGIN FILE LOCKING HANDLING ----------- */
 
+static int nesting = 0;
+
 #ifdef NO_FILE_LINKS	/* implies UNIX */
 static int lockfd;	/* for lock_file() to pass to unlock_file() */
 #endif
 
-#if defined(UNIX) || defined(VMS)
-#define HUP	if(!done_hup)
+#define HUP	if (!program_state.done_hup)
 
 static char *
-make_lockname(filename)
+make_lockname(filename, lockname)
 const char *filename;
+char *lockname;
 {
-	static char lockname[BUFSZ];
-
+#if defined(UNIX) || defined(VMS) || defined(AMIGA)
 # ifdef NO_FILE_LINKS
 	Strcpy(lockname, LOCKDIR);
 	Strcat(lockname, "/");
@@ -591,8 +742,11 @@ const char *filename;
 	Strcat(lockname, "_lock");
 # endif
 	return lockname;
+#else
+	lockname[0] = '\0';
+	return (char*)0;
+#endif  /* UNIX || VMS || AMIGA */
 }
-#endif  /* UNIX || VMS */
 
 
 /* lock a file */
@@ -604,59 +758,88 @@ int retryct;
 # pragma unused(filename, retryct)
 #endif
 {
+	char *lockname, locknambuf[BUFSZ];
+
+	nesting++;
+	if (nesting > 1) {
+	    impossible("TRIED TO NEST LOCKS");
+	    return TRUE;
+	}
+
+	lockname = make_lockname(filename, locknambuf);
+
 #if defined(UNIX) || defined(VMS)
-	char *lockname;
-
-	lockname = make_lockname(filename);
-
 # ifdef NO_FILE_LINKS
 	while ((lockfd = open(lockname, O_RDWR|O_CREAT|O_EXCL, 0666)) == -1) {
 # else
 	while (link(filename, lockname) == -1) {
 # endif
-		register int errnosv = errno;
+	    register int errnosv = errno;
 
-		switch (errnosv) {	/* George Barbanis */
-		    case ENOENT:
-			HUP raw_printf("Can't find file %s to lock!", filename);
-			return FALSE;
-		    case EACCES:
-			HUP raw_printf("No write permission to lock %s!",
-				       filename);
-			return FALSE;
-# ifdef VMS			/* c__translate(vmsfiles.c) */
-		    case EPERM:
-			/* could be misleading, but usually right */
-			HUP raw_printf(
-				  "Can't lock %s due to directory protection.",
-				       filename);
-			return FALSE;
-# endif
-		    case EEXIST:
-			break;	/* retry checks below */
-		    default:
-			HUP perror(lockname);
-			HUP raw_printf(
-				     "Cannot lock %s for unknown reason (%d).",
-				       filename, errnosv);
-			return FALSE;
-		}
-
-		if (!retryct--) {
-			HUP (void) raw_print("I give up.  Sorry.");
-			HUP raw_printf("Perhaps there is an old %s around?",
-				       lockname);
-			return FALSE;
-		}
-
-		HUP raw_printf("Waiting for access to %s.  (%d retries left).",
-			       filename, retryct);
+	    switch (errnosv) {	/* George Barbanis */
+	    case EEXIST:
+		if (retryct--) {
+		    HUP raw_printf(
+			    "Waiting for access to %s.  (%d retries left).",
+			    filename, retryct);
 # if defined(SYSV) || defined(ULTRIX) || defined(VMS)
-		(void)
+		    (void)
 # endif
 			sleep(1);
+		} else {
+		    HUP (void) raw_print("I give up.  Sorry.");
+		    HUP raw_printf("Perhaps there is an old %s around?",
+					lockname);
+		    nesting--;
+		    return FALSE;
+		}
+
+		break;
+	    case ENOENT:
+		HUP raw_printf("Can't find file %s to lock!", filename);
+		nesting--;
+		return FALSE;
+	    case EACCES:
+		HUP raw_printf("No write permission to lock %s!", filename);
+		nesting--;
+		return FALSE;
+# ifdef VMS			/* c__translate(vmsfiles.c) */
+	    case EPERM:
+		/* could be misleading, but usually right */
+		HUP raw_printf("Can't lock %s due to directory protection.",
+			       filename);
+		nesting--;
+		return FALSE;
+# endif
+	    default:
+		HUP perror(lockname);
+		HUP raw_printf(
+			     "Cannot lock %s for unknown reason (%d).",
+			       filename, errnosv);
+		nesting--;
+		return FALSE;
+	    }
+
 	}
 #endif  /* UNIX || VMS */
+
+#ifdef AMIGA
+    lockptr = 0;
+    while (retryct-- && !lockptr) {
+	(void)DeleteFile(lockname); /* in case dead process was here first */
+	lockptr = Open(lockname,MODE_NEWFILE);
+	if (!lockptr) {
+	    raw_printf("Waiting for access to %s.  (%d retries left).",
+			filename, retryct);
+	    Delay(50);
+	}
+    }
+    if (!retryct) {
+	raw_printf("I give up.  Sorry.");
+	nesting--;
+	return FALSE;
+    }
+#endif
 	return TRUE;
 }
 
@@ -676,18 +859,28 @@ const char *filename;
 # pragma unused(filename)
 #endif
 {
+	char *lockname, locknambuf[BUFSZ];
+
+	if (nesting == 1) {
+		lockname = make_lockname(filename, locknambuf);
+
 #if defined(UNIX) || defined(VMS)
-	char *lockname;
-
-	lockname = make_lockname(filename);
-
-	if (unlink(lockname) < 0)
-		HUP raw_printf("Can't unlink %s.", lockname);
+		if (unlink(lockname) < 0)
+			HUP raw_printf("Can't unlink %s.", lockname);
 # ifdef NO_FILE_LINKS
-	(void) close(lockfd);
+		(void) close(lockfd);
 # endif
 
 #endif  /* UNIX || VMS */
+
+#ifdef AMIGA
+		if (lockptr) Close(lockptr);
+		DeleteFile(lockname);
+		lockptr = 0;
+#endif /* AMIGA */
+	}
+
+	nesting--;
 }
 
 /* ----------  END FILE LOCKING HANDLING ----------- */
@@ -705,10 +898,6 @@ const char *configfile =
 			"NetHack.cnf";
 # endif
 #endif
-
-static FILE *FDECL(fopen_config_file, (const char *));
-static int FDECL(get_uchars, (FILE *, char *, char *, uchar *, int, const char *));
-int FDECL(parse_config_line, (FILE *, char *, char *, char *));
 
 #ifndef MFLOPPY
 #define fopenp fopen
@@ -809,7 +998,7 @@ get_uchars(fp, buf, bufp, list, size, name)
 		break;
 
 	    case '\\':
-	    	if (fp == (FILE *)0)
+		if (fp == (FILE *)0)
 		    goto gi_error;
 		do  {
 		    if (!fgets(buf, BUFSZ, fp)) goto gi_error;
@@ -839,6 +1028,8 @@ char		*tmp_levels;
 #endif
 {
 	char		*bufp, *altp;
+	uchar   translate[MAXPCHARS];
+	int   len;
 
 	if (*buf == '#')
 		return 1;
@@ -904,21 +1095,28 @@ char		*tmp_levels;
 		append_slash(SAVEP);
 #endif /* MICRO */
 	} else if(!strncmpi(buf, "CHARACTER", 4)) {
-	    (void) strncpy(pl_character, bufp, PL_CSIZ);
+	    (void) strncpy(pl_character, bufp, PL_CSIZ-1);
 	} else if(!strncmpi(buf, "DOGNAME", 3)) {
-	    (void) strncpy(dogname, bufp, 62);
+	    (void) strncpy(dogname, bufp, PL_PSIZ-1);
 	} else if(!strncmpi(buf, "CATNAME", 3)) {
-	    (void) strncpy(catname, bufp, 62);
+	    (void) strncpy(catname, bufp, PL_PSIZ-1);
 	} else if(!strncmpi(buf, "NAME", 4)) {
-	    (void) strncpy(plname, bufp, PL_NSIZ);
+	    (void) strncpy(plname, bufp, PL_NSIZ-1);
 	    plnamesuffix();
-	} else if (!strncmpi(buf, "GRAPHICS", 4)) {
-	    uchar   translate[MAXPCHARS];
-	    int   len;
 
-	    len = get_uchars(fp, buf, bufp, translate,
-					MAXPCHARS, "GRAPHICS");
-	    assign_graphics(translate, len);
+	} else if (!strncmpi(buf, "GRAPHICS", 4)) {
+	    len = get_uchars(fp, buf, bufp, translate, MAXPCHARS, "GRAPHICS");
+	    assign_graphics(translate, len, MAXPCHARS, 0);
+	} else if (!strncmpi(buf, "DUNGEON", 4)) {
+	    len = get_uchars(fp, buf, bufp, translate, MAXDCHARS, "DUNGEON");
+	    assign_graphics(translate, len, MAXDCHARS, 0);
+	} else if (!strncmpi(buf, "TRAPS", 4)) {
+	    len = get_uchars(fp, buf, bufp, translate, MAXTCHARS, "TRAPS");
+	    assign_graphics(translate, len, MAXTCHARS, MAXDCHARS);
+	} else if (!strncmpi(buf, "EFFECTS", 4)) {
+	    len = get_uchars(fp, buf, bufp, translate, MAXECHARS, "EFFECTS");
+	    assign_graphics(translate, len, MAXECHARS, MAXDCHARS+MAXTCHARS);
+
 	} else if (!strncmpi(buf, "OBJECTS", 3)) {
 	    /* oc_syms[0] is the RANDOM object, unused */
 	    (void) get_uchars(fp, buf, bufp, &(oc_syms[1]),
@@ -927,20 +1125,6 @@ char		*tmp_levels;
 	    /* monsyms[0] is unused */
 	    (void) get_uchars(fp, buf, bufp, &(monsyms[1]),
 					MAXMCLASSES-1, "MONSTERS");
-#ifdef VIDEOSHADES
-	} else if (!strncmpi(buf, "VIDEOCOLORS", 6)) {
-	    uchar   transcolors[MAXCOLORS];
-	    int   len;
-
-	    len = get_uchars(fp, buf, bufp, transcolors,
-					MAXCOLORS, "VIDEOCOLORS");
-	    assign_videocolors(transcolors, len);
-	} else if (!strncmpi(buf, "VIDEOSHADES", 6)) {
-	    int   len;
-
-	    len = strlen(bufp);
-	    assign_videoshades(bufp, len);
-#endif
 #ifdef AMIGA
 	} else if (!strncmpi(buf, "FONT", 4)) {
 		char *t;
@@ -956,19 +1140,77 @@ char		*tmp_levels;
 		(void) strncpy(PATH, bufp, PATHLEN);
 #endif
 #ifdef AMIGA
-	} else if (!strncmpi(buf, "PENS", 3)) {
-# ifdef AMII_GRAPHICS
+	} else if (!strncmpi(buf, "DEPTH", 5)) {
+		extern int amii_numcolors;
+		int val = atoi( bufp );
+		amii_numcolors = 1L << min( DEPTH, val );
+	} else if (!strncmpi(buf, "DRIPENS", 7)) {
+		int i, val;
+		char *t;
+		for (i = 0, t = strtok(bufp, ",/"); t != (char *)0;
+				i < 20 && (t = strtok((char*)0, ",/")), ++i) {
+			sscanf(t, "%d", &val );
+			flags.amii_dripens[i] = val;
+		}
+	} else if (!strncmpi(buf, "SCREENMODE", 10 )) {
+		extern long amii_scrnmode;
+		if( sscanf(bufp, "%x", &amii_scrnmode) != 1 )
+			amii_scrnmode = 0;
+	} else if (!strncmpi(buf, "MSGPENS", 7)) {
+		extern int amii_msgAPen, amii_msgBPen;
+		char *t = strtok(bufp, ",/");
+		if( t )
+		{
+		    sscanf(t, "%d", &amii_msgAPen);
+		    if( t = strtok((char*)0, ",/") )
+				sscanf(t, "%d", &amii_msgBPen);
+		}
+	} else if (!strncmpi(buf, "TEXTPENS", 8)) {
+		extern int amii_textAPen, amii_textBPen;
+		char *t = strtok(bufp, ",/");
+		if( t )
+		{
+		    sscanf(t, "%d", &amii_textAPen);
+		    if( t = strtok((char*)0, ",/") )
+				sscanf(t, "%d", &amii_textBPen);
+		}
+	} else if (!strncmpi(buf, "MENUPENS", 8)) {
+		extern int amii_menuAPen, amii_menuBPen;
+		char *t = strtok(bufp, ",/");
+		if( t )
+		{
+		    sscanf(t, "%d", &amii_menuAPen);
+		    if( t = strtok((char*)0, ",/") )
+				sscanf(t, "%d", &amii_menuBPen);
+		}
+	} else if (!strncmpi(buf, "STATUSPENS", 10)) {
+		extern int amii_statAPen, amii_statBPen;
+		char *t = strtok(bufp, ",/");
+		if( t )
+		{
+		    sscanf(t, "%d", &amii_statAPen);
+		    if( t = strtok((char*)0, ",/") )
+				sscanf(t, "%d", &amii_statBPen);
+		}
+	} else if (!strncmpi(buf, "OTHERPENS", 9)) {
+		extern int amii_otherAPen, amii_otherBPen;
+		char *t = strtok(bufp, ",/");
+		if( t )
+		{
+		    sscanf(t, "%d", &amii_otherAPen);
+		    if( t = strtok((char*)0, ",/") )
+				sscanf(t, "%d", &amii_otherBPen);
+		}
+	} else if (!strncmpi(buf, "PENS", 4)) {
 		int i;
 		char *t;
-		extern void amii_setpens( void );
 
-		for (i = 0, t = strtok(bufp, ",/"); t != NULL;
-				    t = strtok(NULL, ",/"), ++i)
+		for (i = 0, t = strtok(bufp, ",/"); t != (char *)0;
+				    t = strtok((char *)0, ",/"), ++i)
 		{
 			sscanf(t, "%hx", &flags.amii_curmap[i]);
 		}
-		amii_setpens();
-# endif
+		amii_setpens( amii_numcolors = i );
 #endif
 	} else
 		return 0;
@@ -1106,13 +1348,14 @@ const char *dir;
 
 	if ((fd = open(tmp, O_RDWR)) < 0) {
 	    /* try to create empty record */
-# ifdef AZTEC_C
+# if defined(AZTEC_C) || defined(_DCC)
 	    /* Aztec doesn't use the third argument */
+	    /* DICE doesn't like it */
 	    if ((fd = open(tmp, O_CREAT|O_RDWR)) < 0) {
 # else
 	    if ((fd = open(tmp, O_CREAT|O_RDWR, S_IREAD|S_IWRITE)) < 0) {
 # endif
-        raw_printf("Warning: cannot write record %s", tmp);
+	raw_printf("Warning: cannot write record %s", tmp);
 		wait_synch();
 	    } else
 		(void) close(fd);
@@ -1134,6 +1377,5 @@ const char *dir;
 }
 
 /* ----------  END SCOREBOARD CREATION ----------- */
-
 
 /*files.c*/

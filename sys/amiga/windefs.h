@@ -2,22 +2,12 @@
 /* Copyright (c) Gregg Wonderly, Naperville, Illinois,  1991,1992,1993. */
 /* NetHack may be freely redistributed.  See license for details. */
 
-/* These should probably not even be options, but, I will leave them
- * for now... GGW
- */
-
-#include "hack.h"
-#include "wintype.h"
-#include "winami.h"
-#include "func_tab.h"
-
-/*#define   TOPL_GETLINE	/* Don't use a window for getlin() */
-/*#define   WINDOW_YN		/* Use a window for y/n questions */
-
 #include <exec/types.h>
 #include <exec/memory.h>
 #include <exec/io.h>
+#ifndef _DCC
 #include <dos.h>
+#endif
 #include <exec/alerts.h>
 #include <exec/devices.h>
 #include <exec/execbase.h>
@@ -27,10 +17,25 @@
 #include <intuition/intuition.h>
 #include <intuition/intuitionbase.h>
 #include <libraries/dosextens.h>
+/* stddef.h is included in the precompiled version of hack.h .  If we include
+ * it here normally (through string.h) we'll get an "illegal typedef" later
+ * on.  This is the easiest way I can think of to fix it without messing
+ * around with the rest of the #includes.  --AMC
+ */
+#if defined(_DCC) && !defined(HACK_H)
+# define ptrdiff_t	ptrdiff_t_
+# define size_t		size_t_
+# define wchar_t	wchar_t_
+#endif
 #include <ctype.h>
 #undef  strcmpi
 #include <string.h>
 #include <errno.h>
+#if defined(_DCC) && !defined(HACK_H)
+# undef ptrdiff_t
+# undef size_t
+# undef wchar_T
+#endif
 
 #ifdef  IDCMP_CLOSEWINDOW
 # ifndef	INTUI_NEW_LOOK
@@ -38,38 +43,77 @@
 # endif
 #endif
 
+#ifndef HACK_H
+#include "hack.h"
+#endif
+#include "wintype.h"
+#include "winami.h"
+#include "func_tab.h"
+
+#ifndef	CLIPPING
+CLIPPING must be defined for the AMIGA version
+#endif
+
+#undef	LI
+#undef	CO
+
+/*#define   TOPL_GETLINE	/* Don't use a window for getlin() */
+/*#define   WINDOW_YN		/* Use a window for y/n questions */
+
 #ifdef AZTEC_C
 #include <functions.h>
+#else
+#ifdef _DCC
+#include <clib/dos_protos.h>
+#include <clib/exec_protos.h>
+#include <clib/console_protos.h>
+#include <clib/layers_protos.h>
+#include <clib/diskfont_protos.h>
 #else
 #include <proto/dos.h>
 #include <proto/exec.h>
 #include <proto/console.h>
-#ifdef	VIEWWINDOW
 #include <proto/layers.h>
-#endif
 #include <proto/diskfont.h>
+#endif
 
 /* kludge - see amirip for why */
 # undef red
 # undef green
 # undef blue
+#ifdef _DCC
+# include <clib/graphics_protos.h>
+#else
 # include <proto/graphics.h>
+#endif
+
+#ifdef _DCC
+# define __asm		/* DICE doesn't like __asm */
+#endif
 
 #ifndef __SASC_60
 #undef index
 # define index strchr
 #endif
 
+#ifdef _DCC
+#include <clib/intuition_protos.h>
+#else
 #include <proto/intuition.h>
+#endif
 #endif
 
 #ifdef	SHAREDLIB
-#include "amiga:lib/libmacs.h"
+#include "NH:sys/amiga/lib/libmacs.h"
 #endif
 
 #ifdef	INTUI_NEW_LOOK
 #include <utility/tagitem.h>
 #endif
+
+#define	WINVERS_AMII	(strcmp("amii",windowprocs.name)==0)
+#define	WINVERS_AMIV	(strcmp("amitile",windowprocs.name)==0)
+#define	WINVERS_AMIT	(strcmp("amitty",windowprocs.name)==0)
 
 /* cw->data[x] contains 2 characters worth of special information.  These
  * characters are stored at the offsets as described here.
@@ -78,7 +122,6 @@
 #define SEL_ITEM  1	/* If this is a select item, slot is 1 else 0 */
 #define SOFF	  2	/* The string starts here.  */
 
-/* Nethack defines NULL as ((char *)0) which is very inconvienent... */
 #undef NULL
 #define NULL 0L
 
@@ -88,10 +131,8 @@
  * don't have that version number in the 1.2 ROM.
  */
 
-#define INTUITION_VERSION	33L
-#define GRAPHICS_VERSION	33L
-#define DISKFONT_VERSION	34L
-#define ICON_VERSION		34L
+#define LIBRARY_FONT_VERSION	34L
+#define LIBRARY_TILE_VERSION	37L
 
 /* These values are just sorta suggestions in use, but are minimum requirements
  * in reality...
@@ -107,17 +148,9 @@
 #define FONTWIDTH	8
 #define FONTBASELINE	8
 
-#ifdef	VIEWWINDOW
-#define MAPFTWIDTH	4
-#define MAPFTHEIGHT	4
-#define MAPFTBASELN	3
-#define VIEWCHARWIDTH	16	/* Each square is 16 pixels wide */
-#define VIEWCHARHEIGHT	16	/* Each square is 16 pixels tall */
-#else
 #define MAPFTWIDTH	8
 #define MAPFTHEIGHT	8
 #define MAPFTBASELN	6
-#endif
 
 /* If Compiling with the "New Look", redefine these now */
 #ifdef  INTUI_NEW_LOOK
@@ -131,25 +164,35 @@
 #define NO_CHAR     -1
 #define RAWHELP     0x5F    /* Rawkey code of the HELP key */
 
+
 #define C_BLACK		0
 #define C_WHITE		1
-#define C_BROWN		2
-#define C_CYAN		3
-#define C_GREEN		4
+#define C_BROWN		(WINVERS_AMIV ? 11 : 2)
+#define C_CYAN		(WINVERS_AMIV ? 6  : 3)
+#define C_GREEN		(WINVERS_AMIV ? 10 : 4)
 #define C_MAGENTA	5
-#define C_BLUE		6
-#define C_RED		7
-#ifdef	VIEWWINDOW
-#define C_VBLACK0	8
-#define C_VBLACK1	9
-#define C_VBLACK2	10
-#define C_VBLACK3	11
-#define C_VBLACK4	12
-#define C_VBLACK5	13
-#define C_VBLACK6	14
-#define C_VBLACK7	15
-#endif
+#define C_BLUE		(WINVERS_AMIV ? 4  : 6)
+#define C_RED		(WINVERS_AMIV ? 15 : 7)
+#define C_LTGREEN	2
+#define C_YELLOW	3
+#define C_LTBROWN	7
+#define C_GREYBLUE	8
+#define C_ORANGE	9
+#define C_GREY		12
+#define C_PEACH		13
+#define C_LTGREY	14
 
-/* topl kludges */
-#define TOPL_NOSPACE	topl_addspace=0
-#define TOPL_SPACE	topl_addspace=1
+/* Structure describing tile files */
+struct PDAT
+{
+    long nplanes;		/* Depth of images */
+    long pbytes;		/* Bytes in a plane of data */
+    long across;		/* Number of tiles across */
+    long down;			/* Number of tiles down */
+    long npics;			/* Number of pictures in this file */
+    long xsize;			/* X-size of a tile */
+    long ysize;			/* Y-size of a-tile */
+};
+
+#undef	MAXCOLORS
+#define	MAXCOLORS	256

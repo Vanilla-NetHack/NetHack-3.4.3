@@ -1,3 +1,4 @@
+NetHack History file for release 3.2
 
 Behold, mortal, the origins of NetHack...
 
@@ -63,35 +64,87 @@ for the VMS version of NetHack 3.1.  Michael Allison ported NetHack 3.1 to
 Windows NT.
 
 Dean Luick, with help from David Cohrs, developed NetHack 3.1 for X11.
+Warwick Allison added in the "tiled" version of the game and generated most
+of the individual tiles for NetHack 3.2.
 
-                           - - - - - - - - - -
- 
+The 3.2 development team, comprised of: Michael Allison; Ken Arromdee; David
+Cohrs; Jessie Collet; Steve Creps; Kevin Darcy; Timo Hakulinen; Steve
+Linhart; Dean Luick; Pat Rankin; Eric Smith; Mike Stephenson; Janet Walz; and
+Paul Winner, released version 3.2 in April of 1996.
+
+Version 3.2 marks the tenth anniversary of the formation of the development
+team.  In a testament to their dedication to the game, all thirteen members
+of the original development team remained on the team at the start of work
+on the current release.  During the interval between the release of 3.1.3
+and 3.2, one of the founding members of the development team, Dr. Izchak
+Miller, passed away.  This release of the game is dedicated to him by the
+development and porting teams.
+
+Version 3.2 is more stable than previous versions, (it is hoped).  Many bugs
+have been fixed, abuses eliminated, and game features tuned for better game
+play.  The menus have been modified to give players more choices in styles
+for menus which require pick list selections.  A graphical display has been
+added for some ports.  (Added to the X11 port by Dean Luick, to the
+Amiga port by Ken Lorber, and to the DOS port by Michael Allison.)  The
+spell system and weapon proficiency portions of the game were adapted by
+Stephen White from his NHPlus variant.  (The #qualifications' and '#enhance'
+extended commands were added to make use of these changes.)  Additional game
+changes worth mentioning: light sources no longer have to be carried by the
+player to be used; wands can be destroyed if desired (use the 'a'pply
+command); treasures can be found buried in walls or in the floor; the
+'#untrap' command has been improved; and, wands of probing now provide more
+information.  Other more subtle changes have also been added to the game.
+You will have to play the game to discover them.
+
+Pat Rankin maintained 3.2 for VMS.
+
+Michael Allison, Yitzhak Sapir, and Paul Winner, with help from Steve Linhart,
+Kevin Smolkowski, Mike Stephenson and Stephen White ported 3.2 for MSDOS.
+Keizo Yamamoto and Ken Washikita ported 3.2 for the NEC 98xx machines popular
+in Japan.
+
+Ken Lorber, Andy Church, and Gregg Wonderly, with help from Richard Addison,
+ported 3.2 for the Amiga.
+
+Dean Luick ported 3.2 to the Macintosh.
+
+Eric Smith and Warwick Allison ported 3.2 for the Ataris.
+
+Michael Allison ported 3.2 for the Microsoft Windows NT platform.
+
+Timo Hakulinen remains responsible for the OS/2 port.
+
+			   - - - - - - - - - -
+
 From time to time, some depraved individual out there in netland sends a
 particularly intriguing modification to help out with the game.  The Gods of
 the Dungeon sometimes make note of the names of the worst of these miscreants
 in this, the list of Dungeoneers:
 
-    Richard Addison           Eric Hendrickson       Mike Passaretti
-    Michael Allison           Bruce Holloway         Pat Rankin
-    Tom Almy                  Barton House           Eric S. Raymond
-    Ken Arromdee              Richard P. Hughey      Frederick Roeber
-    Eric Backus               Ari Huttunen           John Rupley
-    John S. Bien              John Kallen            Carl Schelin
-    Ralf Brown                Del Lamb               Olaf Seibert
-    Ross Brown                Greg Laskin            Kevin Sitze
-    David Cohrs               Johnny Lee             Eric R. Smith
-    Jean-Christophe Collet    Tim Lennan             Kevin Smolkowski
-    Steve Creps               Merlyn LeRoy           Michael Sokolov
-    Kevin Darcy               Steve Linhart          Stephen Spackman
-    Matthew Day               Ken Lorber             Andy Swanson
-    Joshua Delahunty          Dean Luick             Kevin Sweet
-    Bill Dyer                 Benson I. Margulies    Scott R. Turner
-    Mike Engber               Pierre Martineau       Steve VanDevender
-    Jochen Erwied             Roland McGrath         Janet Walz
-    Mike Gallop               Norm Meluch            Hao-yang Wang
-    David Gentzel             Rob Menke              Jon W{tte
-    Mark Gooderum             Deron Meranda          Tom West
-    David Hairston            Bruce Mewborne         Paul Winner
-    Timo Hakulinen            Izchak Miller          Gregg Wonderly
-    Michael Hamel             Gil Neiger
-    Jonathan Handler          Greg Olson
+    Andy Church             Izchak Miller             Mike Passaretti
+    Andy Swanson            Janet Walz                Mike Stephenson
+    Ari Huttunen            Jean-Christophe Collet    Norm Meluch
+    Barton House            Jochen Erwied             Olaf Seibert
+    Benson I. Margulies     John Kallen               Pat Rankin
+    Bill Dyer               John Rupley               Paul Winner
+    Boudewijn Wayers        John S. Bien              Pierre Martineau
+    Bruce Holloway          Johnny Lee                Ralf Brown
+    Bruce Mewborne          Jon W{tte                 Richard Addison
+    Carl Schelin            Jonathan Handler          Richard P. Hughey
+    David Cohrs             Joshua Delahunty          Rob Menke
+    David Gentzel           Keizo Yamamoto            Roland McGrath
+    David Hairston          Ken Arromdee              Ross Brown
+    Dean Luick              Ken Lorber                Scott R. Turner
+    Del Lamb                Ken Washikita             Stephen Spackman
+    Deron Meranda           Kevin Darcy               Stephen White
+    Eric Backus             Kevin Sitze               Steve Creps
+    Eric Hendrickson        Kevin Smolkowski          Steve Linhart
+    Eric R. Smith           Kevin Sweet               Steve VanDevender
+    Eric S. Raymond         Mark Gooderum             Tim Lennan
+    Frederick Roeber        Matthew Day               Timo Hakulinen
+    Gil Neiger              Merlyn LeRoy              Tom Almy
+    Greg Laskin             Michael Allison           Tom West
+    Greg Olson              Michael Hamel             Warwick Allison
+    Gregg Wonderly          Michael Sokolov           Yitzhak Sapir
+    Hao-yang Wang           Mike Engber
+    Helge Hafting           Mike Gallop

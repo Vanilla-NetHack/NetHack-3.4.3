@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)were.c	3.1	93/01/17	*/
+/*	SCCS Id: @(#)were.c	3.2	95/07/29	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -18,7 +18,7 @@ register struct monst *mon;
 		if(!rn2(50-(night()*20)) || flags.moonphase == FULL_MOON) {
 		    new_were(mon);
 		    if(mons[pm].msound == MS_BARK && flags.soundok)
-			You("hear a %s howling at the moon.",
+			You_hear("a %s howling at the moon.",
 			    pm == PM_HUMAN_WEREJACKAL ? "jackal" : "wolf");
 		}
 	    } else if(!rn2(30) || Protection_from_shape_changers) new_were(mon);
@@ -62,7 +62,7 @@ register struct monst *mon;
 			is_human(&mons[pm]) ? "human" :
 			mons[pm].mname+4);
 
-	mon->data = &mons[pm];
+	set_mon_data(mon, &mons[pm], 0);
 	if (mon->msleep || !mon->mcanmove) {
 	    /* transformation wakens and/or revitalizes */
 	    mon->msleep = 0;
@@ -72,10 +72,8 @@ register struct monst *mon;
 	/* regenerate by 1/4 of the lost hit points */
 	mon->mhp += (mon->mhpmax - mon->mhp) / 4;
 	newsym(mon->mx,mon->my);
-#ifdef MUSE
 	mon_break_armor(mon);
 	possibly_unwield(mon);
-#endif
 }
 
 boolean
@@ -115,18 +113,17 @@ register boolean yours;
 	return success;
 }
 
-#ifdef POLYSELF
 void
 you_were() {
 	char qbuf[80];
 	if(u.umonnum == u.ulycn) return;
 	if(Polymorph_control) {
-	    Sprintf(qbuf,"Do you want to change into a %s? ", mons[u.ulycn].mname+4);
+	    Sprintf(qbuf,"Do you want to change into a %s? ",
+					mons[u.ulycn].mname+4);
 	    if(yn(qbuf) == 'n') return;
 	}
 	(void) polymon(u.ulycn);
 }
-#endif
 
 #endif /* OVLB */
 

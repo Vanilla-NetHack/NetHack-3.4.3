@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)permonst.h 3.1	93/02/14	*/
+/*	SCCS Id: @(#)permonst.h	3.2	94/11/05	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -46,7 +46,7 @@ struct permonst {
 			ac,			/* (base) armor class */
 			mr;			/* (base) magic resistance */
 	aligntyp	maligntyp;		/* basic monster alignment */
-	unsigned	geno;			/* creation/geno mask value */
+	unsigned short	geno;			/* creation/geno mask value */
 	struct	attack	mattk[NATTK];		/* attacks matrix */
 	unsigned short	cwt,			/* weight of corpse */
 			cnutrit;		/* its nutritional value */
@@ -67,5 +67,11 @@ extern NEARDATA struct permonst
 		mons[];		/* the master list of monster types */
 extern NEARDATA struct permonst playermon, *uasmon;
 						/* you in the same terms */
+
+#define NON_PM		PM_PLAYERMON		/* "not a monster" */
+#define LOW_PM		(NON_PM+1)		/* first monster in mons[] */
+#define SPECIAL_PM	PM_LONG_WORM_TAIL	/* [normal] < ~ < [special] */
+	/* mons[SPECIAL_PM] through mons[NUMMONS-1], inclusive, are
+	   never generated randomly and cannot be polymorphed into */
 
 #endif /* PERMONST_H */

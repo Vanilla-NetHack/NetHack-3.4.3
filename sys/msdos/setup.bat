@@ -1,15 +1,20 @@
-echo off
-REM     SCCS Id: @(#)setup.bat   93/01/18
-REM     Copyright (c) NetHack PC Development Team 1990, 1991, 1992, 1993
+@echo off
+REM    SCCS Id: @(#)setup.bat   96/02/21
+REM    Copyright (c) NetHack PC Development Team 1990, 1991, 1992, 1993, 1996
+REM    NetHack may be freely redistributed.  See license for details.
 
-REM     NetHack may be freely redistributed.  See license for details.
-
+echo.
+echo   Copyright (c) NetHack PC Development Team 1990, 1991, 1992, 1993, 1996
+echo   NetHack may be freely redistributed.  See license for details.
+echo.
 REM setup batch file for msdos, see Install.dos for details.
 
 if not %1.==. goto ok_parm
 goto err_set
 
 :ok_parm
+if "%1"=="CL"   goto ok_cl
+if "%1"=="cl"   goto ok_cl
 echo Checking to see if directories are set up properly ...
 if not exist ..\..\include\hack.h  goto err_dir
 if not exist ..\..\src\hack.c      goto err_dir
@@ -18,44 +23,123 @@ if not exist ..\..\util\makedefs.c goto err_dir
 if not exist ..\share\lev_yacc.c   goto err_dir
 echo Directories OK.
 
-if %1 == MSC goto ok_msc
-if %1 == msc goto ok_msc
-if %1 == GCC goto ok_gcc
-if %1 == gcc goto ok_gcc
+if exist ..\..\dat\data.bas goto long1ok
+if exist ..\..\dat\data.base goto long1a
+if exist ..\..\dat\data~1.bas goto long1b
+goto err_long
+:long1a
+echo Changing some long-named distribution file names:
+echo "Copying ..\..\dat\data.base -> ..\..\dat\data.bas"
+copy ..\..\dat\data.base ..\..\dat\data.bas
+goto long1ok
+:long1b
+echo Changing some long-named distribution file names:
+echo "Copying ..\..\dat\data~1.bas -> ..\..\dat\data.bas"
+copy ..\..\dat\data~1.bas ..\..\dat\data.bas
+:long1ok
+
+if exist ..\..\include\patchlev.h goto long2ok
+if exist ..\..\include\patchlevel.h goto long2a
+if exist ..\..\include\patchl~1.h goto long2b
+goto err_long
+:long2a
+echo "Copying ..\..\include\patchlevel.h -> ..\..\include\patchlev.h"
+copy ..\..\include\patchlevel.h ..\..\include\patchlev.h
+goto long2ok
+:long2b
+echo "Copying ..\..\include\patchl~1.h -> ..\..\include\patchlev.h"
+copy ..\..\include\patchl~1.h ..\..\include\patchlev.h
+:long2ok
+
+REM Missing guidebook is not fatal to the build process
+if exist ..\..\doc\guideboo.txt goto long3ok
+if exist ..\..\doc\guidebook.txt goto long3a
+if exist ..\..\doc\guideb~1.txt goto long3b
+goto warn3long
+:long3a
+echo "Copying ..\..\doc\guidebook.txt -> ..\..\doc\guideboo.txt"
+copy ..\..\doc\guidebook.txt ..\..\doc\guideboo.txt
+goto long3ok
+:long3b
+echo "Copying ..\..\doc\guideb~1.txt -> ..\..\doc\guideboo.txt"
+copy ..\..\doc\guideb~1.txt ..\..\doc\guideboo.txt
+goto long3ok
+:warn3long
+echo "Warning - There is no NetHack Guidebook (..\..\doc\guideboo.txt)"
+echo "          included in your distribution.  Build will proceed anyway."
+:long3ok
+
+if "%1"=="GCC"   goto ok_gcc
+if "%1"=="gcc"   goto ok_gcc
+if "%1"=="nmake" goto ok_msc
+if "%1"=="NMAKE" goto ok_msc
+if "%1"=="BC"   goto ok_bc
+if "%1"=="bc"   goto ok_bc
+if "%1"=="MSC"   goto ok_msc
+if "%1"=="msc"   goto ok_msc
 goto err_set
 
 :ok_gcc
 echo Symbolic links, msdos style
-echo "MakeGCC.src -> ..\..\src\makefile"
-copy makegcc.src ..\..\src\makefile
-echo "MakeGCC.utl -> ..\..\util\makefile"
-copy makegcc.utl ..\..\util\makefile
-echo "Makefile.dat -> ..\..\dat\makefile"
-copy makefile.dat ..\..\dat\makefile
+echo "Makefile.GCC -> ..\..\src\makefile"
+copy makefile.GCC ..\..\src\makefile
 goto done
 
 :ok_msc
-echo Setting Environment variables for Compiler.
-set  CL= /AL /G2 /Oo /Gs /Gt18 /Zp1 /W0 /I..\include /nologo /DMOVERLAY
-echo Copying Makefiles.
-echo "MakeMSC.src -> ..\..\src\makefile"
-copy makemsc.src ..\..\src\makefile
-echo "MakeMSC.utl -> ..\..\util\makefile"
-copy makemsc.utl ..\..\util\makefile
-echo "Makefile.dat -> ..\..\dat\makefile"
-copy makefile.dat ..\..\dat\makefile
-echo Copying in dungeon compiler files.
-copy ..\share\*.h    ..\..\include
-copy ..\share\lev*.c ..\..\util
-copy ..\share\dgn*.c ..\..\util
+echo Copying Makefile for Microsoft C and Microsoft NMAKE.
+echo "Makefile.MSC -> ..\..\src\makefile"
+copy Makefile.MSC ..\..\src\makefile
+echo Copying overlay schemas to ..\..\src
+copy schema*.MSC ..\..\src\schema*.DEF
+:ok_cl
+echo Setting the CL Environment variable for the Microsoft Compiler.
+set  CL= /AL /G2 /Oo /Gs /Gt16 /Zp1 /W0 /I..\include /nologo /DMOVERLAY
 goto done
 
+:ok_bc
+echo Copying Makefile for Borland C and Borland's MAKE.
+echo "Makefile.BC -> ..\..\src\makefile"
+copy Makefile.BC ..\..\src\makefile
+echo Copying overlay schemas to ..\..\src
+copy schema*.BC ..\..\src
+goto done
+
+:err_long
+echo.
+echo ** ERROR - New file system with "long file name support" problem. **
+echo A couple of NetHack distribution files that are packaged with 
+echo a long filename ( exceeds 8.3) appear to be missing from your 
+echo distribution.
+echo The following files need to exist under the names on the
+echo right in order to build NetHack:
+echo.
+echo  ..\..\dat\data.base        needs to be copied to ..\..\dat\data.bas
+echo  ..\..\include\patchlevel.h needs to be copied to ..\..\include\patchlev.h
+echo.
+echo setup.bat was unable to perform the necessary changes because at least
+echo one of the files doesn't exist under its short name, and the 
+echo original (long) file name to copy it from was not found either.
+echo.
+goto end
+
 :err_set
+echo.
 echo Usage:
-echo "%0 <MSC | GCC>"
-echo -  Run this batch file with either MSC or GCC as the argument
-echo    depending on which compiler you are using.
-echo    Currently no support for the Borland set of compilers.
+echo "%0 <GCC | MSC | BC >"
+echo.
+echo    Run this batch file specifying on of the following:
+echo            GCC, MSC, BC
+echo.
+echo    (depending on which compiler and/or make utility you are using).
+echo.
+echo    The GCC argument is for use with djgpp and the NDMAKE utility.
+echo.
+echo    The MSC argument is for use with Microsoft C and the NMAKE utility
+echo    that ships with it (MSC 7.0 or greater only, including Visual C).
+echo.
+echo    The BC argument is for use with Borland C and Borland's MAKE utility
+echo    that ships with it (Borland C++ 3.1 only).
+echo.
 goto end
 
 :err_dir

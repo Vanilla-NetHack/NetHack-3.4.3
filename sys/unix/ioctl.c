@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)ioctl.c	3.1	90/22/02
+/*	SCCS Id: @(#)ioctl.c	3.2	90/22/02
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -14,6 +14,9 @@
 # else
 #  if defined(AIX_31) && !defined(_ALL_SOURCE)
 #   define _ALL_SOURCE	/* causes struct winsize to be present */
+#   ifdef _AIX32
+#    include <sys/ioctl.h>
+#   endif
 #  endif
 #  if defined(_BULL_SOURCE)
 #   include <termios.h>
@@ -37,7 +40,10 @@ struct ltchars ltchars0 = { -1, -1, -1, -1, -1, -1 }; /* turn all off */
 # ifdef POSIX_TYPES
 #include <termios.h>
 struct termios termio;
-#  ifdef BSD
+#  if defined(BSD) || defined(_AIX32)
+#   if defined(_AIX32) && !defined(_ALL_SOURCE)
+#    define _ALL_SOURCE
+#   endif
 #include <sys/ioctl.h>
 #  endif
 # else
@@ -68,11 +74,11 @@ extern void NDECL(sco_mapoff);
 #endif
 
 #ifdef AUX
-void *
-catch_stp ( )
+void
+catch_stp()
 {
-    signal ( SIGTSTP , SIG_DFL ) ;
-    dosuspend ( ) ;
+    signal(SIGTSTP, SIG_DFL);
+    dosuspend();
 }
 #endif /* AUX */
 
@@ -148,7 +154,7 @@ dosuspend()
 {
 # ifdef SIGTSTP
 	if(signal(SIGTSTP, SIG_IGN) == SIG_DFL) {
-		suspend_nhwindows(NULL);
+		suspend_nhwindows((char *)0);
 #  ifdef _M_UNIX
 		sco_mapon();
 #  endif

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)allmain.c	3.1	93/06/16	*/
+/*	SCCS Id: @(#)allmain.c	3.2	96/03/28	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -8,6 +8,10 @@
 
 #ifndef NO_SIGNAL
 #include <signal.h>
+#endif
+
+#ifdef POSITIONBAR
+STATIC_DCL void NDECL(do_postionbar);
 #endif
 
 #ifdef OVL0
@@ -22,6 +26,22 @@ moveloop()
 	int moverate = 0;
 	boolean didmove = 0;
 
+	flags.moonphase = phase_of_the_moon();
+	if(flags.moonphase == FULL_MOON) {
+		You("are lucky!  Full moon tonight.");
+		change_luck(1);
+	} else if(flags.moonphase == NEW_MOON) {
+		pline("Be careful!  New moon tonight.");
+	}
+	flags.friday13 = friday_13th();
+	if (flags.friday13) {
+		pline("Watch out!  Bad things can happen on Friday the 13th.");
+		change_luck(-1);
+	}
+
+	initrack();
+
+
 	/* Note:  these initializers don't do anything except guarantee that
 		we're linked properly.
 	*/
@@ -30,33 +50,35 @@ moveloop()
 	monstr_init();	/* monster strengths */
 	objects_init();
 
+#ifdef WIZARD
+	if (wizard) add_debug_extended_commands();
+#endif
+
 	(void) encumber_msg(); /* in case they auto-picked up something */
+
+	u.uz0.dlevel = u.uz.dlevel;
 
 	for(;;) {
 #ifdef CLIPPING
 		cliparound(u.ux, u.uy);
 #endif
-#if defined(MAC_MPW32) && !defined(MODEL_FAR)
+#if defined(MAC68K) && defined(MAC_MPW32) && !defined(MODEL_FAR)
 		UnloadAllSegments();  /* Marks non-resident segments as purgeable */
 #endif
 		get_nh_event();
+#ifdef POSITIONBAR
+		do_positionbar();
+#endif
 
 		didmove = flags.move;
 		if(flags.move) {	/* actual time passed */
-#ifdef POLYSELF
 		    int oldmtimedone;
-#endif
 		    int wtcap;
 
 		    if (u.utotype) deferred_goto();
 		    wtcap = encumber_msg();
-#ifdef POLYSELF
 		    oldmtimedone = u.mtimedone;
-#endif
-
-#ifdef SOUNDS
 		    dosounds();
-#endif
 
 		    if(moverate <= 0) {
 			/* calculate how much time passed. */
@@ -77,7 +99,9 @@ moveloop()
 		    }
 
 		    if(moverate > 0) {
+			flags.mon_moving = TRUE;
 			movemon();
+			flags.mon_moving = FALSE;
 			/* a monster may have levteleported player -dlc */
 			if (u.utotype) deferred_goto();
 			if(!rn2(u.uevent.udemigod ? 25 :
@@ -86,25 +110,27 @@ moveloop()
 				? 50 : 70))
 			    (void) makemon((struct permonst *)0, 0, 0);
 			++monstermoves;
-			remove_cadavers(&fobj);
-			remove_cadavers(&invent);
 			moverate -= 12;
 		    }
 		    if(Glib) glibr();
 		    nh_timeout();
 		    ++moves;
 		    if (u.ublesscnt)  u.ublesscnt--;
-		    if(flags.time) flags.botl = 1;
+		    if(flags.time && !flags.run)
+			flags.botl = 1;
+
 		    /* One possible result of prayer is healing.  Whether or
 		     * not you get healed depends on your current hit points.
 		     * If you are allowed to regenerate during the prayer, the
 		     * end-of-prayer calculation messes up on this.
+		     * Another possible result is rehumanization, which requires
+		     * that encumbrance and movement rate be recalculated.
 		     */
-		    if (u.uinvulnerable)
-			;
-		    else
-#ifdef POLYSELF
-		    if (u.mtimedone && u.mh < u.mhmax) {
+		    if (u.uinvulnerable) {
+			/* for the moment at least, you're in tiptop shape */
+			wtcap = UNENCUMBERED;
+			moverate = 0;
+		    } else if (u.mtimedone && u.mh < u.mhmax) {
 			if (u.mh < 1) {
 			    rehumanize();
 			    moverate = 0;
@@ -113,9 +139,7 @@ moveloop()
 			    flags.botl = 1;
 			    u.mh++;
 			}
-		    } else
-#endif
-		    if(u.uhp < u.uhpmax) {
+		    } else if (u.uhp < u.uhpmax) {
 			if(u.ulevel > 9) {
 			    int heal;
 
@@ -143,18 +167,17 @@ moveloop()
 			    if(u.uhp > 1) {
 				u.uhp--;
 			    } else {
-				pline("You pass out from exertion!");
+				You("pass out from exertion!");
 				exercise(A_CON, FALSE);
-				nomul(-10);
-				u.usleep = 1;
+				fall_asleep(-10, FALSE);
 			    }
 			}
 		    }
 
 		    if ((u.uen < u.uenmax) &&
 			((wtcap < MOD_ENCUMBER &&
-			  (!(moves%((MAXULEV + 1 - u.ulevel) *
-				    (pl_character[0] == 'W' ? 3 : 4) / 2))))
+			  (!(moves%((MAXULEV + 8 - u.ulevel) *
+				    (Role_is('W') ? 3 : 4) / 6))))
 			 || Energy_regeneration)) {
 			u.uen +=
 			    rn1((int)(ACURR(A_WIS) + ACURR(A_INT)) / 10 + 1,1);
@@ -164,13 +187,18 @@ moveloop()
 
 		    if(!u.uinvulnerable) {
 			if(Teleportation && !rn2(85)) {
-#ifdef REDO		    /* clear doagain keystrokes */
-			    pushch(0);
-			    savech(0);
+#ifdef REDO
+			    xchar old_ux = u.ux, old_uy = u.uy;
 #endif
 			    tele();
+#ifdef REDO
+			    if (u.ux != old_ux || u.uy != old_uy) {
+				/* clear doagain keystrokes */
+				pushch(0);
+				savech(0);
+			    }
+#endif
 			}
-#ifdef POLYSELF
 			if(Polymorph && !rn2(100)) {
 			    if (multi >= 0) {
 				if (occupation)
@@ -180,7 +208,8 @@ moveloop()
 			    }
 			    polyself();
 			    moverate = 0;
-			} else if (u.ulycn >= 0 && !rn2(80 - (20 * night()))) {
+			} else if (u.ulycn >= LOW_PM &&
+				   !rn2(80 - (20 * night()))) {
 			    if (multi >= 0) {
 				if (occupation)
 				    stop_occupation();
@@ -190,18 +219,15 @@ moveloop()
 			    you_were();
 			    moverate = 0;
 			}
-#endif
 		    }
 
 		    if(Searching && multi >= 0) (void) dosearch0(1);
 		    do_storms();
-		    hatch_eggs();
-		    burn_lamps();
 		    gethungry();
 		    exerchk();
 		    invault();
-		    amulet();
-		    if (!rn2(40+(int)(ACURR(A_DEX)*3))) 
+		    if (u.uhave.amulet) amulet();
+		    if (!rn2(40+(int)(ACURR(A_DEX)*3)))
 			u_wipe_engr(rnd(3));
 		    if (u.uevent.udemigod && !u.uinvulnerable) {
 			if (u.udg_cnt) u.udg_cnt--;
@@ -214,23 +240,16 @@ moveloop()
 		    /* underwater and waterlevel vision are done here */
 		    if (Is_waterlevel(&u.uz))
 			movebubbles();
-		    else if (Underwater)
-			under_water(0);
+		    else if (Underwater) under_water(0);
+		    /* vision while buried done here */
+		    else if (u.uburied) under_ground(0);
 
-#ifdef POLYSELF
 		    if ((oldmtimedone && !u.mtimedone) ||
 			(!oldmtimedone && u.mtimedone)) moverate = 0;
-#endif
 		}
 		if(multi < 0) {
-			if(!++multi){
-				pline(nomovemsg ? nomovemsg :
-					(const char *)"You can move again.");
-				nomovemsg = 0;
-				u.usleep = 0;
-				if(afternmv) (*afternmv)();
-				afternmv = 0;
-			}
+			if (++multi == 0)	/* finished yet? */
+				unmul((char *)0);
 		}
 
 		find_ac();
@@ -283,8 +302,9 @@ moveloop()
 			continue;
 		}
 
-		if((u.uhave.amulet || Clairvoyant) && !In_endgame(&u.uz) &&
-						!(moves%15) && !rn2(2))
+		if ((u.uhave.amulet || Clairvoyant) &&
+		    !(In_endgame(&u.uz) || (HClairvoyant & I_BLOCKED)) &&
+		    !(moves % 15) && !rn2(2))
 			do_vicinity_map();
 
 		if(u.utrap && u.utraptype == TT_LAVA) {
@@ -295,8 +315,8 @@ moveloop()
 			if(u.utrap < 1<<8) {
 			    killer_format = KILLED_BY;
 			    killer = "molten lava";
-			    You("sink below the surface and suffocate.");
-			    done(DROWNING); /*whatever*/
+			    You("sink below the surface and die.");
+			    done(DISSOLVED);
 			} else if(didmove && !u.umoved) {
 			    Norep("You sink deeper into the lava.");
 			    u.utrap += rnd(4);
@@ -304,15 +324,18 @@ moveloop()
 		    }
 		}
 
+#ifdef WIZARD
+		if (flags.sanity_check)
+		    sanity_check();
+#endif
+
 		u.umoved = FALSE;
 		if(!didmove || moverate <= 0) {
 		    if(multi > 0) {
 			lookaround();
-			if(!multi) {	/* lookaround may clear multi */
+			if(!multi)	/* lookaround may clear multi */
 				flags.move = 0;
-				continue;
-			}
-			if(flags.mv) {
+			else if(flags.mv) {
 				if(multi < COLNO && !--multi)
 					flags.mv = flags.run = 0;
 				domove();
@@ -324,8 +347,10 @@ moveloop()
 #ifdef MAIL
 			ckmailstatus();
 #endif
-			rhack(NULL);
+			rhack((char *)0);
 		    }
+		    /* !flags.move here: multiple movement command stopped */
+		    if (flags.time && (!flags.move || !flags.mv)) flags.botl=1;
 		}
 		if (vision_full_recalc) vision_recalc(0);	/* vision! */
 		if(multi && multi%7 == 0)
@@ -387,6 +412,8 @@ display_gamewindows()
 void
 newgame()
 {
+	int i;
+
 #ifdef MFLOPPY
 	gameDiskPrompt();
 #endif
@@ -397,6 +424,10 @@ newgame()
 	flags.ident = 1;
 
 	if(wiz1_level.dlevel == 0) init_dungeons();
+
+	for (i = 0; i < NUMMONS; i++)
+		mvitals[i].mvflags = mons[i].geno & G_NOCORPSE;
+
 	init_objects();		/* must be before u_init() */
 	u_init();
 	init_artifacts();	/* must be after u_init() */
@@ -407,13 +438,18 @@ newgame()
 #ifdef NEWS
 	if(flags.news) display_file(NEWS, FALSE);
 #endif
-#ifdef MULDGN
 	load_qtlist();	/* load up the quest text info */
 	quest_init();
-	if(flags.legacy && moves == 1) com_pager(1);
-#endif
+
 	mklev();
 	u_on_upstairs();
+#ifdef CLIPPING
+	/* pline() (hence You()) will call flush_screen() if u.ux is set,
+	 * which will be confused if clipping is not set up.
+	 * this is the equivalent of the restgamestate() call for new games.
+	 */
+	cliparound(u.ux, u.uy);
+#endif
 	check_special_room(FALSE);
 	vision_reset();		/* set up internals for level (after mklev) */
 
@@ -421,21 +457,78 @@ newgame()
 
 	/* Move the monster from under you or else
 	 * makedog() will fail when it calls makemon().
-	 * 			- ucsfcgl!kneller
+	 *			- ucsfcgl!kneller
 	 */
 	if(MON_AT(u.ux, u.uy)) mnexto(m_at(u.ux, u.uy));
-
-#ifdef CLIPPING
-	cliparound(u.ux, u.uy);
-#endif
 	(void) makedog();
 	docrt();
+
+	if(flags.legacy && moves == 1) {
+		flush_screen(1);
+		com_pager(1);
+	}
 
 #ifdef INSURANCE
 	save_currentstate();
 #endif
+	program_state.something_worth_saving++;	/* useful data now exists */
 	return;
 }
+
+#ifdef POSITIONBAR
+do_positionbar()
+{
+	static char pbar[COLNO];
+	char *p;
+	
+	p = pbar;
+	/* up stairway */
+	if (upstair.sx &&
+	   (glyph_to_cmap(level.locations[upstair.sx][upstair.sy].glyph) ==
+	    S_upstair ||
+ 	    glyph_to_cmap(level.locations[upstair.sx][upstair.sy].glyph) == 
+	    S_upladder)) {
+		*p++ = '<';
+		*p++ = upstair.sx;
+	}
+	if (sstairs.sx &&
+	   (glyph_to_cmap(level.locations[sstairs.sx][sstairs.sy].glyph) ==
+	    S_upstair ||
+ 	    glyph_to_cmap(level.locations[sstairs.sx][sstairs.sy].glyph) == 
+	    S_upladder)) {
+		*p++ = '<';
+		*p++ = sstairs.sx;
+	}
+
+	/* down stairway */
+	if (dnstair.sx &&
+	   (glyph_to_cmap(level.locations[dnstair.sx][dnstair.sy].glyph) ==
+	    S_dnstair ||
+ 	    glyph_to_cmap(level.locations[dnstair.sx][dnstair.sy].glyph) ==
+	    S_dnladder)) {
+		*p++ = '>';
+		*p++ = dnstair.sx;
+	}
+	if (sstairs.sx &&
+	   (glyph_to_cmap(level.locations[sstairs.sx][sstairs.sy].glyph) ==
+	    S_dnstair ||
+ 	    glyph_to_cmap(level.locations[sstairs.sx][sstairs.sy].glyph) == 
+	    S_dnladder)) {
+		*p++ = '>';
+		*p++ = sstairs.sx;
+	}
+
+	/* hero location */
+	if (u.ux) {
+		*p++ = '@';
+		*p++ = u.ux;
+	}
+	/* fence post */
+	*p = 0;
+
+	update_positionbar(pbar);
+}
+#endif
 
 #endif /* OVLB */
 

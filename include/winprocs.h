@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)winprocs.h	3.1	93/04/26	*/
+/*	SCCS Id: @(#)winprocs.h	3.2	96/02/18	*/
 /* Copyright (c) David Cohrs, 1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -7,7 +7,7 @@
 
 struct window_procs {
     const char *name;
-    void NDECL((*win_init_nhwindows));
+    void FDECL((*win_init_nhwindows), (int *, char **));
     void NDECL((*win_player_selection));
     void NDECL((*win_askname));
     void NDECL((*win_get_nh_event)) ;
@@ -22,14 +22,19 @@ struct window_procs {
     void FDECL((*win_putstr), (winid, int, const char *));
     void FDECL((*win_display_file), (const char *, BOOLEAN_P));
     void FDECL((*win_start_menu), (winid));
-    void FDECL((*win_add_menu), (winid, CHAR_P, int, const char *));
-    void FDECL((*win_end_menu), (winid, CHAR_P, const char *, const char *));
-    char FDECL((*win_select_menu), (winid));
+    void FDECL((*win_add_menu), (winid,int,const ANY_P *,
+		CHAR_P,int,const char *, BOOLEAN_P));
+    void FDECL((*win_end_menu), (winid, const char *));
+    int FDECL((*win_select_menu), (winid, int, MENU_ITEM_P **));
+    char FDECL((*win_message_menu), (CHAR_P,int,const char *));
     void NDECL((*win_update_inventory));
     void NDECL((*win_mark_synch));
     void NDECL((*win_wait_synch));
 #ifdef CLIPPING
     void FDECL((*win_cliparound), (int, int));
+#endif
+#ifdef POSITIONBAR
+    void FDECL((*win_update_positionbar), (char *));
 #endif
     void FDECL((*win_print_glyph), (winid,XCHAR_P,XCHAR_P,int));
     void FDECL((*win_raw_print), (const char *));
@@ -40,9 +45,7 @@ struct window_procs {
     int NDECL((*win_doprev_message));
     char FDECL((*win_yn_function), (const char *, const char *, CHAR_P));
     void FDECL((*win_getlin), (const char *,char *));
-#ifdef COM_COMPL
-    void FDECL((*win_get_ext_cmd), (char *));
-#endif /* COM_COMPL */
+    int NDECL((*win_get_ext_cmd));
     void FDECL((*win_number_pad), (int));
     void NDECL((*win_delay_output));
 #ifdef CHANGE_COLOR
@@ -82,11 +85,15 @@ extern NEARDATA struct window_procs windowprocs;
 #define add_menu (*windowprocs.win_add_menu)
 #define end_menu (*windowprocs.win_end_menu)
 #define select_menu (*windowprocs.win_select_menu)
+#define message_menu (*windowprocs.win_message_menu)
 #define update_inventory (*windowprocs.win_update_inventory)
 #define mark_synch (*windowprocs.win_mark_synch)
 #define wait_synch (*windowprocs.win_wait_synch)
 #ifdef CLIPPING
 #define cliparound (*windowprocs.win_cliparound)
+#endif
+#ifdef POSITIONBAR
+#define update_positionbar (*windowprocs.win_update_positionbar)
 #endif
 #define print_glyph (*windowprocs.win_print_glyph)
 #define raw_print (*windowprocs.win_raw_print)
@@ -97,9 +104,7 @@ extern NEARDATA struct window_procs windowprocs;
 #define nh_doprev_message (*windowprocs.win_doprev_message)
 #define yn_function (*windowprocs.win_yn_function)
 #define getlin (*windowprocs.win_getlin)
-#ifdef COM_COMPL
 #define get_ext_cmd (*windowprocs.win_get_ext_cmd)
-#endif
 #define number_pad (*windowprocs.win_number_pad)
 #define delay_output (*windowprocs.win_delay_output)
 #ifdef CHANGE_COLOR

@@ -660,8 +660,12 @@ X * except possibly at physical block boundaries.
 X */
 X
 Xtypedef int	bool;
+X#ifndef TRUE
 X#define TRUE	1
+X#endif
+X#ifndef FALSE
 X#define FALSE	0
+X#endif
 X
 X#define toupper(c)	((c) - ' ' * (((c) >= 'a') && ((c) <= 'z')))
 X#define isdigit(c)	(((c) >= '0') && ((c) <= '9'))

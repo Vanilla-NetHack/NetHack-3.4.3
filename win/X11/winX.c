@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)winX.c	3.1	93/02/17		  */
+/*	SCCS Id: @(#)winX.c	3.2	96/02/02	*/
 /* Copyright (c) Dean Luick, 1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -22,11 +22,13 @@
 #include <X11/Xaw/AsciiText.h>
 #include <X11/Xaw/Label.h>
 #include <X11/Xaw/Form.h>
+#include <X11/Xaw/Scrollbar.h>
+#include <X11/Xaw/Paned.h>
 #include <X11/Xaw/Cardinals.h>
 #include <X11/Xatom.h>
 #include <X11/Xos.h>
 
-/* for color support; should be ifdef TEXTCOLOR, but must come before hack.h */
+/* for color support */
 #ifdef SHORT_FILENAMES
 #include <X11/IntrinsP.h>
 #else
@@ -42,6 +44,12 @@
 
 #include "hack.h"
 #include "winX.h"
+#include "dlb.h"
+#ifdef SHORT_FILENAMES
+#include "patchlev.h"
+#else
+#include "patchlevel.h"
+#endif
 
 /* Should be defined in <X11/Intrinsic.h> but you never know */
 #ifndef XtSpecificationRelease
@@ -57,13 +65,13 @@
 
 static struct icon_info {
 	const char *name;
-	char *bits;
+	unsigned char *bits;
 	unsigned width, height;
 } icon_data[] = {
 	{ "nh72", nh72icon_bits, nh72icon_width, nh72icon_height },
 	{ "nh56", nh56icon_bits, nh56icon_width, nh56icon_height },
 	{ "nh32", nh32icon_bits, nh32icon_width, nh32icon_height },
-	{ NULL, NULL, 0, 0 }
+	{ (const char *)0, (unsigned char *)0, 0, 0 }
 };
 
 /*
@@ -74,6 +82,7 @@ AppResources appResources;
 void (*input_func)();
 int click_x, click_y, click_button;	/* Click position on a map window   */
 					/* (filled by set_button_values()). */
+int updated_inventory;
 
 
 /* Interface definition, for windows.c */
@@ -97,11 +106,15 @@ struct window_procs X11_procs = {
     X11_add_menu,
     X11_end_menu,
     X11_select_menu,
+    genl_message_menu,		/* no need for X-specific handling */
     X11_update_inventory,
     X11_mark_synch,
     X11_wait_synch,
 #ifdef CLIPPING
     X11_cliparound,
+#endif
+#ifdef POSITIONBAR
+    donull,
 #endif
     X11_print_glyph,
     X11_raw_print,
@@ -112,9 +125,7 @@ struct window_procs X11_procs = {
     X11_doprev_message,
     X11_yn_function,
     X11_getlin,
-#ifdef COM_COMPL
     X11_get_ext_cmd,
-#endif /* COM_COMPL */
     X11_number_pad,
     X11_delay_output,
 #ifdef CHANGE_COLOR	/* only a Mac option currently */
@@ -124,7 +135,11 @@ struct window_procs X11_procs = {
     /* other defs that really should go away (they're tty specific) */
     X11_start_screen,
     X11_end_screen,
+#ifdef GRAPHIC_TOMBSTONE
+    X11_outrip,
+#else
     genl_outrip,
+#endif
 };
 
 /*
@@ -163,10 +178,14 @@ find_widget(w)
     int windex;
     struct xwindow *wp;
 
-    /* This is sad.  Search to find the corresponding window. */
+    /* Search to find the corresponding window.  Look at the main widget, */
+    /* popup, the parent of the main widget, then parent of the widget. */
     for (windex = 0, wp = window_list; windex < MAX_WINDOWS; windex++, wp++)
 	if (wp->type != NHW_NONE &&
-		(wp->w == w || (wp->w && XtParent(wp->w) == w))) break;
+	    (wp->w == w || wp->popup == w || (wp->w && (XtParent(wp->w)) == w)
+		|| (wp->popup == XtParent(w))))
+	    break;
+
     if (windex == MAX_WINDOWS) panic("find_widget:  can't match widget");
     return wp;
 }
@@ -188,7 +207,6 @@ find_free_window()
     return (winid) windex;
 }
 
-#ifdef TEXTCOLOR
 /*
  * Color conversion.  The default X11 color converters don't try very
  * hard to find matching colors in PseudoColor visuals.  If they can't
@@ -204,7 +222,7 @@ XtConvertArgRec const nhcolorConvertArgs[] = {
 
 #define done(type, value) \
 	{							\
-	    if (toVal->addr != NULL) {				\
+	    if (toVal->addr != 0) {				\
 		if (toVal->size < sizeof(type)) {		\
 		    toVal->size = sizeof(type);			\
 		    return False;				\
@@ -225,9 +243,15 @@ XtConvertArgRec const nhcolorConvertArgs[] = {
 #undef green
 #undef blue
 
-/* Return True if something close was found. */
+/*
+ * Find a color that approximates the color named in "str".  The "str" color
+ * may be a color name ("red") or number ("#7f0000").  If str == NULL, then
+ * "color" is assumed to contain the RGB color wanted.
+ * The approximate color found is returned in color as well.
+ * Return True if something close was found.
+ */
 Boolean
-nhCloseColor(screen, colormap, str, color)
+nhApproxColor(screen, colormap, str, color)
 Screen	 *screen;	/* screen to use */
 Colormap colormap;	/* the colormap to use */
 char     *str;		/* color name */
@@ -245,8 +269,13 @@ XColor   *color;	/* the X color structure; changed only if successful */
     if((ncells = CellsOfScreen(screen)) < 256 || ncells > 4096)
 	return False;
 
-    if (!XParseColor(DisplayOfScreen(screen), colormap, str, &tmp))
-	return False;
+    if (str != (char *)0) {
+	if (!XParseColor(DisplayOfScreen(screen), colormap, str, &tmp))
+	    return False;
+    } else {
+	tmp = *color;
+	tmp.flags = 7;	/* force to use all 3 of RGB */
+    }
 
     if (!table) {
 	table = (XColor *) XtCalloc(ncells, sizeof(XColor));
@@ -258,6 +287,7 @@ XColor   *color;	/* the X color structure; changed only if successful */
     /* go thru cells and look for the one with smallest diff */
     /* diff is calculated abs(reddiff)+abs(greendiff)+abs(bluediff) */
     /* a more knowledgeable color person might improve this -dlc */
+try_again:
     for(i=0; i<ncells; i++) {
 	if(table[i].flags == tmp.flags) {
 	    j = (int)table[i].red - (int)tmp.red;
@@ -282,8 +312,13 @@ XColor   *color;	/* the X color structure; changed only if successful */
      * Found something.  Return it and mark this color as used to avoid
      * reuse.  Reuse causes major contrast problems :-)
      */
-    color->pixel = tmp.pixel;
+    *color = table[tmp.pixel];
     table[tmp.pixel].flags = 0;
+    /* try to alloc the color, so no one else can change it */
+    if(!XAllocColor(DisplayOfScreen(screen), colormap, color)) {
+	cdiff = 16777216;
+	goto try_again;
+    }
     return True;
 }
 
@@ -339,12 +374,21 @@ XtPointer	*closure_ret;
 			      (char*)str, &screenColor, &exactColor);
     if (status == 0) {
 	String msg, type;
+
+	/* some versions of XAllocNamedColor don't allow #xxyyzz names */
+	if (str[0] == '#' &&
+	    XParseColor(DisplayOfScreen(screen), colormap, str, &exactColor) &&
+	    XAllocColor(DisplayOfScreen(screen), colormap, &exactColor)) {
+		*closure_ret = (char*)True;
+		done(Pixel, exactColor.pixel);
+	}
+
 	params[0] = str;
 	/* Server returns a specific error code but Xlib discards it.  Ugh */
 	if (XLookupColor(DisplayOfScreen(screen), colormap, (char*)str,
 			 &exactColor, &screenColor)) {
 	    /* try to find another color that will do */
-	    if (nhCloseColor(screen, colormap, (char*) str, &screenColor)) {
+	    if (nhApproxColor(screen, colormap, (char*) str, &screenColor)) {
 		*closure_ret = (char*)True;
 		done(Pixel, screenColor.pixel);
 	    }
@@ -352,6 +396,12 @@ XtPointer	*closure_ret;
 	    msg = "Cannot allocate colormap entry for \"%s\"";
 	}
 	else {
+	    /* some versions of XLookupColor also don't allow #xxyyzz names */
+	    if(str[0] == '#' &&
+	       (nhApproxColor(screen, colormap, (char*) str, &screenColor))) {
+		*closure_ret = (char*)True;
+		done(Pixel, screenColor.pixel);
+	    }
 	    type = "badValue";
 	    msg = "Color name \"%s\" is not defined";
 	}
@@ -395,7 +445,6 @@ Cardinal	*num_args;
 		    );
     }
 }
-#endif /* TEXTCOLOR */
 
 /* Global Functions ======================================================== */
 void
@@ -579,11 +628,9 @@ X11_clear_nhwindow(window)
     wp = &window_list[window];
 
     switch (wp->type) {
-	case NHW_MAP:
-	    clear_map_window(wp);
-	    break;
+	case NHW_MAP:	clear_map_window(wp); break;
+	case NHW_TEXT:	clear_text_window(wp); break;
 	case NHW_STATUS:
-	case NHW_TEXT:
 	case NHW_MENU:
 	case NHW_MESSAGE:
 	    /* do nothing for these window types */
@@ -608,16 +655,7 @@ X11_display_nhwindow(window, blocking)
 	case NHW_MAP:
 	    if (wp->popup)
 		nh_XtPopup(wp->popup, (int)XtGrabNone, wp->w);
-	    /*else
-	     *  XtMapWidget(toplevel);
-	     *
-	     * We don't need to do the above because we never have
-	     * MappedWhenManaged unset because the DEC server doesn't
-	     * like it.  See comment above XtSetMappedWhenManaged() in
-	     * init_standard_windows().
-	     */
 	    display_map_window(wp);	/* flush map */
-
 	    /*
 	     * We need to flush the message window here due to the way the tty
 	     * port is set up.  To flush a window, you need to call this
@@ -639,27 +677,24 @@ X11_display_nhwindow(window, blocking)
 	case NHW_MESSAGE:
 	    if (wp->popup)
 		 nh_XtPopup(wp->popup, (int)XtGrabNone, wp->w);
-	    /*else
-	     *	XtMapWidget(toplevel);
-	     *
-	     * See comment in NHW_MAP case.
-	     */
-
 	    display_message_window(wp);	/* flush messages */
 	    break;
 	case NHW_STATUS:
 	    if (wp->popup)
 		nh_XtPopup(wp->popup, (int)XtGrabNone, wp->w);
-	    /*else
-	     *	XtMapWidget(toplevel);
-	     *
-	     * See comment in NHW_MAP case.
-	     */
-
 	    break;			/* no flushing necessary */
-	case NHW_MENU:
-	    (void) X11_select_menu(window); /* pop up menu (global routine) */
+	case NHW_MENU: {
+	    int n;
+	    menu_item *selected;
+
+	    /* pop up menu */
+	    n = X11_select_menu(window, PICK_NONE, &selected);
+	    if (n) {
+		impossible("perminvent: %d selected??", n);
+		free((genericptr_t)selected);
+	    }
 	    break;
+	}
 	case NHW_TEXT:
 	    display_text_window(wp, blocking);	/* pop up text window */
 	    break;
@@ -721,8 +756,15 @@ X11_destroy_nhwindow(window)
     }
 }
 
-/* We don't implement a continous invent screen, so this is null. */
-void X11_update_inventory() { return; }
+void
+X11_update_inventory()
+{
+    if (x_inited && window_list[WIN_INVEN].menu_information->is_up) {
+	updated_inventory = 1;	/* hack to avoid mapping&raising window */
+	(void) display_inventory((char *)0, FALSE);
+	updated_inventory = 0;
+    }
+}
 
 /* The current implementation has all of the saved lines on the screen. */
 int X11_doprev_message() { return 0; }
@@ -740,9 +782,9 @@ void X11_mark_synch()
 {
     if (x_inited) {
 	/*
-	 * the window document is a bit unclear about the status of text
-	 * that has been pline()d but not displayed w/display_nhwindow(),
-	 * though the main code and tty code assume that a pline() followed
+	 * The window document is unclear about the status of text
+	 * that has been pline()d but not displayed w/display_nhwindow().
+	 * Both the main and tty code assume that a pline() followed
 	 * by mark_synch() results in the text being seen, even if
 	 * display_nhwindow() wasn't called.  Duplicate this behavior.
 	 */
@@ -752,7 +794,7 @@ void X11_mark_synch()
     }
 }
 
-void X11_wait_synch() {if (x_inited) XFlush(XtDisplay(toplevel)); }
+void X11_wait_synch() { if (x_inited) XFlush(XtDisplay(toplevel)); }
 
 
 /* Both resume_ and suspend_ are called from ioctl.c and unixunix.c. */
@@ -769,12 +811,31 @@ void X11_number_pad(state) int state; { return; } /* called from options.c */
 void X11_start_screen() { return; } /* called from setftty() in unixtty.c */
 void X11_end_screen() { return; }   /* called from settty() in unixtty.c */
 
+#ifdef GRAPHIC_TOMBSTONE
+void X11_outrip(window, how)
+    winid window;
+    int how;
+{
+    struct xwindow *wp;
+    check_winid(window);
+
+    wp = &window_list[window];
+
+    if (wp->type == NHW_TEXT) {
+	wp->text_information->is_rip = TRUE;
+    } else {
+	panic("ripout on non-text window (window type [%d])\n", wp->type);
+    }
+
+    calculate_rip_text(how);
+}
+#endif
 
 /* init and exit nhwindows ------------------------------------------------- */
 
 XtAppContext app_context;		/* context of application */
 Widget	     toplevel = (Widget) 0;	/* toplevel widget */
-Atom         wm_delete_window;		/* To pop-down windows */
+Atom         wm_delete_window;		/* pop down windows */
 
 static XtActionsRec actions[] = {
     {"dismiss_file",	dismiss_file},	/* action for file viewing widget */
@@ -782,6 +843,9 @@ static XtActionsRec actions[] = {
     {"dismiss_text",	dismiss_text},	/* button action for text widget */
     {"delete_text",	delete_text},	/* delete action for text widget */
     {"key_dismiss_text",key_dismiss_text},/* key action for text widget */
+#ifdef GRAPHIC_TOMBSTONE
+    {"rip_dismiss_text",rip_dismiss_text},/* action for rip in text widget */
+#endif
     {"menu_key",	menu_key},	/* action for menu accelerators */
     {"yn_key",		yn_key},	/* action for yn accelerators */
     {"yn_delete",	yn_delete},	/* action for yn delete-window */
@@ -792,6 +856,8 @@ static XtActionsRec actions[] = {
     {"ec_delete",	ec_delete},	/* action for ext-com menu delete */
     {"ps_key",		ps_key},	/* action for player selection */
     {"X11_hangup",	X11_hangup},	/* action for delete of top-level */
+    {"input",		map_input},	/* action for key input */
+    {"scroll",		nh_keyscroll},	/* action for scrolling by keys */
 };
 
 static XtResource resources[] = {
@@ -801,23 +867,45 @@ static XtResource resources[] = {
       XtOffset(AppResources *,autofocus), XtRString, "False" },
     { "message_line", "Message_line", XtRBoolean, sizeof(Boolean),
       XtOffset(AppResources *,message_line), XtRString, "False" },
+    { "double_tile_size", "Double_tile_size", XtRBoolean, sizeof(Boolean),
+      XtOffset(AppResources *,double_tile_size), XtRString, "False" },
+    { "tile_file", "Tile_file", XtRString, sizeof(String),
+      XtOffset(AppResources *,tile_file), XtRString, "" },
     { "icon", "Icon", XtRString, sizeof(String),
       XtOffset(AppResources *,icon), XtRString, "nh72" },
+    { "message_lines", "Message_lines", XtRInt, sizeof(int),
+      XtOffset(AppResources *,message_lines), XtRString, "12" },
+    { "pet_mark_bitmap", "Pet_mark_bitmap", XtRString, sizeof(String),
+      XtOffset(AppResources *,pet_mark_bitmap), XtRString, "pet_mark.xbm" },
+    { "pet_mark_color", "Pet_mark_color", XtRPixel, sizeof(XtRPixel),
+      XtOffset(AppResources *,pet_mark_color), XtRString, "Red" },
+#ifdef GRAPHIC_TOMBSTONE
+    { "tombstone", "Tombstone", XtRString, sizeof(String),
+      XtOffset(AppResources *,tombstone), XtRString, "rip.xpm" },
+    { "tombtext_x", "Tombtext_x", XtRInt, sizeof(int),
+      XtOffset(AppResources *,tombtext_x), XtRString, "155" },
+    { "tombtext_y", "Tombtext_y", XtRInt, sizeof(int),
+      XtOffset(AppResources *,tombtext_y), XtRString, "78" },
+    { "tombtext_dx", "Tombtext_dx", XtRInt, sizeof(int),
+      XtOffset(AppResources *,tombtext_dx), XtRString, "0" },
+    { "tombtext_dy", "Tombtext_dy", XtRInt, sizeof(int),
+      XtOffset(AppResources *,tombtext_dy), XtRString, "13" },
+#endif
 };
 
 void
-X11_init_nhwindows()
+X11_init_nhwindows(argcp,argv)
+int* argcp;
+char** argv;
 {
     static const char *banner_text[] = {
-	"NetHack",
-	"Copyright 1985, 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993",
-	"by Stichting Mathematisch Centrum and M. Stephenson.",
-	"See license for details.",
+	COPYRIGHT_BANNER_A,
+	COPYRIGHT_BANNER_B,
+	COPYRIGHT_BANNER_C,
 	"",
 	"",
 	0
     };
-    static const char *av[] = { "nethack" };
     register const char **pp;
     int i;
     Cardinal num_args;
@@ -829,15 +917,14 @@ X11_init_nhwindows()
 
     XSetIOErrorHandler((XIOErrorHandler) hangup);
 
-    i = 1;
     num_args = 0;
     XtSetArg(args[num_args], XtNallowShellResize, True);	num_args++;
     toplevel = XtAppInitialize(
 		    &app_context,
-		    "NetHack",		/* application class */
+		    "NetHack",			/* application class */
 		    (XrmOptionDescList)0, 0,	/* options list */
-		    &i, av,		/* command line args */
-		    (String *)0,	/* fallback resources */
+		    argcp, (String *)argv,	/* command line args */
+		    (String *)0,		/* fallback resources */
 		    (ArgList)args, num_args);
     XtOverrideTranslations(toplevel,
 	XtParseTranslationTable("<Message>WM_PROTOCOLS: X11_hangup()"));
@@ -847,7 +934,7 @@ X11_init_nhwindows()
 #ifdef TEXTCOLOR
     /* add new color converter to deal with overused colormaps */
     XtSetTypeConverter(XtRString, XtRPixel, nhCvtStringToPixel,
-		       (XtConvertArgList)nhcolorConvertArgs, 
+		       (XtConvertArgList)nhcolorConvertArgs,
 		       XtNumber(nhcolorConvertArgs),
 		       XtCacheByDisplay, nhFreePixel);
 #endif /* TEXTCOLOR */
@@ -862,7 +949,6 @@ X11_init_nhwindows()
 
     /* Initialize other things. */
     init_standard_windows();
-    init_extended_commands_popup();
 
     /* Give the window manager an icon to use;  toplevel must be realized. */
     if (appResources.icon && *appResources.icon) {
@@ -871,8 +957,8 @@ X11_init_nhwindows()
 	for (ip = icon_data; ip->name; ip++)
 	    if (!strcmp(appResources.icon, ip->name)) {
 		icon_pixmap = XCreateBitmapFromData(XtDisplay(toplevel),
-					XtWindow(toplevel),
-					ip->bits, ip->width, ip->height);
+				XtWindow(toplevel),
+				(genericptr_t)ip->bits, ip->width, ip->height);
 		if (icon_pixmap != None) {
 		    XWMHints hints;
 
@@ -894,19 +980,23 @@ X11_init_nhwindows()
 
 /*
  * Let the OS take care of almost everything.  This includes the "main"
- * three windows:  message, map, and status.  Note that if I destroy one of
- * the three main windows, they all will be destroyed, due to their shared
- * parent.  I currently don't check such a thing occuring, so the whole mess
- * will probably crash&burn if I tried it.
+ * three windows:  message, map, and status.  If I destroy one, I must
+ * destroy them all.
  */
 /* ARGSUSED */
 void X11_exit_nhwindows(dummy)
     const char *dummy;
 {
-    /* explicitly free the icon pixmap */
+    extern Pixmap tile_pixmap;	/* from winmap.c */
+
+    /* explicitly free the icon and tile pixmaps */
     if (icon_pixmap != None) {
 	XFreePixmap(XtDisplay(toplevel), icon_pixmap);
 	icon_pixmap = None;
+    }
+    if (tile_pixmap != None) {
+	XFreePixmap(XtDisplay(toplevel), tile_pixmap);
+	tile_pixmap = None;
     }
 }
 
@@ -964,7 +1054,7 @@ X11_hangup(w, event, params, num_params)
     String *params;
     Cardinal *num_params;
 {
-    (void) hangup();
+    hangup(1);		/* 1 is commonly SIGHUP, but ignored anyway */
 }
 
 /* askname ----------------------------------------------------------------- */
@@ -1129,7 +1219,7 @@ X11_getlin(question, input)
     SetDialogResponse(getline_dialog, "");	/* set default answer */
     positionpopup(getline_popup, TRUE);		/* center,bottom */
 
-    nh_XtPopup(getline_popup, (int)XtGrabNone, getline_dialog);
+    nh_XtPopup(getline_popup, (int)XtGrabExclusive, getline_dialog);
 
     /* The callback will enable the event loop exit. */
     (void) x_event(EXIT_ON_EXIT);
@@ -1176,7 +1266,7 @@ X11_display_file(str, complain)
     const char *str;
     boolean complain;
 {
-    FILE *fp;
+    dlb *fp;
     Arg args[12];
     Cardinal num_args;
     Widget popup, dispfile;
@@ -1188,7 +1278,7 @@ X11_display_file(str, complain)
     int num_lines;
 
     /* Use the port-independent file opener to see if the file exists. */
-    fp = fopen_datafile(str, "r");
+    fp = dlb_fopen(str, RDTMODE);
 
     if (!fp) {
 	if(complain) pline("Cannot open %s.  Sorry.", str);
@@ -1201,12 +1291,12 @@ X11_display_file(str, complain)
      * size, use that instead.
      */
     num_lines = 0;
-    while (fgets(line, LLEN, fp)) {
+    while (dlb_fgets(line, LLEN, fp)) {
 	num_lines++;
 	if (num_lines >= DISPLAY_FILE_SIZE) break;
     }
 
-    (void) fclose(fp);
+    (void) dlb_fclose(fp);
 
     /* Ignore empty files */
     if (num_lines == 0) return;
@@ -1262,7 +1352,7 @@ X11_display_file(str, complain)
     XtSetArg(args[num_args], XtNheight, new_height); num_args++;
     XtSetValues(dispfile, args, num_args);
 
-    nh_XtPopup(popup, (int)XtGrabNone, None);
+    nh_XtPopup(popup, (int)XtGrabNone, (Widget)0);
 }
 
 
@@ -1287,7 +1377,7 @@ static const char yn_translations[] =
 /*
  * Convert the given key event into a character.  If the key maps to
  * more than one character only the first is returned.  If there is
- * no conversion (i.e. just the CTRL key hit) a NULL is returned.
+ * no conversion (i.e. just the CTRL key hit) a NUL is returned.
  */
 char
 key_event_to_char(key)
@@ -1421,20 +1511,22 @@ X11_yn_function(ques, choices, def)
 	display_message_window(&window_list[WIN_MESSAGE]);
 
     if (choices) {
+	char *cb, choicebuf[QBUFSZ];
+
+	Strcpy(choicebuf, choices);	/* anything beyond <esc> is hidden */
+	if ((cb = index(choicebuf, '\033')) != 0) *cb = '\0';
 	/* ques [choices] (def) */
-	if ((1 + strlen(ques) + 2 + strlen(choices) + 4) >= QBUFSZ)
+	if ((int)(1 + strlen(ques) + 2 + strlen(choicebuf) + 4) >= QBUFSZ)
 	    panic("yn_function:  question too long");
-	if (def)
-	    Sprintf(buf, "%s [%s] (%c)", ques, choices, def);
-	else
-	    Sprintf(buf, "%s [%s] ", ques, choices);
+	Sprintf(buf, "%s [%s] ", ques, choicebuf);
+	if (def) Sprintf(eos(buf), "(%c) ", def);
 
 	/* escape maps to 'q' or 'n' or default, in that order */
 	yn_esc_map = (index(choices, 'q') ? 'q' :
 		     (index(choices, 'n') ? 'n' :
 					    def));
     } else {
-	if ((1 + strlen(ques)) >= QBUFSZ)
+	if ((int)(1 + strlen(ques)) >= QBUFSZ)
 	    panic("yn_function:  question too long");
 	Strcpy(buf, ques);
     }
@@ -1565,7 +1657,7 @@ init_standard_windows()
     num_args = 0;
     XtSetArg(args[num_args], XtNallowShellResize, True);	num_args++;
     form = XtCreateManagedWidget("nethack",
-				formWidgetClass,
+				panedWidgetClass,
 				toplevel, args, num_args);
 
     XtAddEventHandler(form, KeyPressMask, False,
@@ -1603,6 +1695,7 @@ init_standard_windows()
 					 args, num_args);
 	num_args = 0;
 	XtSetArg(args[num_args], XtNfromVert, message_viewport); num_args++;
+	XtSetArg(args[num_args], XtNjustify, XtJustifyLeft);	num_args++;
 	XtSetArg(args[num_args], XtNresizable, True);	num_args++;
 	XtSetArg(args[num_args], XtNlabel, " ");	num_args++;
 	XtSetValues(yn_label, args, num_args);
@@ -1666,6 +1759,32 @@ init_standard_windows()
 				   "WM_DELETE_WINDOW", False);
     XSetWMProtocols(XtDisplay(toplevel), XtWindow(toplevel),
 		    &wm_delete_window, 1);
+
+    /*
+     * Resize to at most full-screen.
+     */
+    {
+#define TITLEBAR_SPACE 18 /* Leave SOME screen for window decorations */
+
+	int screen_width  = WidthOfScreen(XtScreen(wp->w));
+	int screen_height = HeightOfScreen(XtScreen(wp->w)) - TITLEBAR_SPACE;
+	Dimension form_width, form_height;
+
+	XtSetArg(args[0], XtNwidth, &form_width);
+	XtSetArg(args[1], XtNheight, &form_height);
+	XtGetValues(toplevel, args, TWO);
+	
+	if (form_width > screen_width || form_height > screen_height) {
+	    XtSetArg(args[0], XtNwidth, min(form_width,screen_width));
+	    XtSetArg(args[1], XtNheight, min(form_height,screen_height));
+	    XtSetValues(toplevel, args, TWO);
+	    XMoveWindow(XtDisplay(toplevel),XtWindow(toplevel),
+		0, TITLEBAR_SPACE);
+	}
+#undef TITLEBAR_SPACE
+    }
+
+    post_process_tiles();	/* after toplevel is realized */
 
     /*
      * Now get the default widths of the windows.
@@ -1773,6 +1892,91 @@ win_X11_init()
     }
 #endif
     return;
+}
+
+/* Callback
+ * Scroll a viewport, using standard NH 1,2,3,4,6,7,8,9 directions.
+ */
+/*ARGSUSED*/
+void
+nh_keyscroll(viewport, event, params, num_params)
+    Widget   viewport;
+    XEvent   *event;
+    String   *params;
+    Cardinal *num_params;
+{
+    Arg arg[2];
+    Widget horiz_sb, vert_sb;
+    float top, shown;
+    Boolean do_call;
+    int direction;
+    Cardinal in_nparams = (num_params ? *num_params : 0);
+
+    if (in_nparams != 1) return; /* bad translation */
+
+    direction=atoi(params[0]);
+
+    horiz_sb = XtNameToWidget(viewport, "*horizontal");
+    vert_sb  = XtNameToWidget(viewport, "*vertical");
+
+    if (!horiz_sb && !vert_sb) {
+	/* Perhaps the widget enclosing this has scrollbars (could use while) */
+	Widget parent=XtParent(viewport);
+	if (parent) {
+	    horiz_sb = XtNameToWidget(parent, "horizontal");
+	    vert_sb  = XtNameToWidget(parent, "vertical");
+	}
+    }
+
+#define H_DELTA 0.25		/* distance of horiz shift */
+				/* vert shift is half of curr distance */
+/* The V_DELTA is 1/2 the value of shown. */
+
+    if (horiz_sb) {
+	XtSetArg(arg[0], XtNshown,	&shown);
+	XtSetArg(arg[1], XtNtopOfThumb, &top);
+	XtGetValues(horiz_sb, arg, TWO);
+
+	do_call = True;
+
+	switch (direction) {
+	  case 1: case 4: case 7:
+	    top -= H_DELTA;
+	    if (top < 0.0) top = 0.0;
+	break; case 3: case 6: case 9:
+	    top += H_DELTA;
+	    if (top + shown > 1.0) top = 1.0 - shown;
+	break; default:
+	    do_call = False;
+	}
+
+	if (do_call) {
+	    XtCallCallbacks(horiz_sb, XtNjumpProc, &top);
+	}
+    }
+
+    if (vert_sb) {
+	XtSetArg(arg[0], XtNshown,      &shown);
+	XtSetArg(arg[1], XtNtopOfThumb, &top);
+	XtGetValues(vert_sb, arg, TWO);
+
+	do_call = True;
+
+	switch (direction) {
+	  case 7: case 8: case 9:
+	    top -= shown / 2.0;
+	    if (top < 0.0) top = 0;
+	break; case 1: case 2: case 3:
+	    top += shown / 2.0;
+	    if (top + shown > 1.0) top = 1.0 - shown;
+	break; default:
+	    do_call = False;
+	}
+
+	if (do_call) {
+	    XtCallCallbacks(vert_sb, XtNjumpProc, &top);
+	}
+    }
 }
 
 /*winX.c*/

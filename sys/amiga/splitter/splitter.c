@@ -1,8 +1,8 @@
-/*    SCCS Id: @(#)splitter.c		3.1   93/01/08
-/*    Copyright (c) Kenneth Lorber, Bethesda, Maryland, 1992, 1993 */
+/*    SCCS Id: @(#)splitter.c		3.1   95/07/25
+/*    Copyright (c) Kenneth Lorber, Bethesda, Maryland, 1992, 1993, 1995 */
 /* NetHack may be freely redistributed.  See license for details. */
 
-#define SOUT	/* split output files */
+#define SOUT				/* split output files */
 #define SPLITSIZE (800 * 1024)		/* somewhat < one floppy */
 
 #include <stdio.h>
@@ -20,6 +20,7 @@
 #include "arg.h"
 
 int main(int,char **);
+char *stripname(char *);
 
 char *code_proto="%n.c%C";
 char *data_proto="%n.d%D";
@@ -27,9 +28,9 @@ char *dir_proto="%n.dir";
 
 char trace[MAXTRACEVAR];		/* debugging info */
 char *basename;
-int datacount;	/* for ssubst - should be replaced */
+int datacount;				/* for ssubst - should be replaced */
 int codecount;
-int data_file_count=0;	/* actual maxima */
+int data_file_count=0;			/* actual maxima */
 int code_file_count=0;
 struct hheader hheader;
 struct shunk (*hlist)[];
@@ -75,17 +76,26 @@ main(argc,argv)
 		panic("Error processing arguments.");
 	case ARG_FREE:
 		basename=strdup(argarg);
-		read_load_file(basename);break;
+			/*
+			 * Force the output files into the current directory.
+			 * Note that this leaks memory from the start of the
+			 * string (but we don't care in this case).
+			 */
+		basename=stripname(basename);
+		read_load_file(argarg);break;
 	}
     }
     renumber();
+
     out_start(code_proto);
     write_header();
     write_code_file();
     out_stop();
+
     out_start(data_proto);
     write_data_file();
     out_stop();
+
     write_dir_file();
     exit(0);
 }
@@ -131,7 +141,9 @@ eos(s)
     return s;
 }
 
-/* input routines */
+/*
+ * input routines
+ */
 
 	/* macro for reading the next long.  If e==EOF_OK, caller MUST check
 	 * for EOF condition via hreadval or assure it can't occur */
@@ -183,7 +195,9 @@ read_load_file(name)
     close(f->fd);
 }
 
-/* write routines */
+/*
+ * write routines
+ */
 #define S_CODE	0
 #define S_DATA	1
 
@@ -237,16 +251,16 @@ write_dir_file(){
 
     for(x=0;x<=code_file_count;x++){
 	codecount=x;
-	fprintf(fp,"C%s\n",ssubst(buf,code_proto));
+	fprintf(fp,"C %s\n",ssubst(buf,code_proto));
     }
     for(x=0;x<=data_file_count;x++){
 	datacount=x;
-	fprintf(fp,"D%s\n",ssubst(buf,data_proto));
+	fprintf(fp,"D %s\n",ssubst(buf,data_proto));
     }
     fclose(fp);
 }
 
-/* BUGFIX: 9/23/92: see HT() above */
+/* macro to eliminate type bits, leaving the length of a memory allocation */
 #define HT(x)	((x) & ~MEM_OBJ_EXTEND)
 
 int
@@ -267,7 +281,6 @@ write_split_file(fl)
     return wsf_count;
 }
 
-/* BUGFIX: 9/23/92: see HT() below */
 void
 wsf_hunk(hp)
     hunk *hp;
@@ -342,10 +355,6 @@ renumber()
     renumber2(S_DATA,n);
 }
 
-/* BUGFIX 9/23/92: hp->rb->id must be wrapped with a bit stripper to ignore
- * memory type bits still in that longword.
- */
-
 renumber2(fl,n)
     int fl;
     int n;
@@ -364,9 +373,13 @@ renumber2(fl,n)
     return n;
 }
 
-/* output package */
+/*
+ * output package
+ */
 #ifndef SOUT
-/* NB - this version does NOT cope with multiple output files per type */
+/* NB - this version does NOT cope with multiple output files per type
+ *      define SOUT to do that
+ */
 int ofile;
 
 void
@@ -407,6 +420,9 @@ owrite(where,len)
     write(ofile,where,len);
 }
 #else /* SOUT */
+/* split output files - these are read via multi.  This code will eventually
+ * migrate into multi as well.
+ */
 int ofile=0;
 int osize;
 char *oprot;
@@ -437,7 +453,7 @@ owrite_long(literal)
 
 void
 owrite_short(literal)
-    short literal;
+    int literal;
 {
     short x=literal;
     if((osize+sizeof(x))>SPLITSIZE)new_file();
@@ -450,7 +466,12 @@ owrite(where,len)
     void *where;
     long len;
 {
-    if((osize+len)>SPLITSIZE)new_file();
+    while((osize+len)>SPLITSIZE){
+	write(ofile,where,SPLITSIZE-osize);
+	len -= (SPLITSIZE-osize);
+	where = (void *)((char *)where + SPLITSIZE-osize);
+	new_file();
+    }
     write(ofile,where,len);
     osize += len;
 }
@@ -465,6 +486,9 @@ new_file(){
 }
 #endif /* SOUT */
 
+/*
+ * list functions with error checking
+ */
 struct Node *Head(l)
     struct List *l;
 {
@@ -492,6 +516,8 @@ struct Node *Prev(n)
 
 struct List *_fortemp;	/* scratch for foreach macro */
 
+#if 0
+/* debugging routines - enable if needed */
 void
 dump_after_read(struct List *root){
     file *f;
@@ -548,6 +574,7 @@ print_bin_block(block *b){
 	printf("\t\t\tid1=%08x id2=%08x len=%08x\n", b->id,b->b[0],b->b[1]);
     }
 }
+#endif
 
 /*
  * read routines
@@ -660,7 +687,7 @@ void ReadReloc(f,id,ls)
     block *cur;
     listlist *blist=NewListList();
 
-    AddTail(ls,blist);
+    AddTail(ls, (struct Node *)blist);
     blist->id=id;
     len=READLONG(EOF_BAD);
     while(len){
@@ -669,7 +696,7 @@ void ReadReloc(f,id,ls)
 	read(f->fd,&(cur->b[1]),len*4+4);
 	cur->b[0]=len;
 	LIST{printf("\thunk #%d - %d items\n",cur->b[1],len);}
-	AddTail(&blist->list,cur);
+	AddTail(&blist->list, (struct Node *)cur);
 	len=READLONG(EOF_BAD);
     }
 }
@@ -731,4 +758,21 @@ long *NewData(longs)
     long longs;	
     {
     return(malloc(longs*4));
+}
+
+/* filename cleanup */
+char *
+stripname(p)
+    char *p;
+    {
+    char *n;
+
+    while(n=strchr(p,':')){
+	p=n+1;
+    }
+    while(n=strchr(p,'/')){
+	p=n+1;
+    }
+
+    return p;
 }

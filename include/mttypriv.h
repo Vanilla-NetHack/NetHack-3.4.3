@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mttypriv.h	3.1	93/03/01			*/
+/*	SCCS Id: @(#)mttypriv.h	3.2	93/03/01	*/
 /* Copyright (c) Jon W{tte 1993.					*/
 /* NetHack may be freely redistributed.  See license for details.	*/
 
@@ -12,7 +12,7 @@
 # define _H_tty_private
 
 # ifndef _H_tty_public
-#  include "mactty.h"
+#include "mactty.h"
 # endif
 
 #define TA_TO_RGB(ta,rgb) (((rgb).red=(((ta)>>16)&0xff)*257),((rgb).green=(((ta)>>8)&0xff)*257),\

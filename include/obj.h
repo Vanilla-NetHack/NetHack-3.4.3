@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)obj.h	3.1	93/03/30	*/
+/*	SCCS Id: @(#)obj.h	3.2	95/11/09	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -8,10 +8,20 @@
 /* #define obj obj_nh	/* uncomment for SCO UNIX, which has a conflicting
 			 * typedef for "obj" in <sys/types.h> */
 
+union vptrs {
+	    struct obj *v_nexthere;	/* floor location lists */
+	    struct obj *v_ocontainer;	/* point back to container */
+	    struct monst *v_ocarry;	/* point back to carrying monst */
+};
+
 struct obj {
 	struct obj *nobj;
-	struct obj *nexthere;	/* for location lists */
-	struct obj *cobj;	/* contents list for containers */
+	union vptrs v;
+#define nexthere	v.v_nexthere
+#define ocontainer	v.v_ocontainer
+#define ocarry		v.v_ocarry
+
+	struct obj *cobj;       /* contents list for containers */
 /*	unsigned o_cwt;		/* container weight capacity */
 	unsigned o_id;
 	xchar ox,oy;
@@ -23,11 +33,24 @@ struct obj {
 				   number of charges for wand ( >= -1 )
 				   marks your eggs, spinach tins
 				   indicates statues have spellbooks inside
+				   royal coffers for a court ( == 2)
 				   tells which fruit a fruit is
 				   special for uball and amulet %% BAH */
 	char	oclass;		/* object class */
 	char	invlet;		/* designation in inventory */
 	char	oartifact;	/* artifact array index */
+
+	xchar where;		/* where the object thinks it is */
+#define OBJ_FREE	0		/* object not attached to anything */
+#define OBJ_FLOOR	1		/* object on floor */
+#define OBJ_CONTAINED	2		/* object in a container */
+#define OBJ_INVENT	3		/* object in the hero's inventory */
+#define OBJ_MINVENT	4		/* object in a monster inventory */
+#define OBJ_MIGRATING   5		/* object sent off to another level */
+#define OBJ_BURIED	6		/* object buried */
+#define OBJ_ONBILL	7		/* object on shk bill */
+#define NOBJ_STATES	8
+	xchar timed;		/* # of fuses (timers) attached to this obj */
 
 	Bitfield(cursed,1);
 	Bitfield(blessed,1);
@@ -48,9 +71,8 @@ struct obj {
 	Bitfield(obroken,1);	/* lock has been broken */
 	Bitfield(otrapped,1);	/* container is trapped */
 #define opoisoned otrapped	/* object (weapon) is coated with poison */
-	Bitfield(oldcorpse,1);	/* for troll corpses too old to revive */
 #ifndef NO_SIGNAL
-# define in_use oldcorpse	/* for magic items before useup items */
+	Bitfield(in_use,1);	/* for magic items before useup items */
 #endif
 	Bitfield(lamplit,1);    /* a light-source -- can be lit */
 
@@ -99,24 +121,59 @@ struct obj {
 };
 
 #define newobj(xl)	(struct obj *)alloc((unsigned)(xl) + sizeof(struct obj))
-#define dealloc_obj(obj) free((genericptr_t) (obj))
 #define ONAME(otmp)	((char *)(otmp)->oextra)
 
-#define Has_contents(o) ((Is_container(o) || (o)->otyp == STATUE) && (o)->cobj)
+#define carried(o)	((o)->where == OBJ_INVENT)
+#define Has_contents(o) (/* (Is_container(o) || (o)->otyp == STATUE) && */ \
+			 (o)->cobj != (struct obj *)0)
 #define Is_container(o) ((o)->otyp >= LARGE_BOX && (o)->otyp <= BAG_OF_TRICKS)
 #define Is_box(otmp)	(otmp->otyp == LARGE_BOX || otmp->otyp == CHEST)
 #define Is_mbag(otmp)	(otmp->otyp == BAG_OF_HOLDING || \
 			 otmp->otyp == BAG_OF_TRICKS)
 
-#define is_sword(otmp)	(otmp->otyp >= SHORT_SWORD && \
-			 otmp->otyp <= RUNESWORD)
-#define is_blade(otmp)	(otmp->otyp >= DAGGER && \
-			 otmp->otyp <= BILL_GUISARME)
+#define is_shield(otmp) (otmp->oclass == ARMOR_CLASS && \
+			 objects[otmp->otyp].oc_armcat == ARM_SHIELD)
+#define is_helmet(otmp) (otmp->oclass == ARMOR_CLASS && \
+			 objects[otmp->otyp].oc_armcat == ARM_HELM)
+#define is_boots(otmp)	(otmp->oclass == ARMOR_CLASS && \
+			 objects[otmp->otyp].oc_armcat == ARM_BOOTS)
+#define is_gloves(otmp) (otmp->oclass == ARMOR_CLASS && \
+			 objects[otmp->otyp].oc_armcat == ARM_GLOVES)
+#define is_cloak(otmp)	(otmp->oclass == ARMOR_CLASS && \
+			 objects[otmp->otyp].oc_armcat == ARM_CLOAK)
+#define is_shirt(otmp)	(otmp->oclass == ARMOR_CLASS && \
+			 objects[otmp->otyp].oc_armcat == ARM_SHIRT)
+#define is_suit(otmp)	(otmp->oclass == ARMOR_CLASS && \
+			 objects[otmp->otyp].oc_armcat == ARM_SUIT)
+
+#define is_sword(otmp)	(otmp->oclass == WEAPON_CLASS && \
+			 objects[otmp->otyp].oc_wepcat == WEP_SWORD)
+#define is_blade(otmp)	(otmp->oclass == WEAPON_CLASS && \
+			 (objects[otmp->otyp].oc_wepcat == WEP_BLADE || \
+			  objects[otmp->otyp].oc_wepcat == WEP_SWORD))
+#define is_weptool(o)	((o)->oclass == TOOL_CLASS && \
+			 objects[(o)->otyp].oc_weptool)
 #define bimanual(otmp)	((otmp->oclass == WEAPON_CLASS || \
-			  otmp->otyp == UNICORN_HORN) && \
+			  otmp->oclass == TOOL_CLASS) && \
 			 objects[otmp->otyp].oc_bimanual)
 
 #define Is_candle(otmp)	(otmp->otyp == TALLOW_CANDLE || \
 			 otmp->otyp == WAX_CANDLE)
+
+/* Flags for get_obj_location(). */
+#define CONTAINED_TOO	0x1
+#define BURIED_TOO	0x2
+
+/* maximum amount of oil in a potion of oil */
+#define MAX_OIL_IN_FLASK 400
+
+/* egg stuff */
+#define MAX_EGG_HATCH_TIME 200	/* longest an egg can remain unhatched */
+#define stale_egg(egg)	((monstermoves - (egg)->age) > (2*MAX_EGG_HATCH_TIME))
+
+#define ofood(o) ((o)->otyp == CORPSE || (o)->otyp == EGG || (o)->otyp == TIN)
+#define polyfodder(obj)	(ofood(obj) && (obj)->corpsenm == PM_CHAMELEON)
+#define mlevelgain(obj)	(ofood(obj) && (obj)->corpsenm == PM_WRAITH)
+#define mhealup(obj)	(ofood(obj) && (obj)->corpsenm == PM_NURSE)
 
 #endif /* OBJ_H */

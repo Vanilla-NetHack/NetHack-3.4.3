@@ -70,6 +70,8 @@ Giant bats turn into giant vampires.
 Good day for overcoming obstacles.  Try a steeplechase.
 Half Moon tonight.  (At least it's better than no Moon at all.)
 Help!  I'm being held prisoner in a fortune cookie factory!
+Housecats have nine lives, kittens only one.
+How long can you tread water?
 Hungry?  There is an abundance of food on the next level.
 I guess you've never hit a mail daemon with the Amulet of Yendor...
 If you are the shopkeeper, you can take things for free.
@@ -88,7 +90,7 @@ Keep a clear mind:  quaff clear potions.
 Kicking the terminal doesn't hurt the monsters.
 Killer bees keep appearing till you kill their queen.
 Killer bunnies can be tamed with carrots only.
-Latest news?  Put `rec.games.hack' in your .newsrc!
+Latest news?  Put `rec.games.roguelike.nethack' in your .newsrc!
 Learn how to spell.  Play NetHack!
 Leprechauns hide their gold in a secret room.
 Let your fingers do the walking on the yulkjhnb keys.
@@ -137,7 +139,6 @@ Praying will frighten demons.
 Row (3x) that boat gently down the stream, Charon (4x), death is but a dream.
 Running is good for your legs.
 Screw up your courage!  You've screwed up everything else.
-Scrolls fading?  It's not the heat, it's the humidity.
 Seepage?  Leaky pipes?  Rising damp?  Summon the plumber!
 Segmentation fault (core dumped).
 Shopkeepers sometimes die from old age.
@@ -151,7 +152,11 @@ Taming a mail daemon may cause a system security violation.
 The crowd was so tough, the Stooges won't play the Dungeon anymore, nyuk nyuk.
 The leprechauns hide their treasure in a small hidden room.
 The longer the wand the better.
+The magic word is "XYZZY".
+The meek shall inherit your bones files.
+The mines are dark and deep, and I have levels to go before I sleep.
 The use of dynamite is dangerous.
+There are no worms in the UNIX version.
 There is a trap on this level!
 They say that Demogorgon, Asmodeus, Orcus, Yeenoghu & Juiblex is no law firm.
 They say that Geryon has an evil twin, beware!
@@ -204,7 +209,7 @@ They say that a stethoscope is no good if you can only hear your heartbeat.
 They say that a succubus named Suzy will sometimes warn you of danger.
 They say that a wand of cancellation is not like a wand of polymorph.
 They say that a wood golem named Pinocchio would be easy to control.
-They say that after killing a dragon its time for a change of scenery.
+They say that after killing a dragon it's time for a change of scenery.
 They say that an amulet of strangulation is worse than ring around the collar.
 They say that an attic is the best place to hide your toys.
 They say that an axe named Cleaver once belonged to a hacker named Beaver.
@@ -226,6 +231,7 @@ They say that donating a doubloon is extremely pious charity.
 They say that eating royal jelly attracts grizzly owlbears.
 They say that eggs, pancakes and juice are just a mundane breakfast.
 They say that everyone knows why Medusa stands alone in the dark.
+They say that everyone wanted rec.games.hack to undergo a name change.
 They say that finding a winning strategy is a deliberate move on your part.
 They say that finding worthless glass is worth something.
 They say that fortune cookies are food for thought.
@@ -258,7 +264,7 @@ They say that most trolls are born again.
 They say that naming your cat Garfield will make you more attractive.
 They say that no one knows everything about everything in the dungeon.
 They say that no one plays NetHack just for the fun of it.
-They say that no one really subscribes to rec.games.hack.
+They say that no one really subscribes to rec.games.roguelike.nethack.
 They say that no one will admit to starting a rumor.
 They say that nurses sometimes carry scalpels and never use them.
 They say that once you've met one wizard you've met them all.
@@ -266,7 +272,6 @@ They say that one troll is worth 10,000 newts.
 They say that only David can find the zoo!
 They say that only angels play their harps for their pets.
 They say that only big spenders carry gold.
-They say that only female monsters can lay eggs.
 They say that orc shamans are healthy, wealthy and wise.
 They say that playing NetHack is like walking into a death trap.
 They say that problem breathing is best treated by a proper diet.
@@ -275,6 +280,7 @@ They say that queen bees get that way by eating royal jelly.
 They say that reading a scare monster scroll is the same as saying Elbereth.
 They say that real hackers always are controlled.
 They say that real hackers never sleep.
+They say that shopkeepers are insured by Croesus himself!
 They say that shopkeepers never carry more than 20 gold pieces, at night.
 They say that shopkeepers never sell blessed potions of invisibility.
 They say that soldiers wear kid gloves and silly helmets.
@@ -330,19 +336,22 @@ They say that you should never introduce a rope golem to a succubus.
 They say that you should never sleep near invisible ring wraiths.
 They say that you should never try to leave the dungeon with a bag of gems.
 They say that you should remove your armor before sitting on a throne.
-They say the gods get angry if you kill your dog.
+This fortune cookie is copy protected.
 This fortune cookie is the property of Fortune Cookies, Inc.
+Tired?  Try a scroll of charging on yourself.
+To achieve the next higher rating, you need 3 more points.
 To reach heaven, escape the dungeon while wearing a ring of levitation.
 Tourists wear shirts loud enough to wake the dead.
-Tridents are for use underwater.
 Try calling your katana Moulinette.
 Ulch!  That meat was painted!
 Unfortunately, this message was left intentionally blank.
 Using a morning star in the evening has no effect.
 Want a hint?  Zap a wand of make invisible on your weapon!
+Want to ascend in a hurry?  Apply at Gizmonic Institute.
 Wanted: shopkeepers.  Send a scroll of mail to Mage of Yendor/Level 35/Dungeon.
 Warning:  fortune reading can be hazardous to your health.
 We have new ways of detecting treachery...
+Wet towels make great weapons!
 What a pity, you cannot read it!
 When a piercer drops in on you, you will be tempted to hit the ceiling!
 When in a maze follow the right wall and you will never get lost.
@@ -351,9 +360,11 @@ Why are you wasting time reading fortunes?
 Wish for a master key and open the Magic Memory Vault!
 Wizard expects every monster to do its duty.
 Wow!  You could've had a potion of fruit juice!
+Yet Another Silly Message (YASM).
 You are destined to be misled by a fortune.
 You can get a genuine Amulet of Yendor by doing the following:  --More--
 You can protect yourself from black dragons by doing the following:  --More--
+You can't get by the snake.
 You feel like someone is pulling your leg.
 You have to outwit the Sphynx or pay her.
 You hear the fortune cookie's hissing!

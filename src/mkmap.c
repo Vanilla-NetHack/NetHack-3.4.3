@@ -1,11 +1,11 @@
-/*	SCCS Id: @(#)mkmap.c	3.1	92/07/15	*/
+/*	SCCS Id: @(#)mkmap.c	3.2	92/07/15	*/
 /* Copyright (c) J. C. Collet, M. Stephenson and D. Cohrs, 1992   */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
 #include "sp_lev.h"
 
-#define	HEIGHT	(ROWNO - 1)
+#define HEIGHT	(ROWNO - 1)
 #define WIDTH	(COLNO - 2)
 
 static void FDECL(init_map,(SCHAR_P));
@@ -321,7 +321,7 @@ joinm:
 	    em.y = croom2->ly + ((croom2->hy - croom2->ly) / 2);
 	}
 
-	(void) dig_corridor(sm, em, FALSE, fg_typ, bg_typ);
+	(void) dig_corridor(&sm, &em, FALSE, fg_typ, bg_typ);
 
 	/* choose next region to join */
 	/* only increment croom if croom and croom2 are non-overlapping */
@@ -335,8 +335,8 @@ joinm:
 
 static void
 finish_map(fg_typ, bg_typ, lit, walled)
-        schar	fg_typ, bg_typ;
-        boolean	lit, walled;
+	schar	fg_typ, bg_typ;
+	boolean	lit, walled;
 {
 	int	i, j;
 
@@ -354,9 +354,9 @@ finish_map(fg_typ, bg_typ, lit, walled)
 	}
 }
 
-#define	N_P1_ITER	1	/* tune map generation via this value */
-#define	N_P2_ITER	1	/* tune map generation via this value */
-#define	N_P3_ITER	2	/* tune map smoothing via this value */
+#define N_P1_ITER	1	/* tune map generation via this value */
+#define N_P2_ITER	1	/* tune map generation via this value */
+#define N_P3_ITER	2	/* tune map smoothing via this value */
 
 void
 mkmap(init_lev)
@@ -366,9 +366,9 @@ mkmap(init_lev)
 	schar	bg_typ = init_lev->bg,
 		fg_typ = init_lev->fg;
 	boolean smooth = init_lev->smoothed,
-                join = init_lev->joined;
-        xchar   lit = init_lev->lit,
-                walled = init_lev->walled;
+		join = init_lev->joined;
+	xchar   lit = init_lev->lit,
+		walled = init_lev->walled;
 	int i;
 
 	if(lit < 0)
@@ -400,3 +400,5 @@ mkmap(init_lev)
 	}
 	free(new_locations);
 }
+
+/*mkmap.c*/

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)vault.h	3.1	92/04/18	*/
+/*	SCCS Id: @(#)vault.h	3.2	92/04/18	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -10,7 +10,9 @@ struct fakecorridor {
 	xchar fx,fy,ftyp;
 };
 
+#ifndef DUNGEON_H
 #include "dungeon.h"
+#endif
 
 struct egd {
 	int fcbeg, fcend;	/* fcend: first unused pos */

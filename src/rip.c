@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)rip.c	3.1	93/04/26	*/
+/*	SCCS Id: @(#)rip.c	3.2	95/05/01	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -11,25 +11,25 @@ extern const char *killed_by_prefix[];
 #if defined(TTY_GRAPHICS) || defined(X11_GRAPHICS) || defined(mac)
 
 static const char *rip_txt[] = {
-"                       ----------",
-"                      /          \\",
-"                     /    REST    \\",
-"                    /      IN      \\",
-"                   /     PEACE      \\",
-"                  /                  \\",
-"                  |                  |", /* Name of player */
-"                  |                  |", /* Amount of $ */
-"                  |                  |", /* Type of death */
-"                  |                  |", /* . */
-"                  |                  |", /* . */
-"                  |                  |", /* . */
-"                  |       1001       |", /* Real year of death */
-"                 *|     *  *  *      | *",
-"        _________)/\\\\_//(\\/(/\\)/\\//\\/|_)_______",
+"              ----------                      ----------",
+"             /          \\                    /          \\",
+"            /    REST    \\                  /    This    \\",
+"           /      IN      \\                /  release of  \\",
+"          /     PEACE      \\              /   NetHack is   \\",
+"         /                  \\            /   dedicated to   \\",
+"         |                  |            |  the memory of   |",
+"         |                  |            |                  |",
+"         |                  |            |  Izchak Miller   |",
+"         |                  |            |   1935 - 1994    |",
+"         |                  |            |                  |",
+"         |                  |            |     Ascended     |",
+"         |       1001       |            |                  |",
+"      *  |     *  *  *      | *        * |      *  *  *     | *",
+" _____)/\\|\\__//(\\/(/\\)/\\//\\/|_)________)/|\\\\_/_/(\\/(/\\)/\\/\\/|_)____",
 0
 };
 
-#define STONE_LINE_CENT 28	/* char[] element of center of stone face */
+#define STONE_LINE_CENT 19	/* char[] element of center of stone face */
 #define STONE_LINE_LEN 16	/* # chars that fit on one line
 				 * (note 1 ' ' border)
 				 */
@@ -64,10 +64,8 @@ int how;
 	int line;
 
 	rip = dp = (char **) alloc(sizeof(rip_txt));
-	if (!dp) return;
 	for (x = 0; rip_txt[x]; x++) {
 		dp[x] = (char *) alloc((unsigned int)(strlen(rip_txt[x]) + 1));
-		if (!dp[x]) return;
 		Strcpy(dp[x], rip_txt[x]);
 	}
 	dp[x] = (char *)0;
@@ -128,6 +126,11 @@ int how;
 
 	putstr(tmpwin, 0, "");
 	putstr(tmpwin, 0, "");
+
+	for (x = 0; rip_txt[x]; x++) {
+		free((genericptr_t)rip[x]);
+	}
+	free((genericptr_t)rip);
 }
 
 #endif

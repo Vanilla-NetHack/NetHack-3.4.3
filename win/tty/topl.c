@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)topl.c	3.1	93/06/01	*/
+/*	SCCS Id: @(#)topl.c	3.2	96/02/02	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -9,6 +9,10 @@
 #include "termcap.h"
 #include "wintty.h"
 #include <ctype.h>
+
+#ifndef C	/* this matches src/cmd.c */
+#define C(c)	(0x1f & (c))
+#endif
 
 STATIC_DCL void FDECL(redotoplin, (const char*));
 STATIC_DCL void FDECL(topl_putsym, (CHAR_P));
@@ -22,14 +26,19 @@ tty_doprev_message()
 {
     register struct WinDesc *cw = wins[WIN_MESSAGE];
 
-    if(cw->data[cw->maxcol])
-	redotoplin(cw->data[cw->maxcol]);
-    else if(cw->maxcol == cw->maxrow)
-	redotoplin(toplines);
-    cw->maxcol--;
-    if(cw->maxcol < 0) cw->maxcol = cw->rows-1;
-    if(!cw->data[cw->maxcol])
-	cw->maxcol = cw->maxrow;
+    ttyDisplay->dismiss_more = C('p');	/* <ctrl/P> allowed at --More-- */
+    do {
+	morc = 0;
+	if (cw->data[cw->maxcol])
+	    redotoplin(cw->data[cw->maxcol]);
+	else if (cw->maxcol == cw->maxrow)
+	    redotoplin(toplines);
+	cw->maxcol--;
+	if (cw->maxcol < 0) cw->maxcol = cw->rows-1;
+	if (!cw->data[cw->maxcol])
+	    cw->maxcol = cw->maxrow;
+    } while (morc == C('p'));
+    ttyDisplay->dismiss_more = 0;
     return 0;
 }
 
@@ -61,7 +70,7 @@ remember_topl()
 {
     register struct WinDesc *cw = wins[WIN_MESSAGE];
 
-    cw->data[cw->maxrow] = (char*) alloc(strlen(toplines)+1);
+    cw->data[cw->maxrow] = (char*) alloc((unsigned)strlen(toplines)+1);
     Strcpy(cw->data[cw->maxrow], toplines);
     cw->maxcol = cw->maxrow = (cw->maxrow+1) % cw->rows;
     if(cw->data[cw->maxrow]) {
@@ -106,7 +115,7 @@ more()
     if(flags.standout)
 	standoutend();
 
-    xwaitforspace("\033");
+    xwaitforspace("\033 ");
 
     if(morc == '\033')
 	cw->flags |= WIN_STOP;
@@ -199,9 +208,6 @@ topl_putsym(c)
     }
     cw->curx = ttyDisplay->curx;
     if(cw->curx == 0) cl_end();
-#if defined(NO_TERMS) && defined(MSDOS)
-    if (c != '\n')
-#endif 
     (void) putchar(c);
 }
 
@@ -233,6 +239,10 @@ char def;
  *   what's in the string. The 'query' string is printed before the user
  *   is asked about the string.
  *   If resp is NULL, any single character is accepted and returned.
+ *   If not-NULL, only characters in it are allowed (exceptions:  the
+ *   quitchars are always allowed, and if it contains '#' then digits
+ *   are allowed); if it includes an <esc>, anything beyond that won't
+ *   be shown in the prompt to the user but will be acceptable as input.
  */
 {
 	register char q;
@@ -246,12 +256,15 @@ char def;
 	cw->flags &= ~WIN_STOP;
 	ttyDisplay->toplin = 3; /* special prompt state */
 	ttyDisplay->inread++;
-	if(resp) {
+	if (resp) {
+	    char *rb, respbuf[QBUFSZ];
+
 	    allow_num = (index(resp, '#') != 0);
-	    if(def)
-		Sprintf(prompt, "%s [%s] (%c) ", query, resp, def);
-	    else
-		Sprintf(prompt, "%s [%s] ", query, resp);
+	    Strcpy(respbuf, resp);
+	    /* any acceptable responses that follow <esc> aren't displayed */
+	    if ((rb = index(respbuf, '\033')) != 0) *rb = '\0';
+	    Sprintf(prompt, "%s [%s] ", query, respbuf);
+	    if (def) Sprintf(eos(prompt), "(%c) ", def);
 	    pline("%s", prompt);
 	} else {
 	    pline("%s ", query);

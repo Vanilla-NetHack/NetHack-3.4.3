@@ -1,10 +1,9 @@
-/*	SCCS Id: @(#)quest.c	3.1	93/03/10	*/
+/*	SCCS Id: @(#)quest.c	3.2	96/03/15	*/
 /*	Copyright 1991, M. Stephenson		  */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
 
-#ifdef MULDGN
 /*  quest dungeon branch routines. */
 
 #include "quest.h"
@@ -17,7 +16,7 @@ static void NDECL(on_start);
 static void NDECL(on_locate);
 static void NDECL(on_goal);
 static boolean NDECL(not_capable);
-static boolean NDECL(not_pure);
+static boolean FDECL(is_pure, (BOOLEAN_P));
 static void FDECL(expulsion, (BOOLEAN_P));
 static void NDECL(chat_with_leader);
 static void NDECL(chat_with_nemesis);
@@ -48,7 +47,9 @@ on_locate()
 static void
 on_goal()
 {
-  if(!Qstat(made_goal)) {
+  if (Qstat(killed_nemesis)) {
+    return;
+  } else if (!Qstat(made_goal)) {
     qt_pager(QT_FIRSTGOAL);
     Qstat(made_goal) = 1;
   } else {
@@ -75,14 +76,14 @@ quest_init()
  *	    sp_lev.c).
  */
 #ifdef TOURIST
-    if (pl_character[0] == 'T') {
+    if (Role_is('T')) {
 	mons[PM_MASTER_OF_THIEVES].msound = MS_NEMESIS;
 	mons[PM_MASTER_OF_THIEVES].mflags2 &= ~(M2_PEACEFUL);
 	mons[PM_MASTER_OF_THIEVES].mflags2 |= (M2_NASTY|M2_STALK|M2_HOSTILE);
 	mons[PM_MASTER_OF_THIEVES].mflags3 = M3_WANTSARTI | M3_WAITFORU;
     } else
 #endif
-    if (pl_character[0] == 'P') {
+    if (Role_is('P')) {
 	mons[PM_ARCH_PRIEST].maligntyp = u.ualignbase[1]*3;
 	mons[PM_ACOLYTE].maligntyp = u.ualignbase[1]*3;
     }
@@ -91,7 +92,7 @@ quest_init()
 void
 onquest()
 {
-	if(Not_firsttime)	return;
+	if(u.uevent.qcompleted || Not_firsttime) return;
 	if(!Is_special(&u.uz)) return;
 
 	if(Is_qstart(&u.uz)) on_start();
@@ -123,7 +124,8 @@ artitouch()
 boolean
 ok_to_quest()
 {
-	return((boolean)(Qstat(got_quest) || Qstat(got_thanks)));
+	return((boolean)((Qstat(got_quest) || Qstat(got_thanks)))
+			&& is_pure(FALSE));
 }
 
 static boolean
@@ -132,20 +134,30 @@ not_capable()
 	return((boolean)(u.ulevel < MIN_QUEST_LEVEL));
 }
 
-/* TODO:	This one needs tuning. */
 static boolean
-not_pure()
+is_pure(talk)
+boolean talk;
 {
-#ifdef WIZARD
-	if(wizard && (u.ualign.record < MIN_QUEST_ALIGN)) {
+    aligntyp original_alignment = u.ualignbase[1];
 
-	   You("are currently %d and require %d.",
-		 u.ualign.record, MIN_QUEST_ALIGN);
-	   if(yn_function("adjust?", NULL, 'y') == 'y')
+#ifdef WIZARD
+    if (wizard && talk) {
+	if (u.ualign.type != original_alignment) {
+	    You("are currently %s instead of %s.",
+		align_str(u.ualign.type), align_str(original_alignment));
+	} else if (u.ualignbase[0] != original_alignment) {
+	    You("have converted.");
+	} else if (u.ualign.record < MIN_QUEST_ALIGN) {
+	    You("are currently %d and require %d.",
+		u.ualign.record, MIN_QUEST_ALIGN);
+	    if (yn_function("adjust?", (char *)0, 'y') == 'y')
 		u.ualign.record = MIN_QUEST_ALIGN;
 	}
+    }
 #endif
-  return((boolean)(u.ualign.record < MIN_QUEST_ALIGN));
+    return (boolean)(u.ualign.record >= MIN_QUEST_ALIGN &&
+		     u.ualign.type == original_alignment &&
+		     u.ualignbase[0] == original_alignment);
 }
 
 /*
@@ -158,17 +170,17 @@ static void
 expulsion(seal)
 boolean seal;
 {
-  branch *br;
-  d_level *dest;
+    branch *br;
+    d_level *dest;
+    int portal_flag;
 
-  br = dungeon_branch("The Quest");
-  dest = (br->end1.dnum == u.uz.dnum) ? &br->end2 : &br->end1;
-  assign_level(&u.utolev, dest);
-  u.utotype = 1; /* portal */
-  if (seal) {	/* remove the portal to the quest - sealing it off */
-    u.utotype |= 0200;
-    u.uevent.qexpelled = 1;
-  }
+    br = dungeon_branch("The Quest");
+    dest = (br->end1.dnum == u.uz.dnum) ? &br->end2 : &br->end1;
+    portal_flag = u.uevent.qexpelled ? 0 :	/* returned via artifact? */
+		  !seal ? 1 : -1;
+    schedule_goto(dest, FALSE, FALSE, portal_flag, (char *)0, (char *)0);
+    if (seal)	/* remove the portal to the quest - sealing it off */
+	u.uevent.qexpelled = 1;
 }
 
 static void
@@ -206,12 +218,15 @@ chat_with_leader()
 	    Qstat(met_leader) = TRUE;
 	    Qstat(not_ready) = 0;
 	  } else qt_pager(QT_NEXTLEADER);
+	  /* the quest leader might have passed through the portal into
+	     the regular dungeon; none of the remaining make sense there */
+	  if (!on_level(&u.uz, &qstart_level)) return;
 
 	  if(not_capable()) {
 	    qt_pager(QT_BADLEVEL);
 	    exercise(A_WIS, TRUE);
 	    expulsion(FALSE);
-	  } else if(not_pure()) {
+	  } else if(!is_pure(TRUE)) {
 	    qt_pager(QT_BADALIGN);
 	    if(Qstat(not_ready) == MAX_QUEST_TRIES) {
 	      qt_pager(QT_LASTLEADER);
@@ -231,27 +246,28 @@ chat_with_leader()
 
 void
 leader_speaks(mtmp)
-
 	register struct monst *mtmp;
 {
 	/* maybe you attacked leader? */
 	if(!mtmp->mpeaceful) {
 		Qstat(pissed_off) = TRUE;
-		mtmp->data->mflags3 = 0;	/* end the inaction */
+		mtmp->mstrategy &= ~STRAT_WAITMASK;	/* end the inaction */
 	}
+	/* the quest leader might have passed through the portal into the
+	   regular dungeon; if so, mustn't perform "backwards expulsion" */
+	if (!on_level(&u.uz, &qstart_level)) return;
 
 	if(Qstat(pissed_off)) {
 	  qt_pager(QT_LASTLEADER);
 	  expulsion(TRUE);
 	} else chat_with_leader();
-
 }
 
 static void
 chat_with_nemesis()
 {
 /*	The nemesis will do most of the talking, but... */
-        qt_pager(rn1(10, QT_DISCOURAGE));
+	qt_pager(rn1(10, QT_DISCOURAGE));
 	if(!Qstat(met_nemesis)) Qstat(met_nemesis++);
 }
 
@@ -265,7 +281,7 @@ nemesis_speaks()
 	  else if(Qstat(made_goal) < 7) qt_pager(QT_OTHERNEMESIS);
 	  else if(!rn2(5))	qt_pager(rn1(10, QT_DISCOURAGE));
 	  if(Qstat(made_goal) < 7) Qstat(made_goal)++;
- 	  Qstat(met_nemesis) = TRUE;
+	  Qstat(met_nemesis) = TRUE;
 	} else /* he will spit out random maledictions */
 	  if(!rn2(5))	qt_pager(rn1(10, QT_DISCOURAGE));
 }
@@ -274,14 +290,13 @@ static void
 chat_with_guardian()
 {
 /*	These guys/gals really don't have much to say... */
-        qt_pager(rn1(5, QT_GUARDTALK));
+	qt_pager(rn1(5, QT_GUARDTALK));
 }
 
 void
 quest_chat(mtmp)
 	register struct monst *mtmp;
 {
-
     switch(mtmp->data->msound) {
 	    case MS_LEADER:	chat_with_leader(); break;
 	    case MS_NEMESIS:	chat_with_nemesis(); break;
@@ -307,10 +322,8 @@ quest_stat_check(mtmp)
 	struct monst *mtmp;
 {
     if(mtmp->data->msound == MS_NEMESIS)
-	Qstat(in_battle) = 
+	Qstat(in_battle) =
 	    (mtmp->mcanmove && !mtmp->msleep && monnear(mtmp, u.ux, u.uy));
 }
-
-#endif /* MULDGN */
 
 /*quest.c*/

@@ -84,7 +84,7 @@ curs(window, x, y)
 		   1 <= x < cols, 0 <= y < rows, where cols and rows are
 		   the size of window.
 		-- For variable sized windows, like the status window, the
-		   behaviour when curs() is called outside the window's limits
+		   behavior when curs() is called outside the window's limits
 		   is unspecified. The mac port wraps to 0, with the status
 		   window being 2 lines high and 80 columns wide.
 		-- Still used by curs_on_u(), status updates, screen locating
@@ -92,7 +92,7 @@ curs(window, x, y)
 		-- NHW_MESSAGE, NHW_MENU and NHW_TEXT windows do not
 		   currently support curs in the tty window-port.
 putstr(window, attr, str)
-		-- Print str on the window the given attribute.  Only
+		-- Print str on the window with the given attribute.  Only
 		   printable ASCII characters (040-0126) must be supported.
 		   Multiple putstr()s are output on separate lines.  Attributes
 		   can be one of
@@ -108,8 +108,8 @@ putstr(window, attr, str)
 		   display.  Where putstr() breaks a line, it has to clear
 		   to end-of-line.
 		-- putstr should be implemented such that if two putstr()s
-		   are done consecutively that the user will see the first
-		   and the second.  In the tty port, pline() achieves this
+		   are done consecutively the user will see the first and
+		   then the second.  In the tty port, pline() achieves this
 		   by calling more() or displaying both on the same line.
 get_nh_event()	-- Does window event processing (e.g. exposure events).
 		   A noop for the tty and X window-ports.
@@ -148,6 +148,9 @@ char yn_function(const char *ques, const char *choices, char default)
 		   in that order, if present in choices, otherwise it maps
 		   to default.  Entering any other quit character (SPACE,
 		   RETURN, NEWLINE) maps to default.
+		-- If the choices string contains ESC, then anything after
+		   it is an acceptable response, but the ESC and whatever
+		   follows is not included in the prompt.
 		-- If the choices string contains a '#' then accept a count.
 		   Place this value in the global "yn_number" and return '#'.
 		-- This uses the top line in the tty window-port, other
@@ -160,13 +163,10 @@ getlin(const char *ques, char *input)
 		-- getlin() must call flush_screen(1) before doing anything.
 		-- This uses the top line in the tty window-port, other
 		   ports might use a popup.
-get_ext_cmd(char *input)
-		-- This routine is only included if COM_COMPL is defined.
-		   Get the extended command in a special way (command
-		   completion on the tty window-port).
-		** I think it is pretty lame that this has an #ifdef
-		** on it.  The #ifdef COM_COMPL should either be yanked
-		** inside this function or done away with.	-dean
+int get_ext_cmd(void)
+		-- Get an extended command in a window-port specific way.
+		   An index into extcmdlist[] is returned on a successful
+		   selection, -1 otherwise.
 player_selection()
 		-- Do a window-port specific player type selection.  If
 		   player_selection() offers a Quit option, it is its
@@ -183,24 +183,40 @@ doprev_message()
 		-- Display previous messages.  Used by the ^P command.
 		-- On the tty-port this scrolls WIN_MESSAGE back one line.
 
+update_positionbar(char *features)
+		-- Optional, POSITIONBAR must be defined. Provide some 
+		   additional information for use in a horizontal
+		   position bar (most useful on clipped displays).
+		   Features is a series of char pairs.  The first char
+		   in the pair is a symbol and the second char is the
+		   column where it is currently located.
+		   A '<' is used to mark an upstairs, a '>'
+		   for a downstairs, and an '@' for the current player
+		   location. A zero char marks the end of the list.
+			
+
 C.  Window Utility Routines
 
-init_nhwindows()
+init_nhwindows(int* argcp, char** argv)
 		-- Initialize the windows used by NetHack.  This can also
 		   create the standard windows listed at the top, but does
 		   not display them.
+		-- Any commandline arguments relevant to the windowport
+		   should be interpreted, and *argcp and *argv should
+		   be changed to remove those arguments.
 		-- When the message window is created, the variable
-		   flags.window_inited needs to be set to TRUE.  Othewise
+		   flags.window_inited needs to be set to TRUE.  Otherwise
 		   all plines() will be done via raw_print().
 		** Why not have init_nhwindows() create all of the "standard"
 		** windows?  Or at least all but WIN_INFO?	-dean
-exit_nhwindows()
+exit_nhwindows(str)
 		-- Exits the window system.  This should dismiss all windows,
-		   except the "window" used for raw_print().
+		   except the "window" used for raw_print().  str is printed
+		   if possible.
 window = create_nhwindow(type)
 		-- Create a window of type "type."
 clear_nhwindow(window)
-		-- Clear the given window, when apropriate.
+		-- Clear the given window, when appropriate.
 display_nhwindow(window, boolean blocking)
 		-- Display the window on the screen.  If there is data
 		   pending for output in that window, it should be sent.
@@ -216,34 +232,78 @@ destroy_nhwindow(window)
 start_menu(window)
 		-- Start using window as a menu.  You must call start_menu()
 		   before add_menu().  After calling start_menu() you may not
-		   putstr() to window.  Only windows of type NHW_MENU may be
-		   used for menus.
-add_menu(window, ch, attr, str)
-		-- Add a text line to the given menu window.  If ch is 0,
-		   then the line cannot be selected (e.g. a title).  Otherwise,
-		   ch is the response needed to select the line.  The value
-		   attr is the same as in putstr().
-end_menu(window, ch, str, morestr)
+		   putstr() to the window.  Only windows of type NHW_MENU may
+		   be used for menus.
+add_menu(windid window, int glyph, const anything identifier,
+				char accelerator, int attr, char *str,
+				boolean preselected)
+		-- Add a text line str to the given menu window.  If identifier
+		   is 0, then the line cannot be selected (e.g. a title).
+		   Otherwise, identifier is the value returned if the line is
+		   selected.  Accelerator is a keyboard key that can be used
+		   to select the line.  If the accelerator of a selectable
+		   item is 0, the window system is free to select its own
+		   accelerator.  It is up to the window-port to make the
+		   accelerator visible to the user (e.g. put "a - " in front
+		   of str).  The value attr is the same as in putstr().
+		   Glyph is an optional glyph to accompany the line.  If
+		   window port cannot or does not want to display it, this
+		   is OK.  If there is no glyph applicable, then this
+		   value will be NO_GLYPH.
+		-- All accelerators should be in the range [A-Za-z].
+	        -- It is expected that callers do not mix accelerator
+		   choices.  Either all selectable items have an accelerator
+		   or let the window system pick them.  Don't do both.
+		-- If you want this choice to be preselected when the
+		   menu is displayed, set preselected to TRUE.
+
+end_menu(window, prompt)
 		-- Stop adding entries to the menu and flushes the window
-		   to the screen (brings to front?).  Str gives other valid
-		   (likely canceling) inputs (beyond any standard ones) and
-		   ch is the response to any of them.  Morestr is a prompt
-		   to give the user.  If morestr is NULL, no prompt will be
-		   printed unless the window-port requires one (e.g. --more--
-		   in the tty window-port).
-char select_menu(window)
-		-- Returns a valid response from the given menu (user typing,
-		   mouse selection, whatever).  You may select_menu() from a
-		   window multiple times -- the menu is saved until
-		   start_menu() or destroy_nhwindow() is called on the window.
-		-- Note that NHW_MENU windows need not have select_menu
+		   to the screen (brings to front?).  Prompt is a prompt
+		   to give the user.  If prompt is NULL, no prompt will
+		   be printed.
+		** This probably shouldn't flush the window any more (if
+		** it ever did).  That should be select_menu's job.  -dean
+int select_menu(windid window, int how, menu_item **selected)
+		-- Return the number of items selected; 0 if none were chosen,
+		   -1 when explicitly cancelled.  If items were selected, then
+		   selected is filled in with an allocated array of menu_item
+		   structures, one for each selected line.  The caller must
+		   free this array when done with it.  The "count" field
+		   of selected is a user supplied count.  If the user did
+		   not supply a count, then the count field is filled with
+		   -1 (meaning all).  A count of zero is equivalent to not
+		   being selected and should not be in the list.  If no items
+		   were selected, then selected is NULL'ed out.  How is the
+		   mode of the menu.  Three valid values are PICK_NONE,
+		   PICK_ONE, and PICK_N, meaning: nothing is selectable,
+		   only one thing is selectable, and any number valid items
+		   may selected.  If how is PICK_NONE, this function should
+		   never return anything but 0 or -1.
+		-- You may call select_menu() on a window multiple times --
+		   the menu is saved until start_menu() or destroy_nhwindow()
+		   is called on the window.
+		-- Note that NHW_MENU windows need not have select_menu()
 		   called for them. There is no way of knowing whether
 		   select_menu() will be called for the window at
 		   create_nhwindow() time.
+char message_menu(char let, int how, const char *mesg)
+		-- tty-specific hack to allow single line context-sensitive
+		   help to behave compatibly with multi-line help menus.
+		-- This should only be called when a prompt is active; it
+		   sends `mesg' to the message window.  For tty, it forces
+		   a --More-- prompt and enables `let' as a viable keystroke
+		   for dismissing that prompt, so that the original prompt
+		   can be answered from the message line "help menu".
+		-- Return value is either `let', '\0' (no selection was made),
+		   or '\033' (explicit cancellation was requested).
+		-- Interfaces which issue prompts and messages to separate
+		   windows typically won't need this functionality, so can
+		   substitute genl_message_menu (windows.c) instead.
 
 D.  Misc. Routines
 
-make_sound(???) -- To be determinded later.  THIS IS CURRENTLY UN-IMPLEMENTED.
+make_sound(???) -- To be determined later.  THIS IS CURRENTLY UN-IMPLEMENTED.
 nhbell()	-- Beep at user.  [This will exist at least until sounds are
 		   redone, since sounds aren't attributable to windows anyway.]
 mark_synch()	-- Don't go beyond this point in I/O on any channel until
@@ -259,7 +319,7 @@ delay_output()	-- Causes a visible delay of 50ms in the output.
 askname()	-- Ask the user for a player name.
 cliparound(x, y)-- Make sure that the user is more-or-less centered on the
 		   screen if the playing area is larger than the screen.
-		-- This funciton is only defined if CLIPPING is defined.
+		-- This function is only defined if CLIPPING is defined.
 number_pad(state)
 		-- Initialize the number pad to the given state.
 suspend_nhwindows(str)
@@ -302,7 +362,7 @@ IV.  New or respecified common, high level routines
 
 These are not part of the interface, but mentioned here for your information.
 
-char display_inventory(lets,show_cost)
+char display_inventory(lets, want_reply)
 		-- Calls a start_menu()/add_menu()/select_menu() sequence.
 		   It returns the item selected, or '\0' if none is selected.
 		   Returns '\033' if the menu was canceled.
@@ -313,11 +373,11 @@ raw_printf(str, ...)
 		   is a reasonable thing to do for most ports.
 pline(str, ...)
 		-- Prints a string to WIN_MESSAGE using a printf() interface.
-		   It has the variants kludge(), You(), Your(), and Norep()
-		   which all use the same mechanism.  pline() requires the
-		   variable "char toplines[]" be defined; Every putstr() on
-		   WIN_MESSAGE must copy str to toplines[] for use by Norep()
-		   and pline().  If the window system is not active
+		   It has the variants You(), Your(), Norep(), and others
+		   in pline.c which all use the same mechanism.  pline()
+		   requires the variable "char toplines[]" be defined; Every
+		   putstr() on WIN_MESSAGE must copy str to toplines[] for use
+		   by Norep() and pline().  If the window system is not active
 		   (!flags.window_inited) pline() uses raw_print().
 
 
@@ -357,7 +417,15 @@ in the future to make it possible to replace this on a per window-port basis.
 VI.  Conventions
 
 init_nhwindows() is expected to display a gee-whiz banner window, including
-the Copyright message.
+the Copyright message.  It is recommended that the COPYRIGHT_BANNER_A,
+COPYRIGHT_BANNER_B, and COPYRIGHT_BANNER_C macros from patchlevel.h be used
+for constructing the Copyright message.  COPYRIGHT_BANNER_A is a 
+quoted string that has the NetHack copyright declaration, 
+COPYRIGHT_BANNER_B is a quoted string that states who the copyright 
+belongs to, and COPYRIGHT_BANNER_C simply says "See License for
+details." Be sure to #include "patchlevel.h" to define these macros.
+Using the macros will prevent having to update the Copyright information
+in each window-port prior to each release.
 
 Ports (MSDOS, TOS, MAC, etc) _may_ use window-port specific routines in
 their port specific files, _AT_THEIR_OWN_RISK_.  Since "port" and
@@ -373,12 +441,12 @@ and may be replaced completely by other window ports.
 
 VII.  Implementation and Multi-window support
 
-NetHack 3.1 supports multiple window systems in the same binary.  When
+NetHack 3.2 supports multiple window systems in the same binary.  When
 writing a new window-port, you need to follow the following guidelines:
 
 1) Pick a unique prefix to identify your window-port.  For example, the tty
    window port uses "tty"; the X11 window-port uses "X11".
-2) When declaring your interface function, preceed the function names with
+2) When declaring your interface function, precede the function names with
    your unique prefix.  E.g:
 
 	void tty_init_nhwindows()
@@ -399,9 +467,9 @@ writing a new window-port, you need to follow the following guidelines:
    use separate non-overlapping convention for naming data and internal
    functions.
 
-3) Declare a structure, "struct win_choices prefix_procs", (with your
+3) Declare a structure, "struct window_procs prefix_procs", (with your
    prefix instead of "prefix") and fill in names of all of your
-   interface functions.  The first entry in this structure in the name
+   interface functions.  The first entry in this structure is the name
    of your window-port, which should be the prefix.  The other entries
    are the function addresses.
 
@@ -411,18 +479,18 @@ writing a new window-port, you need to follow the following guidelines:
    initializations correct (not all compilers will catch out-of-order
    function pointer declarations).
 
-3) Add a #define to config.h identifying your window-port in the
+4) Add a #define to config.h identifying your window-port in the
    "Windowing systems" section.  Follow the "prefix_GRAPHICS" convention
    for your window-port.
 
-4) Add your prefix to the list of valid prefixes listed in the "Known
+5) Add your prefix to the list of valid prefixes listed in the "Known
    systems are" comment.
 
-5) Edit makedefs.c and add a string for your windowing system to window_opts
+6) Edit makedefs.c and add a string for your windowing system to window_opts
    inside an #ifdef prefix_GRAPHICS.
 
-6) Edit windows.c and add an external reference to your prefix_procs inside
-   an #ifdef prefix_GRAPHICS.  Also add an entry to the winchoices
+7) Edit windows.c and add an external reference to your prefix_procs inside
+   an #ifdef prefix_GRAPHICS.  Also add an entry to the win_choices
    structure for your window-port of the form:
 
     #ifdef prefix_GRAPHICS
@@ -440,14 +508,14 @@ writing a new window-port, you need to follow the following guidelines:
    prefix_procs and prefix_init_function's instead of including win*.h.
    The tty port includes wintty.h, the X11 port duplicates the declarations.
 
-7) If your port uses Makefile.src, add the .c and .o files and an
+8) If your port uses Makefile.src, add the .c and .o files and an
    appropriate comment in the section on "WINSRC" and "WINOBJ".  See
    Makefile.src for the style to use.  If you don't use Makefile.src,
    we suggest using a similar convention for the make-equivalent used
    on your system.  Also add your new source and binaries to WINSRC and
    WINOBJ (if you want the NetHack binary to include them, that is).
 
-8) Look at your port's portmain.c (the file containing main()) and make
+9) Look at your port's portmain.c (the file containing main()) and make
    sure that all of the calls match the the requirements laid out in
    Section V.
 

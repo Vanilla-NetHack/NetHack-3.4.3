@@ -1,5 +1,5 @@
-/*	SCCS Id: @(#)os2.c	3.1	93/01/18 */
-/*	Copyright (c) Timo Hakulinen, 1990, 1991, 1992, 1993. */
+/*	SCCS Id: @(#)os2.c	3.2	96/02/29 */
+/*	Copyright (c) Timo Hakulinen, 1990, 1991, 1992, 1993, 1996. */
 /*	NetHack may be freely redistributed.  See license for details. */
 
 /*
@@ -278,7 +278,7 @@ char *str;
 	char *ptr;
 	char drive;
 
-	if ((ptr = index(str, ':')) != NULL) {
+	if ((ptr = index(str, ':')) != (char *)0) {
 		drive = toupper(*(ptr - 1));
 #ifdef OS2_32BITAPI
 		DosSetDefaultDisk((ULONG)(drive - 'A' + 1));

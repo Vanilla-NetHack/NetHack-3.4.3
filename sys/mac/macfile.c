@@ -7,7 +7,7 @@
  */
 
 #include "hack.h"
-
+#include "macwin.h"
 #include <files.h>
 #include <errors.h>
 #include <resources.h>
@@ -27,23 +27,13 @@
 #define MAX_HF 6		 /* Max # of open HandleFiles */
 
 #define APP_NAME_RES_ID		(-16396)
-#define PLAYER_NAME_RES_ID	1001
 
-int FDECL(maccreat,(const char *, long));
-int FDECL(macopen,(const char *, int, long));
-int FDECL(macclose,(int));
-int FDECL(macread,(int, void *, unsigned));
-int FDECL(macwrite,(int, void *, unsigned));
-long FDECL(macseek,(int, long, short));
-
-char * FDECL(macgets,(int, char *, unsigned));
 
 static short FDECL(IsHandleFile,(int));
 static int FDECL(OpenHandleFile,(const unsigned char *, long));
 static int FDECL(CloseHandleFile,(int));
 static int FDECL(ReadHandleFile,(int, void *, unsigned));
 static long FDECL(SetHandleFilePos,(int, short, long));
-static void FDECL(C2P,(const char *, unsigned char *));
 
 typedef struct handlefile {
 	long		type ;  /* Resource type */
@@ -54,6 +44,8 @@ typedef struct handlefile {
 } HandleFile ;
 
 HandleFile theHandleFiles [ MAX_HF ] ;
+MacDirs theDirs ;		/* also referenced in files.c */
+
 
 static short
 IsHandleFile ( int fd )
@@ -169,7 +161,7 @@ SetHandleFilePos ( int fd , short whence , long pos )
 }
 
 
-static void
+void
 C2P ( const char * c , unsigned char * p )
 {
 	long len = strlen ( c ) ;
@@ -180,7 +172,7 @@ C2P ( const char * c , unsigned char * p )
 	while (*c) *++p = *c++;
 }
 
-static void
+void
 P2C ( const unsigned char * p , char * c )
 {
 	int idx = p[0];
@@ -294,7 +286,7 @@ macclose ( int fd )
 		if ( FSClose ( fd ) ) {
 			return -1 ;
 		}
-		FlushVol ( (StringPtr) NULL , theDirs . dataRefNum ) ;
+		FlushVol ( (StringPtr) 0 , theDirs . dataRefNum ) ;
 	}
 	return 0 ;
 }
@@ -326,7 +318,7 @@ macread ( int fd , void * ptr , unsigned len )
 	}
 }
 
-
+#if 0 /* this function isn't used, if you use it, uncomment prototype in macwin.h */
 char *
 macgets ( int fd , char * ptr , unsigned len )
 {
@@ -335,7 +327,7 @@ macgets ( int fd , char * ptr , unsigned len )
 
         while ( -- len > 0 ) {
                 if ( macread ( fd , ptr + idx , 1 ) <= 0 )
-                        return NULL ;
+                        return (char *)0 ;
                 c = ptr[ idx++ ];
                 if ( c  == '\n' || c == '\r' )
                         break ;
@@ -343,6 +335,7 @@ macgets ( int fd , char * ptr , unsigned len )
         ptr [ idx ] = '\0' ;
         return ptr ;
 }
+#endif /* 0 */
 
 
 int
@@ -384,113 +377,4 @@ macseek ( int fd , long where , short whence )
 		    return(curPos);
 	   
 	return(-1);
-}
-
-
-static OSErr
-copy_file(short src_vol, long src_dir, short dst_vol, long dst_dir,
-		  Str255 fName,
-		  pascal OSErr (*opener)(short vRefNum, long dirID,
-								 ConstStr255Param fileName,
-								 char permission, short *refNum)) {
-	short src_ref, dst_ref;
-	OSErr err = (*opener)(src_vol, src_dir, fName, fsRdPerm, &src_ref);
-	if (err == noErr) {
-		err = (*opener)(dst_vol, dst_dir, fName, fsWrPerm, &dst_ref);
-		if (err == noErr) {
-
-			long file_len;
-			err = GetEOF(src_ref, &file_len);
-			if (err == noErr) {
-				Handle buf;
-				long count = MaxBlock();
-				if (count > file_len)
-					count = file_len;
-
-				buf = NewHandle(count);
-				err = MemError();
-				if (err == noErr) {
-
-					while (count > 0) {
-						OSErr rd_err = FSRead(src_ref, &count, *buf);
-						err = FSWrite(dst_ref, &count, *buf);
-						if (err == noErr)
-							err = rd_err;
-						file_len -= count;
-					}
-					if (file_len == 0)
-						err = noErr;
-
-					DisposHandle(buf);
-
-				}
-			}
-			FSClose(dst_ref);
-		}
-		FSClose(src_ref);
-	}
-
-	return err;
-}
-
-static void
-force_hdelete(short vol, long dir, Str255 fName) {
-	HRstFLock(vol, dir, fName);
-	HDelete  (vol, dir, fName);
-}
-
-void
-finder_file_request(void) {
-	short finder_msg, file_count;
-	CountAppFiles(&finder_msg, &file_count);
-	if (finder_msg == appOpen && file_count == 1) {
-		OSErr	err;
-		AppFile src;
-		short	src_vol;
-		long	src_dir, nul = 0;
-		GetAppFiles(1, &src);
-		err = GetWDInfo(src.vRefNum, &src_vol, &src_dir, &nul);
-		if (err == noErr && src.fType == SAVE_TYPE) {
-
-			if ( src_vol != theDirs.dataRefNum ||
-				 src_dir != theDirs.dataDirID &&
-				 CatMove(src_vol, src_dir, src.fName,
-						 theDirs.dataDirID, "\p:") != noErr) {
-
-				HCreate(theDirs.dataRefNum, theDirs.dataDirID, src.fName,
-						MAC_CREATOR, SAVE_TYPE);
-				err = copy_file(src_vol, src_dir, theDirs.dataRefNum,
-								theDirs.dataDirID, src.fName, &HOpen); /* HOpenDF is only there under 7.0 */
-				if (err == noErr)
-					err = copy_file(src_vol, src_dir, theDirs.dataRefNum,
-									theDirs.dataDirID, src.fName, &HOpenRF);
-				if (err == noErr)
-					force_hdelete(src_vol, src_dir, src.fName);
-				else
-					HDelete(theDirs.dataRefNum, theDirs.dataDirID, src.fName);
-			}
-
-			if (err == noErr) {
-				short ref = HOpenResFile(theDirs.dataRefNum, theDirs.dataDirID,
-										 src.fName, fsRdPerm);
-				if (ref != -1) {
-					Handle name = Get1Resource('STR ', PLAYER_NAME_RES_ID);
-					if (name) {
-
-						Str255 save_f_p;
-						P2C(*(StringHandle)name, plname);
-						set_savefile_name();
-						C2P(SAVEF, save_f_p);
-						force_hdelete(theDirs.dataRefNum, theDirs.dataDirID,
-									  save_f_p);
-						if (HRename(theDirs.dataRefNum, theDirs.dataDirID,
-									src.fName, save_f_p) == noErr)
-							ClrAppFiles(1);
-
-					}
-					CloseResFile(ref);
-				}
-			}
-		}
-	}
 }

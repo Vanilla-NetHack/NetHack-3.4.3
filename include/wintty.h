@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)wintty.h	3.1	93/05/26		  */
+/*	SCCS Id: @(#)wintty.h	3.2	96/02/18	*/
 /* Copyright (c) David Cohrs, 1991,1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -9,6 +9,17 @@
 
 #ifndef WINDOW_STRUCTS
 #define WINDOW_STRUCTS
+
+/* menu structure */
+typedef struct tty_mi {
+    struct tty_mi *next;
+    anything identifier;	/* user identifier */
+    long count;			/* user count */
+    char *str;			/* description string (including accelerator) */
+    int attr;			/* string attribute */
+    boolean selected;		/* TRUE if selected by user */
+    char selector;		/* keyboard accelerator */
+} tty_menu_item;
 
 /* descriptor for tty-based windows */
 struct WinDesc {
@@ -22,9 +33,14 @@ struct WinDesc {
 				/* maxcol is also used by WIN_MESSAGE for */
 				/* tracking the ^P command */
     char **data;		/* window data [row][column] */
-    char *resp;			/* valid menu responses (for NHW_MENU) */
-    char *canresp;		/* cancel responses; 1st is the return value */
     char *morestr;		/* string to display instead of default */
+    tty_menu_item *mlist;	/* menu information (MENU) */
+    tty_menu_item **plist;	/* menu page pointers (MENU) */
+    short plist_size;		/* size of allocated plist (MENU) */
+    short npages;		/* number of pages in menu (MENU) */
+    short nitems;		/* total number of items (MENU) */
+    short how;			/* menu mode - pick 1 or N (MENU) */
+    char menu_ch;		/* menu char (MENU) */
 };
 
 /* window flags */
@@ -45,6 +61,7 @@ struct DisplayDesc {
     int inread;			/* non-zero if reading a character */
     int intr;			/* non-zero if inread was interrupted */
     winid lastwin;		/* last window used for I/O */
+    char dismiss_more;		/* extra character accepted at --More-- */
 };
 
 #endif /* WINDOW_STRUCTS */
@@ -74,9 +91,12 @@ extern char defmorestr[];	/* default --more-- prompt */
 /* ### getline.c ### */
 E void FDECL(xwaitforspace, (const char *));
 
-/* ### termcap.c ### */
+/* ### termcap.c, video.c ### */
 
 E void FDECL(tty_startup,(int*, int*));
+#ifndef NO_TERMS
+E void NDECL(tty_shutdown);
+#endif
 #if defined(apollo)
 /* Apollos don't widen old-style function definitions properly -- they try to
  * be smart and use the prototype, or some such strangeness.  So we have to
@@ -88,6 +108,9 @@ E void FDECL(xputc, (int));
 E void FDECL(xputc, (CHAR_P));
 #endif
 E void FDECL(xputs, (const char *));
+#if defined(SCREEN_VGA) || defined(SCREEN_8514)
+E void FDECL(xputg, (int, int));
+#endif
 E void NDECL(cl_end);
 E void NDECL(clear_screen);
 E void NDECL(home);
@@ -140,7 +163,7 @@ E void FDECL(g_putch, (int));
 E void NDECL(win_tty_init);
 
 /* external declarations */
-E void NDECL(tty_init_nhwindows);
+E void FDECL(tty_init_nhwindows, (int *, char **));
 E void NDECL(tty_player_selection);
 E void NDECL(tty_askname);
 E void NDECL(tty_get_nh_event) ;
@@ -156,14 +179,19 @@ E void FDECL(tty_curs, (winid,int,int));
 E void FDECL(tty_putstr, (winid, int, const char *));
 E void FDECL(tty_display_file, (const char *, BOOLEAN_P));
 E void FDECL(tty_start_menu, (winid));
-E void FDECL(tty_add_menu, (winid, CHAR_P, int, const char *));
-E void FDECL(tty_end_menu, (winid, CHAR_P, const char *, const char *));
-E char FDECL(tty_select_menu, (winid));
+E void FDECL(tty_add_menu, (winid,int,const ANY_P *,
+			CHAR_P,int,const char *, BOOLEAN_P));
+E void FDECL(tty_end_menu, (winid, const char *));
+E int FDECL(tty_select_menu, (winid, int, MENU_ITEM_P **));
+E char FDECL(tty_message_menu, (CHAR_P,int,const char *));
 E void NDECL(tty_update_inventory);
 E void NDECL(tty_mark_synch);
 E void NDECL(tty_wait_synch);
 #ifdef CLIPPING
 E void FDECL(tty_cliparound, (int, int));
+#endif
+#ifdef POSITIONBAR
+E void FDECL(tty_update_positionbar, (char *));
 #endif
 E void FDECL(tty_print_glyph, (winid,XCHAR_P,XCHAR_P,int));
 E void FDECL(tty_raw_print, (const char *));
@@ -174,9 +202,7 @@ E void NDECL(tty_nhbell);
 E int NDECL(tty_doprev_message);
 E char FDECL(tty_yn_function, (const char *, const char *, CHAR_P));
 E void FDECL(tty_getlin, (const char *,char *));
-#ifdef COM_COMPL
-E void FDECL(tty_get_ext_cmd, (char *));
-#endif /* COM_COMPL */
+E int NDECL(tty_get_ext_cmd);
 E void FDECL(tty_number_pad, (int));
 E void NDECL(tty_delay_output);
 #ifdef CHANGE_COLOR
@@ -189,7 +215,6 @@ E void NDECL(tty_start_screen);
 E void NDECL(tty_end_screen);
 
 E void FDECL(genl_outrip, (winid,int));
-#undef E
 
 #ifdef NO_TERMS
 # ifdef MAC
@@ -198,24 +223,27 @@ E void FDECL(genl_outrip, (winid,int));
 #   undef putc
 #  endif
 #  define putchar term_putc
-#  define putc term_fputc
-#  define fputc term_fputc
 #  define fflush term_flush
-#  define fputs term_fputs
 #  define puts term_puts
-#  define printf term_printf
-#  define fprintf fterm_printf
-# endif
+E int FDECL(term_putc, (int c));
+E int FDECL(term_flush, (void *desc));
+E int FDECL(term_puts, (const char *str));
+# endif /* MAC */
 # if defined(MSDOS) || defined(WIN32CON)
-#  if defined(SCREEN_BIOS) || defined(SCREEN_DJGPPFAST)
+#  if defined(SCREEN_BIOS) || defined(SCREEN_DJGPPFAST) || defined(WIN32CON)
 #   undef putchar
 #   undef putc
 #   undef puts
-#   define putchar(x) xputc(x)  /* video.c, nttty.c */
-#   define putc(x) xputc(x)     
-#   define puts xputs           
+#   define putchar(x) xputc(x)  /* these are in video.c, nttty.c */
+#   define putc(x) xputc(x)
+#   define puts(x) xputs(x)
+#  endif/*SCREEN_BIOS || SCREEN_DJGPPFAST || WIN32CON */
+#  ifdef POSITIONBAR
+E void FDECL(video_update_positionbar, (char *));
 #  endif
-# endif
-#endif
+# endif/*MSDOS*/
+#endif/*NO_TERMS*/
+
+#undef E
 
 #endif /* WINTTY_H */

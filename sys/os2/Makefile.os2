@@ -1,6 +1,16 @@
-#	SCCS Id: @(#)Makefile.os2	3.1	93/05/05
-#	OS/2 NetHack 3.1 Makefile for OS/2 versions 1.x and 2.x
-#	Copyright (C) 1990, 1991, 1992, 1993 Timo Hakulinen
+#	SCCS Id: @(#)Makefile.os2	3.2	96/03/12
+#	OS/2 NetHack 3.2 Makefile for OS/2 versions 1.x and 2.x
+#	Copyright (C) 1990, 1991, 1992, 1993, 1996 Timo Hakulinen
+#
+#	NOTE:  This makefile for NetHack 3.2 is untested because the
+#	DevTeam currently has no access to a machine running OS/2.  If
+#	you build NetHack using this makefile, please send the changes
+#	you had to make, if any, to nethack-bugs@linc.cis.upenn.edu.
+#	If nothing had to be changed (unlikely), it would be nice to
+#	know that too.
+#
+#	The supported compilers list is from the NetHack 3.1 era.  There
+#	should be newer versions of all these compilers nowadays.
 #
 #	Supported compilers: Microsoft C 5.1 and 6.0A, GCC emx 0.8f,
 #	IBM C Set/2 1.00 with Toolkit/2 2.00.
@@ -159,8 +169,8 @@ SSYS	= $(NHSRC)\sys\share	# Shared system files
 #	OBJ, TEMP and GAMEDIR should all preferably be separate and,
 #	in particular, not the same as any of the source directories.
 #	Note that DMAKE may dislike drive designators in paths because
-#	it misinterprets the colon as being part of a make rule.  In this
-#	case, all directories have to reside in the same drive.
+#	it misinterprets the colon as being part of a make rule.  In that
+#	case, all directories have to reside on the same drive.
 #
 
 OBJ	= \tmp\obj		# Object files
@@ -176,7 +186,7 @@ TLIBP	= \toolkt20\os2lib	# CSet/2 Toolkit libpath (OS2386.LIB)
 #
 
 GAME	= nethack
-GAMEDES = "NetHack 3.1"
+GAMEDES = "NetHack 3.2"
 
 #
 #	The uppermost two lines for MSC, the middle two for GCC, and
@@ -335,9 +345,9 @@ WINCC	= $(CC) $(CFLAGS) $(O)$@ $(WIN)\$(AB)
 #WINCC	= $(B) cd $(WIN) $(S) $(CC) $(CFLAGS) $(O) $@ $(AB) $(E)
 
 #
-#	Default linker skeletons.  The upper four lines for everything
+#	Default linker skeletons.  The upper six lines for everything
 #	that uses standard OS/2 object format (MSC, CSet/2, GCC OMF),
-#	the lower four for GCC a.out format.
+#	the lower six for GCC a.out format.
 #
 
 GAMELN	= $(LINK) @$(TEMP)\$(GAME).rsp
@@ -345,15 +355,17 @@ MKDFLN	= $(LINK) @$(TEMP)\makedefs.rsp
 LEVCLN	= $(LINK) @$(TEMP)\lev_comp.rsp
 DGNCLN	= $(LINK) @$(TEMP)\dgn_comp.rsp
 RCVRLN	= $(LINK) @$(TEMP)\recover.rsp
+DLBRLN	= $(LINK) @$(TEMP)\dlb.rsp
 #GAMELN	= $(CC) $(LDFLAGS) -o $(GAMEDIR)\$(GAME).exe $(TEMP)\$(GAMEDEF) $(SYSOBJ) $(HOBJ) $(PLIBS) $(TERMLIB)
 #MKDFLN	= $(CC) $(LDFLAGS) -o $(TEMP)\makedefs.exe $(TEMP)\$(MKDFDEF) $(SYSOBJ) $(MAKEOBJS) $(PLIBS)
 #LEVCLN	= $(CC) $(LDFLAGS) -o $(TEMP)\lev_comp.exe $(TEMP)\$(LEVCDEF) $(SYSOBJ) $(SPLEVOBJS) $(PLIBS)
 #DGNCLN	= $(CC) $(LDFLAGS) -o $(TEMP)\dgn_comp.exe $(TEMP)\$(DGNCDEF) $(SYSOBJ) $(DGNCOMPOBJS) $(PLIBS)
 #RCVRLN	= $(CC) $(LDFLAGS) -o $(GAMEDIR)\recover.exe $(TEMP)\$(RCVRDEF) $(SYSOBJ) $(RECOVOBJS) $(PLIBS)
+#DLBRLN	= $(CC) $(LDFLAGS) -o $(TEMP)\dlb.exe $(TEMP)\$(DLBDEF) $(SYSOBJ) $(DLBOBJS) $(PLIBS)
 
 #
 #	OS/2 module definition files for NetHack,
-#	makedefs, dgn_comp, lev_comp, recover.
+#	makedefs, dgn_comp, lev_comp, recover, dlb.
 #
 
 GAMEDEF	= $(GAME).def
@@ -361,6 +373,7 @@ MKDFDEF	= makedefs.def
 LEVCDEF	= lev_comp.def
 DGNCDEF	= dgn_comp.def
 RCVRDEF	= recover.def
+DLBDEF	= dlb.def
 
 #
 #	For compilation in DOS, enable the lower three lines and
@@ -472,6 +485,18 @@ do_icon : icon_act	# extract icon file
 #do_cmd : cmd_msg	# show message
 do_cmd : cmd_act	# generate nethack.cmd
 
+#
+#	If you want to try the data librarian scheme to reduce
+#	the amount of data files in the NetHack home directory, comment
+#	out the lower line and uncomment the upper.  Also, make sure
+#	that DLB is defined in config.h.
+#
+#	NOTE: this feature is presently	untested under OS/2.
+#
+
+#do_dlb : dlb_yup
+do_dlb : dlb_nope
+
 ######################################################################
 #
 #	Nothing below this line should have to be changed.
@@ -518,43 +543,101 @@ DGNCOMPOBJS = $(DOBJ01) $(DOBJ02)
 RECOVOBJS = $(OBJ)\recover.o
 
 #
+#	Object files for dlb.
+#
+
+DLBOBJS = $(OBJ)\dlb_main.o $(OBJ)\dlb.o $(OBJ)\alloc.c $(OBJ)\panic.o
+
+#
+#	Data files for dlb.
+#
+
+DATHELP = \
+	$(GAMEDIR)\help $(GAMEDIR)\hh $(GAMEDIR)\cmdhelp $(GAMEDIR)\history \
+	$(GAMEDIR)\opthelp $(GAMEDIR)\wizhelp
+SPEC_LEVS = \
+	$(GAMEDIR)\asmodeus.lev $(GAMEDIR)\baalz.lev    $(GAMEDIR)\bigrm-1.lev \
+	$(GAMEDIR)\bigrm-2.lev  $(GAMEDIR)\bigrm-3.lev  $(GAMEDIR)\bigrm-4.lev \
+	$(GAMEDIR)\castle.lev   $(GAMEDIR)\fakewiz1.lev $(GAMEDIR)\fakewiz2.lev \
+	$(GAMEDIR)\juiblex.lev 	$(GAMEDIR)\knox.lev     $(GAMEDIR)\medusa-1.lev \
+	$(GAMEDIR)\medusa-2.lev $(GAMEDIR)\minend-1.lev $(GAMEDIR)\minend-2.lev \
+	$(GAMEDIR)\minefill.lev $(GAMEDIR)\minetn-1.lev $(GAMEDIR)\minetn-2.lev \
+	$(GAMEDIR)\oracle.lev 	$(GAMEDIR)\orcus.lev    $(GAMEDIR)\sanctum.lev \
+	$(GAMEDIR)\tower1.lev   $(GAMEDIR)\tower2.lev   $(GAMEDIR)\tower3.lev \
+	$(GAMEDIR)\valley.lev   $(GAMEDIR)\wizard1.lev  $(GAMEDIR)\wizard2.lev \
+	$(GAMEDIR)\wizard3.lev  $(GAMEDIR)\astral.lev 	$(GAMEDIR)\air.lev \
+	$(GAMEDIR)\earth.lev    $(GAMEDIR)\fire.lev 	$(GAMEDIR)\water.lev
+QUEST_LEVS = \
+	$(GAMEDIR)\A-goal.lev   $(GAMEDIR)\A-filla.lev $(GAMEDIR)\A-fillb.lev \
+	$(GAMEDIR)\A-locate.lev $(GAMEDIR)\A-start.lev \
+	$(GAMEDIR)\B-goal.lev   $(GAMEDIR)\B-filla.lev $(GAMEDIR)\B-fillb.lev \
+	$(GAMEDIR)\B-locate.lev $(GAMEDIR)\B-start.lev \
+	$(GAMEDIR)\C-goal.lev   $(GAMEDIR)\C-filla.lev $(GAMEDIR)\C-fillb.lev \
+	$(GAMEDIR)\C-locate.lev $(GAMEDIR)\C-start.lev \
+	$(GAMEDIR)\E-goal.lev   $(GAMEDIR)\E-filla.lev $(GAMEDIR)\E-fillb.lev \
+	$(GAMEDIR)\E-locate.lev $(GAMEDIR)\E-start.lev \
+	$(GAMEDIR)\H-goal.lev   $(GAMEDIR)\H-filla.lev $(GAMEDIR)\H-fillb.lev \
+	$(GAMEDIR)\H-locate.lev $(GAMEDIR)\H-start.lev \
+	$(GAMEDIR)\K-goal.lev   $(GAMEDIR)\K-filla.lev $(GAMEDIR)\K-fillb.lev \
+	$(GAMEDIR)\K-locate.lev $(GAMEDIR)\K-start.lev \
+	$(GAMEDIR)\P-goal.lev   $(GAMEDIR)\P-filla.lev $(GAMEDIR)\P-fillb.lev \
+	$(GAMEDIR)\P-locate.lev $(GAMEDIR)\P-start.lev \
+	$(GAMEDIR)\R-goal.lev   $(GAMEDIR)\R-filla.lev $(GAMEDIR)\R-fillb.lev \
+	$(GAMEDIR)\R-locate.lev $(GAMEDIR)\R-start.lev \
+	$(GAMEDIR)\S-goal.lev   $(GAMEDIR)\S-filla.lev $(GAMEDIR)\S-fillb.lev \
+	$(GAMEDIR)\S-locate.lev $(GAMEDIR)\S-start.lev \
+	$(GAMEDIR)\T-goal.lev   $(GAMEDIR)\T-filla.lev $(GAMEDIR)\T-fillb.lev \
+	$(GAMEDIR)\T-locate.lev $(GAMEDIR)\T-start.lev \
+	$(GAMEDIR)\V-goal.lev   $(GAMEDIR)\V-filla.lev $(GAMEDIR)\V-fillb.lev \
+	$(GAMEDIR)\V-locate.lev $(GAMEDIR)\V-start.lev \
+	$(GAMEDIR)\W-goal.lev   $(GAMEDIR)\W-filla.lev $(GAMEDIR)\W-fillb.lev \
+	$(GAMEDIR)\W-locate.lev $(GAMEDIR)\W-start.lev
+VARDATD = \
+	$(GAMEDIR)\data $(GAMEDIR)\oracles $(GAMEDIR)\options \
+	$(GAMEDIR)\quest.dat $(GAMEDIR)\rumors
+
+DATDLB = $(DATHELP) $(GAMEDIR)\dungeon $(SPEC_LEVS) $(QUEST_LEVS) $(VARDATD)
+
+#
 #	Object files for the game itself.
 #
 
 VOBJ01 = $(OBJ)\allmain.o  $(OBJ)\alloc.o    $(OBJ)\apply.o    $(OBJ)\artifact.o
 VOBJ02 = $(OBJ)\attrib.o   $(OBJ)\ball.o     $(OBJ)\bones.o    $(OBJ)\botl.o
 VOBJ03 = $(OBJ)\cmd.o      $(OBJ)\dbridge.o  $(OBJ)\decl.o     $(OBJ)\detect.o
-VOBJ04 = $(OBJ)\display.o  $(OBJ)\do.o       $(OBJ)\do_name.o  $(OBJ)\do_wear.o
-VOBJ05 = $(OBJ)\dog.o      $(OBJ)\dogmove.o  $(OBJ)\dokick.o   $(OBJ)\dothrow.o
-VOBJ06 = $(OBJ)\drawing.o  $(OBJ)\dungeon.o  $(OBJ)\eat.o      $(OBJ)\end.o
-VOBJ07 = $(OBJ)\engrave.o  $(OBJ)\exper.o    $(OBJ)\explode.o  $(OBJ)\extralev.o
-VOBJ08 = $(OBJ)\files.o    $(OBJ)\fountain.o $(OBJ)\hack.o     $(OBJ)\hacklib.o
-VOBJ09 = $(OBJ)\invent.o   $(OBJ)\lock.o     $(OBJ)\mail.o     $(OBJ)\main.o
-VOBJ10 = $(OBJ)\makemon.o  $(OBJ)\mcastu.o   $(OBJ)\mhitm.o    $(OBJ)\mhitu.o
-VOBJ11 = $(OBJ)\minion.o   $(OBJ)\mklev.o    $(OBJ)\mkmap.o    $(OBJ)\mkmaze.o
-VOBJ12 = $(OBJ)\mkobj.o    $(OBJ)\mkroom.o   $(OBJ)\mon.o      $(OBJ)\mondata.o
-VOBJ13 = $(OBJ)\monmove.o  $(OBJ)\monst.o    $(OBJ)\monstr.o   $(OBJ)\mplayer.o
-VOBJ14 = $(OBJ)\mthrowu.o  $(OBJ)\muse.o     $(OBJ)\music.o    $(OBJ)\o_init.o
-VOBJ15 = $(OBJ)\objects.o  $(OBJ)\objnam.o   $(OBJ)\options.o  $(OBJ)\os2.o
-VOBJ16 = $(OBJ)\pager.o    $(OBJ)\pcsys.o    $(OBJ)\pickup.o   $(OBJ)\pline.o
-VOBJ17 = $(OBJ)\polyself.o $(OBJ)\potion.o   $(OBJ)\pray.o     $(OBJ)\priest.o
-VOBJ18 = $(OBJ)\quest.o    $(OBJ)\questpgr.o $(OBJ)\read.o     $(OBJ)\rect.o
-VOBJ19 = $(OBJ)\restore.o  $(OBJ)\rip.o      $(OBJ)\rnd.o      $(OBJ)\rumors.o
-VOBJ20 = $(OBJ)\save.o     $(OBJ)\shk.o      $(OBJ)\shknam.o   $(OBJ)\sit.o
-VOBJ21 = $(OBJ)\sounds.o   $(OBJ)\sp_lev.o   $(OBJ)\spell.o    $(OBJ)\steal.o
-VOBJ22 = $(OBJ)\timeout.o  $(OBJ)\topten.o   $(OBJ)\track.o    $(OBJ)\trap.o
-VOBJ23 = $(OBJ)\tty.o      $(OBJ)\u_init.o   $(OBJ)\uhitm.o    $(OBJ)\unix.o
-VOBJ24 = $(OBJ)\vault.o    $(OBJ)\vision.o   $(OBJ)\vis_tab.o  $(OBJ)\weapon.o
-VOBJ25 = $(OBJ)\were.o     $(OBJ)\wield.o    $(OBJ)\windows.o  $(OBJ)\wizard.o
-VOBJ26 = $(OBJ)\worm.o     $(OBJ)\worn.o     $(OBJ)\write.o    $(OBJ)\zap.o
-VOBJ27 = $(WINOBJ)
-VOBJ28 = $(RANDOM)
+VOBJ04 = $(OBJ)\dig.o      $(OBJ)\display.o  $(OBJ)\dlb.o      $(OBJ)\do.o
+VOBJ05 = $(OBJ)\do_name.o  $(OBJ)\do_wear.o  $(OBJ)\dog.o      $(OBJ)\dogmove.o
+VOBJ06 = $(OBJ)\dokick.o   $(OBJ)\dothrow.o  $(OBJ)\drawing.o  $(OBJ)\dungeon.o
+VOBJ07 = $(OBJ)\eat.o      $(OBJ)\end.o      $(OBJ)\engrave.o  $(OBJ)\exper.o
+VOBJ08 = $(OBJ)\explode.o  $(OBJ)\extralev.o $(OBJ)\files.o    $(OBJ)\fountain.o
+VOBJ09 = $(OBJ)\hack.o     $(OBJ)\hacklib.o  $(OBJ)\invent.o   $(OBJ)\light.o
+VOBJ10 = $(OBJ)\lock.o     $(OBJ)\mail.o     $(OBJ)\main.o     $(OBJ)\makemon.o
+VOBJ11 = $(OBJ)\mcastu.o   $(OBJ)\mhitm.o    $(OBJ)\mhitu.o    $(OBJ)\minion.o
+VOBJ12 = $(OBJ)\mklev.o    $(OBJ)\mkmap.o    $(OBJ)\mkmaze.o   $(OBJ)\mkobj.o
+VOBJ13 = $(OBJ)\mkroom.o   $(OBJ)\mon.o      $(OBJ)\mondata.o  $(OBJ)\monmove.o
+VOBJ14 = $(OBJ)\monst.o    $(OBJ)\monstr.o   $(OBJ)\mplayer.o  $(OBJ)\mthrowu.o
+VOBJ15 = $(OBJ)\muse.o     $(OBJ)\music.o    $(OBJ)\o_init.o   $(OBJ)\objects.o
+VOBJ16 = $(OBJ)\objnam.o   $(OBJ)\options.o  $(OBJ)\os2.o      $(OBJ)\pager.o
+VOBJ17 = $(OBJ)\pcsys.o    $(OBJ)\pickup.o   $(OBJ)\pline.o    $(OBJ)\polyself.o
+VOBJ18 = $(OBJ)\potion.o   $(OBJ)\pray.o     $(OBJ)\priest.o   $(OBJ)\quest.o
+VOBJ19 = $(OBJ)\questpgr.o $(OBJ)\read.o     $(OBJ)\rect.o     $(OBJ)\restore.o
+VOBJ20 = $(OBJ)\rip.o      $(OBJ)\rnd.o      $(OBJ)\rumors.o   $(OBJ)\save.o
+VOBJ21 = $(OBJ)\shk.o      $(OBJ)\shknam.o   $(OBJ)\sit.o      $(OBJ)\sounds.o
+VOBJ22 = $(OBJ)\sp_lev.o   $(OBJ)\spell.o    $(OBJ)\steal.o    $(OBJ)\teleport.o
+VOBJ23 = $(OBJ)\timeout.o  $(OBJ)\topten.o   $(OBJ)\track.o    $(OBJ)\trap.o
+VOBJ24 = $(OBJ)\tty.o      $(OBJ)\u_init.o   $(OBJ)\uhitm.o    $(OBJ)\unix.o
+VOBJ25 = $(OBJ)\vault.o    $(OBJ)\vision.o   $(OBJ)\vis_tab.o  $(OBJ)\weapon.o
+VOBJ26 = $(OBJ)\were.o     $(OBJ)\wield.o    $(OBJ)\windows.o  $(OBJ)\wizard.o
+VOBJ27 = $(OBJ)\worm.o     $(OBJ)\worn.o     $(OBJ)\write.o    $(OBJ)\zap.o
+VOBJ28 = $(WINOBJ)
+VOBJ29 = $(RANDOM)
 HHOBJ  = $(OBJ)\version.o
 
 VOBJ =	$(VOBJ01) $(VOBJ02) $(VOBJ03) $(VOBJ04) $(VOBJ05) $(VOBJ06) $(VOBJ07) \
 	$(VOBJ08) $(VOBJ09) $(VOBJ10) $(VOBJ11) $(VOBJ12) $(VOBJ13) $(VOBJ14) \
 	$(VOBJ15) $(VOBJ16) $(VOBJ17) $(VOBJ18) $(VOBJ19) $(VOBJ20) $(VOBJ21) \
-	$(VOBJ22) $(VOBJ23) $(VOBJ24) $(VOBJ25) $(VOBJ26) $(VOBJ27) $(VOBJ28)
+	$(VOBJ22) $(VOBJ23) $(VOBJ24) $(VOBJ25) $(VOBJ26) $(VOBJ27) $(VOBJ28) \
+	$(VOBJ29)
 HOBJ =	$(VOBJ) $(HHOBJ)
 
 EXTERN_H   = #$(INCL)\extern.h
@@ -594,6 +677,8 @@ $(TEMP)\$(LEVCDEF) :
 	$(MAKEB) DD_NAME=lev_comp DD_DESC="Level compiler" DD_TARG=$@ do_def
 $(TEMP)\$(RCVRDEF) :
 	$(MAKEB) DD_NAME=recover DD_DESC="Recovery utility" DD_TARG=$@ do_def
+$(TEMP)\$(DLBDEF) :
+	$(MAKEB) DD_NAME=dld DD_DESC="Archive utility" DD_TARG=$@ do_def
 
 do_def :
 	$(ECHO) NAME $(DD_NAME) WINDOWCOMPAT> $(DD_TARG)
@@ -791,6 +876,70 @@ $(OBJ)\recover.o : $(UTIL)\$(CB) $(CONFIG_H)
 	$(UTILCC)
 
 #
+#	Targets for the dlb.
+#
+
+dlb : $(TEMP)\dlb.exe
+$(TEMP)\dlb.exe : $(TEMP)\dlb.rsp
+	$(RCVRLN)
+
+$(TEMP)\dlb.rsp : $(DLBOBJS) $(TEMP)\$(DLBDEF)
+	$(ECHO) $(SYSOBJ) $(DLBOBJS)> $@
+	$(ECHO) $(TEMP)\dlb.exe>> $@
+	$(ECHO) nul>> $@
+	$(ECHO) $(PLIBS)>> $@
+	$(ECHO) $(TEMP)\$(DLBDEF) $(LFLAGS);>> $@
+
+$(OBJ)\dlb_main.o : $(UTIL)\$(CB) $(CONFIG_H) $(INCL)\dlb.h
+	$(UTILCC)
+
+$(GAMEDIR)\nhdat :
+	$(MAKEB) do_dlb
+
+dlb_yup : dlb
+	$(TEMP)\dlb cf $(GAMEDIR)\nhdat $(DATDLB)
+	-$(RM) $(GAMEDIR)\help
+	-$(RM) $(GAMEDIR)\hh
+	-$(RM) $(GAMEDIR)\cmdhelp
+	-$(RM) $(GAMEDIR)\history
+	-$(RM) $(GAMEDIR)\opthelp
+	-$(RM) $(GAMEDIR)\wizhelp
+	-$(RM) $(GAMEDIR)\asmodeus.lev
+	-$(RM) $(GAMEDIR)\baalz.lev
+	-$(RM) $(GAMEDIR)\bigrm-?.lev
+	-$(RM) $(GAMEDIR)\castle.lev
+	-$(RM) $(GAMEDIR)\fakewiz?.lev
+	-$(RM) $(GAMEDIR)\juiblex.lev
+	-$(RM) $(GAMEDIR)\knox.lev
+	-$(RM) $(GAMEDIR)\medusa-?.lev
+	-$(RM) $(GAMEDIR)\minend-?.lev
+	-$(RM) $(GAMEDIR)\minefill.lev
+	-$(RM) $(GAMEDIR)\minetn-?.lev
+	-$(RM) $(GAMEDIR)\oracle.lev
+	-$(RM) $(GAMEDIR)\orcus.lev
+	-$(RM) $(GAMEDIR)\sanctum.lev
+	-$(RM) $(GAMEDIR)\tower?.lev
+	-$(RM) $(GAMEDIR)\valley.lev
+	-$(RM) $(GAMEDIR)\wizard?.lev
+	-$(RM) $(GAMEDIR)\astral.lev
+	-$(RM) $(GAMEDIR)\air.lev
+	-$(RM) $(GAMEDIR)\earth.lev
+	-$(RM) $(GAMEDIR)\fire.lev
+	-$(RM) $(GAMEDIR)\water.lev
+	-$(RM) $(GAMEDIR)\?-goal.lev
+	-$(RM) $(GAMEDIR)\?-fill?.lev
+	-$(RM) $(GAMEDIR)\?-locate.lev
+	-$(RM) $(GAMEDIR)\?-start.lev
+	-$(RM) $(GAMEDIR)\data
+	-$(RM) $(GAMEDIR)\oracles
+	-$(RM) $(GAMEDIR)\options
+	-$(RM) $(GAMEDIR)\quest.dat
+	-$(RM) $(GAMEDIR)\rumors
+
+dlb_nope :
+	$(ECHO) DLB not requested.
+
+#
 #	The following files depend on makedefs to be created.
 #
 #	date.h should be remade every time any of the source or include
@@ -849,7 +998,7 @@ $(OBJ)\vis_tab.o : $(CB)
 #	The following programs vary depending on what OS you are using.
 #
 
-$(OBJ)\main.o : $(SSYS)\pc$(CB) $(HACK_H)
+$(OBJ)\main.o : $(SSYS)\pc$(CB) $(HACK_H) $(INCL)\dlb.h
 	$(PSYSCC)
 $(OBJ)\tty.o  : $(SSYS)\pc$(CB) $(HACK_H) $(INCL)\func_tab.h
 	$(PSYSCC)
@@ -891,7 +1040,7 @@ $(OBJ)\wintty.o  : $(WIN)\$(CB) $(HACK_H) $(INCL)\termcap.h
 
 dat :	spec_lev help_fil $(GAMEDIR)\dungeon $(GAMEDIR)\data $(GAMEDIR)\rumors \
 	$(GAMEDIR)\oracles $(GAMEDIR)\quest.dat	$(GAMEDIR)\$(GAME).ico \
-	$(GAMEDIR)\$(GAME).cmd $(GAMEDIR)\nethack.cnf
+	$(GAMEDIR)\$(GAME).cmd $(GAMEDIR)\nethack.cnf $(GAMEDIR)\nhdat
 
 help_fil : $(GAMEDIR)\cmdhelp $(GAMEDIR)\help $(GAMEDIR)\hh $(GAMEDIR)\history \
 	$(GAMEDIR)\license $(GAMEDIR)\opthelp $(GAMEDIR)\wizhelp
@@ -934,15 +1083,13 @@ WFILES = $(GAMEDIR)\W-goal.lev
 XFILES = $(AFILES) $(BFILES) $(CFILES) $(EFILES) $(HFILES) $(KFILES) \
 	 $(PFILES) $(RFILES) $(SFILES) $(TFILES) $(VFILES) $(WFILES)
 
-spec_lev : $(GAMEDIR)\astral.lev $(GAMEDIR)\bigroom.lev $(GAMEDIR)\castle.lev \
-	   $(GAMEDIR)\knox.lev $(GAMEDIR)\medusa-1.lev $(GAMEDIR)\mine_end.lev \
+spec_lev : $(GAMEDIR)\astral.lev $(GAMEDIR)\bigrm-1.lev $(GAMEDIR)\castle.lev \
+	   $(GAMEDIR)\knox.lev $(GAMEDIR)\medusa-1.lev $(GAMEDIR)\minefill.lev \
 	   $(GAMEDIR)\oracle.lev $(GAMEDIR)\tower1.lev $(GAMEDIR)\valley.lev \
 	   $(GAMEDIR)\wizard1.lev $(XFILES)
 
 #	Single special level files
 
-$(GAMEDIR)\bigroom.lev : $(DAT)\bigroom.des $(TEMP)\lev_comp.exe
-	$(MAKEB) LF=bigroom do_slev
 $(GAMEDIR)\castle.lev : $(DAT)\castle.des $(TEMP)\lev_comp.exe
 	$(MAKEB) LF=castle do_slev
 $(GAMEDIR)\knox.lev : $(DAT)\knox.des $(TEMP)\lev_comp.exe
@@ -970,19 +1117,24 @@ $(GAMEDIR)\astral.lev : $(DAT)\endgame.des $(TEMP)\lev_comp.exe
 	$(RM) fire.lev
 	$(RM) water.lev
 
+$(GAMEDIR)\bigrm-1.lev : $(DAT)\bigroom.des $(TEMP)\lev_comp.exe
+	$(TEMP)\lev_comp $(DAT)\bigroom.des
+	$(CP) bigrm-?.lev $(GAMEDIR)
+	$(RM) bigrm-?.lev
+
 $(GAMEDIR)\medusa-1.lev : $(DAT)\medusa.des $(TEMP)\lev_comp.exe
 	$(TEMP)\lev_comp $(DAT)\medusa.des
 	$(CP) medusa-?.lev $(GAMEDIR)
 	$(RM) medusa-?.lev
 
-$(GAMEDIR)\mine_end.lev : $(DAT)\mines.des $(TEMP)\lev_comp.exe
+$(GAMEDIR)\minefill.lev : $(DAT)\mines.des $(TEMP)\lev_comp.exe
 	$(TEMP)\lev_comp $(DAT)\mines.des
-	$(CP) mine_end.lev $(GAMEDIR)
+	$(CP) minend-?.lev $(GAMEDIR)
 	$(CP) minefill.lev $(GAMEDIR)
-	$(CP) minetown.lev $(GAMEDIR)
-	$(RM) mine_end.lev
+	$(CP) minetn-?.lev $(GAMEDIR)
+	$(RM) minend-?.lev
 	$(RM) minefill.lev
-	$(RM) minetown.lev
+	$(RM) minetn-?.lev
 
 $(GAMEDIR)\tower1.lev : $(DAT)\tower.des $(TEMP)\lev_comp.exe
 	$(TEMP)\lev_comp $(DAT)\tower.des
@@ -1040,12 +1192,12 @@ $(WFILES) : $(DAT)\Wizard.des $(TEMP)\lev_comp.exe
 
 do_quest :
 	$(TEMP)\lev_comp $(DAT)\$(QF).des
-	$(CP) $(QQ)-goal.lev $(GAMEDIR)
 	$(CP) $(QQ)-fill?.lev $(GAMEDIR)
+	$(CP) $(QQ)-goal.lev $(GAMEDIR)
 	$(CP) $(QQ)-locate.lev $(GAMEDIR)
 	$(CP) $(QQ)-start.lev $(GAMEDIR)
-	$(RM) $(QQ)-goal.lev
 	$(RM) $(QQ)-fill?.lev
+	$(RM) $(QQ)-goal.lev
 	$(RM) $(QQ)-locate.lev
 	$(RM) $(QQ)-start.lev
 
@@ -1157,7 +1309,11 @@ $(OBJ)\decl.o     : $(SRC)\$(CB) $(HACK_H) $(INCL)\quest.h
 	$(SRCCC)
 $(OBJ)\detect.o   : $(SRC)\$(CB) $(HACK_H) $(INCL)\artifact.h
 	$(SRCCC)
+$(OBJ)\dig.o      : $(SRC)\$(CB) $(HACK_H)
+	$(SRCCC)
 $(OBJ)\display.o  : $(SRC)\$(CB) $(HACK_H)
+	$(SRCCC)
+$(OBJ)\dlb.o      : $(SRC)\$(CB) $(CONFIG_H) $(INCL)\dlb.h
 	$(SRCCC)
 $(OBJ)\do.o       : $(SRC)\$(CB) $(HACK_H) $(INCL)\lev.h
 	$(SRCCC)
@@ -1199,11 +1355,13 @@ $(OBJ)\hacklib.o  : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
 $(OBJ)\invent.o   : $(SRC)\$(CB) $(HACK_H) $(INCL)\artifact.h
 	$(SRCCC)
+$(OBJ)\light.o    : $(SRC)\$(CB) $(HACK_H)
+	$(SRCCC)
 $(OBJ)\lock.o     : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
-$(OBJ)\makemon.o  : $(SRC)\$(CB) $(HACK_H) $(INCL)\epri.h $(INCL)\emin.h
-	$(SRCCC)
 $(OBJ)\mail.o     : $(SRC)\$(CB) $(HACK_H) $(INCL)\mail.h
+	$(SRCCC)
+$(OBJ)\makemon.o  : $(SRC)\$(CB) $(HACK_H) $(INCL)\epri.h $(INCL)\emin.h
 	$(SRCCC)
 $(OBJ)\mcastu.o   : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
@@ -1235,7 +1393,7 @@ $(OBJ)\mplayer.o  : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
 $(OBJ)\mthrowu.o  : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
-$(OBJ)\muse.o     : $(SRC)\$(CB) $(HACK_H)
+$(OBJ)\muse.o     : $(SRC)\$(CB) $(HACK_H) $(INCL)\edog.h
 	$(SRCCC)
 $(OBJ)\music.o    : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
@@ -1292,6 +1450,8 @@ $(OBJ)\sp_lev.o   : $(SRC)\$(CB) $(HACK_H) $(INCL)\sp_lev.h $(INCL)\rect.h
 $(OBJ)\spell.o    : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
 $(OBJ)\steal.o    : $(SRC)\$(CB) $(HACK_H)
+	$(SRCCC)
+$(OBJ)\teleport.o : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
 $(OBJ)\timeout.o  : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)

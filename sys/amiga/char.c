@@ -14,7 +14,7 @@ struct Border Type_Border1 = {
 };
 
 struct IntuiText Type_IText1 = {
-	7,0,JAM2,
+	3,0,JAM1,
 	38,1,
 	NULL,
 	"Wizard",
@@ -53,7 +53,7 @@ struct Border Type_Border2 = {
 };
 
 struct IntuiText Type_IText2 = {
-	7,0,JAM2,
+	3,0,JAM1,
 	29,1,
 	NULL,
 	"Valkyrie",
@@ -92,7 +92,7 @@ struct Border Type_Border3 = {
 };
 
 struct IntuiText Type_IText3 = {
-	1,0,JAM2,
+	1,0,JAM1,
 	14,1,
 	NULL,
 	"Pick a Random Character Type",
@@ -131,7 +131,7 @@ struct Border Type_Border4 = {
 };
 
 struct IntuiText Type_IText4 = {
-	7,0,JAM2,
+	3,0,JAM1,
 	33,1,
 	NULL,
 	"Samurai",
@@ -170,7 +170,7 @@ struct Border Type_Border5 = {
 };
 
 struct IntuiText Type_IText5 = {
-	7,0,JAM2,
+	3,0,JAM1,
 	34,1,
 	NULL,
 	"Tourist",
@@ -209,7 +209,7 @@ struct Border Type_Border6 = {
 };
 
 struct IntuiText Type_IText6 = {
-	7,0,JAM2,
+	3,0,JAM1,
 	40,1,
 	NULL,
 	"Rogue",
@@ -248,7 +248,7 @@ struct Border Type_Border7 = {
 };
 
 struct IntuiText Type_IText7 = {
-	7,0,JAM2,
+	3,0,JAM1,
 	36,1,
 	NULL,
 	"Priest",
@@ -287,7 +287,7 @@ struct Border Type_Border8 = {
 };
 
 struct IntuiText Type_IText8 = {
-	7,0,JAM2,
+	3,0,JAM1,
 	35,1,
 	NULL,
 	"Healer",
@@ -326,7 +326,7 @@ struct Border Type_Border9 = {
 };
 
 struct IntuiText Type_IText9 = {
-	7,0,JAM2,
+	3,0,JAM1,
 	33,1,
 	NULL,
 	"Caveman",
@@ -365,7 +365,7 @@ struct Border Type_Border10 = {
 };
 
 struct IntuiText Type_IText10 = {
-	7,0,JAM2,
+	3,0,JAM1,
 	16,1,
 	NULL,
 	"Archeologist",
@@ -404,7 +404,7 @@ struct Border Type_Border11 = {
 };
 
 struct IntuiText Type_IText11 = {
-	7,0,JAM2,
+	3,0,JAM1,
 	36,1,
 	NULL,
 	"Knight",
@@ -443,7 +443,7 @@ struct Border Type_Border12 = {
 };
 
 struct IntuiText Type_IText12 = {
-	7,0,JAM2,
+	3,0,JAM1,
 	48,1,
 	NULL,
 	"Elf",
@@ -482,7 +482,7 @@ struct Border Type_Border13 = {
 };
 
 struct IntuiText Type_IText13 = {
-	7,0,JAM2,
+	3,0,JAM1,
 	27,1,
 	NULL,
 	"Barbarian",

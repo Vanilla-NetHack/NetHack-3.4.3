@@ -1,8 +1,10 @@
-/*	SCCS Id: @(#)explode.c 3.1	93/05/15	*/
+/*	SCCS Id: @(#)explode.c	3.2	96/01/06	*/
 /*	Copyright (C) 1990 by Ken Arromdee */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
+
+#ifdef OVL0
 
 /* Note: Arrays are column first, while the screen is row first */
 static int expl[3][3] = {
@@ -26,7 +28,7 @@ int type; /* the same as in zap.c */
 int dam;
 char olet;
 {
-	int i, j, k;
+	int i, j, k, damu = dam;
 	boolean starting = 1;
 	boolean visible, any_shield;
 	int uhurt = 0; /* 0=unhurt, 1=items damaged, 2=you and items damaged */
@@ -38,54 +40,91 @@ char olet;
 		/* 0=normal explosion, 1=do shieldeff, 2=do nothing */
 	boolean shopdamage = FALSE;
 
-	switch(abs(type) % 10) {
-		default: impossible("explosion base type %d?", type); return;
+	if (olet == WAND_CLASS)		/* retributive strike */
+		switch (u.role) {
+			case 'P':
+			case 'W': damu /= 5;
+				  break;
+			case 'H':
+			case 'K': damu /= 2;
+				  break;
+			default:  break;
+		}
 
-		case 1: str = (olet == SCROLL_CLASS ? "tower of flame" : "fireball"); adtyp = AD_FIRE; break;
-		/* case 3: str = "ball of cold"; adtyp = AD_COLD; break; */
-		/* case 5: str = "ball lightning"; adtyp = AD_ELEC; break; */
-		/* case 7: str = "acid ball"; adtyp = AD_ACID; break; */
+	switch (abs(type) % 10) {
+		case 0: str = "magical blast";
+			adtyp = AD_MAGM;
+			break;
+		case 1: str =   olet == BURNING_OIL ?	"burning oil" :
+				olet == SCROLL_CLASS ?	"tower of flame" :
+							"fireball";
+			adtyp = AD_FIRE;
+			break;
+		case 2: str = "ball of cold";
+			adtyp = AD_COLD;
+			break;
+		case 4: str = "disintegration field";
+			adtyp = AD_DISN;
+			break;
+		case 5: str = "ball lightning";
+			adtyp = AD_ELEC;
+			break;
+		default: impossible("explosion base type %d?", type); return;
 	}
 
 	any_shield = visible = FALSE;
-	for(i=0; i<3; i++) for(j=0; j<3; j++) {
+	for (i=0; i<3; i++) for (j=0; j<3; j++) {
 		if (!isok(i+x-1, j+y-1)) {
 			explmask[i][j] = 2;
 			continue;
-		}
+		} else
+			explmask[i][j] = 0;
+
 		if (i+x-1 == u.ux && j+y-1 == u.uy) {
 		    switch(adtyp) {
-			case AD_FIRE:
-				explmask[i][j] = Fire_resistance ? 1 : 0;
+			case AD_MAGM:
+				explmask[i][j] = !!Antimagic;
 				break;
-			/* case AD_COLD: */
-			/* case AD_ELEC: */
-			/* case AD_DISN: */
-			/* case AD_ACID: */
+			case AD_FIRE:
+				explmask[i][j] = !!Fire_resistance;
+				break;
+			case AD_COLD:
+				explmask[i][j] = !!Cold_resistance;
+				break;
+			case AD_DISN:
+				explmask[i][j] = !!Disint_resistance;
+				break;
+			case AD_ELEC:
+				explmask[i][j] = !!Shock_resistance;
+				break;
 			default:
 				impossible("explosion type %d?", adtyp);
-				explmask[i][j] = 0;
 				break;
 		    }
 		}
 		/* can be both you and mtmp if you're swallowed */
 		if ((mtmp = m_at(i+x-1, j+y-1)) != 0) {
 		    switch(adtyp) {
-			case AD_FIRE:
-				explmask[i][j] = resists_fire(mtmp->data)
-					? 1 : 0;
+			case AD_MAGM:
+				explmask[i][j] |= resists_magm(mtmp);
 				break;
-			/* case AD_COLD: */
-			/* case AD_ELEC: */
-			/* case AD_DISN: */
-			/* case AD_ACID: */
+			case AD_FIRE:
+				explmask[i][j] |= resists_fire(mtmp);
+				break;
+			case AD_COLD:
+				explmask[i][j] |= resists_cold(mtmp);
+				break;
+			case AD_DISN:
+				explmask[i][j] |= resists_disint(mtmp);
+				break;
+			case AD_ELEC:
+				explmask[i][j] |= resists_elec(mtmp);
+				break;
 			default:
 				impossible("explosion type %d?", adtyp);
-				explmask[i][j] = 0;
 				break;
 		    }
-		} else if (i+x-1 != u.ux || j+y-1 != u.uy)
-		    explmask[i][j] = 0;
+		}
 
 		if (cansee(i+x-1, j+y-1)) visible = TRUE;
 		if (explmask[i][j] == 1) any_shield = TRUE;
@@ -93,7 +132,7 @@ char olet;
 
 	if (visible) {
 		/* Start the explosion */
-		for(i=0; i<3; i++) for(j=0; j<3; j++) {
+		for (i=0; i<3; i++) for (j=0; j<3; j++) {
 			if (explmask[i][j] == 2) continue;
 			tmp_at(starting ? DISP_BEAM : DISP_CHANGE,
 					    cmap_to_glyph(expl[i][j]));
@@ -104,7 +143,7 @@ char olet;
 
 		if (any_shield) {	/* simulate a shield effect */
 		    for (k = 0; k < SHIELD_COUNT; k++) {
-			for(i=0; i<3; i++) for(j=0; j<3; j++) {
+			for (i=0; i<3; i++) for (j=0; j<3; j++) {
 			    if (explmask[i][j] == 1)
 				/*
 				 * Bypass tmp_at() and send the shield glyphs
@@ -119,7 +158,7 @@ char olet;
 		    }
 
 		    /* Cover last shield glyph with blast symbol. */
-		    for(i=0; i<3; i++) for(j=0; j<3; j++) {
+		    for (i=0; i<3; i++) for (j=0; j<3; j++) {
 			if (explmask[i][j] == 1)
 			    show_glyph(i+x-1,j+y-1,cmap_to_glyph(expl[i][j]));
 		    }
@@ -129,10 +168,12 @@ char olet;
 		    delay_output();
 		}
 
-	} else You("hear a blast.");
+	} else {
+		if (flags.soundok) You_hear("a blast.");
+	}
 
-
-	for(i=0; i<3; i++) for(j=0; j<3; j++) {
+    if (dam)
+	for (i=0; i<3; i++) for (j=0; j<3; j++) {
 		if (explmask[i][j] == 2) continue;
 		if (i+x-1 == u.ux && j+y-1 == u.uy)
 			uhurt = (explmask[i][j] == 1) ? 1 : 2;
@@ -144,24 +185,31 @@ char olet;
 		if (!mtmp) continue;
 		if (u.uswallow && mtmp == u.ustuck) {
 			if (is_animal(u.ustuck->data))
-				pline("%s gets heartburn!",
-				      Monnam(u.ustuck));
+				pline("%s gets %s!",
+				      Monnam(u.ustuck),
+				      (adtyp == AD_FIRE) ? "heartburn" :
+				      (adtyp == AD_COLD) ? "chilly" :
+				      (adtyp == AD_DISN) ? "perforated" :
+				      (adtyp == AD_ELEC) ? "shocked" :
+				       "fried");
 			else
-				pline("%s gets slightly toasted!",
-				      Monnam(u.ustuck));
+				pline("%s gets slightly %s!",
+				      Monnam(u.ustuck),
+				      (adtyp == AD_FIRE) ? "toasted" :
+				      (adtyp == AD_COLD) ? "chilly" :
+				      (adtyp == AD_DISN) ? "perforated" :
+				      (adtyp == AD_ELEC) ? "shocked" :
+				       "fried");
 		} else
 		pline("%s is caught in the %s!",
 			cansee(i+x-1, j+y-1) ? Monnam(mtmp) : "It", str);
 
 		idamres += destroy_mitem(mtmp, SCROLL_CLASS, (int) adtyp);
 		idamres += destroy_mitem(mtmp, SPBOOK_CLASS, (int) adtyp);
-		/* Fire resistance protects monsters from burning scrolls, */
-		/* but not from exploding potions. */
 		idamnonres += destroy_mitem(mtmp, POTION_CLASS, (int) adtyp);
-/*
 		idamnonres += destroy_mitem(mtmp, WAND_CLASS, (int) adtyp);
 		idamnonres += destroy_mitem(mtmp, RING_CLASS, (int) adtyp);
-*/
+
 		if (explmask[i][j] == 1) {
 			golemeffects(mtmp, (int) adtyp, dam + idamres);
 			mtmp->mhp -= idamnonres;
@@ -180,7 +228,9 @@ char olet;
 			}
 			if (mtmp == u.ustuck)
 				mdam *= 2;
-			if (resists_cold(mtmp->data) /* && adtyp == AD_FIRE */)
+			if (resists_cold(mtmp) && adtyp == AD_FIRE)
+				mdam *= 2;
+			else if (resists_fire(mtmp) && adtyp == AD_COLD)
 				mdam *= 2;
 			mtmp->mhp -= mdam;
 			mtmp->mhp -= (idamres + idamnonres);
@@ -195,9 +245,19 @@ char olet;
 
 	/* Do your injury last */
 	if (uhurt) {
-	        if (type >= 0 && flags.verbose && olet != SCROLL_CLASS)
+		if (type >= 0 && flags.verbose && olet != SCROLL_CLASS)
 			You("are caught in the %s!", str);
-		if (uhurt == 2) u.uhp -= dam;
+		/* do property damage first, in case we end up leaving bones */
+		if (adtyp == AD_FIRE) (void) burnarmor();
+		destroy_item(SCROLL_CLASS, (int) adtyp);
+		destroy_item(SPBOOK_CLASS, (int) adtyp);
+		destroy_item(POTION_CLASS, (int) adtyp);
+		destroy_item(RING_CLASS, (int) adtyp);
+		destroy_item(WAND_CLASS, (int) adtyp);
+
+		ugolemeffects((int) adtyp, damu);
+		if (uhurt == 2) u.uhp -= damu, flags.botl = 1;
+
 		if (u.uhp <= 0) {
 			char buf[BUFSZ];
 
@@ -210,29 +270,203 @@ char olet;
 			    Strcpy(buf, str);
 			}
 			killer = buf;
+			/* Known BUG: BURNING suppresses corpse in bones data,
+			   but done does not handle killer reason correctly */
 			/* done(adtyp == AD_FIRE ? BURNING : DIED); */
 			done(BURNING);
 		}
 		exercise(A_STR, FALSE);
-#if defined(POLYSELF)
-		ugolemeffects((int) adtyp, dam);
-#endif
-		destroy_item(SCROLL_CLASS, (int) adtyp);
-		destroy_item(SPBOOK_CLASS, (int) adtyp);
-		destroy_item(POTION_CLASS, (int) adtyp);
-/*
-		destroy_item(RING_CLASS, (int) adtyp);
-		destroy_item(WAND_CLASS, (int) adtyp);
-*/
 	}
+
 	if (shopdamage) {
-		pay_for_damage("burn away");
-/* (only if we ever add non-fire balls)
 		pay_for_damage(adtyp == AD_FIRE ? "burn away" :
 			       adtyp == AD_COLD ? "shatter" :
 			       adtyp == AD_DISN ? "disintegrate" : "destroy");
-*/
 	}
 }
+#endif /* OVL0 */
+#ifdef OVL1
+
+struct scatter_chain {
+	struct scatter_chain *next;	/* pointer to next scatter item	*/
+	struct obj *obj;		/* pointer to the object	*/
+	xchar ox;			/* location of			*/
+	xchar oy;			/*	item			*/
+	schar dx;			/* direction of			*/
+	schar dy;			/*	travel			*/
+	int range;			/* range of object		*/
+	boolean stopped;		/* flag for in-motion/stopped	*/
+};
+
+/*
+ * scflags:
+ *	VIS_EFFECTS	Add visual effects to display
+ *	MAY_HITMON	Objects may hit monsters
+ *	MAY_HITYOU	Objects may hit hero
+ *	MAY_HIT		Objects may hit you or monsters
+ *	MAY_DESTROY	Objects may be destroyed at random
+ *	MAY_FRACTURE	Stone objects can be fractured (statues, boulders)
+ */
+
+void
+scatter(sx,sy,blastforce,scflags)
+int sx,sy;				/* location of objects to scatter */
+int blastforce;				/* force behind the scattering	*/
+unsigned int scflags;
+{
+	register struct obj *otmp;
+	register int tmp;
+	int farthest = 0;
+	uchar typ;
+	long qtmp;
+	boolean used_up;
+	struct monst *mtmp;
+	struct scatter_chain *stmp, *stmp2 = 0;
+	struct scatter_chain *schain = (struct scatter_chain *)0;
+
+	while ((otmp = level.objects[sx][sy]) != 0) {
+	    if (otmp->quan > 1L) {
+		qtmp = (long)rnd((int)otmp->quan - 1);
+		(void) splitobj(otmp, qtmp);
+	    }
+	    obj_extract_self(otmp);
+	    used_up = FALSE;
+
+	    /* 9 in 10 chance of fracturing boulders or statues */
+	    if ((scflags & MAY_FRACTURE)
+			&& ((otmp->otyp == BOULDER) || (otmp->otyp == STATUE))
+			&& rn2(10)) {
+		if (otmp->otyp == BOULDER) {
+		    pline("%s breaks apart.",The(xname(otmp)));
+		    fracture_rock(otmp);
+		    place_object(otmp, sx, sy);	/* put fragments on floor */
+		} else {
+		    struct trap *trap;
+
+		    if ((trap = t_at(sx,sy)) && trap->ttyp == STATUE_TRAP)
+			    deltrap(trap);
+		    pline("%s crumbles.",The(xname(otmp)));
+		    (void) break_statue(otmp);
+		    place_object(otmp, sx, sy);	/* put fragments on floor */
+		}
+		used_up = TRUE;
+
+	    /* 1 in 10 chance of destruction of obj; glass, egg destruction */
+	    } else if ((scflags & MAY_DESTROY) && (!rn2(10)
+			|| (objects[otmp->otyp].oc_material == GLASS
+			|| otmp->otyp == EGG))) {
+		if (breaks(otmp, sx, sy, FALSE)) used_up = TRUE;
+	    }
+
+	    if (!used_up) {
+		stmp = (struct scatter_chain *)
+					alloc(sizeof(struct scatter_chain));
+		stmp->next = (struct scatter_chain *)0;
+		stmp->obj = otmp;
+		stmp->ox = sx;
+		stmp->oy = sy;
+		tmp = rn2(8);		/* get the direction */
+		stmp->dx = xdir[tmp];
+		stmp->dy = ydir[tmp];
+		tmp = blastforce - (otmp->owt/40);
+		if (tmp < 1) tmp = 1;
+		stmp->range = rnd(tmp); /* anywhere up to that determ. by wt */
+		if (farthest < stmp->range) farthest = stmp->range;
+		stmp->stopped = FALSE;
+		if (!schain)
+		    schain = stmp;
+		else
+		    stmp2->next = stmp;
+		stmp2 = stmp;
+	    }
+	}
+
+	while (farthest-- > 0) {
+		for (stmp = schain; stmp; stmp = stmp->next) {
+		   if ((stmp->range-- > 0) && (!stmp->stopped)) {
+			bhitpos.x = stmp->ox + stmp->dx;
+			bhitpos.y = stmp->oy + stmp->dy;
+			typ = levl[bhitpos.x][bhitpos.y].typ;
+			if(!isok(bhitpos.x, bhitpos.y)) {
+				bhitpos.x -= stmp->dx;
+				bhitpos.y -= stmp->dy;
+				stmp->stopped = TRUE;
+			} else if(!ZAP_POS(typ) ||
+					closed_door(bhitpos.x, bhitpos.y)) {
+				bhitpos.x -= stmp->dx;
+				bhitpos.y -= stmp->dy;
+				stmp->stopped = TRUE;
+			} else if ((mtmp = m_at(bhitpos.x, bhitpos.y)) != 0) {
+				if (scflags & MAY_HITMON) {
+				    stmp->range--;
+				    if (ohitmon(mtmp, stmp->obj, 1, FALSE)) {
+					stmp->obj = (struct obj *)0;
+					stmp->stopped = TRUE;
+				    }
+				}
+			} else if (bhitpos.x==u.ux && bhitpos.y==u.uy) {
+				if (scflags & MAY_HITYOU) {
+				    int hitvalu, hitu;
+
+				    if (multi) nomul(0);
+				    hitvalu = 8 + stmp->obj->spe;
+				    if (bigmonst(uasmon)) hitvalu++;
+				    hitu = thitu(hitvalu,
+						dmgval(stmp->obj, &youmonst),
+						stmp->obj,
+						xname(stmp->obj));
+				    if (hitu) {
+					stmp->range -= 3;
+					stop_occupation();
+				    }
+				}
+			} else {
+				if (scflags & VIS_EFFECTS) {
+				    /* tmp_at(bhitpos.x, bhitpos.y); */
+				    /* delay_output(); */
+				}
+			}
+			stmp->ox = bhitpos.x;
+			stmp->oy = bhitpos.y;
+		   }
+		}
+	}
+	for (stmp = schain; stmp; stmp = stmp2) {
+		int x,y;
+
+		stmp2 = stmp->next;
+		x = stmp->ox; y = stmp->oy;
+		if (stmp->obj) {
+			place_object(stmp->obj, x, y);
+			stackobj(stmp->obj);
+		}
+		free((genericptr_t)stmp);
+		newsym(x,y);
+	}
+}
+
+
+/*
+ * Splatter burning oil from x,y to the surrounding area.
+ *
+ * This routine should really take a how and direction parameters.
+ * The how is how it was caused, e.g. kicked verses thrown.  The
+ * direction is which way to spread the flaming oil.  Different
+ * "how"s would give different dispersal patterns.  For example,
+ * kicking a burning flask will splatter differently from a thrown
+ * flask hitting the ground.
+ *
+ * For now, just perform a "regular" explosion.
+ */
+void
+splatter_burning_oil(x, y)
+    int x, y;
+{
+/* ZT_SPELL(ZT_FIRE) = ZT_SPELL(AD_FIRE-1) = 10+(2-1) = 11 */
+#define ZT_SPELL_O_FIRE 11 /* value kludge, see zap.c */
+    explode(x, y, ZT_SPELL_O_FIRE, d(4,4), BURNING_OIL);
+}
+
+#endif /* OVL1 */
 
 /*explode.c*/

@@ -3,6 +3,7 @@
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
+#include "macwin.h"
 
 #include <Folders.h>
 #include <Windows.h>
@@ -11,7 +12,6 @@
 #include <Memory.h>
 #include <Files.h>
 
-extern void dprintf ( char * , ... ) ;
 
 #define DIV_FACTOR 3
 
@@ -19,7 +19,7 @@ static Boolean winFileInit = 0 ;
 static unsigned char winFileName [ 32 ] ;
 static long winFileDir ;
 static short winFileVol ;
-static Handle winFileContents = (Handle) NULL ;
+static Handle winFileContents = (Handle) 0 ;
 
 typedef struct WinPosSave {
 	short			validPos ;
@@ -32,6 +32,10 @@ typedef struct WinPosSave {
 
 static WinPosSave savePos [ kLastWindowKind + 1 ] ;
 static WinPosSave usePos [ kLastWindowKind + 1 ] ;
+
+static void InitWinFile ( void ) ;
+static void SavePosition ( short , short , short ) ;
+static void SaveSize ( short , short , short ) ;
 
 
 
@@ -56,7 +60,7 @@ InitWinFile ( void )
 		BlockMove ( * sh , winFileName , * * sh + 1 ) ;
 		ReleaseResource ( (Handle) sh ) ;
 	} else {
-		BlockMove ( "\PNetHack Windows" , winFileName , 16 ) ;
+		BlockMove ( "\PNetHack Preferences" , winFileName , 20 ) ;
 	}
 	if ( HOpen ( winFileVol , winFileDir , winFileName , fsRdPerm , & ref ) ) {
 		return ;

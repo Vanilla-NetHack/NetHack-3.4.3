@@ -1,6 +1,6 @@
-/*	SCCS Id: @(#)os2conf.h	3.1	93/01/18 */
+/*	SCCS Id: @(#)os2conf.h	3.2	96/02/29	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* Copyright (c) Timo Hakulinen, 1990, 1991, 1992, 1993. */
+/* Copyright (c) Timo Hakulinen, 1990, 1991, 1992, 1993, 1996. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #ifdef OS2
@@ -61,25 +61,8 @@
 #include "micro.h"		/* necessary externs for [os_name].c */
 #endif
 
-#ifdef MFLOPPY
-
-# define FROMPERM	1	/* for ramdisk use */
-# define TOPERM		2	/* - " - */
-# define ACTIVE		1
-# define SWAPPED	2
-
-struct finfo {
-	int  where;
-	long time;
-	long size;
-};
-extern struct finfo fileinfo[];
-# define ZFINFO { 0, 0L, 0L }
-
-#endif /* MFLOPPY */
-
 #ifndef SYSTEM_H
-# include "system.h"
+#include "system.h"
 #endif
 
 #define index	strchr

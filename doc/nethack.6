@@ -1,4 +1,4 @@
-.TH NETHACK 6 "28 March 1989"
+.TH NETHACK 6 "10 March 1996"
 .UC 4
 .SH NAME
 nethack \- Exploring The Mazes of Menace
@@ -35,6 +35,9 @@ nethack \- Exploring The Mazes of Menace
 ]
 .B \-s
 [
+.B \-v
+]
+[
 .B \-[ABCEHKPRSTVW]
 ]
 [
@@ -44,7 +47,10 @@ nethack \- Exploring The Mazes of Menace
 .PP
 .I NetHack
 is a display oriented Dungeons & Dragons(tm) - like game.
-Both display and command structure resemble rogue.
+The standard tty display and command structure resemble rogue.
+.PP
+Other, more graphical display options exist if you are using either a PC,
+or an X11 interface.
 .PP
 To get started you really only need to know two commands.  The command
 .B ?
@@ -109,14 +115,20 @@ to prevent the current input line from being cleared.
 .PP
 The
 .B \-s
-option alone will print out the list of your scores.
-It may be followed by arguments
+option alone will print out the list of your scores on the current version.
+An immediately following
+.B \-v
+reports on all versions present in the score file.
+The
+.B \-s
+may also be followed by arguments
 .B "\-A \-B \-C \-E \-H \-K \-P \-R \-S \-T \-V \-W"
 to print the
 scores of Archeologists, Barbarians, Cave(wo)men, Elves, Healers, Knights,
 Priest(esse)s, Rogues, Samurai, Tourists, Valkyries, or Wizards.
 It may also be followed by one or more player names to print the scores of the
-players mentioned, or by 'all' to print out all scores.
+players mentioned, by 'all' to print out all scores, or by a number to print
+that many top scores.
 .PP
 The
 .B \-n

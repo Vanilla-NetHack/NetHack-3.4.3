@@ -1,5 +1,5 @@
 #	NetHack Makefile.
-#	SCCS Id: @(#)Makefile.dat	3.1	92/09/18
+#	SCCS Id: @(#)Makefile.dat	3.2	92/09/18
 
 VARDAT = data rumors quest.dat oracles options
 
@@ -13,6 +13,21 @@ all:	$(VARDAT) spec_levs quest_levs dungeon
 
 ../util/lev_comp:
 	(cd ../util ; make lev_comp)
+
+../util/tile2x11:
+	(cd ../util ; make tile2x11)
+
+x11tiles: ../util/tile2x11 ../win/share/monsters.txt ../win/share/objects.txt \
+				../win/share/other.txt
+	../util/tile2x11 ../win/share/monsters.txt ../win/share/objects.txt \
+				../win/share/other.txt
+
+pet_mark.xbm: ../win/X11/pet_mark.xbm
+	cp ../win/X11/pet_mark.xbm pet_mark.xbm
+
+rip.xpm: ../win/X11/rip.xpm
+	cp ../win/X11/rip.xpm rip.xpm
+
 
 data:	data.base ../util/makedefs
 	../util/makedefs -d
@@ -69,3 +84,4 @@ dungeon: dungeon.def ../util/makedefs ../util/dgn_comp
 
 spotless:
 	-rm -f spec_levs quest_levs *.lev $(VARDAT) dungeon dungeon.pdf
+	-rm -f nhdat x11tiles pet_mark.xbm rip.xpm

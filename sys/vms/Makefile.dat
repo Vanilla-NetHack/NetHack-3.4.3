@@ -1,33 +1,38 @@
 #	NetHack Makefile (VMS) - data files: special levels and other data.
-#	SCCS Id: @(#)Makefile.dat	3.1	93/01/06
+#	SCCS Id: @(#)Makefile.dat	3.2	96/03/23
 
 #  Copy this file to [.dat]Makefile.; no editing needed.
 
-MAKE	= mms
+MAKE	= $(MMS)
 CD	= set default
 ECHO	= write sys$output
-NOOP	= !			# don't do anything
+NOOP	= continue		# don't do anything interesting
 RUN	= mcr			# simplest way to pass command line args
 TOUCH	= append/New _NLA0:	# only one file per $(TOUCH)
 # support directories, relative to each other and to 'src'
 DAT = [-.dat]
 UTL = [-.util]
+WINSHR = [-.win.share]
+WINX11 = [-.win.X11]
 # utilities; must match Makefile.utl in spelling and punctuation
 MAKEDEFS = $(UTL)makedefs.exe;
 LEVCOMP  = $(UTL)lev_comp.exe;
 DGNCOMP  = $(UTL)dgn_comp.exe;
+DLB	 = $(UTL)dlb.exe;
+TILE2X11 = $(UTL)tile2x11.exe;
 
 # note: filespecs have enough punctuation to satisfy DELETE
-MARKERS = spec_levs.timestamp;,quest_levs.timestamp;
+MARKERS = spec_levs.timestamp;,quest_levs.timestamp; 
 VARDAT	= data.;,rumors.;,quest.dat;,oracles.;,options.;
 DUNGEON = dungeon.;
+X11TILES= x11tiles.;
 # note: the level lists need to be space separated
 QUESTLEVS = Arch.des Barb.des Caveman.des Elf.des Healer.des Knight.des \
 	Priest.des Rogue.des Samurai.des Tourist.des Valkyrie.des Wizard.des
 SPECLEVS  = bigroom.des castle.des endgame.des gehennom.des knox.des \
 	medusa.des mines.des oracle.des tower.des yendor.des
 
-all :	$(VARDAT) $(DUNGEON) $(MARKERS)
+all :	$(VARDAT) $(DUNGEON) $(MARKERS) $(DLB)
       @ $(ECHO) "data files are up to date."
 
 # these are convenience targets for "manual" interactive use
@@ -47,6 +52,8 @@ oracles :	oracles.;
       @ $(NOOP)
 options :	options.;
       @ $(NOOP)
+x11tiles :	$(X11TILES)
+      @ $(NOOP)
 
 $(MAKEDEFS) :
 	$(CD) $(UTL)
@@ -62,6 +69,28 @@ $(LEVCOMP) :
 	$(CD) $(UTL)
 	$(MAKE)$(MAKEFLAGS) $(LEVCOMP)
       @ $(CD) $(DAT)
+
+$(DLB) :
+	$(CD) $(UTL)
+	$(MAKE)$(MAKEFLAGS) $(DLB)
+      @ $(CD) $(DAT)
+
+$(TILE2X11) :
+	$(CD) $(UTL)
+	$(MAKE)$(MAKEFLAGS) $(TILE2X11)
+      @ $(CD) $(DAT)
+
+$(X11TILES) : $(TILE2X11) \
+		$(WINSHR)monsters.txt $(WINSHR)objects.txt $(WINSHR)other.txt
+	$(RUN) $(TILE2X11) \
+		$(WINSHR)monsters.txt $(WINSHR)objects.txt $(WINSHR)other.txt
+
+pet_mark.xbm : $(WINX11)pet_mark.xbm
+	copy $(WINX11)pet_mark.xbm pet_mark.xbm
+
+rip.xpm : $(WINX11)rip.xpm
+	copy $(WINX11)rip.xpm rip.xpm
+
 
 data.; :	data.base $(MAKEDEFS)
 	$(RUN) $(MAKEDEFS) -d
@@ -95,8 +124,12 @@ clean :
       - if f$search("*.*;-1").nes."" then  purge
       - if f$search("dungeon.pdf").nes."" then	delete dungeon.pdf;
       - if f$search("*.timestamp").nes."" then	delete $(MARKERS)
-      - delete $(VARDAT)
 
 spotless :	clean
+      - delete $(VARDAT)
       - if f$search("$(DUNGEON)").nes."" then  delete $(DUNGEON)
       - if f$search("*.lev").nes."" then  delete *.lev;
+      - if f$search("$(X11TILES)").nes."" then  delete $(X11TILES)
+      - if f$search("*.x%m").nes."" then  delete *.x%m;		!*.xbm,*.xpm
+      - if f$search("nh*.dlb").nes."" then  delete nh*.dlb;
+      - if f$search("nhdat.lst").nes."" then  delete nhdat.lst;

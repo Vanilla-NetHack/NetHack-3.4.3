@@ -10,35 +10,81 @@
 # define __chip
 #endif
 
-#include "incl:patchlevel.h"
 
-#include "Amiga:wbdefs.h"		/* Miscellany information */
+#include "patchlevel.h"
+
+#include "NH:sys/amiga/wbdefs.h"		/* Miscellany information */
 #ifdef  INTUI_NEW_LOOK
 #define NewWindow   ExtNewWindow
 #define NewScreen   ExtNewScreen
 #endif
-#include "Amiga:wbstruct.h"
-#include "Amiga:wbprotos.h"
+#include "NH:sys/amiga/wbstruct.h"
+#include "NH:sys/amiga/wbprotos.h"
 
-#include "Amiga:wbdata.c"		/* All structures and global data */
-#include "Amiga:wbwin.c"		/* Has static definitions */
+#include "NH:sys/amiga/wbdata.c"		/* All structures and global data */
+#include "NH:sys/amiga/wbwin.c"		/* Has static definitions */
+
+#define	OPTION_LISTS_ONLY
+#include <time.h>
+#include "hack.h"
+#undef exit
+#include "NH:src/options.c"
+
+#include "NH:sys/amiga/wbgads.c"
+
+#ifdef _DCC
+/* DICE doesn't have a putenv() */
+void putenv(varstr)
+char *varstr;
+{
+	FILE *f;
+	char var[64],str[256];
+	int i,j;
+
+	for(i = 0; varstr[i] != '='; i++);
+	for(j = i - 1; varstr[j] == ' '; j--);
+	strncpy(var, varstr, j+1); var[j+1] = 0;
+	while(varstr[++i] == ' ');
+	varstr += i;
+	i = 0;
+	if(*varstr == '"') {
+		while(varstr[++i] != '"');
+		strncpy(str, varstr+1, i-1); str[i-1] = 0;
+	} else
+		strcpy(str, varstr);
+	setenv(var, str);
+}
+#endif
 
 #define C_GREY  0
 #define C_BLACK 1
 #define C_WHITE 2
 #define C_BLUE  3
 
-#ifndef __SASC_60
+#if !defined(__SASC_60) && !defined(_DCC)
 extern char *sys_errlist[];
 #endif
 extern int errno;
 
+#ifdef	static
+static can not be redefined for this file to compile correctly
+#endif
+
 char pubscreen[ 80 ] = { "HackWB" };
-char mytitle[ 80 ];
 
 #ifdef  INTUI_NEW_LOOK
 int scrlocked = 0;
-UWORD scrnpens[] = { 0xffff };
+UWORD scrnpens[] = {
+	0,
+	1,
+	2,
+	2,
+	1,
+	3,
+	2,
+	0,
+	3,
+};
 
 struct TagItem scrntags[] =
 {
@@ -52,6 +98,8 @@ struct TagItem scrntags[] =
     TAG_DONE, 0,
 };
 #endif
+
+char scrntitle[ 90 ];
 
 #define SPLIT			/* use splitter, if available */
 #ifdef SPLIT
@@ -74,9 +122,17 @@ static void UpdateInfoWin( struct Window *cwin );
 BPTR s_LoadSeg(char *);
 void s_UnLoadSeg(void);
 
+#ifdef _DCC
+/* Provide DICE with the wbmain() entry point it wants. */
+wbmain(struct WBStartup *WBMsg)
+{
+	main(0, (char **)WBMsg);
+}
+#endif
+
 main( argc, argv )
     int argc;
-    struct WBStartup *argv;
+    char **argv;
 {
     long mask, rmask;
     struct WBStartup *wbs;
@@ -87,10 +143,13 @@ main( argc, argv )
     int i;
 
     /* Initialize and load libraries. */
-    InitWB( argc, argv );
+    InitWB( argc, (struct WBStartup *)argv );
 
     /* open window, build menus */
     SetupWB( );
+
+    /* Initialize the bool and comp option values */
+    ZapOptions();
 
     errmsg( NO_FLASH, "Welcome to NetHack Version %d.%d.%d!",
       VERSION_MAJOR, VERSION_MINOR, PATCHLEVEL );
@@ -168,6 +227,7 @@ main( argc, argv )
 
 		    /* Pick the correct help message */
 
+		    SetPointer( win, waitPointer, 16, 16, -6, 0 );
 		    if( lastgaddown == NULL )
 		    {
 			text_requester( &Help1_NewWindowStructure7,
@@ -178,13 +238,16 @@ main( argc, argv )
 			text_requester( &Help2_NewWindowStructure8,
 			    &Help2_IntuiTextList8 );
 		    }
+		    ClearPointer( win );
 		}
 		flushIDCMP( win->UserPort );
 		break;
 
 	    case CLOSEWINDOW:
+		SetPointer( win, waitPointer, 16, 16, -6, 0 );
 		if( Ask( "Ready to Quit?" ) )
 		    do_closewindow( );
+		ClearPointer( win );
 		break;
 
 	    case GADGETDOWN:
@@ -263,6 +326,10 @@ main( argc, argv )
 		    gptr->prc = NULL;
 		    gptr->active = 0;
 		    active_count--;
+		}
+		else
+		{
+		    errmsg( FLASH, "Game termination detected, but game not found" );
 		}
 	    }
 
@@ -394,20 +461,6 @@ InitWB( argc, wbs )
 		    }
 		    break;
 
-		case 'f':       /* Default game "player" */
-		    if( i + 1 < argc && argv[i][j+1] == 0 )
-		    {
-			strcpy( defgname, argv[ ++i ] );
-			goto nextargv;
-		    }
-		    else
-		    {
-			fprintf( stderr,
-			    "%s: missing name after -f\n",
-			    argv[ 0 ] );
-			    cleanup( 1 );
-		    }
-		    break;
 		default:
 		    fprintf( stderr, "%s: invalid option %c\n",
 			argv[0], c );
@@ -445,13 +498,6 @@ nextargv:;
 	    if( s = FindToolType( tools, "CONFIG" ) )
 	    {
 		strcpy( StrConf, s );
-	    }
-
-	    /* A different set of defaults then 'wbdefaults.def' */
-
-	    if( s = FindToolType( tools, "DEFAULT" ) )
-	    {
-		strcpy( defgname, s );
 	    }
 
 	    /* A Public screen to open onto */
@@ -515,6 +561,7 @@ void ReadConfig()
 	else if( strnicmp( buf, "OPTIONS=", 8 ) == 0 )
 	{
 	    setoneopt( OPTIONS_IDX, buf + 8 );
+	    ParseOptionStr( buf + 8 );
 	}
 	else if( strnicmp( buf, "HACKDIR=", 8 ) == 0 )
 	{
@@ -532,6 +579,50 @@ void ReadConfig()
 	{
 	    /* We don't allow manipulation of the other information */
 	}
+    }
+    fclose( fp );
+    free( buf );
+}
+
+/*
+ * Read a nethack.cnf like file and process the OPTIONS
+ * information from it.
+ */
+void ReadCfgOptions( void )
+{
+    register FILE *fp;
+    register char *buf, *t;
+
+    /* Use a dynamic buffer to limit stack use */
+
+    if( ( buf = xmalloc( 1024 ) ) == NULL )
+    {
+	error( "Can't alloc space to read config file" );
+	cleanup( 1 );
+    }
+
+    /* If the file is not there, can't load it */
+
+    if( ( fp = fopen( StrConf, "r" ) ) == NULL )
+    {
+	errmsg( FLASH, "Can't load config file %s", StrConf );
+	free( buf );
+	return;
+    }
+
+    /* Read the lines... */
+
+    while( fgets( buf, 1024, fp ) != NULL )
+    {
+	if( *buf == '#' )
+	    continue;
+
+	if( ( t = strchr( buf, '\n' ) ) != NULL )
+	    *t = 0;
+
+	/* Set options based on parsing them. */
+	if( strnicmp( buf, "OPTIONS=", 8 ) == 0 )
+	    ParseOptionStr( buf + 8 );
     }
     fclose( fp );
     free( buf );
@@ -569,6 +660,7 @@ void CloseDownWB( )
 
 /* Open the workbench screen and window. */
 
+char mytitle[ 90 ];
 void SetupWB( )
 {
     int cpyrwid, i;
@@ -588,10 +680,9 @@ void SetupWB( )
     NewScreenStructure.Height = GfxBase->NormalDisplayRows;
 
     {
-    static char dt[40];
-    sprintf(dt,"WorkBench for V%d.%d.%d of NetHack",
+    sprintf(scrntitle,"WorkBench for V%d.%d.%d of NetHack",
       VERSION_MAJOR, VERSION_MINOR, PATCHLEVEL );
-    NewScreenStructure.DefaultTitle = dt;
+    NewScreenStructure.DefaultTitle = scrntitle;
     }
 
 #ifdef  INTUI_NEW_LOOK
@@ -611,6 +702,11 @@ void SetupWB( )
     }
     else
     {
+    	struct DimensionInfo dims;
+    	ULONG modeid;
+    	DisplayInfoHandle handle;
+    	struct DisplayInfo disp;
+
 	/* No tags beyond here yet */
 	scrntags[1].ti_Tag = TAG_DONE;
 
@@ -625,17 +721,42 @@ void SetupWB( )
 
 		/* Get the default pub screen's size */
 		scrn = LockPubScreen( NULL );
-		NewScreenStructure.Height = scrn->Height;
-		NewScreenStructure.Width = scrn->Width;
-		UnlockPubScreen( NULL, scrn );
-
-		/* Request LACE if it looks laced.  For 2.1/3.0, we will get
-		 * promoted to the users choice of modes (if promotion is alloed)
-		 * which is best to avoid extra coding involving copying of the
-		 * viewport modes etc.
-		 */
-		if( NewScreenStructure.Height > 300 )
+		modeid = GetVPModeID( &scrn->ViewPort );
+		if( modeid == INVALID_ID ||
+		    ModeNotAvailable( modeid ) ||
+		    ( handle = FindDisplayInfo( modeid ) ) == NULL ||
+		    GetDisplayInfoData( handle, (char *)&dims, sizeof( dims ),
+			DTAG_DIMS, modeid ) <= 0 ||
+		    GetDisplayInfoData( handle, (char *)&disp, sizeof( disp ),
+			DTAG_DISP, modeid ) <= 0 )
+		{
+		    /* If the display database seems to not work, use the screen
+		     * dimensions
+		     */
+		    NewScreenStructure.Height = scrn->Height;
+		    NewScreenStructure.Width = scrn->Width;
+		
+		    /*
+		     * Request LACE if it looks laced.  For 2.1/3.0, we will get
+		     * promoted to the users choice of modes (if promotion is allowed)
+		     * If the user is using a dragable screen, things will get hosed
+		     * but that is life...
+		     */
+		    if( NewScreenStructure.Height > 300 )
+			    NewScreenStructure.ViewModes |= LACE;
+		}
+		else
+		{
+		    /* Use the display database to get the correct information */
+		    if( disp.PropertyFlags & DIPF_IS_LACE )
 			NewScreenStructure.ViewModes |= LACE;
+		    NewScreenStructure.Height = dims.StdOScan.MaxY;
+		    NewScreenStructure.Width = dims.StdOScan.MaxX;
+		    scrntags[2].ti_Tag = SA_DisplayID;
+		    scrntags[2].ti_Data = modeid;
+		    scrntags[3].ti_Tag = TAG_DONE;
+		}
+		UnlockPubScreen( NULL, scrn );
 
 		if( ( scrn = OpenScreen( (void *)
 		    &NewScreenStructure ) ) == NULL )
@@ -649,6 +770,10 @@ void SetupWB( )
 			cleanup( 1 );
 		    }
 		}
+
+		/* Only set the pens on the screen we open */
+		LoadRGB4( &scrn->ViewPort, Palette, PaletteColorCount );
+
 		pubopen = 1;
 		scrlocked = 0;
 	    }
@@ -672,7 +797,10 @@ void SetupWB( )
 
     cpyrwid = 0;
     for( i = 0; copyright_text[i]; ++i )
-	cpyrwid = max(cpyrwid, strlen( copyright_text[i] ) );
+	{
+		int len = strlen( copyright_text[i] );
+		cpyrwid = max(cpyrwid, len );
+	}
 
     /* 28 is magic for the width of the sizing gadget under 2.04 and
      * later.
@@ -699,7 +827,6 @@ void SetupWB( )
 
     txtdiff = scrn->RastPort.TxHeight - 8;
 
-#ifdef  INTUI_NEW_LOOK
     if( scrlocked )
 	sprintf( mytitle, "NetHack WB %d.%d.%d - Select a GAME or press HELP",
 	  VERSION_MAJOR, VERSION_MINOR, PATCHLEVEL );
@@ -708,10 +835,9 @@ void SetupWB( )
 	strcpy( mytitle, "Select a GAME or press HELP" );
 
     NewWindowStructure1.Title = mytitle;
+#ifdef  INTUI_NEW_LOOK
     if( IntuitionBase->LibNode.lib_Version >= 37 )
-    {
 	((struct PropInfo *)Scroll.SpecialInfo)->Flags |= PROPNEWLOOK;
-    }
 #endif
 
     if( !once )
@@ -789,6 +915,12 @@ void MapGadgets( reason, update )
     int update;
 {
     GPTR gptr;
+
+    if( active_count != 0 )
+    {
+    	errmsg( FLASH, "Can't reload games while a game is running" );
+    	return;
+    }
 
     /* Make sure that any down gadget is popped back up */
 
@@ -868,7 +1000,7 @@ CalcLocs( update )
     cx = CORNERX;
 
     /* Account for text labels at the bottom by pulling the bottom up. */
-    cy = CORNERY - win->RPort->TxHeight - 3;
+    cy = CORNERY - win->RPort->TxHeight;
 
     ClearWindow( win );
 
@@ -989,6 +1121,7 @@ void text_requester( newwin, tlist )
 
     newwin->Screen = scrn;
 
+    /* See if we have already configured this window for the current font */
     for( i = 0; i < 6; ++i )
     {
 	if( newwin == once[i] )
@@ -1084,6 +1217,7 @@ void text_requester( newwin, tlist )
 
 /* Scroll through a file which is passed by name */
 
+char title[90];
 void help_requester( file )
     char *file;
 {
@@ -1100,7 +1234,7 @@ void help_requester( file )
 
     if( ( fp = fopen( file, "r" ) ) == NULL )
     {
-#ifdef  __SASC_60
+#if defined(__SASC_60) || defined(_DCC)
 	errmsg( FLASH, "Can't open %s: %s", file, strerror(errno) );
 #else
 	errmsg( FLASH, "Can't open %s: %s", file, sys_errlist[errno] );
@@ -1134,7 +1268,6 @@ void help_requester( file )
     }
 
     {
-    static char title[40];
     sprintf(title,"Help for NetHack WorkBench V%d.%d.%d",
       VERSION_MAJOR, VERSION_MINOR, PATCHLEVEL );
     Help3_NewWindowStructure10.Title = title;
@@ -1277,6 +1410,7 @@ do_menu( mptr, mcode)
     struct Menu *mptr;
     register int mcode;
 {
+    SetPointer( win, waitPointer, 16, 16, -6, 0 );
     while( mcode != MENUNULL )
     {
 	switch(MENUNUM(mcode))
@@ -1335,6 +1469,7 @@ do_menu( mptr, mcode)
 	}
         mcode = ((struct MenuItem *)ItemAddress( mptr, (long)mcode ))->NextSelect;
     }
+    ClearPointer( win );
 }
 
 void
@@ -1358,6 +1493,8 @@ menu_discard()
     }
 }
 
+char tw[90];
+
 void
 run_game( gptr )
     register GPTR gptr;
@@ -1372,6 +1509,12 @@ run_game( gptr )
     if( gptr->active )
     {
 	errmsg( FLASH, "%s is already in progress", gptr->name );
+	return;
+    }
+
+    if( running_split && active_count > 0 )
+    {
+	errmsg( FLASH, "A game is already in progress" );
 	return;
     }
 
@@ -1498,12 +1641,9 @@ freemem:
     gptr->wbs->sm_Process = proc;
     gptr->wbs->sm_Segment = gptr->seglist;
     gptr->wbs->sm_NumArgs = 2;
-    {
-    static char tw[40];
     sprintf(tw,"con:0/0/350/50/Amiga NetHack %d.%d.%d",
       VERSION_MAJOR, VERSION_MINOR, PATCHLEVEL );
     gptr->wbs->sm_ToolWindow = tw;
-    }
     gptr->wbs->sm_ArgList = gptr->wba;
 
     /* Fill in the args */
@@ -1512,11 +1652,14 @@ freemem:
     gptr->wba[0].wa_Lock = Lock( dirname( GAMEIMAGE ), ACCESS_READ );
 
     gptr->wba[1].wa_Name = Strdup( gptr->name );
-    gptr->wba[1].wa_Lock = Lock( gptr->dname, ACCESS_READ );
-
-    /* Write the updated tools types entries */
-
-    WriteDObj( gptr, gptr->wba[1].wa_Lock );
+    gptr->wba[1].wa_Lock = Lock( "t:", ACCESS_READ );
+    if( gptr->wba[1].wa_Lock == NULL )
+	gptr->wba[1].wa_Lock = Lock( gptr->dname, ACCESS_READ );
+    else
+    {
+	/* Write the updated tools types entries */
+	WriteDObj( gptr, gptr->wba[1].wa_Lock );
+    }
 
     /* Set the message fields correctly */
 
@@ -1600,10 +1743,10 @@ void FreeGITEM( gptr )
 
     if( gptr->talloc )
 	FreeTools( gptr );
+    gptr->talloc = 0;
 
     if( gptr->dobj )
 	FreeDObj( gptr->dobj );
-
     gptr->dobj = NULL;
 
     if( gptr->name )
@@ -1631,13 +1774,9 @@ struct DiskObject *AllocDObj( str )
     register char *t, *t1;
 
     if( ( t = strrchr( str, '.' ) ) && stricmp( t, ".info" ) == 0 )
-    {
 	*t = 0;
-    }
     else
-    {
 	t = NULL;
-    }
 
     if( doptr = GetDiskObject( str ) )
     {
@@ -2166,9 +2305,6 @@ void menu_config()
         			    else if( strncmp( buf, "PENS=", 5 ) == 0 )
         			    	fprintf( nfp, "PENS=%s\n",
 						options[ PENS_IDX ] );
-        			    else if( strncmp( buf, "OPTIONS=", 8 ) == 0 )
-        			    	fprintf( nfp, "OPTIONS=%s\n",
-						options[ OPTIONS_IDX ] );
         			    else if( strncmp( buf, "SAVE=", 5 ) == 0 )
         			    	fprintf( nfp, "SAVE=%s\n",
 						options[ SAVE_IDX ] );
@@ -2218,7 +2354,6 @@ UpdateCnfFile()
     char oname[ 300 ], nname[ 300 ];
 
     setoneopt( PATH_IDX, StrPath );
-    PutOptions( curopts );
     setoneopt( HACKDIR_IDX, StrHackdir );
     setoneopt( PENS_IDX, StrPens );
     setoneopt( LEVELS_IDX, StrLevels );
@@ -2263,15 +2398,15 @@ UpdateCnfFile()
             fprintf( nfp, "LEVELS=%s\n", options[ LEVELS_IDX ] );
 	    levels=1;
 	}
-        else if( strncmp( buf, "PENS=", 5 ) == 0 )
-	{
-            fprintf( nfp, "PENS=%s\n", options[ PENS_IDX ] );
-	    pens=1;
-	}
         else if( strncmp( buf, "OPTIONS=", 8 ) == 0 )
 	{
             fprintf( nfp, "OPTIONS=%s\n", options[ OPTIONS_IDX ] );
 	    option=1;
+	}
+        else if( strncmp( buf, "PENS=", 5 ) == 0 )
+	{
+            fprintf( nfp, "PENS=%s\n", options[ PENS_IDX ] );
+	    pens=1;
 	}
         else if( strncmp( buf, "SAVE=", 5 ) == 0 )
 	{
@@ -2437,12 +2572,34 @@ void do_gadgetdown( imsg )
     gptr->mics = imsg->Micros;
 }
 
+/* move the tooltypes options to the options data, edit the options, and then
+ * move the settings back into the tooltypes.
+ */
 void setopt( gptr )
     register GPTR gptr;
 {
-    CopyOptions( curopts, gptr );
-    if( EditOptions( curopts, gptr ) )
-	SetOptions( curopts, gptr );
+    ZapOptions();		/* Set boolean options to defaults and empty all strings */
+    ReadCfgOptions();		/* Set options based on NetHack.cnf. */
+    CopyOptions( gptr );	/* Put the ToolTypes into the options structures */
+    if( EditOptions( gptr ) )	/* Let the user change them around */
+	PutOptions( gptr );		/* Put everything back into the ToolTypes. */
+}
+
+void ZapOptions()
+{
+    int i;
+
+    AllocCompVals();
+    for( i = 0; boolopt[ i ].name; ++i )
+    {
+	if( boolopt[ i ].addr != NULL )
+	    *boolopt[ i ].addr = boolopt[ i ].initvalue;
+    }
+
+    for( i = 0; compvals && compvals[ i ]; ++i )
+    {
+    	*compvals[ i ] = 0;
+    }
 }
 
 void menu_info()
@@ -2450,7 +2607,7 @@ void menu_info()
     int itemno;
     register struct IntuiMessage *imsg;
     char *t;
-    register GPTR gptr;
+    register GPTR gptr, ggptr;
     register struct Gadget *gd;
     register struct FileInfoBlock *finfo;
     register struct Window *cwin;
@@ -2484,26 +2641,29 @@ void menu_info()
     commentstr[ sizeof( finfo->fib_Comment ) ] = 0;
     free( finfo );
 
-    for( i = 0; i < 2; ++i )
-    {
-	itext[ i ].FrontPen = C_BLACK;
-	itext[ i ].BackPen = C_GREY;
-	itext[ i ].DrawMode = JAM2;
-	itext[ i ].TopEdge = 2;
-	itext[ i ].LeftEdge = 4;
-    }
     ReallocTools( gptr, 0 );
+    Info_NewWindowStructure6.Screen = scrn;
 
     if( !once )
     {
+	/* These are static, so just do this once */
+	for( i = 0; i < 2; ++i )
+	{
+	    itext[ i ].FrontPen = C_BLACK;
+	    itext[ i ].BackPen = C_GREY;
+	    itext[ i ].DrawMode = JAM2;
+	    itext[ i ].TopEdge = 2;
+	    itext[ i ].LeftEdge = 4;
+	}
+
     	Info_Comment.TopEdge += txtdiff*2;
 	Info_NewWindowStructure6.Height += txtdiff * 7;
 	for( gd = Info_NewWindowStructure6.FirstGadget;
 		gd; gd = gd->NextGadget )
 	{
-	    gd->TopEdge += txtdiff;
 	    if( gd->GadgetID != GADTOOLUP && gd->GadgetID != GADTOOLDOWN )
 		gd->Height += txtdiff;
+	    gd->TopEdge += txtdiff;
 	    switch( gd->GadgetID )
 	    {
 		case 0:
@@ -2585,10 +2745,15 @@ void menu_info()
 		    break;
 
 		default:
-		    SetBorder( gd, -1 );
+		    if( gd == &Info_Class )
+			SetBorder( gd, 2 );
+		    else
+			SetBorder( gd, -1 );
 	    }
 	}
 
+	itext[ 0 ].NextText = Info_Class.GadgetText;
+	Info_Class.GadgetText = &itext[ 0 ];
 	++once;
     }
 
@@ -2598,23 +2763,18 @@ void menu_info()
 
     strncpy( StrPlayer, ToolsEntry( gptr, "NAME" ), 100 );
     if( *StrPlayer == 0 )
-    {
 	strncpy( StrPlayer, gptr->name, 99 );
-    }
 
     if( ( t = strrchr( StrPlayer, '.' ) ) && stricmp( t, ".sav" ) == 0 )
-    {
 	*t = 0;
-    }
 
     /* The character class of the player */
 
-    Info_Class.GadgetText = &itext[ 0 ];
     itext[ 0 ].IText = ToolsEntry( gptr, "CHARACTER" );
-    if( *itext[ 0 ].IText == 0 )
+    if( itext[ i ].IText == NULL || *itext[ 0 ].IText == 0 )
     {
 	itext[ 0 ].IText = players[ 0 ];
-	SetToolLine( gptr, "CHARACTER", players[ 0 ] );
+	SetToolLine( gptr, "CHARACTER", "" );
     }
 
     /* If there are ToolTypes entries, put the first one into the gadget */
@@ -2628,7 +2788,6 @@ void menu_info()
     else
 	Info_ToolTypes.Flags |= GADGDISABLED;
 
-    Info_NewWindowStructure6.Screen = scrn;
     if( ( cwin = MyOpenWindow( &Info_NewWindowStructure6 ) ) == NULL )
     {
 	errmsg( FLASH, "Can't create info window" );
@@ -2695,8 +2854,9 @@ void menu_info()
 			{
 			    olock = CurrentDir( lock );
 			    SetComment( gptr->fname, Sbuff( &Info_Comment ) );
-			    CurrentDir( olock );
+			    if( olock ) CurrentDir( olock );
 			    done = 1;
+			    UnLock( lock );
 			}
 			else
 			{
@@ -2714,7 +2874,9 @@ void menu_info()
 
 		    case GADQUITINFO:
 			/* Reload icon and quit this loop. */
-			RemoveGadget( win, &gptr->dobj->do_Gadget );
+			for( ggptr = windowgads; ggptr; ggptr = ggptr->nextwgad )
+			    RemoveGadget( win, &ggptr->dobj->do_Gadget );
+			windowgads = NULL;
 			RemoveGITEM( gptr );
 			lastgaddown = NULL; /* very important... */
 			MapGadgets( R_DISK, 1 );
@@ -2722,10 +2884,12 @@ void menu_info()
 			break;
 
 		    case GADEDITOPTS:
+			SetPointer( cwin, waitPointer, 16, 16, -6, 0 );
 			setopt( gptr );
 			sp = gptr->dobj->do_ToolTypes;
 			strcpy( StrTools, *sp ? *sp : "" );
 			UpdateInfoWin( cwin );
+			ClearPointer( cwin );
 			break;
 
 		    case GADADDTOOL:
@@ -2825,12 +2989,19 @@ void menu_info()
 	    	case MENUPICK:
 	    	    while( code != MENUNULL )
 	    	    {
-			SetToolLine( gptr, "CHARACTER",
-				    players[ ITEMNUM( code ) ] );
-			itext[ 0 ].IText =
-				    ToolsEntry( gptr, "CHARACTER" );
+			int idx = ITEMNUM( code );
+
+			if( idx == 0 )
+			{
+			    SetToolLine( gptr, "CHARACTER", "" );
+			}
+			else
+			{
+			    SetToolLine( gptr, "CHARACTER", players[ idx ] );
+			}
+			itext[ 0 ].IText = players[ idx ];
 			sp = gptr->dobj->do_ToolTypes;
-			strcpy( StrTools, *sp ? *sp : "" );
+			strcpy( StrTools, (sp && *sp) ? *sp : "" );
 			UpdateInfoWin( cwin );
 			code = ((struct MenuItem *)ItemAddress(
 				&Info_MenuList6, (long)code ))->NextSelect;
@@ -2858,10 +3029,10 @@ UpdateInfoWin( cwin )
     RefreshGList( cwin->FirstGadget, cwin, NULL, -1 );
 }
 
+char embuf[ 300 ];
 void
 errmsg(int flash, char *str, ...)
 {
-    static char buf[ 200 ];
     int wid;
     va_list vp;
 
@@ -2876,7 +3047,7 @@ errmsg(int flash, char *str, ...)
     errup = 1;
     wid = ( win->Width + Message.LeftEdge - win->BorderRight - 3 ) /
 		    win->RPort->TxWidth;
-    vsprintf( buf, str, vp );
+    vsprintf( embuf, str, vp );
     va_end( vp );
 
     SetAPen( win->RPort, 0 );
@@ -2886,7 +3057,7 @@ errmsg(int flash, char *str, ...)
 	win->Width + Message.Width,
 	Message.TopEdge + Message.Height - 1 );
 
-    Message.GadgetText->IText = buf;
+    Message.GadgetText->IText = embuf;
     RefreshGList( &Message, win, 0, 1 );
 
     if( flash == FLASH )
@@ -2899,7 +3070,7 @@ errmsg(int flash, char *str, ...)
  */
 
 void error( str )
-    register char *str;
+    register const char *str;
 {
     char s[ 50 ];
     if( scrn ) ScreenToBack( scrn );
@@ -2950,19 +3121,6 @@ void SetGadgetDOWN( gad )
 	DrawImage( win->RPort, (struct Image *)gad->SelectRender,
 		gad->LeftEdge, gad->TopEdge );
     }
-#if 0
-    RemoveGadget( win, gad );
-    gad->Flags &= ~GADGHIGHBITS;
-    gad->Flags |= GADGHIMAGE|GADGIMAGE|SELECTED;
-    gad->Activation |= TOGGLESELECT;
-    AddGadget( win, gad, 0 );
-    RefreshGList( gad, win, NULL, 1 );
-    RemoveGadget( win, gad );
-    gad->Flags &= ~(GADGHIGHBITS);
-    gad->Flags |= GADGHNONE;
-    gad->Activation &= ~TOGGLESELECT;
-    AddGadget( win, gad, 0 );
-#endif
 }
 
 /*
@@ -3308,532 +3466,371 @@ void ChgNewGameItems( menup, enable )
     }
 }
 
-/* Edit the OPTIONS= line with a window.  The optr[] array is set up
- * for the editing already, and will be returned with the values
- * of the members changed based on the users input
- */
+/* Edit the OPTIONS= lines with a window. */
 
-int EditOptions( optr, gptr )
-    OPTR optr;
+USHORT lastoptx, lastopty, lastoptw, lastopth;
+int EditOptions( gptr )
     GPTR gptr;
 {
-    int done = 0, quit = 0;
-    register struct Window *cwin;
-    register struct IntuiMessage *imsg;
-    register struct Gadget *gd;
-    long code, class, qual;
-    struct IntuiText *ip;
-    static int once = 0;
-    int i;
     int txtdiff = scrn->RastPort.TxHeight - 8;
+    struct RastPort *rp;
+    struct Gadget *gd, *lastgad = 0;
+    struct TextAttr textfont;
+    long code, class;
+    int done = 0, save = 0;
+    struct IntuiMessage *imsg;
+    struct Window *w;
+    int cury = -1, gadid = 1, compgadid;
+    struct OPTGAD *gp;
+    struct OPTGAD *boolgads, *compgads;
+    static int once = 0;
+
+    Options_NewWindowStructure3.Screen = scrn;
+    Options_NewWindowStructure3.TopEdge = 0;
+    Options_NewWindowStructure3.LeftEdge = 0;
+    Options_NewWindowStructure3.Width = scrn->Width;
+    Options_NewWindowStructure3.Height = scrn->Height;
+    Options_NewWindowStructure3.Title = "Edit Options";
+
+    if( lastoptw != 0 )
+    {
+	Options_NewWindowStructure3.LeftEdge = lastoptx;
+	Options_NewWindowStructure3.TopEdge = lastopty;
+	Options_NewWindowStructure3.Width = lastoptw;
+	Options_NewWindowStructure3.Height = lastopth;
+    }
 
     if( !once )
     {
-	if( gd = FindGadget( NULL, &Options_NewWindowStructure3, GADOLITCORRIDOR ))
-	{
-	    struct Gadget *g;
-	    for( g = Options_NewWindowStructure3.FirstGadget;
-			    g; g = g->NextGadget )
-	    {
-		if( g == gd )
-		    continue;
-		if( g->TopEdge == gd->TopEdge )
-		{
-		    g->Height += txtdiff;
-		}
-	    }
-	    gd->Height += txtdiff;
-	}
-
-	if( gd = FindGadget( NULL, &Options_NewWindowStructure3, GADOTIME ))
-	{
-	    struct Gadget *g;
-	    for( g = Options_NewWindowStructure3.FirstGadget;
-			    g; g = g->NextGadget )
-	    {
-		if( g == gd )
-		    continue;
-		if( g->TopEdge == gd->TopEdge )
-		{
-		    g->TopEdge += txtdiff;
-		    g->Height += txtdiff;
-		}
-	    }
-	    gd->TopEdge += txtdiff;
-	    gd->Height += txtdiff;
-	}
-
-	if( gd = FindGadget( NULL, &Options_NewWindowStructure3, GADOPICKUP ))
-	{
-	    struct Gadget *g;
-	    for( g = Options_NewWindowStructure3.FirstGadget; g; g = g->NextGadget )
-	    {
-		if( g == gd )
-		    continue;
-		if( g->TopEdge == gd->TopEdge )
-		{
-		    g->TopEdge += txtdiff*2;
-		    g->Height += txtdiff;
-		}
-	    }
-	    gd->TopEdge += txtdiff*2;
-	    gd->Height += txtdiff;
-	}
-
-	if( gd = FindGadget( NULL, &Options_NewWindowStructure3, GADOHILITEPET ))
-	{
-	    struct Gadget *g;
-	    for( g = Options_NewWindowStructure3.FirstGadget; g; g = g->NextGadget )
-	    {
-		if( g == gd )
-		    continue;
-		if( g->TopEdge == gd->TopEdge )
-		{
-		    g->TopEdge += txtdiff*3;
-		    g->Height += txtdiff;
-		}
-	    }
-	    gd->TopEdge += txtdiff*3;
-	    gd->Height += txtdiff;
-	}
-
-	if( gd = FindGadget( NULL, &Options_NewWindowStructure3, GADOPACKORDER ))
-	{
-	    gd->TopEdge += txtdiff*4;
-	    gd->Height += txtdiff;
-	}
-	if( gd = FindGadget( NULL, &Options_NewWindowStructure3, GADOPICKUPTYPES ))
-	{
-	    gd->TopEdge += txtdiff*4;
-	    gd->Height += txtdiff;
-	}
-	if( gd = FindGadget( NULL, &Options_NewWindowStructure3, GADOCATNAME ))
-	{
-	    gd->TopEdge += txtdiff*5;
-	    gd->Height += txtdiff;
-	}
-	if( gd = FindGadget( NULL, &Options_NewWindowStructure3, GADOWINDOWTYPE ))
-	{
-	    gd->TopEdge += txtdiff*5;
-	    gd->Height += txtdiff;
-	}
-	if( gd = FindGadget( NULL, &Options_NewWindowStructure3, GADODOGNAME ))
-	{
-	    gd->TopEdge += txtdiff*6;
-	    gd->Height += txtdiff;
-	}
-	if( gd = FindGadget( NULL, &Options_NewWindowStructure3, GADOMSGHISTORY ))
-	{
-	    gd->TopEdge += txtdiff*6;
-	    gd->Height += txtdiff;
-	}
-	if( gd = FindGadget( NULL, &Options_NewWindowStructure3, GADOFRUIT ))
-	{
-	    gd->TopEdge += txtdiff*7;
-	    gd->Height += txtdiff;
-	}
-	if( gd = FindGadget( NULL, &Options_NewWindowStructure3, GADOPALETTE ))
-	{
-	    gd->TopEdge += txtdiff*7;
-	    gd->Height += txtdiff;
-	}
-	if( gd = FindGadget( NULL, &Options_NewWindowStructure3, GADOOBJECTS ))
-	{
-	    gd->TopEdge += txtdiff*8;
-	    gd->Height += txtdiff;
-	}
-	if( gd = FindGadget( NULL, &Options_NewWindowStructure3, GADOSCORE ))
-	{
-	    gd->TopEdge += txtdiff*8;
-	    gd->Height += txtdiff;
-	}
-	if( gd = FindGadget( NULL, &Options_NewWindowStructure3, GADONAME ))
-	{
-	    gd->TopEdge += txtdiff*9;
-	    gd->Height += txtdiff;
-	}
-	if( gd = FindGadget( NULL, &Options_NewWindowStructure3, GADOPETTYPE ))
-	{
-	    gd->TopEdge += txtdiff*9;
-	    gd->Height += txtdiff;
-	}
-	if( gd = FindGadget( NULL, &Options_NewWindowStructure3, GADOOKAY ))
-	{
-	    gd->TopEdge += txtdiff*10;
-	    gd->Height += txtdiff;
-	}
-	if( gd = FindGadget( NULL, &Options_NewWindowStructure3, GADOCANCEL ))
-	{
-	    gd->TopEdge += txtdiff*10;
-	    gd->Height += txtdiff;
-	}
-	Options_NewWindowStructure3.Height += txtdiff*12;
-	Options_NewWindowStructure3.TopEdge -= txtdiff*12;
-	if( Options_NewWindowStructure3.Height +
-	    Options_NewWindowStructure3.TopEdge >= scrn->Height )
-	{
-	    Options_NewWindowStructure3.TopEdge = scrn->Height -
-	    Options_NewWindowStructure3.Height - 1;
-	}
-	if( Options_NewWindowStructure3.TopEdge < 0 )
-	    Options_NewWindowStructure3.TopEdge = 0;
-	if( Options_NewWindowStructure3.Height > scrn->Height )
-	    Options_NewWindowStructure3.Height = scrn->Height;
-
-	/* Now that heights are correct, render borders */
 	for( gd = Options_NewWindowStructure3.FirstGadget;
-	    gd; gd = gd->NextGadget )
+		gd; gd = gd->NextGadget )
 	{
-	    if( gd->GadgetID != 0 )
+	    switch( gd->GadgetID )
 	    {
-		gd->TopEdge += txtdiff;
-		SetBorder( gd, -1 );
-	    }
-	}
-
-	for( ip = &Options_IntuiTextList3; ip; ip = ip->NextText )
-	{
-	    /* Pack Order:  and  Pickup: */
-	    if( ( *ip->IText == 'P' && ip->IText[2] == 'c' ) )
-	    {
-		ip->TopEdge += txtdiff * 4;
-	    }
-	    /* Cat Name:  and  Window Type: */
-	    else if( ( *ip->IText == 'C' ) ||
-		    ( *ip->IText == 'W' ) )
-	    {
-		ip->TopEdge += txtdiff * 5;
-	    }
-	    /* Dog Name:  and  Msg History: */
-	    else if( ( *ip->IText == 'D' ) ||
-		    ( *ip->IText == 'M' ) )
-	    {
-		ip->TopEdge += txtdiff * 6;
-	    }
-	    /* Fruit:  and  Pallete: */
-	    else if( ( *ip->IText == 'F' ) ||
-		    ( *ip->IText == 'P' && ip->IText[2] == 'l' ) )
-	    {
-		ip->TopEdge += txtdiff * 7;
-	    }
-	    /* Objects:  and  Score: */
-	    else if( ( *ip->IText == 'O' ) ||
-	    		( *ip->IText == 'S' ) )
-	    {
-		ip->TopEdge += txtdiff * 8;
-	    }
-	    /* Name:  and  Pet Type: */
-	    else if(( *ip->IText == 'N' ) ||
-		    ( *ip->IText == 'P' && ip->IText[1] == 'e' ) )
-	    {
-		ip->TopEdge += txtdiff * 9;
+		case GADOPTOKAY:
+		case GADOPTCANCEL:
+		    gd->TopEdge -= txtdiff;
+		    gd->Height += txtdiff;
+		    SetBorder( gd, -1 );
+		    break;
 	    }
 	}
 	once = 1;
     }
 
-    /* Set Gadgets based on options settings */
-
-    for( i = 0; optr[ i ].name; ++i )
+    w = MyOpenWindow( (void *)&Options_NewWindowStructure3 );
+    if( w )
     {
-	if( gd = FindGadget( NULL, &Options_NewWindowStructure3, optr[i].id ))
-	{
-	    /* If string valued option, set string */
-	    if( optr[ i ].optstr )
-	    {
-	    	char *t;
+    	rp = w->RPort;
+	textfont.ta_Name = w->RPort->Font->tf_Message.mn_Node.ln_Name;
+	textfont.ta_YSize = w->RPort->Font->tf_YSize;
+	textfont.ta_Style = w->RPort->Font->tf_Style;
+	textfont.ta_Flags = w->RPort->Font->tf_Flags;
 
-		if( optr[ i ].id == GADOPALETTE &&
-				    ( optr[i].optstr == NULL || *optr[i].optstr == 0 ) )
-		{
-		    if( gptr && ( t = ToolsEntry( gptr, "PENS" ) ) )
-		    {
-			strcpy( Sbuff( gd ), t );
-		    }
-		    else
-		    {
-			strcpy( Sbuff( gd ), options[ PENS_IDX ] );
-		    }
-		    for( t = strchr( Sbuff( gd ), ',' ); t; t = strchr( t, ',' ) )
-		    	*t = '/';
-		}
-		else
-		    strcpy( Sbuff( gd ), optr[i].optstr );
-	    }
-	    else
+	boolgads = LayoutBoolOpts( w->Width - w->BorderLeft - w->BorderRight - 3,
+			w->Height - w->BorderTop - w->BorderBottom - 6,
+			w->RPort, &cury, &gadid );
+
+	if( boolgads )
+	{
+	    for( gp = boolgads; gp; gp = gp->next )
 	    {
-		/* If binary option, set the gadget state */
-		if( optr[i].optval )
+		gd = &gp->gad;
+		if( *boolopt[ gd->GadgetID - 1 ].addr != FALSE )
 		    gd->Flags |= SELECTED;
 		else
 		    gd->Flags &= ~SELECTED;
-	    }
+		AddGList( w, gd, 0, 1, NULL );
+		RefreshGList( gd, w, NULL, 1 );
+		if( ( gd->Flags & SELECTED ) == 0 )
+		{
+		    SetAPen( rp, 0 );
+		    SetBPen( rp, 0 );
+		    SetDrMd( rp, JAM2 );
+		    RectFill( rp, gd->LeftEdge + 1, gd->TopEdge + 1,
+				    gd->LeftEdge + gd->Width - 1,
+				    gd->TopEdge + gd->Height - 1 );
+		    PrintIText( rp, gd->GadgetText, gd->LeftEdge, gd->TopEdge );
+		}
+		else
+		{
+		    SetAPen( rp, 3 );
+		    SetBPen( rp, 3 );
+		    SetDrMd( rp, JAM2 );
+		    RectFill( rp, gd->LeftEdge + 1, gd->TopEdge + 1,
+				    gd->LeftEdge + gd->Width - 1,
+				    gd->TopEdge + gd->Height - 1 );
+		    PrintIText( rp, gd->GadgetText, gd->LeftEdge, gd->TopEdge );
+		}
+  	    }
 	}
-	else
+
+	/* Save the base gadget ID for composite/string gadgets */
+
+	compgadid = gadid;
+	compgads = LayoutCompOpts( w->Width - w->BorderLeft - w->BorderRight - 3,
+			w->Height - w->BorderTop - w->BorderBottom - 6, w->RPort,
+			&cury, &gadid );
+
+	if( compgads )
 	{
-	    errmsg( FLASH, "Can't find gadget %d in options window",
-								optr[i].id);
+	    for( gp = compgads; gp; gp = gp->next )
+		AddGList( w, &gp->gad, 0, 1, NULL );
 	}
+	SetUpMenus( &Options_MenuList3, scrn );
+	SetMenuStrip( w, &Options_MenuList3 );
+	WindowLimits( w, -1, cury + 2 + 20, -1, -1 );
+
+	/*
+	 * This will force us through the code in the NEWSIZE case below, but
+	 * since boolgads != NULL, we won't layout the gadgets again.
+	 */
+	SizeWindow( w, 0, ( cury + 5 + 20 ) - w->Height );
     }
 
-    Options_NewWindowStructure3.Screen = scrn;
-    if( ( cwin = MyOpenWindow( &Options_NewWindowStructure3 ) ) == NULL )
+    while( !done && w )
     {
-	errmsg( FLASH, "Can't create requester window" );
-	return(0);
-    }
-    PrintIText( cwin->RPort, &Options_IntuiTextList3, 0, txtdiff );
-
-    while( !done )
-    {
-	WaitPort( cwin->UserPort );
-	while( ( imsg = (void *) GetMsg( cwin->UserPort ) ) != NULL )
+	WaitPort( w->UserPort );
+	while( imsg = (struct IntuiMessage *) GetMsg( w->UserPort ) )
 	{
 	    class = imsg->Class;
 	    code = imsg->Code;
-	    qual = imsg->Qualifier;
 	    gd = (struct Gadget *)imsg->IAddress;
-	    ReplyMsg( (struct Message *) imsg );
-	    switch( class )
+	    if( class != SIZEVERIFY )
+		ReplyMsg( (struct Message *)imsg );
+	    if( class == MENUPICK )
 	    {
-		case ACTIVEWINDOW:
-		    ActivateGadget(
-			FindGadget( cwin, 0, GADOPACKORDER ), cwin, 0 );
-		    break;
-
-		case VANILLAKEY:
-		    if( code == '\33' )
+		if( ITEMNUM( code ) == 0 )
+		    save = 1;
+		done = 1;
+	    }
+	    else if( class == MOUSEBUTTONS )
+	    {
+	    	if( code == SELECTUP && lastgad )
+	    	{
+		    gd = lastgad;
+		    if( ( gd->Flags & SELECTED ) == 0 )
 		    {
-			done = 1;
-			quit = 1;
+			SetAPen( rp, 0 );
+			SetBPen( rp, 0 );
+			SetDrMd( rp, JAM2 );
+			RectFill( rp, gd->LeftEdge + 1, gd->TopEdge + 1,
+					gd->LeftEdge + gd->Width - 1,
+					gd->TopEdge + gd->Height - 1 );
+			PrintIText( rp, gd->GadgetText, gd->LeftEdge, gd->TopEdge );
 		    }
-		    else if( code == 'v' && (qual & AMIGALEFT) )
-			done = 1;
-		    else if( code == 'b' && (qual & AMIGALEFT) )
+		    else
 		    {
-			done = 1;
-			quit = 1;
+			SetAPen( rp, 3 );
+			SetBPen( rp, 3 );
+			SetDrMd( rp, JAM2 );
+			RectFill( rp, gd->LeftEdge + 1, gd->TopEdge + 1,
+					gd->LeftEdge + gd->Width - 1,
+					gd->TopEdge + gd->Height - 1 );
+			PrintIText( rp, gd->GadgetText, gd->LeftEdge, gd->TopEdge );
 		    }
-		    break;
-
-		case CLOSEWINDOW:
+		    lastgad = 0;
+	    	}
+	    }
+	    else if( class == GADGETUP )
+	    {
+	    	if( gd->GadgetID == GADOPTOKAY )
+	    	{
+		    save = 1;
 		    done = 1;
-		    break;
+	    	}
+	    	else if( gd->GadgetID == GADOPTCANCEL )
+	    	{
+		    done = 1;
+	    	}
+		else if( ( gd->Flags & SELECTED ) == 0 && gd->GadgetID < compgadid )
+		{
+		    SetAPen( rp, 0 );
+		    SetBPen( rp, 0 );
+		    SetDrMd( rp, JAM2 );
+		    RectFill( rp, gd->LeftEdge + 1, gd->TopEdge + 1,
+				    gd->LeftEdge + gd->Width - 1,
+				    gd->TopEdge + gd->Height - 1 );
+		    PrintIText( rp, gd->GadgetText, gd->LeftEdge, gd->TopEdge );
+		    lastgad = 0;
+		}
+	    }
+	    else if( class == GADGETDOWN )
+	    {
+		if( ( gd->Flags & SELECTED ) != 0 && gd->GadgetID < compgadid )
+		{
+		    SetAPen( rp, 3 );
+		    SetBPen( rp, 3 );
+		    SetDrMd( rp, JAM2 );
+		    RectFill( rp, gd->LeftEdge + 1, gd->TopEdge + 1,
+				    gd->LeftEdge + gd->Width - 1,
+				    gd->TopEdge + gd->Height - 1 );
+		    PrintIText( rp, gd->GadgetText, gd->LeftEdge, gd->TopEdge );
+		    lastgad = gd;
+		}
+	    }
+	    else if( class == CLOSEWINDOW )
+	    {
+		done = 1;
+	    }
+	    else if( class == SIZEVERIFY )
+	    {
+	    	/*
+	    	 * When the window is to be resized, we need to remove all of the gadgets
+	    	 * that are attached to get the gadget imagery from overwriting the
+	    	 * window borders.  In 2.04 and later we have RefreshWindowFrame(),
+	    	 * but still, this looks cleaner on the screen.
+	    	 */
+		for( gp = boolgads; gp; gp = gp->next )
+		{
+		    gd = &gp->gad;
+		    if( ( gd->Flags & SELECTED ) != 0 )
+			*boolopt[ gd->GadgetID - 1 ].addr = TRUE;
+		    else
+			*boolopt[ gd->GadgetID - 1 ].addr = FALSE;
+		    RemoveGList( w, gd, 1 );
+		}
+		FreeBoolOpts( boolgads );
+		/*
+		 * This tells the code in NEWSIZE below to layout the gadgets
+		 * again and reattach them to the window.
+		 */
+		boolgads = 0;
+		for( gp = compgads; gp; gp = gp->next )
+		    RemoveGList( w, &gp->gad, 1 );
+		FreeCompOpts( compgads );
+		ReplyMsg( (struct Message *)imsg );
+	    }
+	    else if( class == NEWSIZE )
+	    {
+		/* Save the last position information */
+		lastoptx = w->LeftEdge;
+		lastopty = w->TopEdge;
+		lastoptw = w->Width;
+		lastopth = w->Height;
 
-		case GADGETUP:
-		    switch( gd->GadgetID )
+		/* If the gadgets are not currently bound, put them back. */
+		if( boolgads == NULL )
+		{
+		    cury = -1;
+		    gadid = 1;
+		    SetAPen( w->RPort, 0 );
+		    SetBPen( w->RPort, 0 );
+		    SetDrMd( w->RPort, JAM2 );
+		    RectFill( w->RPort, w->BorderLeft, w->BorderTop,
+					w->Width - w->BorderRight - 1,
+					w->Height - w->BorderBottom - 1 );
+		    SetAPen( w->RPort, 1 );
+		    SetBPen( w->RPort, 0 );
+		    boolgads = LayoutBoolOpts( w->Width - w->BorderLeft - w->BorderRight - 3,
+			w->Height - w->BorderTop - w->BorderBottom - 6, w->RPort,
+			    &cury, &gadid );
+		    for( gp = boolgads; gp; gp = gp->next )
 		    {
-			case GADOPACKORDER:
-			    ActivateGadget(
-				FindGadget( cwin, 0, GADOPICKUPTYPES ),
-				cwin, 0 );
-			    break;
-
-			case GADOCATNAME:
-			    ActivateGadget(
-				FindGadget( cwin, 0, GADOWINDOWTYPE ),
-				cwin, 0 );
-			    break;
-
-			case GADODOGNAME:
-			    ActivateGadget(
-				FindGadget( cwin, 0, GADOMSGHISTORY ),
-				cwin, 0 );
-			    break;
-
-			case GADOFRUIT:
-			    ActivateGadget(
-				FindGadget( cwin, 0, GADOPALETTE ),
-				cwin, 0 );
-			    break;
-
-			case GADOOBJECTS:
-			    ActivateGadget(
-				FindGadget( cwin, 0, GADOSCORE ),
-				cwin, 0 );
-			    break;
-
-			case GADONAME:
-			    ActivateGadget(
-				FindGadget( cwin, 0, GADOPETTYPE ),
-				cwin, 0 );
-			    break;
-
-			case GADOPICKUPTYPES:
-			    ActivateGadget(
-				FindGadget( cwin, 0, GADOCATNAME ),
-				cwin, 0 );
-			    break;
-
-			case GADOWINDOWTYPE:
-			    ActivateGadget(
-				FindGadget( cwin, 0, GADODOGNAME ),
-				cwin, 0 );
-			    break;
-
-			case GADOMSGHISTORY:
-			    ActivateGadget(
-				FindGadget( cwin, 0, GADOFRUIT ),
-				cwin, 0 );
-			    break;
-
-			case GADOPALETTE:
-			    ActivateGadget(
-				FindGadget( cwin, 0, GADOOBJECTS ),
-				cwin, 0 );
-			    break;
-
-			case GADOSCORE:
-			    ActivateGadget(
-				FindGadget( cwin, 0, GADONAME ),
-				cwin, 0 );
-			    break;
-
-			case GADOPETTYPE:
-			    break;
-
-			case GADOOKAY:
-			    done = 1;
-			    break;
-
-			case GADOCANCEL:
-			    quit = 1;
-			    done = 1;
-			    break;
-
-			default:
-			    for( i = 0; optr[i].name; ++i )
-			    {
-				if( optr[i].id == gd->GadgetID )
-				    break;
-			    }
-
-			    if( optr[i].name )
-			    {
-				if( optr[ i ].optstr != NULL )
-				{
-				    if( *optr[i].optstr )
-					free( optr[i].optstr );
-
-				    if( *Sbuff(gd) == 0 )
-				    {
-					optr[i].optstr = "";
-				    }
-				    else
-				    {
-					optr[i].optstr = strdup(Sbuff(gd));
-				    }
-				}
-				else
-				{
-				    optr[i].optval =
-					    ( gd->Flags & SELECTED ) != 0;
-				}
-			    }
-			    break;
+			gd = &gp->gad;
+			AddGList( w, gd, 0, 1, NULL );
+			RefreshGList( gd, w, NULL, 1 );
+			if( ( gd->Flags & SELECTED ) == 0 )
+			{
+			    SetAPen( rp, 0 );
+			    SetBPen( rp, 0 );
+			    SetDrMd( rp, JAM2 );
+			    RectFill( rp, gd->LeftEdge + 1, gd->TopEdge + 1,
+					    gd->LeftEdge + gd->Width - 1,
+					    gd->TopEdge + gd->Height - 1 );
+			    PrintIText( rp, gd->GadgetText, gd->LeftEdge, gd->TopEdge );
+			}
+			else
+			{
+			    SetAPen( rp, 3 );
+			    SetBPen( rp, 3 );
+			    SetDrMd( rp, JAM2 );
+			    RectFill( rp, gd->LeftEdge + 1, gd->TopEdge + 1,
+					    gd->LeftEdge + gd->Width - 1,
+					    gd->TopEdge + gd->Height - 1 );
+			    PrintIText( rp, gd->GadgetText, gd->LeftEdge, gd->TopEdge );
+			}
 		    }
-		    break;
+		    compgadid = gadid;
+		    compgads = LayoutCompOpts( w->Width - w->BorderLeft - w->BorderRight - 3,
+			w->Height - w->BorderTop - w->BorderBottom - 6, w->RPort,
+			    &cury, &gadid );
+		    for( gp = compgads; gp; gp = gp->next )
+			AddGList( w, &gp->gad, 0, 1, NULL );
+		}
+		RefreshGList( w->FirstGadget, w, NULL, -1 );
+		WindowLimits( w, -1, cury + 2 + 20, -1, -1 );
 	    }
 	}
     }
 
-    SafeCloseWindow( cwin );
-    return( quit == 0 );
+    if( w )
+    {
+	/* Make sure we get the latest position too */
+	lastoptx = w->LeftEdge;
+	lastopty = w->TopEdge;
+	lastoptw = w->Width;
+	lastopth = w->Height;
+
+	/* Close the window */
+	SafeCloseWindow( w );
+    }
+
+    /* Copy boolean gads settings into data table.
+     * The compgads data is stored in the global compvals[]
+     * string array, so we just leave the strings there
+     * since options don't get added while we are running.
+     */
+    for( gp = boolgads; gp; gp = gp->next )
+    {
+	gd = &gp->gad;
+	if( gd->Flags & SELECTED )
+	    *boolopt[ gd->GadgetID - 1 ].addr = TRUE;
+	else
+	    *boolopt[ gd->GadgetID - 1 ].addr = FALSE;
+    }
+
+    /* Free the gadgets */
+    if( boolgads ) FreeBoolOpts( boolgads );
+    if( compgads ) FreeCompOpts( compgads );
+
+    return( save );
 }
 
 /*
- * Put options structure into a string and then make that the
- * options[ OPTIONS_IDX ] value
+ * Put options in boolopt[] and compvals[] into separate OPTIONS= tooltypes entries
+ * in the GAME structure passed.
  */
 
-void PutOptions( optr )
-    register OPTR optr;
+void PutOptions( gptr )
+    register GPTR gptr;
 {
-    register struct Gadget *gd;
-    register int i, olen = 4096, rlen, didone;
-    register char *optbuf;
+    char buf[ 200 ];
+    extern char **compvals;
+    int i;
 
-    while( olen > 256 )
+    DelToolLines( gptr, "OPTIONS" );
+    for( i = 0; boolopt[i].name; ++i )
     {
-	if( ( optbuf = xmalloc( olen ) ) != NULL )
+	if( boolopt[i].addr == 0 )
+	    continue;
+	if( *boolopt[ i ].addr != boolopt[ i ].initvalue )
 	{
-	    break;
+	    sprintf( buf, "%s%s", *boolopt[i].addr ? "" : "!",
+				    boolopt[i].name );
+	    AddToolLine( gptr, "OPTIONS", buf );
 	}
-	olen /= 2;
     }
 
-    if( optbuf == NULL )
+    for( i = 0; compvals && compvals[i]; ++i )
     {
-	errmsg( FLASH, "No memory left for options buffer" );
-	return;
+	/* If a value was provided, put the value into a tooltypes entry */
+	if( *compvals[ i ] )
+	{
+	    sprintf( buf, "%s:%s", compopt[i].name, compvals[i] );
+	    AddToolLine( gptr, "OPTIONS", buf );
+	}
     }
-
-    /* Account for nul terminator */
-    *optbuf = 0;
-
-    for( i = 0; optr[i].name; ++i )
-    {
-	--olen;
-	didone = 0;
-	rlen = 0;
-	gd = FindGadget( 0, &Options_NewWindowStructure3, optr[i].id );
-
-	/* If name:value option */
-	if( optr[i].optstr != NULL )
-	{
-	    /* If gadget contains some text */
-	    if( gd && *Sbuff( gd ) )
-	    {
-		/* Free a previously allocated string */
-		if( optr[i].optstr && *optr[i].optstr )
-		    free( optr[i].optstr );
-
-		/* Store "" or save string away */
-		if( *Sbuff(gd) == 0 )
-		    optr[i].optstr = "";
-		else
-		    optr[i].optstr = strdup(Sbuff(gd));
-
-		rlen = strlen( optr[i].optstr ) + strlen( optr[i].name ) + 1;
-		if( rlen <= olen )
-		{
-		    sprintf( optbuf + strlen(optbuf), "%s:%s",
-			optr[i].name, optr[i].optstr );
-		}
-		didone = 1;
-	    }
-	}
-	else
-	{
-	    if( optr[i].optval != optr[i].defval )
-	    {
-		if( olen >= (rlen = strlen( optr[i].name ) +
-			(optr[i].optval == 0 ) ) )
-		{
-		    if( optr[i].optval == 0 )
-			strcat( optbuf, "!" );
-		    strcat( optbuf, optr[i].name );
-		}
-		didone = 1;
-	    }
-	}
-
-	if( rlen > olen )
-	{
-	    errmsg( FLASH, "Out of space for options" );
-	    break;
-	}
-	if( didone )
-	    strcat( optbuf, "," );
-    }
-
-    /* Remove trailing ',' */
-
-    if( *optbuf )
-	optbuf[ strlen( optbuf ) - 1 ] = 0;
-
-    setoneopt( OPTIONS_IDX, optbuf );
-    free( optbuf );
 }
 
 char *basename( str )
@@ -3849,4 +3846,109 @@ char *basename( str )
     else
 	++t;
     return( t );
+}
+
+/* This OPTIONS=!xxx or OPTIONS=catname:toby string value is parsed, the correct
+ * buffer area, boolopt[] or compvals[] is then updated to reflect the value
+ * that was in the options string.
+ */
+void ParseOptionStr( str )
+    char *str;
+{
+    char *s, *t, buf[ 100 ];
+    int i, sidx, state = 0;
+    int done = 0;
+
+    s = buf;
+    *buf = 0;
+    sidx = -1;
+
+    /* Start past the 'options=' part */
+    for( t = str; *str && !done; ++t )
+    {
+	if( state == 0 && isspace( *t ) )
+	    continue;
+
+	/* If at end remember so... */
+	if( !*t )
+	    done = 1;
+
+	/* If looking for an option value */
+	if( state == 0 )
+	{
+	    /* If found string value... */
+	    if( *t == ':' )
+	    {
+		*s = 0;
+		state = 1;
+		sidx = -1;
+
+		/* Look for the particular named option */
+		for( i = 0; compopt[i].name; ++i )
+		{
+		    if( stricmp( (char *)compopt[i].name, buf ) == 0 )
+		    {
+			sidx = i;
+			break;
+		    }
+		}
+
+		/* Set buffer pointer */
+		*(s = buf) = 0;
+
+		if( sidx == -1 )
+		{
+		    errmsg( FLASH, "Invalid string valued option name %s", buf );
+		    return;
+		}
+		continue;
+	    }
+	}
+
+	/* If at end of string or comma and we have some text... */
+	if( ( !*t || *t == ',' ) && *buf )
+	{
+	    /* Mark end */
+	    *s = 0;
+
+	    /* If have collected string option value... */
+	    if( sidx != -1 )
+	    {
+	    	if( compvals && compvals[ sidx ] != NULL )
+		    strcpy( compvals[ sidx ], buf );
+		sidx = -1;
+	    }
+	    else
+	    {
+		/* Look for boolean option */
+		s = buf;
+		if( *s == '!' )
+		    ++s;
+		for( i = 0; boolopt[ i ].name; ++i )
+		{
+		    if( stricmp( (char *)boolopt[ i ].name, s ) == 0 )
+			break;
+		}
+
+		if( boolopt[i].name && boolopt[i].addr )
+		{
+		    *boolopt[i].addr = *buf != '!';
+		}
+		else
+		{
+		    errmsg( FLASH, "Unrecognized option `%s'", buf );
+		    return;
+		}
+	    }
+	    *(s = buf) = 0;
+	    state = 0;
+	}
+	else
+	{
+	    if( *t == ',' )
+		*(s = buf) = 0;
+	    else
+		*s++ = *t;
+	}
+    }
 }

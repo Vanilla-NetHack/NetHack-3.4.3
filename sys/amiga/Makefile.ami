@@ -1,94 +1,137 @@
 #	NetHack Makefile.
-#	SCCS Id: @(#)Makefile.ami	3.3	93/02/02
-# Copyright (c) Kenneth Lorber, Bethesda, Maryland, 1991, 1992, 1993.
+#	SCCS Id: @(#)Makefile.ami	3.2	96/02/17
+# Copyright (c) Kenneth Lorber, Bethesda, Maryland, 1991,1992,1993,1996.
 # NetHack may be freely redistributed.  See license for details.
 
-# This makefile is arranged for compiling for the Amiga with SAS/C 6.2 but
-# can be configured for compiling with Manx C 5, or registered DICE
-# with simple changes.  The appropriate changes are identified by #[compiler]
-# where compiler is one of: SAS6, MANX, or DICE; the options in
-# this makefile as should be set according to the compiler being used.
+###
+### INTRODUCTION
+###
+
+# This makefile is arranged for compiling for the Amiga with SAS/C 6.51 but
+# can be configured for compiling with Manx C 5 or commercial DICE with
+# simple changes.  The appropriate changes are identified by #[compiler]
+# where compiler is one of: SAS6, MANX, or DICE; the options in this
+# makefile as should be set according to the compiler being used.  (But see
+# note 3 below.)
 
 # Note: When using the Manx compiler, an alternate make utility is
 # required. The bundled Aztec make is just too damaged.
 
-# The following assignments should be made before using this makefile:
-#
-#   HackExe:	directory where final executable should go
-#   NetHack:	directory where other runtime support files should go
-#   Amiga:	"amiga" directory
-#   Dat:	"dat" directory
-#   Doc:	"doc" directory
-#   Incl:	"include" directory
-#   Share:	"share" directory
-#   NHS:	"src" directory
-#   TTY:	"win/tty" directory
-#   Util:	"util" directory
-#   OBJ:	destination for object files for main binary
-#   OBJO:	destination for object files for everything else
-#		NB: OBJ and OBJO MUST be different directories
-#
+# Note 2: The #SFD_xxx lines are used with mkdmake to generate a DMake-
+# compatible makefile (DMakefile) from this file.  Any line beginning with
+# #SFD_INSTEAD replaces, in DMakefile, the following line from Makefile.ami.
+# #SFD_BEGIN, #SFD_ELSE, and #SFD_END bracket multi-line sections for the two
+# makefile formats.
+# When changing this file, #SFD_INSTEAD lines will need to be inserted for
+# the following cases:
+#	- Dependencies with different numbers of filenames (both > 1) on
+#	    either side.  The #SFD_INSTEAD line should immediately precede
+#	    the line with the colon, and should contain a double colon "::"
+#	    instead of a single colon.
+#	- Special command lists that override the default.  A line containing
+#	    "#SFD_INSTEAD #none" should precede such a rule.  If the rule is
+#	    more than one line long, precede it with "#SFD_BEGIN" and
+#	    "#SFD_ELSE", and follow it with "#SFD_END".
+#	- Files not in the src, sys/amiga, sys/share, or win/tty directories
+#	    that rely on the default ".c.o" rule.  Following the dependency
+#	    should be "#SFD_INSTEAD <default>" with the filename inserted
+#	    into the default rule where appropriate, then a line contianing
+#	    "#none".
+# In any SFD_BEGIN/ELSE/END block added, put a '##' before every line
+# between the BEGIN and ELSE.  Any line that's really a comment needs three
+# '#'s, e.g. "### DICE comment".
+
+# Note 2A: Whenever an SFD line/block is added, the appropriate repeat count
+#          in mkdmake must be changed.  (The repeat count "0" meaning "repeat
+#          until end of file" doesn't work as advertised.)
+
+# Note 3: mkdmake will automatically substitute DICE flags, etc. for SAS
+#         where appropriate.  Since the makefile is already set up for SAS,
+#         the only people who end up having to make changes here are Manx
+#         users (or people who want to change the defaults).
+
+###
+### DIRECTORY STRUCTURE
+###
+
+NH = NH:
+SBIN = $(NH)sbin/
+SLIB = $(NH)slib/
+NETHACK = $(NH)NetHack/
+HACKEXE = $(NH)HackExe/
+AMI = $(NH)sys/amiga/
+DAT = $(NH)dat/
+DOC = $(NH)doc/
+I = $(NH)include/
+SHARE = $(NH)sys/share/
+NHS = $(NH)src/
+TTY = $(NH)win/tty/
+WSHARE  = $(NH)win/share/
+UTIL = $(NH)util/
+O = $(NH)obj/
+OO = $(NH)objo/
+#	NB: O and OO MUST be different directories
+
+###
+### INVOCATION
+###
+
+#[SAS6]
+#MAKE = smake
+#[MANX]
+#MAKE = make
+#[DICE]
+#MAKE = dmake
+
 # Startup makefile with:
 #
 #[SAS6]
-#	cd OBJ:
-#	smake -f Amiga:Makefile.ami
-#	cd NetHack:
-#	smake -f Amiga:Makefile.ami install
-#
 #[MANX]
-#	cd OBJ:
-#	make -f Amiga:Makefile.ami
-#	cd NetHack:
-#	make -f Amiga:Makefile.ami install
+#	$(MAKE) -f $(AMI)Makefile.ami
+#	$(MAKE) -f $(AMI)Makefile.ami install
 #
 #[DICE]
-#	cd OBJ:
-#	make -f Amiga:Makefile.ami
-#	cd NetHack:
-#	make -f Amiga:Makefile.ami install
+#	$(MAKE) -f $(AMI)DMakefile
+#	$(MAKE) -f $(AMI)DMakefile install
 #
-# You may use following targets on lmk/make command lines:
+#
+# You may use following targets on $(MAKE) command lines:
 #   all		do it all (default)
-#   link	just create $(GAME) from object files
+#   link	just create binary from object files
 #   obj		just create common object files
 #   obja	just create amiga object files
 #   objs	just create shared object files
 #   clean	deletes the object files
-#   spotless	deletes the object files, $(GAME), and more
+#   spotless	deletes the object files, main binary, and more
 #
 # Note:  We do not build the Guidebook here since it needs tbl
 # (See the file sys/unix/Makefile.doc for more information)
 
-# Precompiled header files:
-#   $(HDEP) should appear in any dependency list for an object file where
-#   we would want to make use of the precompiled version of Incl:hack.h,
-#   while $(CSYM) should appear in the C compiler command line that creates
-#   any such object file.  (Changes made here should agree with the $(HDEP):
-#   target that appears later in this makefile.)
-#
-#   Notice that since this file would be created on Ram: that we would
-#   end up recompiling everything if we followed the normal make sequence.
-#   Thus, we could use:
-#
-#[SAS6]
-#	cd NetHack:
-#	smake -f Amiga:Makefile.ami Ram:hack.sym
-#	setdate Ram:hack.sym {date & time of Incl:hack.h}
-#	smake -f Amiga:Makefile.ami
-#
-#[MANX]
-#	cd NetHack:
-#	make -f Amiga:Makefile.ami Ram:hack.sym
-#	setdate Ram:hack.sym {date & time of Incl:hack.h}
-#	make -f Amiga:Makefile.ami
+#X# Precompiled header files:
+#X#   $(HDEP) should appear in any dependency list for an object file where
+#X#   we would want to make use of the precompiled version of $(I)hack.h,
+#X#   while $(CSYM) should appear in the C compiler command line that creates
+#X#   any such object file.  (Changes made here should agree with the $(HDEP):
+#X#   target that appears later in this makefile.)
+#X#
+
+#SFD_BEGIN
+##
+###[DICE]
+###   If we were compiling with DICE and wanted to use the symbol table
+###   pre-loading feature, we would uncomment these following two lines.
+##
+##HDEP	= $(I)hack.sym
+##CSYM	= -H$(I)hack.sym=hack.h
+##
+#SFD_ELSE
 
 #[SAS5]
 #   If we were to use the precompiled header file feature in a newer version
 #   of SAS/C, we would comment out these following two lines.
 #   If we don't use precompiled header files, we uncomment it as well.
 
-HDEP	= Incl:hack.h
+HDEP	= $(I)hack.h
 CSYM	=
 
 #[MANX]
@@ -98,22 +141,13 @@ CSYM	=
 #HDEP	= Ram:hack.sym
 #CSYM	= +IRam:hack.sym
 
-#[DICE]
-#   If we were compiling with DICE and wanted to use the symbol table
-#   pre-loading feature, we would uncomment these following two lines.
+#SFD_END
 
-#HDEP	= Incl:hack.sym
-#CSYM	= -HIncl:hack.sym=Incl:hack.h
-
-# [OPTION] Pathname for (optional) uudecode program:
-#   If uudecode is available for use by this makefile, give its name below.
-#   Use a harmless command (like echo) otherwise.
-
-#UUDEC	= echo
+#Pathname for uudecode program:
 UUDEC	= uudecode
 
 # Flex/Bison command assignments -- Useful only if you have flex/bison
-FLEX	= flex #-Sshare:flexhack.skel
+FLEX	= flex
 BISON	= bison
 # FBFIL and FBLIB may be used, if required by your version of flex or bison,
 # to specify additional files or libraries to be linked with
@@ -122,22 +156,21 @@ FBLIB	= #lib lib:compat.lib
 
 # If you're compiling this on a 1.3 system, you'll have to uncomment the
 # following (for use with the ifchange script below).  Also useful instead of
-# "protect +s ifchange"
-EXECUTE = execute
+# "protect ifchange +s"
+#EXECUTE = execute
 
-# SHARED LIBRARY CONFIGURATION
-# to build for shared libraries, you need these two objects
-# LIBOBJS = OBJ:aglue.o OBJ:amilib.o
-
-# NON-SHARED LIBRARY CONFIGURATION
-# To build for one particular windowing configuration,
-# you need these seven objects
-LIBOBJS = OBJ:winami.o OBJ:winstr.o OBJ:winreq.o OBJ:winfuncs.o \
-	  OBJ:winkey.o OBJ:winmenu.o OBJ:amiwind.o
-
-AMDEP = amiga:winproto.h amiga:winext.h amiga:windefs.h Incl:winami.h
+# Headers we depend on
+AMDEP = $(AMI)winproto.h $(AMI)winext.h $(AMI)windefs.h $(I)winami.h
 
 # Pathname for the C compiler being used.
+
+#SFD_BEGIN
+##
+###[DICE]
+##CC	= dcc
+##ASM	= das
+##
+#SFD_ELSE
 
 #[SAS6]
 CC	= sc
@@ -146,11 +179,21 @@ ASM	= asm
 #[MANX]
 #CC	= cc
 
-#[DICE]
-#CC	= dcc
+#SFD_END
 
 # Compilation flags for selected C Compiler:
 #   $(CFLAGS) should appear before filename arguments of $(CC) command line.
+
+#SFD_BEGIN
+##
+###[DICE]
+##CFLAGS = -c -I$(I) -mC -mD -ms -//
+##CFLAGS2 =
+##WBCFLAGS = -c -I$(I) -mC -mD -ms -//
+##WBC2FLAGS = -DCLI
+##SPLFLAGS = -DSPLIT
+##
+#SFD_ELSE
 
 #[SAS6]
 #   Note: make sure your CLI stack size is large (at least 50K) or lev_comp
@@ -160,104 +203,130 @@ ASM	= asm
 #			without a GST first so that the generated headers
 #			that are part of the GST can be made.
 #
-#GSTSRC=Amiga:amigst.c
+#GSTSRC=$(AMI)gst.c
 #
-#GSTHEAD=Incl:hack.h Incl:pm.h Incl:trap.h Incl:onames.h \
-#	Amiga:winami.p Amiga:amidos.p Amiga:amiwind.p
+#GSTHEAD=$(I)hack.h $(I)pm.h $(I)trap.h $(I)onames.h \
+#	$(AMI)winami.p $(AMI)amidos.p $(AMI)amiwind.p
 #
-#GSTFILE=OBJ:NetHack.gst
-#MKGSTFILE=OBJ:MakeDefs.gst
-#NHGSTFILE=OBJ:Game.gst
-#COPYMGST=copymgst
-#COPYNGST=copyngst
+#GSTFILE=$(O)NetHack.gst
 # undefine this to not compile with GSTs
 #GST=gst=$(GSTFILE)
 #
-VIEWWINDOW=#define=VIEWWINDOW
-DEBUG=debug=l
+#DEBUG=debug=ff
 #OPTFLAGS=opt optsize optinl optcomp=10 optpeep optgo optdep=5 \
-	optrdep=5 optalias
-CFLAGS	= data=far nminc $(DEBUG) idir=incl: cpu=any nostkchk ign=104 \
-	nover codename=none ignore=85,62 strmerge ppbuf=8000 \
-	$(OPTFLAGS) \
-	${VIEWWINDOW} \
+#	optrdep=5 optalias
+CFLAGS	= data=far nminc $(DEBUG) idir=$(I) cpu=any nostkchk nover \
+	codename=none strmerge ppbuf=8000 $(OPTFLAGS) $(TILES) $(SAVEDS) \
 	afp $(ERRREXX) $(GST)
 # for files that are too large for the standard flags:
-CFLAGS2 = code=far nostrmerge
-WBCFLAGS = ignore=217,62 data=far ansi nminc code=far idir=incl: cpu=any afp \
-	debug=sf $(ERRREXX) $(GST)
+CFLAGS2 = code=far nostrmerge $(SAVEDS)
+WBCFLAGS = ignore=217,62 data=far ansi nminc code=far idir=$(I) cpu=any afp \
+	$(DEBUG) $(ERRREXX) define=AMIGA $(GST)
+XXX = data=far ansi nminc idir=$(I) cpu=any afp opt optinline optinlocal \
+	optloop opttime
 WBC2FLAGS = define=CLI
-SPLFLAGS = ignore=77 define=SPLIT dollarok
+SPLFLAGS = define=SPLIT #dollarok
 
 #[MANX]
-#CFLAGS = -iincl: -mc -md -ms -pa -ps -bs -wo -qq
+#CFLAGS = -i$(I) -mc -md -ms -pa -ps -bs -wo -qq
 #WBCFLAGS = -mc -md -ms -pa -ps -bs -wo -qq -pp
 
-#[DICE]
-#CFLAGS = -c -Iincl: -mD -mC -ms
-#WBCFLAGS = -c -ms
+#SFD_END
 
-# Components of varous link command lines:
+# Assembly flags:
+
+#SFD_BEGIN
+##
+###[DICE]
+##AFLAGS =
+##AOBJSPEC = -o
+##
+#SFD_ELSE
+
+#[SAS6]
+AFLAGS = #what to put here?
+AOBJSPEC = -o
+
+#SFD_END
+
+# Components of various link command lines:
 #   $(LINK) should be the pathname of the linker being used (with any options
 #   that should appear at the beginning of the command line).  The name of the
-#   output file should appear immediately after $(LINK).  $(LIN) should appear
-#   before the list of object files in each link command.  $(LLINK) should
-#   appear as the list of object files in the link command line that creates
-#   the NetHack executable.  $(LLIB) should appear at the end of each link
-#   command line.
+#   output file should appear immediately after $(LNSPEC).  $(LIN) should
+#   appear before the list of object files in each link command.  $(LLINK)
+#   should appear as the list of object files in the link command line that
+#   creates the NetHack executable.  $(LLIB) should appear at the end of each
+#   link command line.
 
 # Note: amiga.lib added due to missing prototypes/pragmas.
 # Should be deleted when this is resolved.
 
+#SFD_BEGIN
+##
+###[DICE]
+### If you have flex/bison libraries, use the second definition of FLLIB
+### instead of the first.
+##
+##LINK	 = dcc -mD
+##LIN	 =
+##LLINK	 = @$(AMI)ami.lnk
+##LLIB	 =
+##FLLIB	 =
+###FLLIB	 = -l$(FBLIB)
+##OBJSPEC = -o
+##PNSPEC	= -o
+##LNSPEC = -o
+##CCLINK	= dcc
+##CLFLAGS = -I$(I) -mC -mD -ms -//
+##INCLSPEC = -I
+##DEFSPEC = -D
+##IGNSPEC = -j
+##
+#SFD_ELSE
+
 #[SAS6]
 
-LINK	= slink noicons maxhunk 10000 to
+LINK	= slink noicons maxhunk 10000
 LIN	= from lib:catch.o
-LLINK	= with Amiga:ami.lnk
+LLINK	= with $(AMI)ami.lnk
 LLIB	= lib Lib:sc.lib lib lib:amiga.lib BATCH #scnb.lib or sc.lib
 FLLIB	= $(FBLIB) lib Lib:sc.lib BATCH
 OBJSPEC = objname=
-PNSPEC =
+PNSPEC = noicons to #pname=
+LNSPEC = to
+CCLINK =  sc link
 INCLSPEC = idir=
 DEFSPEC = define=
 IGNSPEC = ignore=
-COMPACT_HEADERS=$(GSTFILE) $(COPYNGST)
+COMPACT_HEADERS=$(GSTFILE)
 
 #[MANX]
 
 #LINK	= ln -g +q +ss -o
 #LIN	=
-#LLINK	= -f Amiga:ami.lnk
+#LLINK	= -f $(AMI)ami.lnk
 #LLIB	= -lcl16
 #FLLIB  = -lcl16
 #OBJSPEC = -o
 #PNSPEC = -o
+#LNSPEC = -o
+#CCLINK = cc
 #INCLSPEC = -i
 #DEFSPEC = -d
 #IGNSPEC = -j
 
-#[DICE]
+#SFD_END
 
-#LINK	 = dcc -s -o -frag
-#LIN	 =
-#LLINK	 = @Amiga:ami.lnk
-#LLIB	 =
-#FLLIB	 = -l$(FBLIB)
-#OBJSPEC = -o
-#PNSPEC = -o
-#INCLSPEC = -i
-#DEFSPEC = -d
-#IGNSPEC = -j
-
-# Name of the game:
-
-GAME	= HackExe:NetHack
+###
+### FILE LISTS
+###
 
 # A more reasonable random number generator (recommended for the Amiga):
 
-RANDOBJ	= OBJ:random.o
+RANDOBJ	= $(O)random.o
 
-.PRECIOUS:  Incl:config.h Incl:decl.h Incl:hack.h Incl:permonst.h Incl:you.h
+#SFD_INSTEAD #none
+.PRECIOUS:  $(I)config.h $(I)decl.h $(I)hack.h $(I)permonst.h $(I)you.h
 
 # Almost nothing below this line should have to be changed.
 # (Exceptions are marked by [SAS6], [MANX], etc.)
@@ -268,183 +337,340 @@ RANDOBJ	= OBJ:random.o
 # Object files for makedefs:
 
 MAKEOBJS = \
-	OBJO:makedefs.o OBJ:monst.o OBJ:objects.o
+	$(OO)makedefs.o $(O)monst.o $(O)objects.o
 
 # Object files for special levels compiler:
 
 SPLEVOBJS = \
-	OBJO:lev_yacc.o OBJO:lev_lex.o	OBJO:lev_main.o \
-	OBJ:decl.o 	OBJ:drawing.o	OBJ:monst.o \
-	OBJ:objects.o
+	$(OO)lev_yacc.o $(OO)lev_lex.o	$(OO)lev_main.o \
+	$(O)decl.o 	$(O)drawing.o	$(O)monst.o \
+	$(O)objects.o	$(OO)panic.o
 
 # Object files for dungeon compiler
 
 DGNCOMPOBJS = \
-	OBJO:dgn_yacc.o	OBJO:dgn_lex.o	OBJO:dgn_main.o OBJ:alloc.o OBJO:panic.o
+	$(OO)dgn_yacc.o	$(OO)dgn_lex.o	$(OO)dgn_main.o $(O)alloc.o $(OO)panic.o
 
 # Object files for NetHack:
 
 COMMOBJ = \
-	OBJ:allmain.o	OBJ:alloc.o	OBJ:apply.o 	OBJ:artifact.o	\
-	OBJ:attrib.o	OBJ:ball.o	OBJ:bones.o	OBJ:botl.o	\
-	OBJ:cmd.o	OBJ:dbridge.o	OBJ:decl.o	OBJ:detect.o	\
-	OBJ:display.o	OBJ:do.o	OBJ:do_name.o	OBJ:do_wear.o	\
-	OBJ:dog.o	OBJ:dogmove.o	OBJ:dokick.o	OBJ:dothrow.o	\
-	OBJ:drawing.o	OBJ:dungeon.o	OBJ:eat.o	OBJ:end.o	\
-	OBJ:engrave.o	OBJ:exper.o	OBJ:explode.o	OBJ:extralev.o	\
-	OBJ:files.o	OBJ:fountain.o 	OBJ:hack.o	OBJ:invent.o	\
- 	OBJ:lock.o	OBJ:mail.o	OBJ:makemon.o	OBJ:mcastu.o	\
-	OBJ:mhitm.o	OBJ:mhitu.o	OBJ:minion.o	OBJ:mklev.o	\
-	OBJ:mkmap.o	OBJ:mkmaze.o	OBJ:mkobj.o	OBJ:mkroom.o	\
-	OBJ:mon.o	OBJ:mondata.o	OBJ:monmove.o	OBJ:monst.o	\
-	OBJ:mplayer.o	OBJ:mthrowu.o	OBJ:muse.o	OBJ:music.o	\
-	OBJ:o_init.o	OBJ:objects.o	OBJ:objnam.o	OBJ:options.o	\
-	OBJ:pager.o	OBJ:pickup.o	OBJ:polyself.o	OBJ:potion.o	\
-	OBJ:pline.o     OBJ:hacklib.o	OBJ:pray.o	OBJ:priest.o	\
-	OBJ:quest.o	OBJ:questpgr.o	OBJ:read.o	OBJ:rect.o	\
-	OBJ:restore.o	OBJ:rnd.o	OBJ:rumors.o	OBJ:save.o	\
-	OBJ:shk.o	OBJ:shknam.o	OBJ:sit.o	OBJ:sounds.o	\
-	OBJ:sp_lev.o	OBJ:spell.o	OBJ:steal.o	OBJ:timeout.o	\
-	OBJ:topten.o	OBJ:track.o	OBJ:trap.o	OBJ:u_init.o	\
-	OBJ:uhitm.o	OBJ:vault.o	OBJ:version.o	OBJ:vision.o	\
-	OBJ:weapon.o	OBJ:were.o	OBJ:wield.o	OBJ:windows.o	\
-	OBJ:wizard.o	OBJ:worm.o	OBJ:worn.o	OBJ:write.o	\
-	OBJ:zap.o
+	$(O)allmain.o	$(O)alloc.o	$(O)apply.o 	$(O)artifact.o	\
+	$(O)attrib.o	$(O)ball.o	$(O)bones.o	$(O)botl.o	\
+	$(O)cmd.o	$(O)dbridge.o	$(O)decl.o	$(O)detect.o	\
+	$(O)dig.o	$(O)display.o	$(O)dlb.o	$(O)do.o	\
+	$(O)do_name.o	$(O)do_wear.o	$(O)dog.o	$(O)dogmove.o	\
+	$(O)dokick.o	$(O)dothrow.o	$(O)drawing.o	$(O)dungeon.o	\
+	$(O)eat.o	$(O)end.o	$(O)engrave.o	$(O)exper.o	\
+	$(O)explode.o	$(O)extralev.o	$(O)files.o 	$(O)fountain.o	\
+	$(O)hack.o	$(O)hacklib.o	$(O)invent.o	$(O)light.o	\
+	$(O)lock.o	$(O)mail.o	$(O)makemon.o	$(O)mcastu.o	\
+	$(O)mhitm.o	$(O)mhitu.o	$(O)minion.o	$(O)mklev.o	\
+	$(O)mkmap.o	$(O)mkmaze.o	$(O)mkobj.o	$(O)mkroom.o	\
+	$(O)mon.o	$(O)mondata.o	$(O)monmove.o	$(O)monst.o	\
+	$(O)mplayer.o	$(O)mthrowu.o	$(O)muse.o	$(O)music.o	\
+	$(O)o_init.o	$(O)objects.o	$(O)objnam.o	$(O)options.o	\
+	$(O)pager.o	$(O)pickup.o	$(O)pline.o	$(O)polyself.o	\
+	$(O)potion.o	$(O)pray.o	$(O)priest.o	$(O)quest.o	\
+	$(O)questpgr.o	$(O)read.o	$(O)rect.o	$(O)restore.o	\
+	$(O)rnd.o	$(O)rumors.o	$(O)save.o	$(O)shk.o	\
+	$(O)shknam.o	$(O)sit.o	$(O)sounds.o	$(O)sp_lev.o	\
+	$(O)spell.o	$(O)steal.o	$(O)teleport.o	$(O)timeout.o	\
+	$(O)topten.o	$(O)track.o	$(O)trap.o	$(O)u_init.o	\
+	$(O)uhitm.o	$(O)vault.o	$(O)version.o	$(O)vision.o	\
+	$(O)weapon.o	$(O)were.o	$(O)wield.o	$(O)windows.o	\
+	$(O)wizard.o	$(O)worm.o	$(O)worn.o	$(O)write.o	\
+	$(O)zap.o
 
 MAKEDEFOBJ = \
-	OBJ:monstr.o
+	$(O)monstr.o
 
 AMIGAOBJ = \
-	OBJ:amidos.o	OBJ:amirip.o 	OBJ:amiwbench.o \
-	$(LIBOBJS) OBJ:amisnd.o
+	$(O)amidos.o	$(O)amirip.o 	$(O)amisnd.o	$(O)amiwbench.o	\
+	$(O)amiwind.o	$(O)winami.o	$(O)winchar.o	$(O)winfuncs.o	\
+	$(O)winkey.o	$(O)winmenu.o	$(O)winreq.o	$(O)winstr.o
+
+# Objects from assembly sources (because DMake can't handle default rules)
+AMIGAOBJ2 = \
+	$(O)dispmap.o
 
 SHAREOBJ = \
-	OBJ:pcmain.o	$(RANDOBJ)
+	$(O)pcmain.o	$(RANDOBJ)
 
 TTYOBJ = \
-	OBJ:getline.o OBJ:termcap.o OBJ:topl.o OBJ:wintty.o OBJ:amitty.o \
-	OBJ:rip.o
+	$(O)getline.o $(O)termcap.o $(O)topl.o $(O)wintty.o $(O)amitty.o \
+	$(O)rip.o
+
+# Yuck yuck yuck.  Have to tell DMake where these are, since they're not
+# all in the same place.
+TTYSRC = \
+	$(TTY)getline.c $(TTY)termcap.c $(TTY)topl.c $(TTY)wintty.c \
+	$(AMI)amitty.c $(NHS)rip.c
 
 # All the object files for NetHack:
 
-HOBJ = $(COMMOBJ) $(AMIGAOBJ) $(SHAREOBJ) $(MAKEDEFOBJ) $(TTYOBJ)
+HOBJ = $(COMMOBJ) $(AMIGAOBJ) $(AMIGAOBJ2) $(SHAREOBJ) $(MAKEDEFOBJ) $(TTYOBJ)
 
-# Getting down to business:
+###
+### DATA FILES
+###
 
-all:  $(COMPACT_HEADERS) NetHack:lev_comp NetHack:dgn_comp $(GAME) \
-	NetHack:HackWB NetHack:recover NetHack:HackCli NetHack:splitter
+# quest files
+ADFILES1= $(SLIB)A-filla.lev $(SLIB)A-fillb.lev $(SLIB)A-locate.lev \
+	$(SLIB)A-start.lev
+ADFILES= $(SLIB)A-goal.lev $(ADFILES1)
 
-install: inst-data inst-dungeon inst-icons inst-fonts inst-sounds HackExe:NetHack.dir
+BDFILES1= $(SLIB)B-filla.lev $(SLIB)B-fillb.lev $(SLIB)B-locate.lev \
+	$(SLIB)B-start.lev
+BDFILES= $(SLIB)B-goal.lev $(BDFILES1)
 
-Amiga:compacted:
-	lmk -f compact.lmk DST=$(COMPACT_DEST) SRC=$(COMPACT_SRC)
+CDFILES1= $(SLIB)C-filla.lev $(SLIB)C-fillb.lev $(SLIB)C-locate.lev \
+	$(SLIB)C-start.lev
+CDFILES= $(SLIB)C-goal.lev $(CDFILES1)
 
-$(GAME):  $(HOBJ) Amiga:ami.lnk
-	$(LINK) $(PNSPEC)$(GAME) $(LIN) $(LLINK) $(LLIB)
+EDFILES1= $(SLIB)E-filla.lev $(SLIB)E-fillb.lev $(SLIB)E-locate.lev \
+	$(SLIB)E-start.lev
+EDFILES= $(SLIB)E-goal.lev $(EDFILES1)
+
+HDFILES1= $(SLIB)H-filla.lev $(SLIB)H-fillb.lev $(SLIB)H-locate.lev \
+	$(SLIB)H-start.lev
+HDFILES= $(SLIB)H-goal.lev $(HDFILES1)
+
+KDFILES1= $(SLIB)K-filla.lev $(SLIB)K-fillb.lev $(SLIB)K-locate.lev \
+	$(SLIB)K-start.lev
+KDFILES= $(SLIB)K-goal.lev $(KDFILES1)
+
+PDFILES1= $(SLIB)P-filla.lev $(SLIB)P-fillb.lev $(SLIB)P-locate.lev \
+	$(SLIB)P-start.lev
+PDFILES= $(SLIB)P-goal.lev $(PDFILES1)
+
+RDFILES1= $(SLIB)R-filla.lev $(SLIB)R-fillb.lev $(SLIB)R-locate.lev \
+	$(SLIB)R-start.lev
+RDFILES= $(SLIB)R-goal.lev $(RDFILES1)
+
+SDFILES1= $(SLIB)S-filla.lev $(SLIB)S-fillb.lev $(SLIB)S-locate.lev \
+	$(SLIB)S-start.lev
+SDFILES= $(SLIB)S-goal.lev $(SDFILES1)
+
+TDFILES1= $(SLIB)T-filla.lev $(SLIB)T-fillb.lev $(SLIB)T-locate.lev \
+	$(SLIB)T-start.lev
+TDFILES= $(SLIB)T-goal.lev $(TDFILES1)
+
+VDFILES1= $(SLIB)V-filla.lev $(SLIB)V-fillb.lev $(SLIB)V-locate.lev \
+	$(SLIB)V-start.lev
+VDFILES= $(SLIB)V-goal.lev $(VDFILES1)
+
+WDFILES1= $(SLIB)W-filla.lev $(SLIB)W-fillb.lev $(SLIB)W-locate.lev \
+	$(SLIB)W-start.lev
+WDFILES= $(SLIB)W-goal.lev $(WDFILES1)
+
+XDFILES=	$(ADFILES) $(BDFILES) $(CDFILES) $(EDFILES) $(HDFILES) \
+		$(KDFILES) $(PDFILES) $(RDFILES) $(SDFILES) $(TDFILES) \
+		$(VDFILES) $(WDFILES)
+
+SOUNDFILES= \
+	$(SBIN)cvtsnd \
+	$(SLIB)sounds \
+	$(SLIB)sounds/Bell $(SLIB)sounds/Bugle \
+	$(SLIB)sounds/Drum_Of_Earthquake \
+	$(SLIB)sounds/Fire_Horn $(SLIB)sounds/Frost_Horn \
+	$(SLIB)sounds/Leather_Drum $(SLIB)sounds/Magic_Flute \
+	$(SLIB)sounds/Magic_Harp $(SLIB)sounds/Tooled_Horn \
+	$(SLIB)sounds/Wooden_Flute $(SLIB)sounds/Wooden_Harp
+
+TILEFILES= \
+	$(SBIN)txt2iff \
+	$(NETHACK)tiles \
+	$(NETHACK)tiles/objects.iff \
+	$(NETHACK)tiles/monsters.iff \
+	$(NETHACK)tiles/other.iff
+
+INSTDUNGEONFILES1= \
+	$(SLIB)air.lev		$(SLIB)asmodeus.lev	$(SLIB)astral.lev \
+	$(SLIB)baalz.lev	$(SLIB)bigrm-1.lev	$(SLIB)bigrm-2.lev \
+	$(SLIB)bigrm-3.lev	$(SLIB)bigrm-4.lev	$(SLIB)bigrm-5.lev \
+	$(SLIB)castle.lev	$(SLIB)dungeon		$(SLIB)earth.lev \
+	$(SLIB)fakewiz1.lev	$(SLIB)fakewiz2.lev	$(SLIB)fire.lev \
+	$(SLIB)juiblex.lev	$(SLIB)knox.lev		$(SLIB)medusa-1.lev \
+	$(SLIB)medusa-2.lev	$(SLIB)minend-1.lev	$(SLIB)minend-2.lev \
+	$(SLIB)minetn-1.lev	$(SLIB)minetn-2.lev	$(SLIB)minefill.lev \
+	$(SLIB)options		$(SLIB)oracle.lev	$(SLIB)orcus.lev \
+	$(SLIB)sanctum.lev	$(SLIB)tower1.lev	$(SLIB)tower2.lev \
+	$(SLIB)tower3.lev	$(SLIB)valley.lev	$(SLIB)water.lev \
+	$(SLIB)wizard1.lev	$(SLIB)wizard2.lev	$(SLIB)wizard3.lev \
+	$(XDFILES)
+
+INSTDUNGEONFILES= $(NETHACK)NetHack.cnf $(INSTDUNGEONFILES1)
+
+
+INSTDATAFILES= \
+	$(NETHACK)license	$(NETHACK)logfile	$(NETHACK)record \
+	$(NETHACK)HackWB.hlp	$(NETHACK)WBDefaults.def $(NETHACK)amii.hlp \
+	$(NETHACK)tomb.iff
+
+LIBFILES= \
+	$(INSTDUNGEONFILES1) \
+	$(SLIB)cmdhelp	 	$(SLIB)data		$(SLIB)dungeon \
+	$(SLIB)help		$(SLIB)hh		$(SLIB)history \
+	$(SLIB)opthelp		$(SLIB)oracles		$(SLIB)rumors \
+	$(SLIB)quest.dat	$(SLIB)wizhelp
+
+###
+### Getting down to business:
+###
+
+#SFD_INSTEAD all:  $(SBIN)lev_comp $(SBIN)dgn_comp $(SBIN)NetHack \
+all:  $(COMPACT_HEADERS) $(SBIN)lev_comp $(SBIN)dgn_comp $(SBIN)NetHack \
+	$(NETHACK)HackWB $(NETHACK)recover $(NETHACK)HackCli $(SBIN)splitter \
+	$(SBIN)dlb
+
+install: inst-data inst-dungeon inst-icons inst-fonts inst-sounds inst-tiles \
+	 $(NETHACK)NetHack.dir $(NETHACK)nhdat
+
+$(SBIN)NetHack:  $(HOBJ) $(AMI)ami.lnk
+	$(LINK) $(LNSPEC) $(SBIN)NetHack $(LIN) $(LLINK) $(LLIB)
 
 link:
-	$(LINK) $(PNSPEC)$(GAME) $(LIN) $(LLINK) $(LLIB)
+	$(LINK) $(LNSPEC) $(SBIN)NetHack $(LIN) $(LLINK) $(LLIB)
 
-OBJ:Game.gst: $(GSTHEAD)
-	$(CC) $(CFLAGS) makegst $(NHGSTFILE) $(GSTSRC)
+$(AMI)ami.lnk: $(AMI)Makefile.ami
+	list to $(AMI)ami.lnk lformat="$(O)%s" $(O)\#?.o QUICK NOHEAD
 
-OBJ:MakeDefs.gst: $(GSTSRC)
-	$(CC) $(CFLAGS) define=TEMP_BUILD makegst $(MKGSTFILE) $(GSTSRC)
+## dlb support
+$(OO)dlb_main.o:	$(UTIL)dlb_main.c $(HDEP) $(I)dlb.h $(I)date.h
+	$(CC) $(CFLAGS) $(OBJSPEC)$(OO)dlb_main.o $(UTIL)dlb_main.c
 
-copymgst:
-	copy $(MKGSTFILE) to $(GSTFILE)
-
-copyngst:
-	copy $(NHGSTFILE) to $(GSTFILE)
-
-Amiga:ami.lnk: Amiga:Makefile.ami
-	list to Amiga:ami.lnk lformat="OBJ:%s" OBJ:\#?.o QUICK NOHEAD
+$(SBIN)dlb:	$(OO)dlb_main.o $(O)dlb.o $(O)alloc.o $(OO)panic.o
+	$(LINK) $(PNSPEC) $(SBIN)dlb $(LIN) $(OO)dlb_main.o $(O)dlb.o \
+	  $(O)alloc.o $(OO)panic.o $(LLIB)
 
 obj:  $(HOBJ)
+
 obja:  $(AMIGAOBJ)
+
 objs:  $(SHAREOBJ)
 
+
+#SFD_BEGIN
+#SFD_ELSE
+SUFFIXES = .lev .des
+.des.lev:
+	$(SBIN)lev_comp $<
+#SFD_END
+
+
 # The default method for creating object files:
+
+#SFD_BEGIN
+##
+###[DICE]
+##
+##$(COMMOBJ): $(COMMOBJ:"$(O)*.o":"$(NHS)%1.c")
+##	$(CC) $(CFLAGS) $(CSYM) $(OBJSPEC)%(left) %(right)
+##
+##$(AMIGAOBJ): $(AMIGAOBJ:"$(O)*.o":"$(AMI)%1.c")
+##	$(CC) $(CFLAGS) $(CSYM) $(OBJSPEC)%(left) %(right)
+##
+##$(SHAREOBJ): $(SHAREOBJ:"$(O)*.o":"$(SHARE)%1.c")
+##	$(CC) $(CFLAGS) $(CSYM) $(OBJSPEC)%(left) %(right)
+##
+##$(TTYOBJ): $(TTYSRC)
+##	$(CC) $(CFLAGS) $(CSYM) $(OBJSPEC)%(left) %(right)
+##
+#SFD_ELSE
 
 #[SAS6]
 
 .c.o:
 	$(CC) $(CFLAGS) $(CSYM) $(OBJSPEC)$@ $<
 
-#[DICE]
+#SFD_END
 
-#$(COMMOBJ):
-#	$(CC) $(CFLAGS) $(CSYM) $(OBJSPEC)$@ NHS:$*.c
-
-#$(AMIGAOBJ):
-#	$(CC) $(CFLAGS) $(CSYM) $(OBJSPEC)$@ Amiga:$*.c
-
-#$(SHAREOBJ):
-#	$(CC) $(CFLAGS) $(CSYM) $(OBJSPEC)$@ Share:$*.c
 
 clean:
-	-delete OBJ:\#?.o OBJO:\#?.o
+	-delete $(O)\#?.o $(OO)\#?.o
 
 spotless:  clean
-	-delete $(GAME) NetHack:lev_comp NetHack:makedefs NetHack:dgn_comp
-	-delete Amiga:8
-	-delete Amiga:hack.font
-	-delete Dat:data Dat:rumors
-	-delete NetHack:data NetHack:rumors
-	-delete NetHack:castle.lev NetHack:dungeon
-	-delete NetHack:earth.lev NetHack:air.lev NetHack:fire.lev
-	-delete NetHack:water.lev NetHack:astral.lev
-	-delete NetHack:tower1.lev NetHack:tower2.lev NetHack:tower3.lev
-	-delete NetHack:fakewiz1.lev NetHack:fakewiz2.lev
-	-delete NetHack:medusa-1.lev NetHack:medusa-2.lev
-	-delete NetHack:oracle.lev NetHack:wizard1.lev NetHack:wizard2.lev
-	-delete NetHack:wizard3.lev NetHack:dungeon.pdf NetHack:valley.lev
-	-delete NetHack:minetown.lev NetHack:minefill.lev
-	-delete $(ADFILES)
-	-delete $(BDFILES)
-	-delete $(CDFILES)
-	-delete $(EDFILES)
-	-delete $(HDFILES)
-	-delete $(KDFILES)
-	-delete $(PDFILES)
-	-delete $(RDFILES)
-	-delete $(SDFILES)
-	-delete $(TDFILES)
-	-delete $(VDFILES)
-	-delete $(WDFILES)
-	-delete Incl:onames.h Incl:pm.h
-	-echo to Incl:onames.h "" noline
-	-wait 2
-	-echo to Incl:pm.h "" noline
-	-wait 2
-	-setdate NHS:makedefs.c
-	-wait 2
+	-delete $(SBIN)NetHack $(SBIN)lev_comp $(SBIN)makedefs $(SBIN)dgn_comp
+	-delete $(SBIN)cvtsnd $(SBIN)dlb $(SBIN)txt2iff $(SBIN)splitter
+	-delete $(SBIN)tilemap
+	-delete $(SLIB)data $(SLIB)rumors
+	-delete $(SLIB)\#?.lev
+	-delete $(SLIB)dungeon
+	-delete $(SLIB)cmdhelp $(SLIB)help $(SLIB)hh $(SLIB)history
+	-delete $(SLIB)opthelp $(SLIB)options $(SLIB)oracles
+	-delete $(SLIB)quest.dat $(SLIB)wizhelp
+#	-delete $(SLIB)earth.lev $(SLIB)air.lev $(SLIB)fire.lev
+#	-delete $(SLIB)water.lev $(SLIB)astral.lev
+#	-delete $(SLIB)tower1.lev $(SLIB)tower2.lev $(SLIB)tower3.lev
+#	-delete $(SLIB)fakewiz1.lev $(SLIB)fakewiz2.lev
+#	-delete $(SLIB)medusa-1.lev $(SLIB)medusa-2.lev
+#	-delete $(SLIB)oracle.lev $(SLIB)wizard1.lev $(SLIB)wizard2.lev
+#	-delete $(SLIB)wizard3.lev $(DAT)dungeon.pdf $(SLIB)valley.lev
+#	-delete $(SLIB)minefill.lev
+#	-delete $(SLIB)minetn-1 $(SLIB)minetn-2 $(SLIB)minend-1 $(SLIB)minend-2
+#	-delete $(ADFILES)
+#	-delete $(BDFILES)
+#	-delete $(CDFILES)
+#	-delete $(EDFILES)
+#	-delete $(HDFILES)
+#	-delete $(KDFILES)
+#	-delete $(PDFILES)
+#	-delete $(RDFILES)
+#	-delete $(SDFILES)
+#	-delete $(TDFILES)
+#	-delete $(VDFILES)
+#	-delete $(WDFILES)
+	-delete $(I)onames.h $(I)pm.h $(I)date.h
+	-delete $(NHS)tile.c $(NHS)monstr.c
+	-delete $(I)tile.h 
+#	-echo to $(I)onames.h "" noline
+#	-wait 2
+#	-echo to $(I)pm.h "" noline
+#	-wait 2
+#	-setdate $(UTIL)makedefs.c
+#	-wait 2
 
-# Creating precompiled version of Incl:hack.h to save disk I/O.
+# Creating precompiled version of $(I)hack.h to save disk I/O.
 
-#[SAS5]
-#   If we were to use the precompiled header file feature of SAS/C, we
-#   would uncomment the following lines.  (Also see defines for HDEP and
-#   CSYM near the beginning of this file, as these should be appropriately
-#   defined.)
+#SFD_BEGIN
+##
+###[DICE]
+###   If we were compiling with DICE and wanted to use the symbol table
+###   pre-loading feature, we would technically not need a rule to make the
+###   precompiled header file, because DCC handles this automatically;
+###   however, we must delete the precompiled header file if any of the
+###   includes change, and we need to create it manually because the
+###   sys/amiga sources, compiled first, define things differently than the
+###   main sources want them.
+##
+##$(HDEP):  $(I)hack.h $(I)pm.h $(I)onames.h
+##	-delete $(I)hack.sym
+##	echo to Ram:hackincl.c "#include <hack.h>"
+##	$(CC) $(CFLAGS) $(CSYM) $(OBJSPEC)Ram:hackincl.o Ram:hackincl.c
+##	-delete Ram:hackincl.c Ram:hackincl.o
+##
+#SFD_ELSE
 
-#$(HDEP):  Incl:hack.h NetHack:makedefs
-#	echo to Ram:hackincl.c "#include <Incl:hack.h>"
-#	$(CC) $(CFLAGS) -ph $(OBJSPEC)$@ Ram:hackincl.c
-#	-delete Ram:hackincl.c
+#X#[SAS5]
+#X#   If we were to use the precompiled header file feature of SAS/C, we
+#X#   would uncomment the following lines.  (Also see defines for HDEP and
+#X#   CSYM near the beginning of this file, as these should be appropriately
+#X#   defined.)
+
+#X#$(HDEP):  $(I)hack.h $(SBIN)makedefs
+#X#	echo to Ram:hackincl.c "#include <$(I)hack.h>"
+#X#	$(CC) $(CFLAGS) -ph $(OBJSPEC)$@ Ram:hackincl.c
+#X#	-delete Ram:hackincl.c
 
 #[MANX]
 #   If we were compiling with Aztec, and wanted to use the symbol table
 #   pre-loading feature, we would uncomment these following two lines.
 
-#$(HDEP):  Incl:hack.h NetHack:makedefs
-#	$(CC) $(CFLAGS) -a $(OBJSPEC)Ram:hack.asm +h$@ Incl:hack.h
+#$(HDEP):  $(I)hack.h $(SBIN)makedefs
+#	$(CC) $(CFLAGS) -a $(OBJSPEC)Ram:hack.asm +h$@ $(I)hack.h
 #	-delete Ram:hack.asm
 
-#[DICE]
-#   If we were compiling with DICE and wanted to use the symbol table
-#   pre-loading feature, we would not need a rule to make the
-#   precompiled header file, because DCC handles this automatically.
+#SFD_END
 
 #
 #	Please note:	The dependency lines for the modules here are
@@ -453,75 +679,91 @@ spotless:  clean
 #			loop.
 #
 
-NetHack:makedefs:  $(MKGSTFILE) $(COPYMGST) $(MAKEOBJS)
-	$(LINK) $(PNSPEC)NetHack:makedefs $(LIN) $(MAKEOBJS) $(LLIB)
+$(SBIN)makedefs:  $(MAKEOBJS)
+	$(LINK) $(LNSPEC) $(SBIN)makedefs $(LIN) $(MAKEOBJS) $(LLIB)
 
-OBJO:makedefs.o:  Util:makedefs.c Incl:config.h Incl:permonst.h Incl:objclass.h  Incl:patchlevel.h Incl:qtext.h Incl:artilist.h
-	$(CC) $(DEFSPEC)MAKEDEFS_C $(CFLAGS) $(OBJSPEC)$@ Util:makedefs.c
+$(OO)makedefs.o:  $(UTIL)makedefs.c $(I)config.h $(I)permonst.h $(I)monsym.h \
+		$(I)objclass.h  $(I)patchlevel.h $(I)qtext.h $(I)artilist.h
+	$(CC) $(DEFSPEC)MAKEDEFS_C $(CFLAGS) $(OBJSPEC)$@ $(UTIL)makedefs.c
 
-NetHack:lev_comp:  $(SPLEVOBJS)
-	$(LINK) $(PNSPEC)NetHack:lev_comp $(LIN) $(SPLEVOBJS) $(FBFIL) $(FLLIB)
+$(SBIN)lev_comp:  $(SPLEVOBJS)
+	$(LINK) $(LNSPEC) $(SBIN)lev_comp $(LIN) $(SPLEVOBJS) $(FBFIL) $(FLLIB)
 
-NetHack:dgn_comp:  $(DGNCOMPOBJS)
-	$(LINK) $(PNSPEC)NetHack:dgn_comp $(LIN) $(DGNCOMPOBJS) $(FBFIL) $(FLLIB)
+$(SBIN)dgn_comp:  $(DGNCOMPOBJS)
+	$(LINK) $(LNSPEC) $(SBIN)dgn_comp $(LIN) $(DGNCOMPOBJS) $(FBFIL) $(FLLIB)
 
-OBJO:lev_yacc.o:  Util:lev_yacc.c $(HDEP) Incl:sp_lev.h Incl:pm.h Incl:onames.h
-	setdate Util:lev_yacc.c
-	$(CC) $(DEFSPEC)LEV_LEX_C $(CFLAGS) $(OBJSPEC)$@ Util:lev_yacc.c
+$(OO)lev_yacc.o:  $(UTIL)lev_yacc.c $(HDEP) $(I)sp_lev.h $(I)pm.h $(I)onames.h
+#	setdate $(UTIL)lev_yacc.c
+	$(CC) $(DEFSPEC)LEV_LEX_C $(DEFSPEC)PREFIX="NH:slib/" $(CFLAGS) \
+		$(DEFSPEC)alloca=malloc $(OBJSPEC)$@ $(UTIL)lev_yacc.c
 
-OBJO:lev_lex.o: Util:lev_lex.c $(HDEP) Incl:lev_comp.h Incl:sp_lev.h
-	$(CC) $(DEFSPEC)LEV_LEX_C $(CFLAGS) $(OBJSPEC)$@ Util:lev_lex.c
+$(OO)lev_lex.o: $(UTIL)lev_lex.c $(HDEP) $(I)lev_comp.h $(I)sp_lev.h
+	$(CC) $(DEFSPEC)LEV_LEX_C $(CFLAGS) $(OBJSPEC)$@ $(UTIL)lev_lex.c
 
-OBJO:lev_main.o:  Util:lev_main.c $(HDEP)
-	$(CC) $(DEFSPEC)LEV_LEX_C $(DEFSPEC)AMIGA $(CFLAGS) $(OBJSPEC)$@ Util:lev_main.c
+$(OO)lev_main.o:  $(UTIL)lev_main.c $(HDEP) $(I)pm.h $(I)onames.h $(I)date.h
+	$(CC) $(DEFSPEC)LEV_LEX_C $(DEFSPEC)AMIGA $(CFLAGS) $(OBJSPEC)$@ \
+		$(UTIL)lev_main.c
 
-OBJO:dgn_yacc.o:  Util:dgn_yacc.c $(HDEP) Incl:dgn_file.h
-	$(CC) $(DEFSPEC)LEV_LEX_C $(CFLAGS) $(OBJSPEC)$@ Util:dgn_yacc.c
+$(OO)dgn_yacc.o:  $(UTIL)dgn_yacc.c $(HDEP) $(I)dgn_file.h
+	$(CC) $(DEFSPEC)LEV_LEX_C $(CFLAGS) $(DEFSPEC)alloca=malloc \
+		$(OBJSPEC)$@ $(UTIL)dgn_yacc.c
 
-OBJO:dgn_lex.o: Util:dgn_lex.c $(HDEP) Incl:dgn_comp.h
-	$(CC) $(DEFSPEC)LEV_LEX_C $(CFLAGS) $(OBJSPEC)$@ Util:dgn_lex.c
+$(OO)dgn_lex.o: $(UTIL)dgn_lex.c $(I)config.h $(I)dgn_comp.h $(I)dgn_file.h
+	$(CC) $(DEFSPEC)LEV_LEX_C $(CFLAGS) $(OBJSPEC)$@ $(UTIL)dgn_lex.c
 
-OBJO:dgn_main.o: Util:dgn_main.c $(HDEP)
-	$(CC) $(DEFSPEC)LEV_LEX_C $(DEFSPEC)AMIGA $(CFLAGS) $(OBJSPEC)$@ Util:dgn_main.c
+$(OO)dgn_main.o: $(UTIL)dgn_main.c $(I)config.h $(I)date.h
+	$(CC) $(DEFSPEC)LEV_LEX_C $(DEFSPEC)AMIGA $(CFLAGS) $(OBJSPEC)$@ \
+		$(UTIL)dgn_main.c
 
-OBJO:panic.o: Util:panic.c $(HDEP)
+$(OO)panic.o: $(UTIL)panic.c $(HDEP)
+#SFD_INSTEAD 	$(CC) $(CFLAGS) $(OBJSPEC)%(left) $(UTIL)panic.c
+#none
 
-OBJO:recover.o: Util:recover.c $(HDEP)
-	$(CC) $(DEFSPEC)LEV_LEX_C $(DEFSPEC)AMIGA $(CFLAGS) $(OBJSPEC)$@ Util:recover.c
+$(OO)recover.o: $(UTIL)recover.c $(I)config.h $(I)date.h
+	$(CC) $(DEFSPEC)LEV_LEX_C $(DEFSPEC)AMIGA $(CFLAGS) $(OBJSPEC)$@ \
+		$(UTIL)recover.c
 
-NetHack:recover: OBJO:recover.o
-	$(LINK) $(PNSPEC)NetHack:recover $(LIN) OBJO:recover.o $(LLIB)
+$(NETHACK)recover: $(OO)recover.o
+	$(LINK) $(LNSPEC) $(NETHACK)recover $(LIN) $(OO)recover.o $(LLIB)
 
 # [OPTION] -- If you have flex/bison, leave these uncommented.  Otherwise,
 # comment them out and be careful! (You're not guaranteed to have the most
 # up to date *_comp.c, *_comp.h and *_lex.c)
 
-Incl:lev_comp.h: Util:lev_yacc.c
+$(I)lev_comp.h: $(UTIL)lev_yacc.c
 
-Util:lev_yacc.c:  Util:lev_comp.y
-	$(BISON) -d Util:lev_comp.y
-	copy Util:lev_comp.tab.c Util:lev_yacc.c
-	copy Util:lev_comp.tab.h Incl:lev_comp.h
-	delete Util:lev_comp.tab.c
-	delete Util:lev_comp.tab.h
+$(UTIL)lev_yacc.c:  $(UTIL)lev_comp.y
+	$(BISON) -d $(UTIL)lev_comp.y
+#	copy y.tab.c $(UTIL)lev_yacc.c
+#	copy y.tab.h $(I)lev_comp.h
+	copy $(UTIL)lev_comp.tab.c $(UTIL)lev_yacc.c
+	copy $(UTIL)lev_comp.tab.h $(I)lev_comp.h
+#	delete y.tab.c
+#	delete y.tab.h
+	delete $(UTIL)lev_comp.tab.c
+	delete $(UTIL)lev_comp.tab.h
 
-Util:lev_lex.c:  Util:lev_comp.l
-	$(FLEX) Util:lev_comp.l
-	copy lex.yy.c Util:lev_lex.c
+$(UTIL)lev_lex.c:  $(UTIL)lev_comp.l
+	$(FLEX) $(UTIL)lev_comp.l
+	copy lex.yy.c $(UTIL)lev_lex.c
 	delete lex.yy.c
 
-Incl:dgn_comp.h: Util:dgn_yacc.c
+$(I)dgn_comp.h: $(UTIL)dgn_yacc.c
 
-Util:dgn_yacc.c:  Util:dgn_comp.y
-	$(BISON) -d Util:dgn_comp.y
-	copy Util:dgn_comp.tab.c Util:dgn_yacc.c
-	copy Util:dgn_comp.tab.h Incl:dgn_comp.h
-	delete Util:dgn_comp.tab.c
-	delete Util:dgn_comp.tab.h
+$(UTIL)dgn_yacc.c:  $(UTIL)dgn_comp.y
+	$(BISON) -d $(UTIL)dgn_comp.y
+#	copy y.tab.c $(UTIL)dgn_yacc.c
+#	copy y.tab.h $(I)dgn_comp.h
+	copy $(UTIL)dgn_comp.tab.c $(UTIL)dgn_yacc.c
+	copy $(UTIL)dgn_comp.tab.h $(I)dgn_comp.h
+#	delete y.tab.c
+#	delete y.tab.h
+	delete $(UTIL)dgn_comp.tab.c
+	delete $(UTIL)dgn_comp.tab.h
 
-Util:dgn_lex.c:  Util:dgn_comp.l
-	$(FLEX) Util:dgn_comp.l
-	copy lex.yy.c Util:dgn_lex.c
+$(UTIL)dgn_lex.c:  $(UTIL)dgn_comp.l
+	$(FLEX) $(UTIL)dgn_comp.l
+	copy lex.yy.c $(UTIL)dgn_lex.c
 	delete lex.yy.c
 
 #
@@ -538,584 +780,844 @@ Util:dgn_lex.c:  Util:dgn_comp.l
 #	even though it doesn't include this file.
 #
 
-Incl:date.h Dat:options:  $(HDEP) NetHack:makedefs $(AMIGAOBJ)
-	NetHack:makedefs -v
-	$(EXECUTE) Amiga:ifchange MOVE Incl:t.date.h Incl:date.h
+#SFD_INSTEAD $(I)date.h $(DAT)options::  $(HDEP) $(SBIN)makedefs $(AMIGAOBJ)
+$(I)date.h $(DAT)options:  $(HDEP) $(SBIN)makedefs $(AMIGAOBJ)
+	$(SBIN)makedefs -v
+	$(EXECUTE) $(AMI)ifchange MOVE $(I)t.date.h $(I)date.h
 	-wait 2
 
-Incl:onames.h:  NetHack:makedefs
-	NetHack:makedefs -o
-	$(EXECUTE) Amiga:ifchange TOUCH Incl:t.onames.h Incl:onames.h Incl:decl.h
-	$(EXECUTE) Amiga:ifchange MOVE Incl:t.onames.h Incl:onames.h
+$(I)onames.h:  $(SBIN)makedefs
+	$(SBIN)makedefs -o
+	$(EXECUTE) $(AMI)ifchange TOUCH $(I)t.onames.h $(I)onames.h $(I)decl.h
+	$(EXECUTE) $(AMI)ifchange MOVE $(I)t.onames.h $(I)onames.h
 	-wait 2
 
-Incl:pm.h:  NetHack:makedefs
-	NetHack:makedefs -p
-	$(EXECUTE) Amiga:ifchange TOUCH Incl:t.pm.h Incl:pm.h Incl:decl.h Incl:youprop.h
-	$(EXECUTE) Amiga:ifchange MOVE Incl:t.pm.h Incl:pm.h
+$(I)pm.h:  $(SBIN)makedefs
+	$(SBIN)makedefs -p
+	$(EXECUTE) $(AMI)ifchange TOUCH $(I)t.pm.h $(I)pm.h $(I)decl.h $(I)youprop.h
+	$(EXECUTE) $(AMI)ifchange MOVE $(I)t.pm.h $(I)pm.h
 	-wait 2
 
-NetHack:quest.dat:	Dat:quest.dat
-	copy Dat:quest.dat $@
+$(SLIB)quest.dat:	$(DAT)quest.txt $(SBIN)makedefs
+	$(SBIN)makedefs -q
 
-Dat:quest.dat:	Dat:quest.txt NetHack:makedefs
-	NetHack:makedefs -q
-
-NHS:monstr.c:  $(HDEP) NetHack:makedefs
-	NetHack:makedefs -m
+$(NHS)monstr.c:  $(HDEP) $(SBIN)makedefs
+	$(SBIN)makedefs -m
 	-wait 2
 
-Dat:oracles:	Dat:oracles.txt NetHack:makedefs
-	NetHack:makedefs -h
+$(SLIB)oracles:	$(DAT)oracles.txt $(SBIN)makedefs
+	$(SBIN)makedefs -h
 	-wait 2
 
 #
 #	The following programs vary depending on what OS you are using.
-#	As a result, they are not defined in HACKSRC and their dependancies
+#	As a result, they are not defined in HACKSRC and their dependencies
 #	are explicitly outlined here.
 #
 
-OBJ:amidos.o:  Amiga:amidos.c $(HDEP)
+$(O)amidos.o:  $(AMI)amidos.c $(HDEP)
 
-OBJ:amirip.o:  Amiga:amirip.c $(HDEP)
+$(O)amirip.o:  $(AMI)amirip.c $(HDEP)
 
-OBJ:aglue.o:  Amiga:aglue.a
-	$(ASM) -d $(AFLAGS) -oOBJ:aglue.o Amiga:aglue.a
+$(O)aglue.o:  $(AMI)aglue.a
+	$(ASM) $(AFLAGS) $(AOBJSPEC)$(O)aglue.o $(AMI)aglue.a
 
-OBJ:amisnd.o:	Amiga:amisnd.c $(HDEP)
+$(O)amisnd.o:	$(AMI)amisnd.c $(HDEP)
 
-OBJ:winstr.o:	Amiga:winstr.c $(HDEP) $(AMDEP)
+$(O)winchar.o:	$(AMI)winchar.c $(NHS)tile.c $(HDEP)
 
-OBJ:winreq.o:	Amiga:winreq.c $(HDEP) $(AMDEP) Amiga:colorwin.c
+$(NHS)tile.c:	$(WSHARE)tilemap.c
+#SFD_INSTEAD 	$(CCLINK) $(CLFLAGS) $(PNSPEC) $(SBIN)tilemap $(WSHARE)tilemap.c
+	$(CCLINK) $(CFLAGS) $(PNSPEC) $(SBIN)tilemap $(WSHARE)tilemap.c
+	$(SBIN)tilemap
 
-OBJ:winfuncs.o:	Amiga:winfuncs.c $(HDEP) $(AMDEP) Incl:patchlevel.h
+$(O)winstr.o:	$(AMI)winstr.c $(HDEP) $(AMDEP)
 
-OBJ:winkey.o:	Amiga:winkey.c $(HDEP) $(AMDEP)
+$(O)winreq.o:	$(AMI)winreq.c $(HDEP) $(AMDEP) $(AMI)colorwin.c $(AMI)clipwin.c
 
-OBJ:winmenu.o:	Amiga:winmenu.c $(HDEP) $(AMDEP)
+$(O)winfuncs.o:	$(AMI)winfuncs.c $(HDEP) $(AMDEP) $(I)patchlevel.h
 
-OBJ:winami.o:	Amiga:winami.c $(HDEP) $(AMDEP) Amiga:char.c Amiga:randwin.c
+$(O)winkey.o:	$(AMI)winkey.c $(HDEP) $(AMDEP)
 
-OBJ:amilib.o:	Amiga:amilib.c $(HDEP) $(AMDEP)
+$(O)winmenu.o:	$(AMI)winmenu.c $(HDEP) $(AMDEP)
 
-OBJ:amiwind.o:  Amiga:amiwind.c $(HDEP) $(AMDEP)
+$(O)winami.o:	$(AMI)winami.c $(HDEP) $(AMDEP) $(AMI)char.c $(AMI)randwin.c
 
-OBJ:amiwbench.o:  Amiga:amiwbench.c $(HDEP)
+#$(O)amilib.o:	$(AMI)amilib.c $(HDEP) $(AMDEP)
 
-OBJ:random.o:  Share:random.c
+$(O)amiwind.o:  $(AMI)amiwind.c $(AMI)amimenu.c $(HDEP) $(AMDEP)
 
-OBJ:pcmain.o:  Share:pcmain.c $(HDEP)
+$(O)amiwbench.o:  $(AMI)amiwbench.c $(HDEP)
+
+$(O)random.o:  $(SHARE)random.c
+
+$(O)pcmain.o:  $(SHARE)pcmain.c $(HDEP) $(I)dlb.h
+
+$(O)dispmap.o:	$(AMI)dispmap.s
+	$(ASM) $(AFLAGS) $(AOBJSPEC)$@ $<
 
 # Stuff to build the front ends
-NetHack:HackWB: OBJO:wb.o OBJO:wbx.o OBJO:loader.o OBJO:multi.o
-	$(LINK) $(PNSPEC)NetHack:HackWB $(LIN) OBJO:wb.o OBJO:wbx.o OBJO:loader.o OBJO:multi.o $(LLIB)
+$(NETHACK)HackWB: $(OO)wb.o $(OO)wbx.o $(OO)loader.o $(OO)multi.o
+	$(LINK) $(LNSPEC) $(NETHACK)HackWB $(LIN) $(OO)wb.o $(OO)wbx.o \
+		$(OO)loader.o $(OO)multi.o $(LLIB)
 
-NetHack:HackCli: OBJO:cli.o OBJO:loader.o OBJO:multi.o
-	$(LINK) $(PNSPEC)NetHack:HackCli $(LIN) OBJO:cli.o OBJO:loader.o OBJO:multi.o $(LLIB)
+$(NETHACK)HackCli: $(OO)cli.o $(OO)loader.o $(OO)multi.o
+	$(LINK) $(LNSPEC) $(NETHACK)HackCli $(LIN) $(OO)cli.o $(OO)loader.o \
+		$(OO)multi.o $(LLIB)
 
 # This needs to exist to eliminate the HackWB startup message
-NetHack:WBDefaults.def:
-	echo to NetHack:WBDefaults.def
+#SFD_INSTEAD $(NETHACK)WBDefaults.def: $(NETHACK)WBDefaults.def
+$(NETHACK)WBDefaults.def:
+	echo to $(NETHACK)WBDefaults.def
 
-WBH	= Amiga:wbdefs.h Amiga:wbstruct.h Amiga:wbprotos.h
-ASP	= Amiga:splitter
-OBJO:wb.o: $(WBH) Amiga:wb.c Amiga:wbwin.c Amiga:wbdata.c
-	$(CC) $(WBCFLAGS) $(SPLFLAGS) $(OBJSPEC)OBJO:wb.o Amiga:wb.c
-OBJO:wbx.o: $(WBH) Amiga:wbcli.c Amiga:wbwin.c Amiga:wbdata.c #Incl:date.h
-	$(CC) $(WBCFLAGS) $(SPLFLAGS) $(OBJSPEC)OBJO:wbx.o Amiga:wbcli.c
-OBJO:loader.o: $(ASP)/loader.c $(ASP)/split.h $(ASP)/amiout.h $(ASP)/multi.h
-	$(CC) $(WBCFLAGS) $(SPLFLAGS) $(OBJSPEC)OBJO:loader.o $(ASP)/loader.c
-OBJO:multi.o: $(ASP)/multi.c $(ASP)/multi.h
-	$(CC) $(WBCFLAGS) $(SPLFLAGS) $(OBJSPEC)OBJO:multi.o $(ASP)/multi.c
-OBJO:cli.o: $(WBH) Amiga:wbcli.c Incl:patchlevel.h #Incl:date.h
-	$(CC) $(WBCFLAGS) $(WBC2FLAGS) $(SPLFLAGS) $(OBJSPEC)OBJO:cli.o Amiga:wbcli.c
+WBH	= $(AMI)wbdefs.h $(AMI)wbstruct.h $(AMI)wbprotos.h
+ASP	= $(AMI)splitter
+$(OO)wb.o: $(WBH) $(AMI)wb.c $(AMI)wbwin.c $(AMI)wbdata.c $(AMI)wbgads.c \
+		$(I)patchlevel.h
+	$(CC) $(WBCFLAGS) $(SPLFLAGS) $(OBJSPEC)$(OO)wb.o $(AMI)wb.c
+
+$(OO)wbx.o: $(WBH) $(AMI)wbcli.c $(AMI)wbwin.c $(AMI)wbdata.c \
+		$(I)patchlevel.h $(I)date.h
+	$(CC) $(WBCFLAGS) $(SPLFLAGS) $(OBJSPEC)$(OO)wbx.o $(AMI)wbcli.c
+
+$(OO)loader.o: $(ASP)/loader.c $(ASP)/split.h $(ASP)/amiout.h $(ASP)/multi.h
+	$(CC) $(WBCFLAGS) $(SPLFLAGS) $(OBJSPEC)$(OO)loader.o $(ASP)/loader.c
+
+$(OO)multi.o: $(ASP)/multi.c $(ASP)/multi.h
+	$(CC) $(WBCFLAGS) $(SPLFLAGS) $(OBJSPEC)$(OO)multi.o $(ASP)/multi.c
+
+$(OO)cli.o: $(WBH) $(AMI)wbcli.c $(I)patchlevel.h $(I)date.h
+	$(CC) $(WBCFLAGS) $(WBC2FLAGS) $(SPLFLAGS) $(OBJSPEC)$(OO)cli.o \
+		$(AMI)wbcli.c
+
 ####
 # splitter support
-NetHack:splitter:	OBJO:splitter.o OBJO:arg.o
-	$(LINK) $(PNSPEC)NetHack:splitter $(LIN) OBJO:splitter.o OBJO:arg.o $(LLIB)
-HackExe:NetHack.dir:	NetHack:splitter Hackexe:NetHack
-	NetHack:splitter $(GAME)
+$(SBIN)splitter:	$(OO)splitter.o $(OO)arg.o
+	$(LINK) $(LNSPEC) $(SBIN)splitter $(LIN) $(OO)splitter.o $(OO)arg.o \
+		$(LLIB)
 
-OBJO:splitter.o:	$(ASP)/splitter.c $(ASP)/split.h $(ASP)/amiout.h $(ASP)/arg.h
-	$(CC) $(WBCFLAGS) $(SPLFLAGS) $(OBJSPEC)OBJO:splitter.o $(ASP)/splitter.c
-OBJO:arg.o:	$(ASP)/arg.c $(ASP)/arg.h
-	$(CC) $(WBCFLAGS) $(SPLFLAGS) $(OBJSPEC)OBJO:arg.o $(ASP)/arg.c 
+$(NETHACK)NetHack.dir:	$(SBIN)splitter $(SBIN)NetHack
+	$(SBIN)splitter $(SBIN)NetHack
+
+$(OO)splitter.o:	$(ASP)/splitter.c $(ASP)/split.h $(ASP)/amiout.h $(ASP)/arg.h
+	$(CC) $(WBCFLAGS) $(SPLFLAGS) $(OBJSPEC)$(OO)splitter.o \
+		$(ASP)/splitter.c
+
+$(OO)arg.o:	$(ASP)/arg.c $(ASP)/arg.h
+	$(CC) $(WBCFLAGS) $(SPLFLAGS) $(OBJSPEC)$(OO)arg.o $(ASP)/arg.c 
 
 # Create/copy other stuff into NetHack: directory:
 
-# quest files
-ADFILES= NetHack:A-goal.lev NetHack:A-fill.lev NetHack:A-locate.lev NetHack:A-start.lev
-BDFILES= NetHack:B-goal.lev NetHack:B-fill.lev NetHack:B-locate.lev NetHack:B-start.lev
-CDFILES= NetHack:C-goal.lev NetHack:C-fill.lev NetHack:C-locate.lev NetHack:C-start.lev
-EDFILES= NetHack:E-goal.lev NetHack:E-fill.lev NetHack:E-locate.lev NetHack:E-start.lev
-HDFILES= NetHack:H-goal.lev NetHack:H-fill.lev NetHack:H-locate.lev NetHack:H-start.lev
-KDFILES= NetHack:K-goal.lev NetHack:K-fill.lev NetHack:K-locate.lev NetHack:K-start.lev
-PDFILES= NetHack:P-goal.lev NetHack:P-fill.lev NetHack:P-locate.lev NetHack:P-start.lev
-RDFILES= NetHack:R-goal.lev NetHack:R-fill.lev NetHack:R-locate.lev NetHack:R-start.lev
-SDFILES= NetHack:S-goal.lev NetHack:S-fill.lev NetHack:S-locate.lev NetHack:S-start.lev
-TDFILES= NetHack:T-goal.lev NetHack:T-fill.lev NetHack:T-locate.lev NetHack:T-start.lev
-VDFILES= NetHack:V-goal.lev NetHack:V-fill.lev NetHack:V-locate.lev NetHack:V-start.lev
-WDFILES= NetHack:W-goal.lev NetHack:W-fill.lev NetHack:W-locate.lev NetHack:W-start.lev
+$(NETHACK)tomb.iff:	$(SBIN)xpm2iff $(AMI)grave16.xpm
+	$(SBIN)xpm2iff $(AMI)grave16.xpm $(NETHACK)tomb.iff
 
-XDFILES=	$(ADFILES) $(BDFILES) $(CDFILES) $(EDFILES) $(HDFILES) \
-		$(KDFILES) $(PDFILES) $(RDFILES) $(SDFILES) $(TDFILES) \
-		$(VDFILES) $(WDFILES)
+$(OO)xpm2iff.o:	$(AMI)xpm2iff.c
+	$(CC) $(CFLAGS) $(INCLSPEC)$(WSHARE) $(OBJSPEC)$@ $(AMI)xpm2iff.c
 
-SOUNDFILES= \
-	NetHack:cvtsnd \
-	NetHack:sounds \
-	NetHack:sounds/Bell NetHack:sounds/Bugle NetHack:sounds/Drum_Of_Earthquake \
-	NetHack:sounds/Fire_Horn NetHack:sounds/Frost_Horn \
-	NetHack:sounds/Leather_Drum NetHack:sounds/Magic_Flute \
-	NetHack:sounds/Magic_Harp NetHack:sounds/Tooled_Horn \
-	NetHack:sounds/Wooden_Flute NetHack:sounds/Wooden_Harp
+$(SBIN)xpm2iff:	$(OO)xpm2iff.o
+	$(LINK) $(LNSPEC) $@ $(LIN) $(OO)xpm2iff.o $(FLLIB)
 
-inst-sounds: ${SOUNDFILES}
+# Tile installation for the tile version of the game
+inst-tiles: $(TILEFILES)
 
-NetHack:sounds:
-	-makedir NetHack:sounds
+#SFD_INSTEAD $(NETHACK)tiles: $(NETHACK)tiles
+$(NETHACK)tiles:
+	-makedir $(NETHACK)tiles
 
-NetHack:cvtsnd: OBJO:cvtsnd.o
-	${LINK} ${PNSPEC}$@ $(LIN) OBJO:cvtsnd.o $(FLLIB)
+$(OO)txt2iff.o:	$(AMI)txt2iff.c
+	$(CC) $(CFLAGS) $(CSYM) $(INCLSPEC)$(WSHARE) $(OBJSPEC)$@ \
+		$(AMI)txt2iff.c
 
-OBJO:cvtsnd.o: Amiga:cvtsnd.c
+$(OO)ppmwrite.o: $(WSHARE)ppmwrite.c
+	$(CC) $(CFLAGS) $(CSYM) $(INCLSPEC)$(WSHARE) $(OBJSPEC)$@ $(WSHARE)ppmwrite.c
 
-NetHack:sounds/Bell: share:sounds/bell.uu
-	uudecode share:sounds/bell.uu
-	NetHack:cvtsnd Bell NetHack:sounds/Bell
+$(OO)tiletext.o:	$(WSHARE)tiletext.c $(I)config.h $(WSHARE)tile.h
+	$(CC) $(CFLAGS) $(CSYM) $(INCLSPEC)$(WSHARE) $(OBJSPEC)$@ $(WSHARE)tiletext.c
+
+$(OO)tiletxt.o:	$(WSHARE)tilemap.c $(I)hack.h
+	$(CC) $(CFLAGS) $(CSYM) $(DEFSPEC)TILETEXT $(INCLSPEC)$(WSHARE) $(OBJSPEC)$@ $(WSHARE)tilemap.c
+
+NAMEOBJS = $(O)drawing.o $(O)decl.o $(O)monst.o $(O)objects.o
+
+$(SBIN)txt2ppm:	$(OO)ppmwrite.o $(NAMEOBJS) $(O)alloc.o $(OO)panic.o $(OO)tiletext.o $(OO)tiletxt.o
+	$(LINK) $(LNSPEC) $@ $(LIN) $(OO)ppmwrite.o $(NAMEOBJS) $(OO)tiletext.o $(OO)tiletxt.o $(O)alloc.o $(OO)panic.o $(FLLIB)
+
+$(SBIN)txt2iff: $(OO)txt2iff.o $(NAMEOBJS) $(OO)tiletext.o $(OO)tiletxt.o
+	$(LINK) $(LNSPEC) $@ $(LIN) $(OO)txt2iff.o $(NAMEOBJS) $(OO)tiletext.o \
+		$(OO)tiletxt.o  $(FLLIB)
+
+$(NETHACK)tiles/objects.iff: /win/share/objects.txt $(SBIN)txt2iff
+#	$(UUDEC) $(WSHARE)objtil.uu
+	$(SBIN)txt2iff $(WSHARE)objects.txt $(NETHACK)tiles/objects.iff
+	delete objects.til
+
+$(NETHACK)tiles/monsters.iff : /win/share/monsters.txt $(SBIN)txt2iff
+#	$(UUDEC) $(WSHARE)montil.uu
+	$(SBIN)txt2iff $(WSHARE)monsters.txt $(NETHACK)tiles/monsters.iff
+	delete monsters.til
+
+$(NETHACK)tiles/other.iff : /win/share/other.txt $(SBIN)txt2iff
+#	$(UUDEC) $(WSHARE)othtil.uu
+	$(SBIN)txt2iff $(WSHARE)other.txt $(NETHACK)tiles/other.iff
+	delete other.til
+
+# Sound installation rules.
+inst-sounds: $(SOUNDFILES)
+	list to T:nhsdat.lst $(SLIB)sounds QUICK NOHEAD
+	echo  >T:make-nhsdat $(SBIN)dlb cCfI $(SLIB)sounds $(NETHACK)nhsdat T:nhsdat.lst
+	echo >>T:make-nhsdat if not exists $(NETHACK)nhsdat
+	echo >>T:make-nhsdat copy $(SLIB)sounds/\#? $(NETHACK)sounds
+	echo >>T:make-nhsdat endif
+	execute T:make-nhsdat
+	-delete T:make-nhsdat
+
+#SFD_INSTEAD $(SLIB)sounds: $(SLIB)sounds
+$(SLIB)sounds:
+	-makedir $(SLIB)sounds
+
+$(SBIN)cvtsnd: $(OO)cvtsnd.o
+	$(LINK) $(LNSPEC) $@ $(LIN) $(OO)cvtsnd.o $(FLLIB)
+
+$(OO)cvtsnd.o: $(AMI)cvtsnd.c
+#SFD_INSTEAD $(CC) $(CFLAGS) $(OBJSPEC)%(left) %(right)
+#none
+
+$(SLIB)sounds/Bell: $(SHARE)sounds/bell.uu
+	$(UUDEC) $(SHARE)sounds/bell.uu
+	$(SBIN)cvtsnd Bell $(SLIB)sounds/Bell
 	-delete Bell
 
-NetHack:sounds/Bugle: share:sounds/bugle.uu
-	uudecode share:sounds/Bugle.uu
-	NetHack:cvtsnd Bugle NetHack:sounds/Bugle
+$(SLIB)sounds/Bugle: $(SHARE)sounds/bugle.uu
+	$(UUDEC) $(SHARE)sounds/bugle.uu
+	$(SBIN)cvtsnd Bugle $(SLIB)sounds/Bugle
 	-delete Bugle
 
-NetHack:sounds/Drum_Of_Earthquake: share:sounds/erthdrum.uu
-	uudecode share:sounds/erthdrum.uu
-	NetHack:cvtsnd Drum_Of_Earthquake NetHack:sounds/Drum_Of_Earthquake
+$(SLIB)sounds/Drum_Of_Earthquake: $(SHARE)sounds/erthdrum.uu
+	$(UUDEC) $(SHARE)sounds/erthdrum.uu
+	$(SBIN)cvtsnd Drum_Of_Earthquake $(SLIB)sounds/Drum_Of_Earthquake
 	-delete Drum_Of_Earthquake
 
-NetHack:sounds/Fire_Horn: share:sounds/firehorn.uu
-	uudecode share:sounds/firehorn.uu
-	NetHack:cvtsnd Fire_Horn NetHack:sounds/Fire_Horn
+$(SLIB)sounds/Fire_Horn: $(SHARE)sounds/firehorn.uu
+	$(UUDEC) $(SHARE)sounds/firehorn.uu
+	$(SBIN)cvtsnd Fire_Horn $(SLIB)sounds/Fire_Horn
 	-delete Fire_Horn
 
-NetHack:sounds/Frost_Horn: share:sounds/frsthorn.uu
-	uudecode share:sounds/frsthorn.uu
-	NetHack:cvtsnd Frost_Horn NetHack:sounds/Frost_Horn
+$(SLIB)sounds/Frost_Horn: $(SHARE)sounds/frsthorn.uu
+	$(UUDEC) $(SHARE)sounds/frsthorn.uu
+	$(SBIN)cvtsnd Frost_Horn $(SLIB)sounds/Frost_Horn
 	-delete Frost_Horn
 
-NetHack:sounds/Leather_Drum: share:sounds/lethdrum.uu
-	uudecode share:sounds/lethdrum.uu
-	NetHack:cvtsnd Leather_Drum NetHack:sounds/Leather_Drum
+$(SLIB)sounds/Leather_Drum: $(SHARE)sounds/lethdrum.uu
+	$(UUDEC) $(SHARE)sounds/lethdrum.uu
+	$(SBIN)cvtsnd Leather_Drum $(SLIB)sounds/Leather_Drum
 	-delete Leather_Drum
 
-NetHack:sounds/Magic_Flute: share:sounds/mgcflute.uu
-	uudecode share:sounds/mgcflute.uu
-	NetHack:cvtsnd Magic_Flute NetHack:sounds/Magic_Flute
+$(SLIB)sounds/Magic_Flute: $(SHARE)sounds/mgcflute.uu
+	$(UUDEC) $(SHARE)sounds/mgcflute.uu
+	$(SBIN)cvtsnd Magic_Flute $(SLIB)sounds/Magic_Flute
 	-delete Magic_Flute
 
-NetHack:sounds/Magic_Harp: share:sounds/mgcharp.uu
-	uudecode share:sounds/mgcharp.uu
-	NetHack:cvtsnd Magic_Harp NetHack:sounds/Magic_Harp
+$(SLIB)sounds/Magic_Harp: $(SHARE)sounds/mgcharp.uu
+	$(UUDEC) $(SHARE)sounds/mgcharp.uu
+	$(SBIN)cvtsnd Magic_Harp $(SLIB)sounds/Magic_Harp
 	-delete Magic_Harp
 
-NetHack:sounds/Tooled_Horn: share:sounds/toolhorn.uu
-	uudecode share:sounds/toolhorn.uu
-	NetHack:cvtsnd Tooled_Horn NetHack:sounds/Tooled_Horn
+$(SLIB)sounds/Tooled_Horn: $(SHARE)sounds/toolhorn.uu
+	$(UUDEC) $(SHARE)sounds/toolhorn.uu
+	$(SBIN)cvtsnd Tooled_Horn $(SLIB)sounds/Tooled_Horn
 	-delete Tooled_Horn
 
-NetHack:sounds/Wooden_Flute: share:sounds/wdnflute.uu
-	uudecode share:sounds/wdnflute.uu
-	NetHack:cvtsnd Wooden_Flute NetHack:sounds/Wooden_Flute
+$(SLIB)sounds/Wooden_Flute: $(SHARE)sounds/wdnflute.uu
+	$(UUDEC) $(SHARE)sounds/wdnflute.uu
+	$(SBIN)cvtsnd Wooden_Flute $(SLIB)sounds/Wooden_Flute
 	-delete Wooden_Flute
 
-NetHack:sounds/Wooden_Harp: share:sounds/wdnharp.uu
-	uudecode share:sounds/wdnharp.uu
-	NetHack:cvtsnd Wooden_Harp NetHack:sounds/Wooden_Harp
+$(SLIB)sounds/Wooden_Harp: $(SHARE)sounds/wdnharp.uu
+	$(UUDEC) $(SHARE)sounds/wdnharp.uu
+	$(SBIN)cvtsnd Wooden_Harp $(SLIB)sounds/Wooden_Harp
 	-delete Wooden_Harp
-
-INSTDUNGEONFILES= \
-	NetHack:NetHack.cnf NetHack:air.lev NetHack:asmodeus.lev \
-	NetHack:astral.lev NetHack:baalz.lev NetHack:bigroom.lev \
-	NetHack:castle.lev NetHack:dungeon NetHack:earth.lev \
-	NetHack:fakewiz1.lev NetHack:fakewiz2.lev NetHack:fire.lev \
-	NetHack:juiblex.lev NetHack:knox.lev NetHack:medusa-1.lev \
-	NetHack:medusa-2.lev NetHack:mine_end.lev NetHack:minefill.lev \
-	NetHack:minetown.lev NetHack:options NetHack:oracle.lev \
-	NetHack:orcus.lev NetHack:sanctum.lev NetHack:tower1.lev \
-	NetHack:tower2.lev NetHack:tower3.lev NetHack:valley.lev \
-	NetHack:water.lev NetHack:wizard1.lev NetHack:wizard2.lev \
-	NetHack:wizard3.lev $(XDFILES)
-
-DUNGEONTOOLS= \
-	NetHack:lev_comp NetHack:dgn_comp NetHack:makedefs
 
 inst-dungeon: $(INSTDUNGEONFILES)
 
-NetHack:options : Dat:options
-	copy Dat:options $@
+$(NETHACK)options : $(DAT)options
+	copy $(DAT)options $@
 
 # Create compiled dungeon files
-NetHack:bigroom.lev:	Dat:bigroom.des NetHack:lev_comp
-	NetHack:lev_comp Dat:bigroom.des
+BGM= $(SLIB)bigrm-2.lev $(SLIB)bigrm-3.lev $(SLIB)bigrm-4.lev $(SLIB)bigrm-5.lev
+$(BGM):	$(SLIB)bigrm-1.lev
 
-NetHack:castle.lev:  Dat:castle.des NetHack:lev_comp
-	NetHack:lev_comp Dat:castle.des
+$(SLIB)bigrm-1.lev: $(DAT)bigroom.des $(SBIN)lev_comp
+#SFD_INSTEAD $(SBIN)lev_comp $(DAT)bigroom.des
+#none
 
-NetHack:air.lev NetHack:earth.lev NetHack:fire.lev NetHack:water.lev NetHack:astral.lev:	do_endgame
-do_endgame:	Dat:endgame.des NetHack:lev_comp
-	NetHack:lev_comp Dat:endgame.des
+$(SLIB)castle.lev:  $(DAT)castle.des $(SBIN)lev_comp
 
-NetHack:asmodeus.lev NetHack:baalz.lev NetHack:juiblex.lev NetHack:orcus.lev NetHack:sanctum.lev NetHack:valley.lev:	do_gehennom
-do_gehennom:	Dat:gehennom.des NetHack:lev_comp
-	NetHack:lev_comp Dat:gehennom.des
+ENDGAME1= $(SLIB)air.lev $(SLIB)earth.lev $(SLIB)fire.lev $(SLIB)water.lev
+$(ENDGAME1):	$(SLIB)astral.lev
 
-NetHack:knox.lev: Dat:knox.des NetHack:lev_comp
-	NetHack:lev_comp Dat:knox.des
+$(SLIB)astral.lev:	$(DAT)endgame.des $(SBIN)lev_comp
+#SFD_INSTEAD $(SBIN)lev_comp $(DAT)endgame.des
+#none
 
-NetHack:mine_end.lev NetHack:minetown.lev NetHack:minefill.lev:	do_mines
-do_mines:	Dat:mines.des NetHack:lev_comp
-	NetHack:lev_comp Dat:mines.des
+GEHENNOM1= $(SLIB)asmodeus.lev $(SLIB)baalz.lev $(SLIB)juiblex.lev \
+  $(SLIB)orcus.lev $(SLIB)sanctum.lev 
+$(GEHENNOM1):	$(SLIB)valley.lev
 
-NetHack:oracle.lev: Dat:oracle.des NetHack:lev_comp
-	NetHack:lev_comp Dat:oracle.des
+$(SLIB)valley.lev:	$(DAT)gehennom.des $(SBIN)lev_comp
+#SFD_INSTEAD $(SBIN)lev_comp $(DAT)gehennom.des
+#none
 
-NetHack:tower1.lev NetHack:tower2.lev NetHack:tower3.lev:	do_tower
-do_tower:	Dat:tower.des NetHack:lev_comp
-	NetHack:lev_comp Dat:tower.des
+$(SLIB)knox.lev: $(DAT)knox.des $(SBIN)lev_comp
+#SFD_INSTEAD $(SBIN)lev_comp $(DAT)knox.des
+#none
 
-NetHack:wizard1.lev NetHack:wizard2.lev NetHack:wizard3.lev NetHack:fakewiz1.lev NetHack:fakewiz2.lev:  do_yendor
-do_yendor:	Dat:yendor.des NetHack:lev_comp
-	NetHack:lev_comp Dat:yendor.des
+MINES1= $(SLIB)minend-1.lev $(SLIB)minend-2.lev $(SLIB)minetn-1.lev $(SLIB)minetn-2.lev
+$(MINES1): $(SLIB)minefill.lev
 
-NetHack:medusa-1.lev NetHack:medusa-2.lev:	do_medusa
-do_medusa:	Dat:medusa.des NetHack:lev_comp
-	NetHack:lev_comp Dat:medusa.des
+$(SLIB)minefill.lev: $(DAT)mines.des $(SBIN)lev_comp
+#SFD_INSTEAD $(SBIN)lev_comp $(DAT)mines.des
+#none
 
-$(ADFILES):	do_adfiles
-do_adfiles:	Dat:Arch.des NetHack:lev_comp
-	NetHack:lev_comp Dat:Arch.des
+$(SLIB)oracle.lev: $(DAT)oracle.des $(SBIN)lev_comp
+#SFD_INSTEAD $(SBIN)lev_comp $(DAT)oracle.des
+#none
 
-$(BDFILES):	do_bdfiles
-do_bdfiles:	Dat:Barb.des NetHack:lev_comp
-	NetHack:lev_comp Dat:Barb.des
+TOWER1= $(SLIB)tower1.lev $(SLIB)tower2.lev
+$(TOWER1): $(SLIB)tower3.lev
 
-$(CDFILES):	do_cdfiles
-do_cdfiles:	Dat:Caveman.des NetHack:lev_comp
-	NetHack:lev_comp Dat:Caveman.des
+$(SLIB)tower3.lev: $(DAT)tower.des $(SBIN)lev_comp
+#SFD_INSTEAD $(SBIN)lev_comp $(DAT)tower.des
+#none
 
-$(EDFILES):	do_edfiles
-do_edfiles:	Dat:Elf.des NetHack:lev_comp
-	NetHack:lev_comp Dat:Elf.des
+WIZARD1= $(SLIB)wizard1.lev $(SLIB)wizard2.lev $(SLIB)wizard3.lev \
+	$(SLIB)fakewiz1.lev
+$(WIZARD1):  $(SLIB)fakewiz2.lev
 
-$(HDFILES):	do_hdfiles
-do_hdfiles:	Dat:Healer.des NetHack:lev_comp
-	NetHack:lev_comp Dat:Healer.des
+$(SLIB)fakewiz2.lev:  $(DAT)yendor.des $(SBIN)lev_comp
+#SFD_INSTEAD $(SBIN)lev_comp $(DAT)yendor.des
+#none
 
-$(KDFILES):	do_kdfiles
-do_kdfiles:	Dat:Knight.des NetHack:lev_comp
-	NetHack:lev_comp Dat:Knight.des
+MEDUSA1= $(SLIB)medusa-1.lev
+$(MEDUSA1): $(SLIB)medusa-2.lev
 
-$(PDFILES):	do_pdfiles
-do_pdfiles:	Dat:Priest.des NetHack:lev_comp
-	NetHack:lev_comp Dat:Priest.des
+$(SLIB)medusa-2.lev:	$(DAT)medusa.des $(SBIN)lev_comp
+#SFD_INSTEAD $(SBIN)lev_comp $(DAT)medusa.des
+#none
 
-$(RDFILES):	do_rdfiles
-do_rdfiles:	Dat:Rogue.des NetHack:lev_comp
-	NetHack:lev_comp Dat:Rogue.des
+$(ADFILES1):	$(SLIB)A-goal.lev
 
-$(SDFILES):	do_sdfiles
-do_sdfiles:	Dat:Samurai.des NetHack:lev_comp
-	NetHack:lev_comp Dat:Samurai.des
+$(SLIB)A-goal.lev:	$(DAT)Arch.des $(SBIN)lev_comp
+#SFD_INSTEAD $(SBIN)lev_comp $(DAT)Arch.des
+#none
 
-$(TDFILES):	do_tdfiles
-do_tdfiles:	Dat:Tourist.des NetHack:lev_comp
-	NetHack:lev_comp Dat:Tourist.des
+$(BDFILES1):	$(SLIB)B-goal.lev
 
-$(VDFILES):	do_vdfiles
-do_vdfiles:	Dat:Valkyrie.des NetHack:lev_comp
-	NetHack:lev_comp Dat:Valkyrie.des
+$(SLIB)B-goal.lev:	$(DAT)Barb.des $(SBIN)lev_comp
+#SFD_INSTEAD $(SBIN)lev_comp $(DAT)Barb.des
+#none
 
-$(WDFILES):	do_wdfiles
-do_wdfiles:	Dat:Wizard.des NetHack:lev_comp
-	NetHack:lev_comp Dat:Wizard.des
+$(CDFILES1):	$(SLIB)C-goal.lev
 
-NetHack:dungeon:  Dat:dungeon.def NetHack:makedefs NetHack:dgn_comp
-	NetHack:makedefs -e
-	NetHack:dgn_comp Dat:dungeon.pdf
-	copy Dat:dungeon NetHack:dungeon
-	delete Dat:dungeon
+$(SLIB)C-goal.lev:	$(DAT)Caveman.des $(SBIN)lev_comp
+#SFD_INSTEAD $(SBIN)lev_comp $(DAT)Caveman.des
+#none
 
-DATAFILES= \
-	Dat:data Dat:rumors Dat:cmdhelp Dat:quest.dat
-INSTDATAFILES= \
-	NetHack:cmdhelp NetHack:data NetHack:help NetHack:hh NetHack:history \
-	NetHack:license NetHack:logfile NetHack:opthelp NetHack:oracles \
-	NetHack:perm NetHack:quest.dat NetHack:record NetHack:rumors \
-	NetHack:wizhelp NetHack:HackWB.hlp NetHack:WBDefaults.def \
-	NetHack:amii.hlp
+$(EDFILES1):	$(SLIB)E-goal.lev
+
+$(SLIB)E-goal.lev:	$(DAT)Elf.des $(SBIN)lev_comp
+#SFD_INSTEAD $(SBIN)lev_comp $(DAT)Elf.des
+#none
+
+$(HDFILES1):	$(SLIB)H-goal.lev
+
+$(SLIB)H-goal.lev:	$(DAT)Healer.des $(SBIN)lev_comp
+#SFD_INSTEAD $(SBIN)lev_comp $(DAT)Healer.des
+#none
+
+$(KDFILES1):	$(SLIB)K-goal.lev
+
+$(SLIB)K-goal.lev:	$(DAT)Knight.des $(SBIN)lev_comp
+#SFD_INSTEAD $(SBIN)lev_comp $(DAT)Knight.des
+#none
+
+$(PDFILES1):	$(SLIB)P-goal.lev
+
+$(SLIB)P-goal.lev:	$(DAT)Priest.des $(SBIN)lev_comp
+#SFD_INSTEAD $(SBIN)lev_comp $(DAT)Priest.des
+#none
+
+$(RDFILES1):	$(SLIB)R-goal.lev
+
+$(SLIB)R-goal.lev:	$(DAT)Rogue.des $(SBIN)lev_comp
+#SFD_INSTEAD $(SBIN)lev_comp $(DAT)Rogue.des
+#none
+
+$(SDFILES1):	$(SLIB)S-goal.lev
+
+$(SLIB)S-goal.lev:	$(DAT)Samurai.des $(SBIN)lev_comp
+#SFD_INSTEAD $(SBIN)lev_comp $(DAT)Samurai.des
+#none
+
+$(TDFILES1):	$(SLIB)T-goal.lev
+
+$(SLIB)T-goal.lev:	$(DAT)Tourist.des $(SBIN)lev_comp
+#SFD_INSTEAD $(SBIN)lev_comp $(DAT)Tourist.des
+#none
+
+$(VDFILES1):	$(SLIB)V-goal.lev
+
+$(SLIB)V-goal.lev:	$(DAT)Valkyrie.des $(SBIN)lev_comp
+#SFD_INSTEAD $(SBIN)lev_comp $(DAT)Valkyrie.des
+#none
+
+$(WDFILES1):	$(SLIB)W-goal.lev
+
+$(SLIB)W-goal.lev:	$(DAT)Wizard.des $(SBIN)lev_comp
+#SFD_INSTEAD $(SBIN)lev_comp $(DAT)Wizard.des
+#none
+
+$(SLIB)dungeon:  $(DAT)dungeon.def $(SBIN)makedefs $(SBIN)dgn_comp
+	$(SBIN)makedefs -e
+	$(SBIN)dgn_comp $(DAT)dungeon.pdf
+	copy $(DAT)dungeon $(SLIB)dungeon
+	delete $(DAT)dungeon
 
 inst-data: $(INSTDATAFILES)
 
-NetHack:amii.hlp: Amiga:amii.hlp
-	copy Amiga:amii.hlp $@
+$(NETHACK)amii.hlp: $(AMI)amii.hlp
+	copy $(AMI)amii.hlp $@
 
-NetHack:data:  Dat:data
-	copy Dat:data $@
+#$(NETHACK)data:  $(DAT)data
+#	copy $(DAT)data $@
 
-Dat:data:  Dat:data.base Incl:config.h NetHack:makedefs
-	NetHack:makedefs -d
+$(SLIB)data:  $(DAT)data.base $(I)config.h $(SBIN)makedefs
+	$(SBIN)makedefs -d
 
-NetHack:rumors:  Dat:rumors
-	copy Dat:rumors $@
+#$(NETHACK)rumors:  $(DAT)rumors
+#	copy $(DAT)rumors $@
 
-Dat:rumors:  Dat:rumors.tru Dat:rumors.fal NetHack:makedefs
-	NetHack:makedefs -r
+$(SLIB)rumors:  $(DAT)rumors.tru $(DAT)rumors.fal $(SBIN)makedefs
+	$(SBIN)makedefs -r
 
-NetHack:cmdhelp:  Dat:cmdhelp
-	copy Dat:cmdhelp $@
+$(SLIB)cmdhelp:  $(DAT)cmdhelp
+	copy $(DAT)cmdhelp $@
 
-NetHack:help:  Dat:help
-	copy Dat:help $@
+$(SLIB)help:  $(DAT)help
+	copy $(DAT)help $@
 
-NetHack:hh:  Dat:hh
-	copy Dat:hh $@
+$(SLIB)hh:  $(DAT)hh
+	copy $(DAT)hh $@
 
-NetHack:HackWB.hlp: Amiga:HackWB.hlp
-	copy Amiga:HackWB.hlp $@
+$(NETHACK)HackWB.hlp: $(AMI)HackWB.hlp
+	copy $(AMI)HackWB.hlp $@
 
-NetHack:history:  Dat:history
-	copy Dat:history $@
+$(SLIB)history:  $(DAT)history
+	copy $(DAT)history $@
 
-NetHack:license:  Dat:license
-	copy Dat:license $@
+$(NETHACK)license:  $(DAT)license
+	copy $(DAT)license $@
 
-NetHack:opthelp:  Dat:opthelp
-	copy Dat:opthelp $@
+$(SLIB)opthelp:  $(DAT)opthelp
+	copy $(DAT)opthelp $@
 
-NetHack:oracles:  Dat:oracles
-	copy Dat:oracles $@
-
-NetHack:perm:
+#SFD_INSTEAD $(NETHACK)logfile: $(NETHACK)logfile
+$(NETHACK)logfile:
 	echo to $@
 
-NetHack:logfile:
+#SFD_INSTEAD $(NETHACK)record: $(NETHACK)record
+$(NETHACK)record:
 	echo to $@
 
-NetHack:record:
-	echo to $@
-
-NetHack:wizhelp:
-	copy Dat:wizhelp $@
+$(SLIB)wizhelp: $(DAT)wizhelp
+	copy $(DAT)wizhelp $@
 
 # Create the directories here because NetHack.cnf puts them there by default
-NetHack:NetHack.cnf:  Amiga:NetHack.cnf
-	copy Amiga:NetHack.cnf $@
+$(NETHACK)NetHack.cnf:  $(AMI)NetHack.cnf
+	copy $(AMI)NetHack.cnf $@
 	-makedir nethack:save
 	-makedir nethack:levels
 
+#SFD_BEGIN
+#SFD_ELSE
+$(O)NetHack.gst: $(GSTSRC) $(I)hack.h
+	sc makegst=$(GSTFILE) $(CFLAGS) $(GSTSRC)
+#SFD_END
+
 # Unpack and install fonts
 
-INSTFONTFILES= \
-	NetHack:hack.font NetHack:hack NetHack:hack/8
+INSTFONTFILES= 	$(NETHACK)hack.font $(NETHACK)hack $(NETHACK)hack/8
+
 inst-fonts: $(INSTFONTFILES)
 
-NetHack:hack/8:  Amiga:amifont8.uu NetHack:hack
-	$(UUDEC) Amiga:amifont8.uu
-	-rename 8 hack/8
+$(NETHACK)hack/8:  $(AMI)amifont8.uu $(NETHACK)hack
+	$(UUDEC) $(AMI)amifont8.uu
+	copy 8 $(NETHACK)hack/8
+	delete 8
 
-NetHack:hack.font:  Amiga:amifont.uu
-	$(UUDEC) Amiga:amifont.uu
+$(NETHACK)hack.font:  $(AMI)amifont.uu
+	$(UUDEC) $(AMI)amifont.uu
+#	copy hack.font $(NETHACK)hack.font
+#	delete hack.font
 
-NetHack:hack:
-	makedir $@
+#SFD_INSTEAD $(NETHACK)hack: $(NETHACK)hack
+$(NETHACK)hack:
+	-makedir $@
 
 INSTICONFILES= \
-	NetHack:default.icon NetHack:NetHack.info NetHack:NewGame.info \
-	NetHack:HackWB.info
+	$(NETHACK)default.icon $(NETHACK)NetHack.info $(NETHACK)NewGame.info \
+	$(NETHACK)HackWB.info
 
 inst-icons: $(INSTICONFILES)
 
 # Unpack the icons into place
 
-NetHack:default.icon:  Amiga:dflticon.uu
-	$(UUDEC) Amiga:dflticon.uu
+$(NETHACK)default.icon:  $(AMI)dflticon.uu
+	$(UUDEC) $(AMI)dflticon.uu
+#	copy default.icon $(NETHACK)default.icon
+#	delete default.icon
 
-NetHack:NetHack.info:  Amiga:NHinfo.uu
-	$(UUDEC) Amiga:NHinfo.uu
+$(NETHACK)NetHack.info:  $(AMI)NHinfo.uu
+	$(UUDEC) $(AMI)NHinfo.uu
+#	copy NetHack.info $(NETHACK)NetHack.info
+#	delete NetHack.info
 
-NetHack:NewGame.info:  Amiga:NewGame.uu
-	$(UUDEC) Amiga:NewGame.uu
+$(NETHACK)NewGame.info:  $(AMI)NewGame.uu
+	$(UUDEC) $(AMI)NewGame.uu
+#	copy NewGame.info $(NETHACK)NewGame.info
+#	delete NewGame.info
 
-NetHack:HackWB.info:  Amiga:HackWB.uu
-	$(UUDEC) Amiga:HackWB.uu
+$(NETHACK)HackWB.info:  $(AMI)HackWB.uu
+	$(UUDEC) $(AMI)HackWB.uu
+#	copy HackWB.info $(NETHACK)HackWB.info
+#	delete HackWB.info
+
+# If DLB is defined, create the nhdat library file in the playground
+# directory.  If not, move all the data files there.
+$(NETHACK)nhdat:  $(LIBFILES)
+	list to T:nhdat.lst $(SLIB) QUICK NOHEAD FILES
+	echo  >T:make-nhdat $(SBIN)dlb cCfI $(SLIB) $(NETHACK)nhdat T:nhdat.lst
+	echo >>T:make-nhdat if not exists $(NETHACK)nhdat
+	echo >>T:make-nhdat copy $(SLIB)\#? $(NETHACK)
+	echo >>T:make-nhdat endif
+	execute T:make-nhdat
+	-delete T:make-nhdat
 
 # DO NOT DELETE THIS LINE
 
-OBJ:allmain.o:  NHS:allmain.c $(HDEP)
-OBJ:alloc.o:  NHS:alloc.c Incl:config.h
-OBJ:apply.o:  NHS:apply.c $(HDEP) Incl:edog.h
-	$(CC) $(CFLAGS) $(CFLAGS2) $(OBJSPEC)$@ NHS:apply.c
-OBJ:artifact.o:  NHS:artifact.c $(HDEP) Incl:artifact.h Incl:artilist.h
-OBJ:attrib.o:  NHS:attrib.c $(HDEP)
-OBJ:ball.o: NHS:ball.c $(HDEP)
-OBJ:bones.o:  NHS:bones.c $(HDEP) Incl:lev.h
-OBJ:botl.o:	NHS:botl.c $(HDEP)
-OBJ:cmd.o:  NHS:cmd.c $(HDEP) Incl:func_tab.h
-OBJ:dbridge.o:  NHS:dbridge.c $(HDEP)
-OBJ:decl.o:  NHS:decl.c $(HDEP) Incl:quest.h
-OBJ:detect.o: NHS:detect.c $(HDEP) Incl:artifact.h
-OBJ:display.o:  NHS:display.c $(HDEP)
-OBJ:do.o:  NHS:do.c $(HDEP) Incl:lev.h
-OBJ:do_name.o:  NHS:do_name.c $(HDEP)
-OBJ:do_wear.o:  NHS:do_wear.c $(HDEP)
-OBJ:dog.o:  NHS:dog.c $(HDEP) Incl:edog.h
-OBJ:dogmove.o:  NHS:dogmove.c $(HDEP) Incl:mfndpos.h Incl:edog.h
-OBJ:dokick.o:  NHS:dokick.c $(HDEP) Incl:eshk.h
-OBJ:dothrow.o:  NHS:dothrow.c $(HDEP)
-OBJ:drawing.o:  NHS:drawing.c $(HDEP) Incl:termcap.h
-OBJ:dungeon.o:  NHS:dungeon.c $(HDEP) Incl:dgn_file.h
-OBJ:eat.o:  NHS:eat.c $(HDEP)
-OBJ:end.o:  NHS:end.c $(HDEP) Incl:eshk.h
-OBJ:engrave.o:  NHS:engrave.c $(HDEP) Incl:lev.h
-OBJ:exper.o:  NHS:exper.c $(HDEP)
-OBJ:explode.o:  NHS:explode.c $(HDEP)
-OBJ:extralev.o:  NHS:extralev.c $(HDEP)
-OBJ:files.o:  NHS:files.c $(HDEP)
-OBJ:fountain.o:  NHS:fountain.c $(HDEP)
-OBJ:hack.o:  NHS:hack.c $(HDEP)
-OBJ:invent.o:  NHS:invent.c $(HDEP)
-OBJ:lock.o:  NHS:lock.c $(HDEP)
-OBJ:mail.o:  NHS:mail.c $(HDEP) Incl:mail.h
-OBJ:makemon.o:  NHS:makemon.c $(HDEP) Incl:epri.h Incl:emin.h
-OBJ:mcastu.o:  NHS:mcastu.c $(HDEP)
-OBJ:mhitm.o:  NHS:mhitm.c $(HDEP) Incl:artifact.h Incl:edog.h
-OBJ:mhitu.o:  NHS:mhitu.c $(HDEP) Incl:artifact.h Incl:edog.h
-OBJ:minion.o:  NHS:minion.c $(HDEP) Incl:emin.h Incl:epri.h
-OBJ:mklev.o:  NHS:mklev.c $(HDEP)
-OBJ:mkmap.o:  NHS:mkmap.c $(HDEP)
-OBJ:mkmaze.o:  NHS:mkmaze.c $(HDEP) Incl:sp_lev.h
-OBJ:mkobj.o:  NHS:mkobj.c $(HDEP) Incl:artifact.h Incl:prop.h
-OBJ:mkroom.o:  NHS:mkroom.c $(HDEP)
-OBJ:mon.o:  NHS:mon.c $(HDEP) Incl:mfndpos.h
-OBJ:mondata.o:  NHS:mondata.c $(HDEP) Incl:eshk.h Incl:epri.h
-OBJ:monmove.o:  NHS:monmove.c $(HDEP) Incl:mfndpos.h Incl:artifact.h
-OBJ:monst.o:  NHS:monst.c Incl:config.h Incl:permonst.h Incl:monsym.h Incl:eshk.h Incl:vault.h Incl:epri.h Incl:color.h
-OBJ:monstr.o:  NHS:monstr.c $(HDEP)
-OBJ:mplayer.o:	NHS:mplayer.c $(HDEP)
-OBJ:mthrowu.o:  NHS:mthrowu.c $(HDEP)
-OBJ:hacklib.o:  NHS:hacklib.c $(HDEP)
-OBJ:muse.o:	NHS:muse.c $(HDEP)
-OBJ:music.o:  NHS:music.c $(HDEP)
-OBJ:o_init.o:  NHS:o_init.c $(HDEP)
-OBJ:objects.o:  NHS:objects.c Incl:config.h Incl:obj.h Incl:objclass.h Incl:prop.h Incl:color.h
-	$(CC) $(CFLAGS) $(INCLSPEC)NHS: $(OBJSPEC)$@ NHS:objects.c
-OBJ:objnam.o:  NHS:objnam.c $(HDEP)
-OBJ:options.o:  NHS:options.c $(HDEP) Incl:termcap.h
-OBJ:pager.o:  NHS:pager.c $(HDEP)
-OBJ:pickup.o:  NHS:pickup.c $(HDEP)
-OBJ:pline.o:	NHS:pline.c $(HDEP) Incl:epri.h
-OBJ:polyself.o:  NHS:polyself.c $(HDEP)
-OBJ:potion.o:  NHS:potion.c $(HDEP)
-OBJ:pray.o:  NHS:pray.c $(HDEP) Incl:epri.h
-OBJ:priest.o:  NHS:priest.c $(HDEP) Incl:mfndpos.h Incl:eshk.h Incl:epri.h Incl:emin.h
-OBJ:quest.o:	NHS:quest.c $(HDEP) Incl:quest.h Incl:qtext.h
-OBJ:questpgr.o: NHS:questpgr.c $(HDEP) Incl:qtext.h
-OBJ:read.o:  NHS:read.c $(HDEP)
-OBJ:rect.o:	NHS:rect.c $(HDEP)
-OBJ:restore.o:  NHS:restore.c $(HDEP) Incl:lev.h Incl:termcap.h Incl:quest.h
-OBJ:rnd.o:  NHS:rnd.c $(HDEP)
-OBJ:rumors.o:  NHS:rumors.c $(HDEP)
-OBJ:save.o:  NHS:save.c $(HDEP) Incl:lev.h Incl:quest.h
-OBJ:shk.o:  NHS:shk.c $(HDEP) Incl:eshk.h
-	$(CC) $(CFLAGS) $(CFLAGS2) $(OBJSPEC)$@ NHS:shk.c
-OBJ:shknam.o:  NHS:shknam.c $(HDEP) Incl:eshk.h
-OBJ:sit.o:  NHS:sit.c $(HDEP)
-OBJ:sounds.o:  NHS:sounds.c $(HDEP) Incl:edog.h Incl:eshk.h
-OBJ:sp_lev.o:  NHS:sp_lev.c $(HDEP) Incl:sp_lev.h Incl:rect.h
-OBJ:spell.o:  NHS:spell.c $(HDEP)
-OBJ:steal.o:  NHS:steal.c $(HDEP)
-OBJ:timeout.o:  NHS:timeout.c $(HDEP)
-OBJ:topten.o:  NHS:topten.c $(HDEP)
-OBJ:track.o:  NHS:track.c $(HDEP)
-OBJ:trap.o:  NHS:trap.c $(HDEP) Incl:edog.h
-OBJ:u_init.o:  NHS:u_init.c $(HDEP)
-OBJ:uhitm.o:  NHS:uhitm.c $(HDEP)
-OBJ:vault.o:  NHS:vault.c $(HDEP) Incl:vault.h
-OBJ:version.o:  NHS:version.c $(HDEP) Incl:date.h Incl:patchlevel.h
-OBJ:vision.o:  NHS:vision.c $(HDEP)
-OBJ:weapon.o:  NHS:weapon.c $(HDEP)
-OBJ:were.o:  NHS:were.c $(HDEP)
-OBJ:wield.o:  NHS:wield.c $(HDEP)
-OBJ:wizard.o:  NHS:wizard.c $(HDEP) Incl:qtext.h
-OBJ:windows.o:  NHS:windows.c $(HDEP)
-OBJ:worm.o:  NHS:worm.c $(HDEP) Incl:lev.h
-OBJ:worn.o:  NHS:worn.c $(HDEP)
-OBJ:write.o:  NHS:write.c $(HDEP)
-OBJ:zap.o:  NHS:zap.c $(HDEP)
+$(O)allmain.o:  $(NHS)allmain.c $(HDEP)
 
-OBJ:getline.o:	TTY:getline.c $(HDEP) Incl:wintty.h
-OBJ:termcap.o:	TTY:termcap.c $(HDEP) Incl:wintty.h Incl:termcap.h
-OBJ:topl.o:	TTY:topl.c $(HDEP) Incl:wintty.h Incl:termcap.h
-OBJ:wintty.o:	TTY:wintty.c $(HDEP) Incl:wintty.h Incl:termcap.h
-OBJ:amitty.o:	amiga:amitty.c $(HDEP)
-OBJ:rip.o:	NHS:rip.c $(HDEP) #more?
+$(O)alloc.o:  $(NHS)alloc.c $(I)config.h
 
-Incl:config.h:  Incl:tradstdc.h Incl:global.h
-	-setdate Incl:config.h
+$(O)apply.o:  $(NHS)apply.c $(HDEP) $(I)edog.h
+#SFD_INSTEAD #none
+	$(CC) $(CFLAGS) $(CFLAGS2) $(OBJSPEC)$@ $(NHS)apply.c
+
+$(O)artifact.o:  $(NHS)artifact.c $(HDEP) $(I)artifact.h $(I)artilist.h
+
+$(O)attrib.o:  $(NHS)attrib.c $(HDEP) $(I)artifact.h
+
+$(O)ball.o: $(NHS)ball.c $(HDEP)
+
+$(O)bones.o:  $(NHS)bones.c $(HDEP) $(I)lev.h
+
+$(O)botl.o:	$(NHS)botl.c $(HDEP)
+
+$(O)cmd.o:  $(NHS)cmd.c $(HDEP) $(I)func_tab.h
+
+$(O)dbridge.o:  $(NHS)dbridge.c $(HDEP)
+
+$(O)decl.o:  $(NHS)decl.c $(HDEP) $(I)quest.h
+
+$(O)detect.o: $(NHS)detect.c $(HDEP) $(I)artifact.h
+
+$(O)dig.o: $(NHS)dig.c $(HDEP) $(I)edog.h
+
+$(O)display.o:  $(NHS)display.c $(HDEP)
+
+$(O)dlb.o: $(NHS)dlb.c $(HDEP) $(I)dlb.h
+
+$(O)do.o:  $(NHS)do.c $(HDEP) $(I)lev.h
+
+$(O)do_name.o:  $(NHS)do_name.c $(HDEP)
+
+$(O)do_wear.o:  $(NHS)do_wear.c $(HDEP)
+
+$(O)dog.o:  $(NHS)dog.c $(HDEP) $(I)edog.h
+
+$(O)dogmove.o:  $(NHS)dogmove.c $(HDEP) $(I)mfndpos.h $(I)edog.h
+
+$(O)dokick.o:  $(NHS)dokick.c $(HDEP) $(I)eshk.h
+
+$(O)dothrow.o:  $(NHS)dothrow.c $(HDEP)
+
+$(O)drawing.o:  $(NHS)drawing.c $(HDEP) $(I)termcap.h
+
+$(O)dungeon.o:  $(NHS)dungeon.c $(HDEP) $(I)dgn_file.h $(I)dlb.h
+
+$(O)eat.o:  $(NHS)eat.c $(HDEP)
+
+$(O)end.o:  $(NHS)end.c $(HDEP) $(I)eshk.h $(I)dlb.h
+
+$(O)engrave.o:  $(NHS)engrave.c $(HDEP) $(I)lev.h
+
+$(O)exper.o:  $(NHS)exper.c $(HDEP)
+
+$(O)explode.o:  $(NHS)explode.c $(HDEP)
+
+$(O)extralev.o:  $(NHS)extralev.c $(HDEP)
+
+$(O)files.o:  $(NHS)files.c $(HDEP) $(I)dlb.h $(I)date.h
+
+$(O)fountain.o:  $(NHS)fountain.c $(HDEP)
+
+$(O)hack.o:  $(NHS)hack.c $(HDEP)
+
+$(O)hacklib.o:  $(NHS)hacklib.c $(HDEP)
+
+$(O)invent.o:  $(NHS)invent.c $(HDEP) $(I)artifact.h
+
+$(O)light.o:  $(NHS)light.c $(HDEP) $(I)lev.h
+
+$(O)lock.o:  $(NHS)lock.c $(HDEP)
+
+$(O)mail.o:  $(NHS)mail.c $(HDEP) $(I)mail.h
+
+$(O)makemon.o:  $(NHS)makemon.c $(HDEP) $(I)epri.h $(I)emin.h
+
+$(O)mcastu.o:  $(NHS)mcastu.c $(HDEP)
+
+$(O)mhitm.o:  $(NHS)mhitm.c $(HDEP) $(I)artifact.h $(I)edog.h
+
+$(O)mhitu.o:  $(NHS)mhitu.c $(HDEP) $(I)artifact.h $(I)edog.h
+
+$(O)minion.o:  $(NHS)minion.c $(HDEP) $(I)emin.h $(I)epri.h
+
+$(O)mklev.o:  $(NHS)mklev.c $(HDEP)
+
+$(O)mkmap.o:  $(NHS)mkmap.c $(HDEP) $(I)sp_lev.h
+
+$(O)mkmaze.o:  $(NHS)mkmaze.c $(HDEP) $(I)sp_lev.h $(I)lev.h
+
+$(O)mkobj.o:  $(NHS)mkobj.c $(HDEP) $(I)artifact.h $(I)prop.h
+
+$(O)mkroom.o:  $(NHS)mkroom.c $(HDEP)
+
+$(O)mon.o:  $(NHS)mon.c $(HDEP) $(I)mfndpos.h $(I)edog.h
+
+$(O)mondata.o:  $(NHS)mondata.c $(HDEP) $(I)eshk.h $(I)epri.h
+
+$(O)monmove.o:  $(NHS)monmove.c $(HDEP) $(I)mfndpos.h $(I)artifact.h
+
+$(O)monst.o:  $(NHS)monst.c $(I)config.h $(I)permonst.h $(I)monsym.h \
+		$(I)eshk.h $(I)vault.h $(I)epri.h $(I)color.h
+
+$(O)monstr.o:  $(NHS)monstr.c $(HDEP)
+#SFD_INSTEAD 	$(CC) $(CFLAGS) $(OBJSPEC)%(left) $(NHS)monstr.c
+#none
+
+$(O)mplayer.o:	$(NHS)mplayer.c $(HDEP)
+
+$(O)mthrowu.o:  $(NHS)mthrowu.c $(HDEP)
+
+$(O)muse.o:	$(NHS)muse.c $(HDEP)
+
+$(O)music.o:  $(NHS)music.c $(HDEP) #interp.c
+
+$(O)o_init.o:  $(NHS)o_init.c $(HDEP) $(I)lev.h
+
+$(O)objects.o:  $(NHS)objects.c $(I)config.h $(I)obj.h $(I)objclass.h \
+		$(I)prop.h $(I)color.h
+#SFD_INSTEAD #none
+	$(CC) $(CFLAGS) $(INCLSPEC)$(NHS) $(OBJSPEC)$@ $(NHS)objects.c
+
+$(O)objnam.o:  $(NHS)objnam.c $(HDEP)
+
+$(O)options.o:  $(NHS)options.c $(HDEP) $(I)termcap.h $(I)config.h \
+		$(I)objclass.h $(I)flag.h
+
+$(O)pager.o:  $(NHS)pager.c $(HDEP) $(I)dlb.h
+
+$(O)pickup.o:  $(NHS)pickup.c $(HDEP)
+
+$(O)pline.o:	$(NHS)pline.c $(HDEP) $(I)epri.h
+
+$(O)polyself.o:  $(NHS)polyself.c $(HDEP)
+
+$(O)potion.o:  $(NHS)potion.c $(HDEP)
+
+$(O)pray.o:  $(NHS)pray.c $(HDEP) $(I)epri.h
+
+$(O)priest.o:  $(NHS)priest.c $(HDEP) $(I)mfndpos.h $(I)eshk.h $(I)epri.h \
+		$(I)emin.h
+
+$(O)quest.o:	$(NHS)quest.c $(HDEP) $(I)quest.h $(I)qtext.h
+
+$(O)questpgr.o: $(NHS)questpgr.c $(HDEP) $(I)qtext.h $(I)dlb.h
+
+$(O)read.o:  $(NHS)read.c $(HDEP)
+
+$(O)rect.o:	$(NHS)rect.c $(HDEP)
+
+$(O)restore.o:  $(NHS)restore.c $(HDEP) $(I)lev.h $(I)termcap.h $(I)quest.h
+
+$(O)rnd.o:  $(NHS)rnd.c $(HDEP)
+
+$(O)rumors.o:  $(NHS)rumors.c $(HDEP) $(I)dlb.h
+
+$(O)save.o:  $(NHS)save.c $(HDEP) $(I)lev.h $(I)quest.h
+
+$(O)shk.o:  $(NHS)shk.c $(HDEP) $(I)eshk.h
+#SFD_INSTEAD #none
+	$(CC) $(CFLAGS) $(CFLAGS2) $(OBJSPEC)$@ $(NHS)shk.c
+
+$(O)shknam.o:  $(NHS)shknam.c $(HDEP) $(I)eshk.h
+
+$(O)sit.o:  $(NHS)sit.c $(HDEP) $(I)artifact.h
+
+$(O)sounds.o:  $(NHS)sounds.c $(HDEP) $(I)edog.h
+
+$(O)sp_lev.o:  $(NHS)sp_lev.c $(HDEP) $(I)sp_lev.h $(I)rect.h $(I)dlb.h
+
+$(O)spell.o:  $(NHS)spell.c $(HDEP)
+
+$(O)steal.o:  $(NHS)steal.c $(HDEP)
+
+$(O)teleport.o:	$(NHS)teleport.c $(HDEP)
+
+$(O)timeout.o:  $(NHS)timeout.c $(HDEP) $(I)lev.h
+
+$(O)topten.o:  $(NHS)topten.c $(HDEP) $(I)dlb.h
+
+$(O)track.o:  $(NHS)track.c $(HDEP)
+
+$(O)trap.o:  $(NHS)trap.c $(HDEP)
+#SFD_INSTEAD #none
+	$(CC) $(CFLAGS) $(CFLAGS2) $(OBJSPEC)$@ $(NHS)trap.c
+
+$(O)u_init.o:  $(NHS)u_init.c $(HDEP)
+
+$(O)uhitm.o:  $(NHS)uhitm.c $(HDEP)
+
+$(O)vault.o:  $(NHS)vault.c $(HDEP) $(I)vault.h
+
+$(O)version.o:  $(NHS)version.c $(HDEP) $(I)date.h $(I)patchlevel.h
+
+# DMake doesn't grok mid-line comments
+#SFD_INSTEAD $(O)vision.o:  $(NHS)vision.c $(HDEP)
+$(O)vision.o:  $(NHS)vision.c $(HDEP) #$(I)vis_tab.h
+
+$(O)weapon.o:  $(NHS)weapon.c $(HDEP)
+
+$(O)were.o:  $(NHS)were.c $(HDEP)
+
+$(O)wield.o:  $(NHS)wield.c $(HDEP)
+
+$(O)windows.o:  $(NHS)windows.c $(HDEP) $(I)wintty.h
+
+$(O)wizard.o:  $(NHS)wizard.c $(HDEP) $(I)qtext.h
+
+$(O)worm.o:  $(NHS)worm.c $(HDEP) $(I)lev.h
+
+$(O)worn.o:  $(NHS)worn.c $(HDEP)
+
+$(O)write.o:  $(NHS)write.c $(HDEP)
+
+$(O)zap.o:  $(NHS)zap.c $(HDEP)
+
+$(O)getline.o:	$(TTY)getline.c $(HDEP) $(I)wintty.h
+
+$(O)termcap.o:	$(TTY)termcap.c $(HDEP) $(I)wintty.h $(I)termcap.h
+
+$(O)topl.o:	$(TTY)topl.c $(HDEP) $(I)wintty.h $(I)termcap.h
+
+$(O)wintty.o:	$(TTY)wintty.c $(HDEP) $(I)wintty.h $(I)termcap.h \
+		$(I)patchlevel.h
+
+$(O)amitty.o:	$(AMI)amitty.c $(HDEP)
+
+$(O)rip.o:	$(NHS)rip.c $(HDEP)
+
+
+$(I)config.h:  $(I)tradstdc.h $(I)global.h
+	-setdate $(I)config.h
 	-wait 2
+
 # onames.h handled at onames.h target, pm.h
-Incl:decl.h:  Incl:quest.h Incl:spell.h Incl:color.h Incl:obj.h Incl:you.h
-	-setdate Incl:decl.h
-	-wait 2
-Incl:global.h:  Incl:coord.h Incl:pcconf.h Incl:amiconf.h
-	-setdate Incl:global.h
+
+$(I)decl.h:  $(I)quest.h $(I)spell.h $(I)color.h $(I)obj.h $(I)you.h
+	-setdate $(I)decl.h
 	-wait 2
 
-Incl:hack.h:  Incl:config.h Incl:trap.h Incl:decl.h Incl:dungeon.h Incl:monsym.h Incl:mkroom.h Incl:objclass.h Incl:flag.h Incl:rm.h Incl:vision.h Incl:display.h Incl:wintype.h Incl:engrave.h Incl:rect.h Incl:trampoli.h
-	-setdate Incl:hack.h
+$(I)global.h:  $(I)coord.h $(I)pcconf.h $(I)amiconf.h
+	-setdate $(I)global.h
 	-wait 2
-Incl:permonst.h:  Incl:monattk.h Incl:monflag.h Incl:align.h
-	-setdate Incl:permonst.h
+
+$(I)hack.h:  $(I)config.h $(I)trap.h $(I)decl.h $(I)dungeon.h $(I)monsym.h \
+		$(I)mkroom.h $(I)objclass.h $(I)flag.h $(I)rm.h $(I)vision.h \
+		$(I)display.h $(I)wintype.h $(I)engrave.h $(I)rect.h \
+		$(I)trampoli.h
+	-setdate $(I)hack.h
 	-wait 2
-Incl:you.h:  Incl:align.h Incl:attrib.h Incl:monst.h Incl:youprop.h
-	-setdate Incl:you.h
+
+$(I)permonst.h:  $(I)monattk.h $(I)monflag.h $(I)align.h
+	-setdate $(I)permonst.h
 	-wait 2
+
+$(I)you.h:  $(I)align.h $(I)attrib.h $(I)monst.h $(I)youprop.h
+	-setdate $(I)you.h
+	-wait 2
+
 # pm.h handled at target
-Incl:youprop.h:  Incl:prop.h Incl:permonst.h Incl:mondata.h
-	-setdate Incl:youprop.h
+
+$(I)youprop.h:  $(I)prop.h $(I)permonst.h $(I)mondata.h
+	-setdate $(I)youprop.h
 	-wait 2
-Incl:display.h: Incl:vision.h Incl:mondata.h
-	-setdate Incl:display.h
+
+$(I)display.h: $(I)vision.h $(I)mondata.h
+	-setdate $(I)display.h
 	-wait 2
-Incl:dungeon.h: Incl:align.h
-	-setdate Incl:dungeon.h
+
+$(I)dungeon.h: $(I)align.h
+	-setdate $(I)dungeon.h
 	-wait 2
-Incl:emin.h: Incl:dungeon.h
-	-setdate Incl:emin.h
+
+$(I)emin.h: $(I)dungeon.h
+	-setdate $(I)emin.h
 	-wait 2
-Incl:epri.h: Incl:dungeon.h Incl:align.h
-	-setdate Incl:epri.h
+
+$(I)epri.h: $(I)dungeon.h $(I)align.h
+	-setdate $(I)epri.h
 	-wait 2
-Incl:eshk: Incl:Inl:dungeon.h
-	-setdate Incl:eshk.h
+
+$(I)eshk.h: $(I)dungeon.h
+	-setdate $(I)eshk.h
 	-wait 2
-Incl:engrave.h: Incl:trampoli.h Incl:rect.h
-	-setdate Incl:engrave.h
+
+$(I)engrave.h: $(I)trampoli.h $(I)rect.h
+	-setdate $(I)engrave.h
 	-wait 2
-Incl:mondata.h: Incl:align.h
-	-setdate Incl:mondata.h
+
+$(I)mondata.h: $(I)align.h
+	-setdate $(I)mondata.h
 	-wait 2
-Incl:monst.h: Incl:align.h
-	-setdate Incl:monst.h
+
+$(I)monst.h: $(I)align.h
+	-setdate $(I)monst.h
 	-wait 2
-Incl:pcconf.h: Incl:micro.h Incl:system.h
-	-setdate Incl:pcconf.h
+
+$(I)pcconf.h: $(I)micro.h $(I)system.h
+	-setdate $(I)pcconf.h
 	-wait 2
-Incl:rm.h: Incl:align.h
-	-setdate Incl:rm.h
+
+$(I)rm.h: $(I)align.h
+	-setdate $(I)rm.h
 	-wait 2
-Incl:vault.h: Incl:dungeon.h
-	-setdate Incl:vault.h
+
+$(I)vault.h: $(I)dungeon.h
+	-setdate $(I)vault.h
 	-wait 2
+
+
+#notes
+#  install keeps doing re-install because it keeps rebuilding lev_comp???
+#  fixed(?) - deleted setdate

@@ -24,6 +24,18 @@ PATH=NetHack:
 # My own setup
 #OPTIONS=name:Rhialto,catname:Killie,time,noautopickup
 
+# The windowtype option must be set before any options regarding colors and palette
+# are set otherwise previously set values will be overridden by the defaults
+#
+# Tty/BBS version of the game
+#OPTIONS=windowtype:tty
+#
+# The font version of the game
+OPTIONS=windowtype:amii
+#
+# New tile version of the game
+#OPTIONS=windowtype:amitile
+#
 # A hard disk configuration.
 #
 #HACKDIR=DH0:/games/hack
@@ -51,64 +63,142 @@ SAVE=Nethack:save
 
 # *** CHARACTER GRAPHICS ***
 #
-# The 69 GRAPHICS characters (0-68) are:
-#
-# stone,
-# walls: vertical, horizontal,
-#	 4 corners: top left, top right, bottom left, bottom right,
-#	 cross wall,
-#	 4 T walls: upward, downward, left, right,
-# doors: no door,
-#	 open doors: vertical, horizontal,
-#	 closed doors: vertical, horizontal,
-# floor,
-# corridors: unlit, lit,
-# stairs up, stairs down, ladder up, ladder down,
-# trap, web, altar, throne, sink, fountain, pool/moat, ice, lava,
-# lowered drawbridge: vertical, horizontal,
-# raised drawbridge: vertical, horizontal,
-# air, cloud, water,
-# 4 beams: vertical, horizontal, left slant, right slant,
-# digging beam, camera flash beam, left boomerang, right boomerang,
-# 4 magic shield display symbols,
-# 8 swallowed: top left/middle/right, mid left/right, bottom left/mid/right,
-# 9 explosion: [3 rows (top, middle, bottom) of 3 characters]
-#
-# If you specify fewer than 69 ASCII values, the remaining characters will be
-# set to their respective defaults:
-#	   ' '  |   -   -   -   -   -   -   -   -
-#           |   |   .   -   |   +   +   .   #   #
-#	    <   >   <   >   ^   "   _   \   #   {
-#	    }   .   }   .   .   #   #  ' '  #   }
-#	    |   -   \   /   *   !   )   (   0   #
-#	    @   *   /   -   \   |   |   \   -   /
-#	    /   -   \   |  ' '  |   \   -   /
+# See the on-line help or the Guidebook for which symbols are in which
+# positions.
 #
 # Note that the hack.font has special graphics characters from 192 on.
 
 # An example using the hack.font graphics character set:
-GRAPHICS = 032 192 193 194 195 196 197 198 216 214 \
+DUNGEON =  032 192 193 194 195 196 197 198 216 214 \
 	   215 213 217 145 146 147 148 217 218 229 \
-	   060 062 060 062 094 034 095 092 035 123 \
-	   125 042 125 042 042 035 035 046 035 125 \
-	   241 240 242 243 042 033 123 125 064 038 \
-	   042 035 244 245 246 247 239 248 249 250 \
+	   060 062 060 062 095 092 035 123 125 042 \
+	   125 042 042 035 035 046 035 125
+
+TRAPS =    094 094 094 094 094 094 094 094 094 094 \
+	   094 094 094 094 094 094 094 034 094 094 \
+	   094 094
+
+EFFECTS =  241 240 242 243 042 033 123 125	   \
+	   064 038 042 035			   \
+	   244 245 246 247 239 248 249 250	   \
 	   230 234 231 236 212 237 232 235 233
+
 # Monitors vary greatly in their color response.  If the default colors
-# are not good on your monitor, here are some other alternatives:
+# are not good on your monitor, here are some other alternatives for the
+# font version of the game:
+#
 #CBM 1960, set color/contrast for good pure red, green, and blue. True colors.
 #PENS=000,fff,a61,7bb,0f0,e0c,00f,f00
 #CBM 1960, set color/contrast as above, better colors for NetHack.
 #PENS=667,fff,da1,7bb,2f0,e0d,0af,f42
-#and one other suggestion:
+#and other suggestions:
 #PENS=888,ffc,840,0b8,4e4,e8b,7be,a04
-PENS=000,fff,830,7ae,181,c06,23e,c00
-# for an "interlaced"+ line screen, the default is courier:13.  If you want
+#PENS=000,fff,830,7ae,181,c06,23e,c00
+#
+# For an "interlaced"+ line screen, the default font is courier:13.  If you want
 #  a different font, set it here.  The format is "fontname.font:size"; i.e. the
 # .font extension is required.
-#FONT=topaz.font:13
+#FONT=courier.font:13
+#FONT=topaz.font:8
+#
 # Proportional fonts such as CGTimes are probably not a good idea because they
 # result in many things not being spaced out correctly.
 #FONT=CGTimes.font:15
+#
 # This sized proportional font is readable, but still has spacing problems
 #FONT=CGTimes.font:21
+#
+#   FOR AGA OR OTHER DISPLAYS CAPABLE OF 5 OR MORE PLANES...
+#
+# For a screen of depth 5 the following dripens provide a brown border
+# using pens 16-31.
+#
+# Pens 16-31 can be redefined with PENS= if you want different colors,
+# using the PENS= values below for a 4 plane screen as the first 16 colors.
+#
+#DEPTH=5
+#DRIPENS=0,0,0,17,27,23,1,23,15,0,23,27
+# 
+# The APEN and BPEN values in the various types of windows can be set in
+# the manner shown below.  These values are for the 16 color version of
+# the tile game.
+#
+# These values are specified as APEN,BPEN (foreground,background)
+#
+#MSGPENS=1,12
+#STATUSPENS=1,12
+#MENUPENS=1,23
+#TEXTPENS=1,23
+#OTHERPENS=1,23
+#
+#   FOR ECS OR OTHERS ONLY CAPABLE OF 4 PLANES...
+#
+# These values work good for the TILE version of the game on ECS machines
+# These are the default values for reference purposes.
+#
+#DEPTH=4
+#PENS=000,fff,6f0,ff0,258,f0f,acf,b40,466,f60,090,940,79b,fb9,ddb,c00
+#DRIPENS=0,1,0,6,4,12,15,12,15,1,12,4
+# 
+# The APEN and BPEN values in the various types of windows can be set in
+# the manner shown below.  These values are for a 32 color version of
+# the tile game.
+#
+# These values are specified as APEN,BPEN (foreground,background)
+#
+#MSGPENS=1,12
+#STATUSPENS=1,12
+#MENUPENS=0,14
+#TEXTPENS=0,14
+#OTHERPENS=1,12
+#
+# Screen mode selections below should all work for either the font of tile
+# version of the game.  Other modes can be tried and as long as they are at
+# least 640x200, the game should adapt to them...
+#
+# NTSC_MONITOR_ID
+#SCREENMODE=0x00019000
+# PAL_MONITOR_ID
+#SCREENMODE=0x00029000
+# NTSC_MONITOR_ID+LACE
+#SCREENMODE=0x00019004
+# PAL_MONITOR_ID+LACE
+#SCREENMODE=0x00029004
+# NTSC_MONITOR_ID+HIRES+LACE
+#SCREENMODE=0x00019024
+# PAL_MONITOR_ID+HIRES+LACE
+#SCREENMODE=0x00029024
+# VGA_MONITOR_ID
+#SCREENMODE=0x00031000
+# VGAPRODUCT_KEY
+#SCREENMODE=0x00039024
+# A2024TENHERTZ_KEY
+#SCREENMODE=0x00041000
+# A2024FIFTEENHERTZ_KEY
+#SCREENMODE=0x00049000
+# EURO72_MONITOR_ID
+#SCREENMODE=0x00061000
+# EURO72PRODUCT_KEY
+#SCREENMODE=0x00069024
+# EURO72PRODUCTLACE_KEY
+#SCREENMODE=0x00069025
+# EURO72PRODUCTDBL_KEY
+#SCREENMODE=0x00069020
+# EURO36_MONITOR_ID
+#SCREENMODE=0x00071000
+# SUPER72HIRESDBL_KEY
+#SCREENMODE=0x00089008
+# SUPER72SUPERDBL_KEY
+#SCREENMODE=0x00089028
+# DBLNTSCHIRES_KEY
+#SCREENMODE=0x00099000
+# DBLNTSCHIRESFF_KEY
+#SCREENMODE=0x00099004
+# DBLNTSCHIRESLACE_KEY
+#SCREENMODE=0x00099005
+# DBLPALHIRES_KEY
+#SCREENMODE=0x000a9000
+# DBLPALHIRESFF_KEY
+#SCREENMODE=0x000a9004
+# DBLPALHIRESLACE_KEY
+#SCREENMODE=0x000a9005

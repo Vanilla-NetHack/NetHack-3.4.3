@@ -1,19 +1,17 @@
-/*	SCCS Id: @(#)bones.c	3.1	93/06/05	*/
+/*	SCCS Id: @(#)bones.c	3.2	95/11/29	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985,1993. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
 #include "lev.h"
 
-#ifdef MFLOPPY
 extern char bones[];	/* from files.c */
+#ifdef MFLOPPY
 extern long bytes_counted;
 #endif
 
 static boolean FDECL(no_bones_level, (d_level *));
-#ifdef TUTTI_FRUTTI
 static void FDECL(goodfruit, (int));
-#endif
 static void FDECL(resetobjs,(struct obj *,BOOLEAN_P));
 static void FDECL(drop_upon_death, (struct monst *, struct obj *));
 
@@ -26,7 +24,7 @@ d_level *lev;
 
 	if (ledger_no(&save_dlevel)) assign_level(lev, &save_dlevel);
 
-	return (boolean)(((sptr = Is_special(lev)) && !sptr->boneid)
+	return (boolean)(((sptr = Is_special(lev)) != 0 && !sptr->boneid)
 		|| !dungeons[lev->dnum].boneid
 		   /* no bones on the last or multiway branch levels */
 		   /* in any dungeon (level 1 isn't multiway).       */
@@ -36,7 +34,6 @@ d_level *lev;
 		);
 }
 
-#ifdef TUTTI_FRUTTI
 static void
 goodfruit(id)
 int id;
@@ -50,7 +47,6 @@ int id;
 		}
 	}
 }
-#endif
 
 static void
 resetobjs(ochain,restore)
@@ -63,46 +59,45 @@ boolean restore;
 		if (otmp->cobj)
 		    resetobjs(otmp->cobj,restore);
 
-		if (((otmp->otyp != CORPSE || otmp->corpsenm < PM_ARCHEOLOGIST)
+		if (((otmp->otyp != CORPSE || otmp->corpsenm < SPECIAL_PM)
 			&& otmp->otyp != STATUE)
 			&& (!otmp->oartifact ||
-			    (exist_artifact(otmp->otyp,ONAME(otmp)) && restore))) {
+			   (restore && (exist_artifact(otmp->otyp, ONAME(otmp))
+					|| is_quest_artifact(otmp))))) {
 			otmp->oartifact = 0;
 			otmp->onamelth = 0;
 			*ONAME(otmp) = '\0';
 		} else if (otmp->oartifact && restore)
 			artifact_exists(otmp,ONAME(otmp),TRUE);
 		if (!restore) {
-			/* resetting the o_id's after getlev has carefully
-			 * created proper new ones via restobjchn is a Bad
-			 * Idea */
-			otmp->o_id = 0;
+			/* do not zero out o_ids for ghost levels anymore */
+
 			if(objects[otmp->otyp].oc_uses_known) otmp->known = 0;
 			otmp->dknown = otmp->bknown = 0;
 			otmp->rknown = 0;
 			otmp->invlet = 0;
-#ifdef TUTTI_FRUTTI
-			if(otmp->otyp == SLIME_MOLD) goodfruit(otmp->spe);
-			else
-#endif
+
+			if (otmp->otyp == SLIME_MOLD) goodfruit(otmp->spe);
 #ifdef MAIL
-			if (otmp->otyp == SCR_MAIL) otmp->spe = 1;
-			else
+			else if (otmp->otyp == SCR_MAIL) otmp->spe = 1;
 #endif
-#ifdef POLYSELF
-			if (otmp->otyp == EGG) otmp->spe = 0;
-			else
-#endif
-			if (otmp->otyp == AMULET_OF_YENDOR) {
+			else if (otmp->otyp == EGG) otmp->spe = 0;
+			else if (otmp->otyp == TIN) {
+			    /* make tins of unique monster's meat be empty */
+			    if (otmp->corpsenm >= LOW_PM &&
+				    (mons[otmp->corpsenm].geno & G_UNIQ))
+				otmp->corpsenm = NON_PM;
+			} else if (otmp->otyp == AMULET_OF_YENDOR) {
 			    /* no longer the real Amulet */
 			    otmp->otyp = FAKE_AMULET_OF_YENDOR;
 			    curse(otmp);
 			} else if (otmp->otyp == CANDELABRUM_OF_INVOCATION) {
+			    if (otmp->lamplit)
+				end_burn(otmp, TRUE);
 			    otmp->otyp = WAX_CANDLE;
 			    otmp->age = 50L;  /* assume used */
 			    if (otmp->spe > 0)
 				otmp->quan = (long)otmp->spe;
-			    otmp->lamplit = 0;
 			    otmp->spe = 0;
 			    otmp->owt = weight(otmp);
 			} else if (otmp->otyp == BELL_OF_OPENING) {
@@ -111,16 +106,6 @@ boolean restore;
 			} else if (otmp->otyp == SPE_BOOK_OF_THE_DEAD) {
 			    otmp->otyp = SPE_BLANK_PAPER;
 			    curse(otmp);
-#ifdef MULDGN
-			} else if (is_quest_artifact(otmp)) {
-			    /*
-			     * never leave our own quest artifact among the
-			     * bones; others (via wishing) might remain though
-			     */
-			 /* artifact_unexist(otmp); */
-			    otmp->oartifact = 0;
-			    ONAME(otmp)[0] = '\0';
-#endif
 			}
 		}
 	}
@@ -131,35 +116,61 @@ drop_upon_death(mtmp, cont)
 struct monst *mtmp;
 struct obj *cont;
 {
-	struct obj *otmp = invent;
-	while(otmp) {
+	struct obj *otmp;
+
+	while ((otmp = invent) != 0) {
+		obj_extract_self(otmp);
+
 		otmp->owornmask = 0;
-		otmp->lamplit = 0;
-#ifdef TUTTI_FRUTTI
+		/* lamps don't go out when dropped */
+		if (cont && obj_is_burning(otmp))	/* smother in statue */
+			end_burn(otmp, otmp->otyp != MAGIC_LAMP);
+
 		if(otmp->otyp == SLIME_MOLD) goodfruit(otmp->spe);
-#endif
+
 		if(rn2(5)) curse(otmp);
-		if(!mtmp && !cont) place_object(otmp, u.ux, u.uy);
-		if(!otmp->nobj) {
-			if (mtmp) {
-				otmp->nobj = mtmp->minvent;
-				mtmp->minvent = invent;
-			} else if (cont) {
-				otmp->nobj = cont->cobj;
-				cont->cobj = invent;
-			} else {
-				otmp->nobj = fobj;
-				fobj = invent;
-			}
-			invent = 0;	/* superfluous */
-			break;
-		}
-		otmp = otmp->nobj;
+		if (mtmp)
+			add_to_minv(mtmp, otmp);
+		else if (cont)
+			add_to_container(cont, otmp);
+		else
+			place_object(otmp, u.ux, u.uy);
 	}
 	if(u.ugold) {
-		if (mtmp) mtmp->mgold = u.ugold;
-		else mkgold(u.ugold, u.ux, u.uy);
+		long ugold = u.ugold;
+		if (mtmp) mtmp->mgold = ugold;
+		else if (cont) add_to_container(cont, mkgoldobj(ugold));
+		else mkgold(ugold, u.ux, u.uy);
+		u.ugold = ugold;	/* undo mkgoldobj()'s removal */
 	}
+}
+
+/* check whether bones are feasible */
+boolean
+can_make_bones()
+{
+	register struct trap *ttmp;
+
+	if (ledger_no(&u.uz) <= 0 || ledger_no(&u.uz) > maxledgerno())
+	    return FALSE;
+	if (no_bones_level(&u.uz))
+	    return FALSE;		/* no bones for specific levels */
+	if (!Is_branchlev(&u.uz)) {
+	    /* no bones on non-branches with portals */
+	    for(ttmp = ftrap; ttmp; ttmp = ttmp->ntrap)
+		if (ttmp->ttyp == MAGIC_PORTAL) return FALSE;
+	}
+
+	if(depth(&u.uz) <= 0 ||		/* bulletproofing for endgame */
+	   (!rn2(1 + (depth(&u.uz)>>2))	/* fewer ghosts on low levels */
+#ifdef WIZARD
+		&& !wizard
+#endif
+		)) return FALSE;
+	/* don't let multiple restarts generate multiple copies of objects
+	 * in bones files */
+	if (discover) return FALSE;
+	return TRUE;
 }
 
 /* save bones and possessions of a deceased adventurer */
@@ -169,76 +180,60 @@ savebones()
 	register int fd, x, y;
 	register struct trap *ttmp;
 	register struct monst *mtmp, *mtmp2;
-#ifdef TUTTI_FRUTTI
 	struct fruit *f;
-#endif
 	char c, *bonesid;
 
-	if(ledger_no(&u.uz) <= 0 || ledger_no(&u.uz) > maxledgerno()) return;
-	if(no_bones_level(&u.uz)) return; /* no bones for specific levels */
-	if(!Is_branchlev(&u.uz)) {
-	    /* no bones on non-branches with portals */
-	    for(ttmp = ftrap; ttmp; ttmp = ttmp->ntrap)
-		if (ttmp->ttyp == MAGIC_PORTAL) return;
-	}
-
-	if(depth(&u.uz) <= 0 ||		/* bulletproofing for endgame */
-	   (!rn2(1 + (depth(&u.uz)>>2)) /* fewer ghosts on low levels */
-#ifdef WIZARD
-		&& !wizard
-#endif
-		)) return;
-#ifdef EXPLORE_MODE
-	/* don't let multiple restarts generate multiple copies of objects
-	 * in bones files */
-	if(discover) return;
-#endif
+	/* caller has already checked `can_make_bones()' */
 
 	fd = open_bonesfile(&u.uz, &bonesid);
 	if (fd >= 0) {
 		(void) close(fd);
 		compress_bonesfile();
 #ifdef WIZARD
-		if(wizard)
-			pline("Bones file already exists.");
+		if (wizard) {
+		    if (yn("Bones file already exists.  Replace it?") == 'y') {
+			if (delete_bonesfile(&u.uz)) goto make_bones;
+			else pline("Cannot unlink old bones.");
+		    }
+		}
 #endif
 		return;
 	}
 
-#ifdef WALKIES
+ make_bones:
 	unleash_all();
-#endif
 	/* in case these characters are not in their home bases */
 	mtmp2 = fmon;
-	while((mtmp = mtmp2)) {
+	while ((mtmp = mtmp2) != 0) {
 		mtmp2 = mtmp->nmon;
-		if(mtmp->iswiz || mtmp->data == &mons[PM_MEDUSA]) mongone(mtmp);
+		if(mtmp->iswiz || mtmp->data == &mons[PM_MEDUSA]
+			|| mtmp->data->msound == MS_NEMESIS
+			|| mtmp->data->msound == MS_LEADER
+			|| mtmp->data == &mons[PM_VLAD_THE_IMPALER])
+		    mongone(mtmp);
 	}
-#ifdef TUTTI_FRUTTI
+
 	/* mark all fruits as nonexistent; when we come to them we'll mark
 	 * them as existing (using goodfruit())
 	 */
 	for(f=ffruit; f; f=f->nextf) f->fid = -f->fid;
-#endif
 
 	/* check iron balls separately--maybe they're not carrying it */
 	if (uball) uball->owornmask = uchain->owornmask = 0;
 
 	/* dispose of your possessions, usually cursed */
-	if (u.ugrave_arise == -2) {
+	if (u.ugrave_arise == (NON_PM - 1)) {
 		struct obj *otmp;
 
 		/* embed your possessions in your statue */
-		otmp = mk_named_object(STATUE,
-#ifdef POLYSELF
-					u.mtimedone ? uasmon :
-#endif
-					player_mon(), 
-					u.ux, u.uy, plname,
-					(int)strlen(plname));
-		if (!otmp) return;
+		otmp = mk_named_object(STATUE, Upolyd ? uasmon : player_mon(),
+				       u.ux, u.uy, plname);
+		if (!otmp) {
+			drop_upon_death((struct monst *)0, (struct obj *)0);
+			return;
+		}
 		drop_upon_death(mtmp = (struct monst *)0, otmp);
-	} else if (u.ugrave_arise == -1) {
+	} else if (u.ugrave_arise < LOW_PM) {
 		/* drop everything */
 		drop_upon_death((struct monst *)0, (struct obj *)0);
 		/* trick makemon() into allowing monster creation
@@ -254,16 +249,17 @@ savebones()
 		in_mklev = TRUE;
 		mtmp = makemon(&mons[u.ugrave_arise], u.ux, u.uy);
 		in_mklev = FALSE;
-		if (!mtmp) return;
+		if (!mtmp) {
+			drop_upon_death((struct monst *)0, (struct obj *)0);
+			return;
+		}
 		mtmp = christen_monst(mtmp, plname);
 		newsym(u.ux, u.uy);
 		Your("body rises from the dead as %s...",
 			an(mons[u.ugrave_arise].mname));
 		display_nhwindow(WIN_MESSAGE, FALSE);
 		drop_upon_death(mtmp, (struct obj *)0);
-#ifdef MUSE
 		m_dowear(mtmp, TRUE);
-#endif
 	}
 	if (mtmp) {
 		mtmp->m_lev = (u.ulevel ? u.ulevel : 1);
@@ -272,19 +268,20 @@ savebones()
 	}
 	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
 		resetobjs(mtmp->minvent,FALSE);
-		mtmp->m_id = 0;
+		/* do not zero out m_ids for bones levels any more */
 		mtmp->mlstmv = 0L;
 		if(mtmp->mtame) mtmp->mtame = mtmp->mpeaceful = 0;
 	}
 	for(ttmp = ftrap; ttmp; ttmp = ttmp->ntrap) {
-		ttmp->tseen = 0;
+		ttmp->tseen = ttmp->madeby_u = 0;
 	}
 	resetobjs(fobj,FALSE);
 	resetobjs(level.buriedobjlist, FALSE);
 
 	/* Clear all memory from the level. */
 	for(x=0; x<COLNO; x++) for(y=0; y<ROWNO; y++) {
-	    levl[x][y].seen = levl[x][y].waslit = 0;
+	    levl[x][y].seenv = 0;
+	    levl[x][y].waslit = 0;
 	    levl[x][y].glyph = cmap_to_glyph(S_stone);
 	}
 
@@ -296,39 +293,44 @@ savebones()
 #endif
 		return;
 	}
+	c = (char) (strlen(bonesid) + 1);
 
-	bufon(fd);
 #ifdef MFLOPPY  /* check whether there is room */
 	savelev(fd, ledger_no(&u.uz), COUNT_SAVE);
-# ifdef TUTTI_FRUTTI
-	/* this is in the opposite order from the real save, but savelev()
-	 * initializes bytes_counted to 0, so doing savefruitchn() first is
-	 * useless; the extra bflush() at the end of savelev() may increase
-	 * bytes_counted by a couple over what the real usage will be
+	/* savelev() initializes bytes_counted to 0, so it must come first
+	 * here even though it does not in the real save.
+	 * the resulting extra bflush() at the end of savelev() may increase
+	 * bytes_counted by a couple over what the real usage will be.
+	 *
+	 * note it is safe to call store_version() here only because
+	 * bufon() is null for ZEROCOMP, which MFLOPPY uses -- otherwise
+	 * this code would have to know the size of the version information
+	 * itself.
 	 */
+	store_version(fd);
+	bwrite(fd, (genericptr_t) &c, sizeof c);
+	bwrite(fd, (genericptr_t) bonesid, (unsigned) c);	/* DD.nnn */
 	savefruitchn(fd, COUNT_SAVE);
 	bflush(fd);
-# endif
 	if (bytes_counted > freediskspace(bones)) {	/* not enough room */
 # ifdef WIZARD
 		if (wizard)
 			pline("Insufficient space to create bones file.");
 # endif
 		(void) close(fd);
-		delete_bonesfile(&u.uz);
+		cancel_bonesfile();
 		return;
 	}
-	co_false();	/* make sure bonesid and savefruitchn get written */
+	co_false();	/* make sure stuff before savelev() gets written */
 #endif /* MFLOPPY */
 
-	c = (char) (strlen(bonesid) + 1);
+	store_version(fd);
 	bwrite(fd, (genericptr_t) &c, sizeof c);
 	bwrite(fd, (genericptr_t) bonesid, (unsigned) c);	/* DD.nnn */
-#ifdef TUTTI_FRUTTI
 	savefruitchn(fd, WRITE_SAVE | FREE_SAVE);
-#endif
 	savelev(fd, ledger_no(&u.uz), WRITE_SAVE | FREE_SAVE);
 	bclose(fd);
+	commit_bonesfile(&u.uz);
 	compress_bonesfile();
 }
 
@@ -339,10 +341,9 @@ getbones()
 	register int ok;
 	char c, *bonesid, oldbonesid[10];
 
-#ifdef EXPLORE_MODE
 	if(discover)		/* save bones files for real games */
 		return(0);
-#endif
+
 	/* wizard check added by GAN 02/05/87 */
 	if(rn2(3)	/* only once in three times do we find bones */
 #ifdef WIZARD
@@ -353,7 +354,12 @@ getbones()
 	fd = open_bonesfile(&u.uz, &bonesid);
 	if (fd < 0) return(0);
 
-	if((ok = uptodate(fd)) != 0){
+	if ((ok = uptodate(fd, bones)) == 0) {
+#ifdef WIZARD
+	    if (!wizard)
+#endif
+		pline("Discarding unuseable bones; no need to panic...");
+	} else {
 #ifdef WIZARD
 		if(wizard)  {
 			if(yn("Get bones?") == 'n') {
@@ -363,7 +369,6 @@ getbones()
 			}
 		}
 #endif
-		minit();	/* ZEROCOMP */
 		mread(fd, (genericptr_t) &c, sizeof c);	/* length incl. '\0' */
 		mread(fd, (genericptr_t) oldbonesid, (unsigned) c); /* DD.nnn */
 		if (strcmp(bonesid, oldbonesid)) {
@@ -377,12 +382,22 @@ getbones()
 			trickery();
 		} else {
 			register struct monst *mtmp;
+			int mndx;
 
 			getlev(fd, 0, 0, TRUE);
 
-			/* to correctly reset named artifacts on the level */
-			for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
+			/* to correctly reset named artifacts on the level and
+			   to keep tabs on unique monsters like demon lords */
+			for(mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
+			    mndx = monsndx(mtmp->data);
+			    if (mvitals[mndx].mvflags & G_EXTINCT) {
+				mongone(mtmp);
+			    } else {
+				if (mons[mndx].geno & G_UNIQ)
+				    mvitals[mndx].mvflags |= G_EXTINCT;
 				resetobjs(mtmp->minvent,TRUE);
+			    }
+			}
 			resetobjs(fobj,TRUE);
 			resetobjs(level.buriedobjlist,TRUE);
 		}
@@ -398,7 +413,13 @@ getbones()
 	}
 #endif
 	if (!delete_bonesfile(&u.uz)) {
-		pline("Cannot unlink bones.");
+		/* When N games try to simultaneously restore the same
+		 * bones file, N-1 of them will fail to delete it
+		 * (the first N-1 under AmigaDOS, the last N-1 under UNIX).
+		 * So no point in a mysterious message for a normal event
+		 * -- just generate a new level for those N-1 games.
+		 */
+		/* pline("Cannot unlink bones."); */
 		return(0);
 	}
 	return(ok);

@@ -1,5 +1,5 @@
 %{
-/*	SCCS Id: @(#)dgn_comp.c	3.1	93/05/15	*/
+/*	SCCS Id: @(#)dgn_comp.c	3.2	94/10/08	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /*	Copyright (c) 1990 by M. Stephenson				  */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -23,6 +23,7 @@
 #endif
 
 #include "config.h"
+#include "date.h"
 #include "dgn_file.h"
 
 void FDECL(yyerror, (const char *));
@@ -38,6 +39,8 @@ void NDECL(init_branch);
 void NDECL(init_level);
 void NDECL(output_dgn);
 
+#define Free(ptr)		free((genericptr_t)ptr)
+
 #ifdef AMIGA
 # undef	printf
 #ifndef	LATTICE
@@ -47,10 +50,10 @@ void NDECL(output_dgn);
 
 #ifdef MICRO
 # undef exit
+# if !defined(MSDOS) && !defined(WIN32)
 extern void FDECL(exit, (int));
+# endif
 #endif
-
-#undef NULL
 
 #define ERR		(-1)
 
@@ -63,6 +66,7 @@ static int in_dungeon = 0, n_dgns = -1, n_levs = -1, n_brs = -1;
 
 extern int fatal_error;
 extern const char *fname;
+extern FILE *yyin, *yyout;	/* from dgn_lex.c */
 
 %}
 
@@ -77,7 +81,7 @@ extern const char *fname;
 %token	<i>	UP_OR_DOWN PROTOFILE DESCRIPTION DESCRIPTOR LEVELDESC
 %token	<i>	ALIGNMENT LEVALIGN ENTRY STAIR NO_UP NO_DOWN PORTAL
 %token	<str>	STRING
-%type   <i>	optional_int direction branch_type
+%type	<i>	optional_int direction branch_type bones_tag
 %start	file
 
 %%
@@ -98,19 +102,15 @@ dungeon		: dungeonline
 		| levels
 		;
 
-dungeonline	: A_DUNGEON ':' STRING STRING rcouple optional_int
+dungeonline	: A_DUNGEON ':' STRING bones_tag rcouple optional_int
 		  {
 			init_dungeon();
-			strcpy(tmpdungeon[n_dgns].name, $3);
-			if (!strcmp($4, "none"))
-				tmpdungeon[n_levs].boneschar = '\0';
-			else if ($4[1])
-				yyerror("Bones marker must be a single char, or \"none\"!");
-			else
-				tmpdungeon[n_dgns].boneschar = $4[0];
+			Strcpy(tmpdungeon[n_dgns].name, $3);
+			tmpdungeon[n_dgns].boneschar = (char)$4;
 			tmpdungeon[n_dgns].lev.base = couple.base;
 			tmpdungeon[n_dgns].lev.rand = couple.rand;
 			tmpdungeon[n_dgns].chance = $6;
+			Free($3);
 		  }
 		;
 
@@ -156,7 +156,8 @@ desc		: DESCRIPTION ':' DESCRIPTOR
 
 prototype	: PROTOFILE ':' STRING
 		  {
-			strcpy(tmpdungeon[n_dgns].protoname, $3);
+			Strcpy(tmpdungeon[n_dgns].protoname, $3);
+			Free($3);
 		  }
 		;
 
@@ -167,67 +168,51 @@ levels		: level1
 		| chlevel2
 		;
 
-level1		: LEVEL ':' STRING STRING '@' acouple
+level1		: LEVEL ':' STRING bones_tag '@' acouple
 		  {
 			init_level();
-			strcpy(tmplevel[n_levs].name, $3);
-			if (!strcmp($4, "none"))
-				tmplevel[n_levs].boneschar = '\0';
-			else if ($4[1])
-				yyerror("Bones marker must be a single char, or \"none\"!");
-			else
-				tmplevel[n_levs].boneschar = $4[0];
+			Strcpy(tmplevel[n_levs].name, $3);
+			tmplevel[n_levs].boneschar = (char)$4;
 			tmplevel[n_levs].lev.base = couple.base;
 			tmplevel[n_levs].lev.rand = couple.rand;
 			tmpdungeon[n_dgns].levels++;
+			Free($3);
 		  }
-		| RNDLEVEL ':' STRING STRING '@' acouple INTEGER
+		| RNDLEVEL ':' STRING bones_tag '@' acouple INTEGER
 		  {
 			init_level();
-			strcpy(tmplevel[n_levs].name, $3);
-			if (!strcmp($4, "none"))
-				tmplevel[n_levs].boneschar = '\0';
-			else if ($4[1])
-				yyerror("Bones marker must be a single char, or \"none\"!");
-			else
-				tmplevel[n_levs].boneschar = $4[0];
+			Strcpy(tmplevel[n_levs].name, $3);
+			tmplevel[n_levs].boneschar = (char)$4;
 			tmplevel[n_levs].lev.base = couple.base;
 			tmplevel[n_levs].lev.rand = couple.rand;
 			tmplevel[n_levs].rndlevs = $7;
 			tmpdungeon[n_dgns].levels++;
+			Free($3);
 		  }
 		;
 
-level2		: LEVEL ':' STRING STRING '@' acouple INTEGER
+level2		: LEVEL ':' STRING bones_tag '@' acouple INTEGER
 		  {
 			init_level();
-			strcpy(tmplevel[n_levs].name, $3);
-			if (!strcmp($4, "none"))
-				tmplevel[n_levs].boneschar = '\0';
-			else if ($4[1])
-				yyerror("Bones marker must be a single char, or \"none\"!");
-			else
-				tmplevel[n_levs].boneschar = $4[0];
+			Strcpy(tmplevel[n_levs].name, $3);
+			tmplevel[n_levs].boneschar = (char)$4;
 			tmplevel[n_levs].lev.base = couple.base;
 			tmplevel[n_levs].lev.rand = couple.rand;
 			tmplevel[n_levs].chance = $7;
 			tmpdungeon[n_dgns].levels++;
+			Free($3);
 		  }
-		| RNDLEVEL ':' STRING STRING '@' acouple INTEGER INTEGER
+		| RNDLEVEL ':' STRING bones_tag '@' acouple INTEGER INTEGER
 		  {
 			init_level();
-			strcpy(tmplevel[n_levs].name, $3);
-			if (!strcmp($4, "none"))
-				tmplevel[n_levs].boneschar = '\0';
-			else if ($4[1])
-				yyerror("Bones marker must be a single char, or \"none\"!");
-			else
-				tmplevel[n_levs].boneschar = $4[0];
+			Strcpy(tmplevel[n_levs].name, $3);
+			tmplevel[n_levs].boneschar = (char)$4;
 			tmplevel[n_levs].lev.base = couple.base;
 			tmplevel[n_levs].lev.rand = couple.rand;
 			tmplevel[n_levs].chance = $7;
 			tmplevel[n_levs].rndlevs = $8;
 			tmpdungeon[n_dgns].levels++;
+			Free($3);
 		  }
 		;
 
@@ -247,68 +232,54 @@ levdesc		: LEVELDESC ':' DESCRIPTOR
 		  }
 		;
 
-chlevel1	: CHLEVEL ':' STRING STRING STRING '+' rcouple
+chlevel1	: CHLEVEL ':' STRING bones_tag STRING '+' rcouple
 		  {
 			init_level();
-			strcpy(tmplevel[n_levs].name, $3);
-			if (!strcmp($4, "none"))
-				tmplevel[n_levs].boneschar = '\0';
-			else if ($4[1])
-				yyerror("Bones marker must be a single char, or \"none\"!");
-			else
-				tmplevel[n_levs].boneschar = $4[0];
+			Strcpy(tmplevel[n_levs].name, $3);
+			tmplevel[n_levs].boneschar = (char)$4;
 			tmplevel[n_levs].chain = getchain($5);
 			tmplevel[n_levs].lev.base = couple.base;
 			tmplevel[n_levs].lev.rand = couple.rand;
 			if(!check_level()) n_levs--;
 			else tmpdungeon[n_dgns].levels++;
+			Free($3);
+			Free($5);
 		  }
-		| RNDCHLEVEL ':' STRING STRING STRING '+' rcouple INTEGER
+		| RNDCHLEVEL ':' STRING bones_tag STRING '+' rcouple INTEGER
 		  {
 			init_level();
-			strcpy(tmplevel[n_levs].name, $3);
-			if (!strcmp($4, "none"))
-				tmplevel[n_levs].boneschar = '\0';
-			else if ($4[1])
-				yyerror("Bones marker must be a single char, or \"none\"!");
-			else
-				tmplevel[n_levs].boneschar = $4[0];
+			Strcpy(tmplevel[n_levs].name, $3);
+			tmplevel[n_levs].boneschar = (char)$4;
 			tmplevel[n_levs].chain = getchain($5);
 			tmplevel[n_levs].lev.base = couple.base;
 			tmplevel[n_levs].lev.rand = couple.rand;
 			tmplevel[n_levs].rndlevs = $8;
 			if(!check_level()) n_levs--;
 			else tmpdungeon[n_dgns].levels++;
+			Free($3);
+			Free($5);
 		  }
 		;
 
-chlevel2	: CHLEVEL ':' STRING STRING STRING '+' rcouple INTEGER
+chlevel2	: CHLEVEL ':' STRING bones_tag STRING '+' rcouple INTEGER
 		  {
 			init_level();
-			strcpy(tmplevel[n_levs].name, $3);
-			if (!strcmp($4, "none"))
-				tmplevel[n_levs].boneschar = '\0';
-			else if ($4[1])
-				yyerror("Bones marker must be a single char, or \"none\"!");
-			else
-				tmplevel[n_levs].boneschar = $4[0];
+			Strcpy(tmplevel[n_levs].name, $3);
+			tmplevel[n_levs].boneschar = (char)$4;
 			tmplevel[n_levs].chain = getchain($5);
 			tmplevel[n_levs].lev.base = couple.base;
 			tmplevel[n_levs].lev.rand = couple.rand;
 			tmplevel[n_levs].chance = $8;
 			if(!check_level()) n_levs--;
 			else tmpdungeon[n_dgns].levels++;
+			Free($3);
+			Free($5);
 		  }
-		| RNDCHLEVEL ':' STRING STRING STRING '+' rcouple INTEGER INTEGER
+		| RNDCHLEVEL ':' STRING bones_tag STRING '+' rcouple INTEGER INTEGER
 		  {
 			init_level();
-			strcpy(tmplevel[n_levs].name, $3);
-			if (!strcmp($4, "none"))
-				tmplevel[n_levs].boneschar = '\0';
-			else if ($4[1])
-				yyerror("Bones marker must be a single char, or \"none\"!");
-			else
-				tmplevel[n_levs].boneschar = $4[0];
+			Strcpy(tmplevel[n_levs].name, $3);
+			tmplevel[n_levs].boneschar = (char)$4;
 			tmplevel[n_levs].chain = getchain($5);
 			tmplevel[n_levs].lev.base = couple.base;
 			tmplevel[n_levs].lev.rand = couple.rand;
@@ -316,6 +287,8 @@ chlevel2	: CHLEVEL ':' STRING STRING STRING '+' rcouple INTEGER
 			tmplevel[n_levs].rndlevs = $9;
 			if(!check_level()) n_levs--;
 			else tmpdungeon[n_dgns].levels++;
+			Free($3);
+			Free($5);
 		  }
 		;
 
@@ -326,20 +299,21 @@ branches	: branch
 branch		: BRANCH ':' STRING '@' acouple branch_type direction
 		  {
 			init_branch();
-			strcpy(tmpbranch[n_brs].name, $3);
+			Strcpy(tmpbranch[n_brs].name, $3);
 			tmpbranch[n_brs].lev.base = couple.base;
 			tmpbranch[n_brs].lev.rand = couple.rand;
 			tmpbranch[n_brs].type = $6;
 			tmpbranch[n_brs].up = $7;
 			if(!check_branch()) n_brs--;
 			else tmpdungeon[n_dgns].branches++;
+			Free($3);
 		  }
 		;
 
 chbranch	: CHBRANCH ':' STRING STRING '+' rcouple branch_type direction
 		  {
 			init_branch();
-			strcpy(tmpbranch[n_brs].name, $3);
+			Strcpy(tmpbranch[n_brs].name, $3);
 			tmpbranch[n_brs].chain = getchain($4);
 			tmpbranch[n_brs].lev.base = couple.base;
 			tmpbranch[n_brs].lev.rand = couple.rand;
@@ -347,6 +321,8 @@ chbranch	: CHBRANCH ':' STRING STRING '+' rcouple branch_type direction
 			tmpbranch[n_brs].up = $8;
 			if(!check_branch()) n_brs--;
 			else tmpdungeon[n_dgns].branches++;
+			Free($3);
+			Free($4);
 		  }
 		;
 
@@ -379,6 +355,19 @@ direction	: /* nothing */
 		| UP_OR_DOWN
 		  {
 			$$ = $1;
+		  }
+		;
+
+bones_tag	: STRING
+		  {
+			char *p = $1;
+			if (strlen(p) != 1) {
+			    if (strcmp(p, "none") != 0)
+		   yyerror("Bones marker must be a single char, or \"none\"!");
+			    *p = '\0';
+			}
+			$$ = *p;
+			Free(p);
 		  }
 		;
 
@@ -453,18 +442,18 @@ void
 init_dungeon()
 {
 	if(++n_dgns > MAXDUNGEON) {
-	    fprintf(stderr, "FATAL - Too many dungeons (limit: %d).\n",
+	    (void) fprintf(stderr, "FATAL - Too many dungeons (limit: %d).\n",
 		    MAXDUNGEON);
-	    fprintf(stderr, "To increase the limit edit MAXDUNGEON in global.h\n");
-	    exit(1);
+	    (void) fprintf(stderr, "To increase the limit edit MAXDUNGEON in global.h\n");
+	    exit(EXIT_FAILURE);
 	}
 
 	in_dungeon = 1;
 	tmpdungeon[n_dgns].lev.base = 0;
 	tmpdungeon[n_dgns].lev.rand = 0;
 	tmpdungeon[n_dgns].chance = 100;
-	strcpy(tmpdungeon[n_dgns].name, "");
-	strcpy(tmpdungeon[n_dgns].protoname, "");
+	Strcpy(tmpdungeon[n_dgns].name, "");
+	Strcpy(tmpdungeon[n_dgns].protoname, "");
 	tmpdungeon[n_dgns].flags = 0;
 	tmpdungeon[n_dgns].levels = 0;
 	tmpdungeon[n_dgns].branches = 0;
@@ -477,14 +466,14 @@ init_level()
 	if(++n_levs > LEV_LIMIT) {
 
 		yyerror("FATAL - Too many special levels defined.");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 	tmplevel[n_levs].lev.base = 0;
 	tmplevel[n_levs].lev.rand = 0;
 	tmplevel[n_levs].chance = 100;
 	tmplevel[n_levs].rndlevs = 0;
 	tmplevel[n_levs].flags = 0;
-	strcpy(tmplevel[n_levs].name, "");
+	Strcpy(tmplevel[n_levs].name, "");
 	tmplevel[n_levs].chain = -1;
 }
 
@@ -494,11 +483,11 @@ init_branch()
 	if(++n_brs > BRANCH_LIMIT) {
 
 		yyerror("FATAL - Too many special levels defined.");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 	tmpbranch[n_brs].lev.base = 0;
 	tmpbranch[n_brs].lev.rand = 0;
-	strcpy(tmpbranch[n_brs].name, "");
+	Strcpy(tmpbranch[n_brs].name, "");
 	tmpbranch[n_brs].chain = -1;
 }
 
@@ -642,6 +631,7 @@ check_branch()
  *
  *	The file will have the following format:
  *
+ *	[ nethack version ID ]
  *	[ number of dungeons ]
  *	[ first dungeon struct ]
  *	[ levels for the first dungeon ]
@@ -657,27 +647,37 @@ output_dgn()
 {
 	int	nd, cl = 0, nl = 0,
 		    cb = 0, nb = 0;
+	static long version_info[3] = {
+			VERSION_NUMBER, VERSION_FEATURES, VERSION_SANITY
+	};
 
 	if(++n_dgns <= 0) {
-
 	    yyerror("FATAL - no dungeons were defined.");
-	    exit(1);
+	    exit(EXIT_FAILURE);
 	}
 
-	fwrite((char *)(&n_dgns), sizeof(int), 1, stdout);
-	for(nd = 0; nd < n_dgns; nd++) {
+	if (fwrite((char *)version_info, sizeof version_info, 1, yyout) != 1) {
+	    yyerror("FATAL - output failure.");
+	    exit(EXIT_FAILURE);
+	}
 
-	    fwrite((char *)&tmpdungeon[nd], sizeof(struct tmpdungeon), 1,
-								stdout);
+	(void) fwrite((char *)&n_dgns, sizeof(int), 1, yyout);
+	for (nd = 0; nd < n_dgns; nd++) {
+	    (void) fwrite((char *)&tmpdungeon[nd], sizeof(struct tmpdungeon),
+							1, yyout);
 
 	    nl += tmpdungeon[nd].levels;
 	    for(; cl < nl; cl++)
-		fwrite((char *)&tmplevel[cl], sizeof(struct tmplevel), 1,
-								stdout);
+		(void) fwrite((char *)&tmplevel[cl], sizeof(struct tmplevel),
+							1, yyout);
 
 	    nb += tmpdungeon[nd].branches;
 	    for(; cb < nb; cb++)
-		fwrite((char *)&tmpbranch[cb], sizeof(struct tmpbranch), 1,
-								stdout);
+		(void) fwrite((char *)&tmpbranch[cb], sizeof(struct tmpbranch),
+							1, yyout);
 	}
+	/* apparently necessary for Think C 5.x, otherwise harmless */
+	(void) fflush(yyout);
 }
+
+/*dgn_comp.y*/

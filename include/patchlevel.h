@@ -1,20 +1,58 @@
-/*	SCCS Id: @(#)patchlevel.h	3.1	93/04/07	*/
+/*	SCCS Id: @(#)patchlevel.h	3.2	96/03/10	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
-/* NetHack 3.1.3 */
+/* NetHack 3.2.0 */
 #define VERSION_MAJOR	3
-#define VERSION_MINOR	1
+#define VERSION_MINOR	2
 /*
  * PATCHLEVEL is updated for each release.
  */
-#define PATCHLEVEL	3
+#define PATCHLEVEL	0
 /*
  * Incrementing EDITLEVEL can be used to force invalidation of old bones
  * and save files.
  */
-#define EDITLEVEL	0
+#define EDITLEVEL	00
 
+#define COPYRIGHT_BANNER_A \
+"NetHack, Copyright 1985-1996"
+
+#define COPYRIGHT_BANNER_B \
+"         By Stichting Mathematisch Centrum and M. Stephenson."
+
+#define COPYRIGHT_BANNER_C \
+"         See license for details."
+
+#if 0
+/*
+ * If two successive patchlevels have compatible data files (fat chance),
+ * defining this with the value of the older one will allow its bones and
+ * save files to work with the newer one.  The format is
+ *	0xMMmmPPeeL
+ * 0x = literal prefix "0x", MM = major version, mm = minor version,
+ * PP = patch level, ee = edit level, L = literal suffix "L",
+ * with all four numbers specified as two hexadecimal digits.
+ */
+#define VERSION_COMPATIBILITY 0x03020000L
+#endif
+
+/*
+ *  NetHack 3.2.0, April 8, 1996
+ *
+ *  enhancements to the windowing systems including "tiles" or icons to
+ *	visually represent monsters and objects.
+ *  window based menu system introduced for inventory and selection.
+ *  moving light sources besides the player.
+ *  improved #untrap. (courtesy Helge Hafting)
+ *  spellcasting logic changes to balance spellcasting towards magic-using
+ *	classes. (courtesy Stephen White)
+ *  many, many bug fixes and abuse eliminations.
+ */
+
+/* Version 3.2 */
+
+/*****************************************************************************/
 /*
  *  Patch 3, July 12, 1993
  *  further revise Mac windowing and extend to Think C (courtesy
@@ -29,7 +67,7 @@
  *  add tty windowing to Mac and Amiga ports and revise native windowing
  *  allow direct screen I/O for MS-DOS versions instead of going through
  *	termcap routines (courtesy Michael Allison and Kevin Smolkowski)
- *  changes for NEC PC-9801 and various termcap.zip fixes by Yamamoto Keizo
+ *  changes for NEC PC-9800 and various termcap.zip fixes by Yamamoto Keizo
  *  SYSV 386 music driver ported to 386BSD (courtesy Andrew Chernov) and
  *	SCO UNIX (courtesy Andreas Arens)
  *  enhanced pickup and disclosure options
@@ -181,4 +219,3 @@
  *  fix a handful of bugs, and do some code cleaning elsewhere
  *  add more instructions for new environments and things commonly done wrong
  */
-

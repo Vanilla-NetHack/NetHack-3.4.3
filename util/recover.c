@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)recover.c	3.1	93/05/15	*/
+/*	SCCS Id: @(#)recover.c	3.2	95/05/19	*/
 /*	Copyright (c) Janet Walz, 1992.				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -17,7 +17,9 @@
 #  undef exit
 # endif
 #ifdef MICRO
+# if !defined(MSDOS) && !defined(WIN32)
 extern void FDECL(exit, (int));
+# endif
 #endif
 #else	/* VMS */
 extern int FDECL(vms_creat, (const char *,unsigned));
@@ -30,6 +32,9 @@ int FDECL(open_levelfile, (int));
 int NDECL(create_savefile);
 void FDECL(copy_bytes, (int,int));
 
+#define Fprintf	(void)fprintf
+#define Close	(void)close
+
 #ifdef UNIX
 #define SAVESIZE	(PL_NSIZ + 13)	/* save/99999player.e */
 #else
@@ -40,6 +45,9 @@ void FDECL(copy_bytes, (int,int));
 # endif
 #endif
 
+#ifdef __BORLANDC__
+extern unsigned _stklen = STKSIZ;
+#endif
 char savename[SAVESIZE]; /* holds relative path of save file from playground */
 
 
@@ -55,10 +63,9 @@ char *argv[];
 #endif
 
 	if (argc == 1 || (argc == 2 && !strcmp(argv[1], "-"))) {
-		(void) fprintf(stderr,
-				"Usage: %s [-d directory] base1 base2 ...\n",
-				argv[0]);
-		exit(1);
+		Fprintf(stderr,
+			"Usage: %s [-d directory] base1 base2 ...\n", argv[0]);
+		exit(EXIT_FAILURE);
 	}
 
 	argno = 1;
@@ -70,10 +77,10 @@ char *argv[];
 			dir = argv[argno];
 		}
 		if (!*dir) {
-		    (void) fprintf(stderr,
+		    Fprintf(stderr,
 			"%s: flag -d must be followed by a directory name.\n",
 			argv[0]);
-		    exit(1);
+		    exit(EXIT_FAILURE);
 		}
 		argno++;
 	}
@@ -99,23 +106,22 @@ char *argv[];
 	startdir = getcwd(0,255);
 #endif
 	if (dir && chdir((char *) dir) < 0) {
-		(void) fprintf(stderr, "%s: cannot chdir to %s.\n",
-				argv[0], dir);
-		exit(1);
+		Fprintf(stderr, "%s: cannot chdir to %s.\n", argv[0], dir);
+		exit(EXIT_FAILURE);
 	}
 
 	while (argc > argno) {
-		(void) restore_savefile(argv[argno]);
+		if (restore_savefile(argv[argno]) == 0)
+		    Fprintf(stderr, "recovered \"%s\" to %s\n",
+			    argv[argno], savename);
 		argno++;
 	}
 #ifdef AMIGA
 	if (startdir) (void)chdir(startdir);
 #endif
-#ifndef VMS
+	exit(EXIT_SUCCESS);
+	/*NOTREACHED*/
 	return 0;
-#else
-	return 1;       /* vms success */
-#endif /*VMS*/
 }
 
 static char lock[256];
@@ -127,14 +133,10 @@ int lev;
 	char *tf;
 
 	tf = rindex(lock, '.');
-	if (!tf) {
-		tf = lock;
-		while (*tf) tf++;
-	}
-#ifdef VMS
-	(void) sprintf(tf, ".%d;1", lev);
-#else
+	if (!tf) tf = lock + strlen(lock);
 	(void) sprintf(tf, ".%d", lev);
+#ifdef VMS
+	(void) strcat(tf, ";1");
 #endif
 }
 
@@ -177,8 +179,8 @@ int ifd, ofd;
 		nfrom = read(ifd, buf, BUFSIZ);
 		nto = write(ofd, buf, nfrom);
 		if (nto != nfrom) {
-			(void) fprintf(stderr, "file copy failed!\n");
-			exit(1);
+			Fprintf(stderr, "file copy failed!\n");
+			exit(EXIT_FAILURE);
 		}
 	} while (nfrom == BUFSIZ);
 }
@@ -190,6 +192,7 @@ char *basename;
 	int gfd, lfd, sfd;
 	int lev, savelev, hpid;
 	xchar levc;
+	long version_info[3];
 
 	/* level 0 file contains:
 	 *	pid of creating process (ignored here)
@@ -200,47 +203,68 @@ char *basename;
 	(void) strcpy(lock, basename);
 	gfd = open_levelfile(0);
 	if (gfd < 0) {
-	    (void) fprintf(stderr, "Cannot open level 0 for %s.\n", basename);
+	    Fprintf(stderr, "Cannot open level 0 for %s.\n", basename);
 	    return(-1);
 	}
-	(void) read(gfd, (genericptr_t) &hpid, sizeof(hpid));
+	if (read(gfd, (genericptr_t) &hpid, sizeof hpid) != sizeof hpid) {
+	    Fprintf(stderr, "%s\n%s%s%s\n",
+	     "Checkpoint data incompletely written or subsequently clobbered;",
+		    "recovery for \"", basename, "\" impossible.");
+	    Close(gfd);
+	    return(-1);
+	}
 	if (read(gfd, (genericptr_t) &savelev, sizeof(savelev))
 							!= sizeof(savelev)) {
-	    (void) fprintf(stderr,
+	    Fprintf(stderr,
 	    "Checkpointing was not in effect for %s -- recovery impossible.\n",
-		basename);
-	    (void) close(gfd);
+		    basename);
+	    Close(gfd);
 	    return(-1);
 	}
-	(void) read(gfd, (genericptr_t) savename, sizeof(savename));
+	if ((read(gfd, (genericptr_t) savename, sizeof savename)
+		!= sizeof savename) ||
+	    (read(gfd, (genericptr_t) version_info, sizeof version_info)
+		!= sizeof version_info)) {
+	    Fprintf(stderr, "Error reading %s -- can't recover.\n", lock);
+	    Close(gfd);
+	    return(-1);
+	}
 
 	/* save file should contain:
+	 *	version info
 	 *	current level (including pets)
 	 *	(non-level-based) game state
 	 *	other levels
 	 */
 	sfd = create_savefile();
 	if (sfd < 0) {
-	    (void) fprintf(stderr, "Cannot create savefile %s.\n", savename);
-	    (void) close(gfd);
+	    Fprintf(stderr, "Cannot create savefile %s.\n", savename);
+	    Close(gfd);
 	    return(-1);
 	}
 
 	lfd = open_levelfile(savelev);
 	if (lfd < 0) {
-	    (void) fprintf(stderr, "Cannot open level of save for %s.\n",
-				basename);
-	    (void) close(gfd);
-	    (void) close(sfd);
+	    Fprintf(stderr, "Cannot open level of save for %s.\n", basename);
+	    Close(gfd);
+	    Close(sfd);
+	    return(-1);
+	}
+
+	if (write(sfd, (genericptr_t) version_info, sizeof version_info)
+		!= sizeof version_info) {
+	    Fprintf(stderr, "Error writing %s; recovery failed.\n", savename);
+	    Close(gfd);
+	    Close(sfd);
 	    return(-1);
 	}
 
 	copy_bytes(lfd, sfd);
-	(void) close(lfd);
+	Close(lfd);
 	(void) unlink(lock);
 
 	copy_bytes(gfd, sfd);
-	(void) close(gfd);
+	Close(gfd);
 	set_levelfile_name(0);
 	(void) unlink(lock);
 
@@ -255,13 +279,13 @@ char *basename;
 				levc = (xchar) lev;
 				write(sfd, (genericptr_t) &levc, sizeof(levc));
 				copy_bytes(lfd, sfd);
-				(void) close(lfd);
+				Close(lfd);
 				(void) unlink(lock);
 			}
 		}
 	}
 
-	(void) close(sfd);
+	Close(sfd);
 
 #ifdef AMIGA
 			/* we need to create an icon for the saved game
@@ -271,9 +295,9 @@ char *basename;
 	char iconfile[FILENAME];
 	int in, out;
 
-	sprintf(iconfile,"%s.info",savename);
-	in=open("NetHack:default.icon",O_RDONLY);
-	out=open(iconfile,O_WRONLY | O_TRUNC | O_CREAT);
+	(void) sprintf(iconfile, "%s.info", savename);
+	in = open("NetHack:default.icon", O_RDONLY);
+	out = open(iconfile, O_WRONLY | O_TRUNC | O_CREAT);
 	if(in > -1 && out > -1){
 		copy_bytes(in,out);
 	}
@@ -283,5 +307,10 @@ char *basename;
 #endif
 	return(0);
 }
+
+#ifdef AMIGA
+#include "date.h"
+const char amiga_version_string[] = AMIGA_VERSION_STRING;
+#endif
 
 /*recover.c*/

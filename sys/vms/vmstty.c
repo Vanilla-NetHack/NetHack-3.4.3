@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)vmstty.c	3.1	93/06/27	*/
+/*	SCCS Id: @(#)vmstty.c	3.2	95/07/09	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 /* tty.c - (VMS) version */
@@ -31,11 +31,11 @@
 #include <errno.h>
 #include <signal.h>
 
-unsigned long LIB$DISABLE_CTRL(), LIB$ENABLE_CTRL();
-unsigned long SYS$ASSIGN(), SYS$DASSGN(), SYS$QIOW();
+unsigned long lib$disable_ctrl(), lib$enable_ctrl();
+unsigned long sys$assign(), sys$dassgn(), sys$qiow();
 #ifndef USE_QIO_INPUT
-unsigned long SMG$CREATE_VIRTUAL_KEYBOARD(), SMG$DELETE_VIRTUAL_KEYBOARD(),
-	      SMG$READ_KEYSTROKE(), SMG$CANCEL_INPUT();
+unsigned long smg$create_virtual_keyboard(), smg$delete_virtual_keyboard(),
+	      smg$read_keystroke(), smg$cancel_input();
 #else
 static short FDECL(parse_function_key, (int));
 #endif
@@ -118,7 +118,7 @@ vms_getchar()
 	--inc;
 	sts = SS$_NORMAL;
     } else {
-	sts = SYS$QIOW(0, tt_chan, QIO_FUNC, &iosb, (void(*)())0, 0,
+	sts = sys$qiow(0, tt_chan, QIO_FUNC, &iosb, (void(*)())0, 0,
 		       &kb_buf, sizeof kb_buf, 0, 0, 0, 0);
     }
     if (vms_ok(sts)) {
@@ -149,7 +149,7 @@ vms_getchar()
     static volatile int recurse = 0;	/* SMG is not AST re-entrant! */
 
     if (recurse++ == 0 && kb != 0) {
-	SMG$READ_KEYSTROKE(&kb, &key);
+	smg$read_keystroke(&kb, &key);
 	switch (key) {
 	  case SMG$K_TRM_UP:	flags.num_pad ? '8' : key = 'k';  break;
 	  case SMG$K_TRM_DOWN:	flags.num_pad ? '2' : key = 'j';  break;
@@ -164,7 +164,7 @@ vms_getchar()
 	   vms_getchar() has been called recursively (via SIGINT handler).
 	 */
 	if (kb != 0)			/* must have been a recursive call */
-	    SMG$CANCEL_INPUT(&kb);	/*  from an interrupt handler	   */
+	    smg$cancel_input(&kb);	/*  from an interrupt handler	   */
 	key = getchar();
     }
     --recurse;
@@ -237,8 +237,8 @@ register int c;
      * previous read, particularly if user holds down the arrow keys...
      */
     if (inc > 0) strncpy(seq_buf, inp, inc);
-    if (inc < sizeof seq_buf - 1) {
-	sts = SYS$QIOW(0, tt_chan, QIO_FUNC|IO$M_TIMED, &iosb, (void(*)())0, 0,
+    if (inc < (int)(sizeof seq_buf) - 1) {
+	sts = sys$qiow(0, tt_chan, QIO_FUNC|IO$M_TIMED, &iosb, (void(*)())0, 0,
 		       seq_buf + inc, sizeof seq_buf - 1 - inc, 1, 0, 0, 0);
 	if (vms_ok(sts))  sts = iosb.status;
     } else
@@ -286,7 +286,7 @@ setctty()
     struct _sm_iosb iosb;
     unsigned long status;
 
-    status = SYS$QIOW(0, tt_chan, IO$_SETMODE, &iosb, (void(*)())0, 0,
+    status = sys$qiow(0, tt_chan, IO$_SETMODE, &iosb, (void(*)())0, 0,
 		      &sg.sm, sizeof sg.sm, 0, 0, 0, 0);
     if (vms_ok(status))  status = iosb.status;
     if (vms_ok(status)) {
@@ -305,9 +305,9 @@ resettty()			/* atexit() routine */
 {
     if (settty_needed) {
 	bombing = TRUE;     /* don't clear screen; preserve traceback info */
-	settty((char *)NULL);
+	settty((char *)0);
     }
-    (void) SYS$DASSGN(tt_chan),  tt_chan = 0;
+    (void) sys$dassgn(tt_chan),  tt_chan = 0;
 }
 
 /*
@@ -319,13 +319,14 @@ resettty()			/* atexit() routine */
 void
 gettty()
 {
-    static $DESCRIPTOR(tty_dsc, "TT:");
+    static char dev_tty[] = "TT:";
+    static $DESCRIPTOR(tty_dsc, dev_tty);
     int err = 0;
     unsigned long status, zero = 0;
 
     if (tt_chan == 0) {		/* do this stuff once only */
 	flags.cbreak = OFF,  flags.echo = ON;	/* until setup is complete */
-	status = SYS$ASSIGN(&tty_dsc, &tt_chan, 0, 0);
+	status = sys$assign(&tty_dsc, &tt_chan, 0, 0);
 	if (!vms_ok(status)) {
 	    raw_print(""),  err++;
 	    errno = EVMSERR,  vaxc$errno = status;
@@ -333,7 +334,7 @@ gettty()
 	}
 	atexit(resettty);   /* register an exit handler to reset things */
     }
-    status = SYS$QIOW(0, tt_chan, IO$_SENSEMODE, &sg.io, (void(*)())0, 0,
+    status = sys$qiow(0, tt_chan, IO$_SENSEMODE, &sg.io, (void(*)())0, 0,
 		      &sg.sm, sizeof sg.sm, 0, 0, 0, 0);
     if (vms_ok(status))  status = sg.io.status;
     if (!vms_ok(status)) {
@@ -345,7 +346,7 @@ gettty()
     erase_char = '\177';	/* <rubout>, aka <delete> */
     kill_char = CTRL('U');
     intr_char = CTRL('C');
-    (void) LIB$ENABLE_CTRL(&zero, &ctrl_mask);
+    (void) lib$enable_ctrl(&zero, &ctrl_mask);
     /* Use the systems's values for lines and columns if it has any idea. */
     if (sg.sm.page_length)
 	LI = sg.sm.page_length;
@@ -373,10 +374,10 @@ const char *s;
 	disable_broadcast_trapping();
 #if 0		/* let SMG's exit handler do the cleanup (as per doc) */
 /* #ifndef USE_QIO_INPUT */
-	if (kb)  SMG$DELETE_VIRTUAL_KEYBOARD(&kb),  kb = 0;
+	if (kb)  smg$delete_virtual_keyboard(&kb),  kb = 0;
 #endif	/* 0 (!USE_QIO_INPUT) */
 	if (ctrl_mask)
-	    (void) LIB$ENABLE_CTRL(&ctrl_mask, 0);
+	    (void) lib$enable_ctrl(&ctrl_mask, 0);
 	flags.echo = ON;
 	flags.cbreak = OFF;
 	/* reset original tab, form-feed, broadcast settings */
@@ -402,12 +403,12 @@ setftty()
 {
 	unsigned long mask = LIB$M_CLI_CTRLT | LIB$M_CLI_CTRLY;
 
-	(void) LIB$DISABLE_CTRL(&mask, 0);
+	(void) lib$disable_ctrl(&mask, 0);
 	if (kb == 0) {		/* do this stuff once only */
 #ifdef USE_QIO_INPUT
 	    kb = tt_chan;
 #else   /*!USE_QIO_INPUT*/
-	    SMG$CREATE_VIRTUAL_KEYBOARD(&kb);
+	    smg$create_virtual_keyboard(&kb);
 #endif  /*USE_QIO_INPUT*/
 	    init_broadcast_trapping();
 	}
@@ -435,6 +436,35 @@ introff()		/* disable kbd interrupts if required*/
 	intr_char = 0;
 }
 
+#ifdef TIMED_DELAY
+
+extern unsigned long
+	FDECL(lib$emul, (const long *,const long *,const long *,long *));
+extern unsigned long sys$schdwk(), sys$hiber();
+
+#define VMS_UNITS_PER_SECOND 10000000L	/* hundreds of nanoseconds, 1e-7 */
+/* constant for conversion from milliseconds to VMS delta time (negative) */
+static const long mseconds_to_delta = VMS_UNITS_PER_SECOND / 1000L * -1L;
+
+/* sleep for specified number of milliseconds (note: the timer used
+   generally only has 10-millisecond resolution at the hardware level...) */
+void msleep(mseconds)
+unsigned mseconds;	/* milliseconds */
+{
+    long pid = 0L, zero = 0L, msec, qtime[2];
+
+    msec = (long) mseconds;
+    if (msec > 0 &&
+	/* qtime{0:63} = msec{0:31} * mseconds_to_delta{0:31} + zero{0:31} */
+	vms_ok(lib$emul(&msec, &mseconds_to_delta, &zero, qtime))) {
+	/* schedule a wake-up call, then go to sleep */
+	if (vms_ok(sys$schdwk(&pid, (genericptr_t)0, qtime, (long *)0)))
+	    (void)sys$hiber();
+    }
+}
+
+#endif	/* TIMED_DELAY */
+
 
 /* fatal error */
 /*VARARGS1*/
@@ -443,9 +473,9 @@ error VA_DECL(const char *,s)
 	VA_START(s);
 	VA_INIT(s, const char *);
 	if(settty_needed)
-		settty(NULL);
+		settty((char *)0);
 	Vprintf(s,VA_ARGS);
 	(void) putchar('\n');
 	VA_END();
-	exit(1);
+	exit(EXIT_FAILURE);
 }

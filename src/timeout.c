@@ -1,15 +1,16 @@
-/*	SCCS Id: @(#)timeout.c	3.1	93/07/07	*/
+/*	SCCS Id: @(#)timeout.c	3.2	95/08/30	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
+#include "lev.h"	/* for checking save modes */
 
 STATIC_DCL void NDECL(stoned_dialogue);
 STATIC_DCL void NDECL(vomiting_dialogue);
 STATIC_DCL void NDECL(choke_dialogue);
-STATIC_DCL void FDECL(hatch_it, (struct obj *));
-
-static void FDECL(age_candle, (struct obj *));
+STATIC_DCL void NDECL(slip_or_trip);
+static void FDECL(see_lamp_flicker, (struct obj *, const char *));
+static void FDECL(lantern_message, (struct obj *));
 
 #ifdef OVLB
 
@@ -23,7 +24,8 @@ static NEARDATA const char *stoned_texts[] = {
 };
 
 STATIC_OVL void
-stoned_dialogue() {
+stoned_dialogue()
+{
 	register long i = (Stoned & TIMEOUT);
 
 	if(i > 0 && i <= SIZE(stoned_texts))
@@ -45,7 +47,8 @@ static NEARDATA const char *vomiting_texts[] = {
 };
 
 STATIC_OVL void
-vomiting_dialogue() {
+vomiting_dialogue()
+{
 	register long i = (Vomiting & TIMEOUT) / 3L;
 
 	if ((((Vomiting & TIMEOUT) % 3L) == 2) && (i >= 0)
@@ -75,14 +78,25 @@ static NEARDATA const char *choke_texts[] = {
 	"You suffocate."
 };
 
+static NEARDATA const char *choke_texts2[] = {
+	"Your %s is becoming constricted.",
+	"Your blood is having trouble reaching your brain.",
+	"The pressure on your %s increases.",
+	"Your consciousness is fading.",
+	"You suffocate."
+};
+
 STATIC_OVL void
 choke_dialogue()
 {
 	register long i = (Strangled & TIMEOUT);
 
-	if(i > 0 && i <= SIZE(choke_texts))
-		pline(choke_texts[SIZE(choke_texts) - i], Hallucination ?
-			hcolor() : blue);
+	if(i > 0 && i <= SIZE(choke_texts)) {
+	    if (Breathless || !rn2(50))
+		pline(choke_texts2[SIZE(choke_texts2) - i], body_part(NECK));
+	    else
+		pline(choke_texts[SIZE(choke_texts) - i], hcolor(blue));
+	}
 	exercise(A_STR, FALSE);
 }
 
@@ -94,6 +108,7 @@ nh_timeout()
 {
 	register struct prop *upp;
 	int sleeptime;
+	int m_idx;
 
 	if(u.uluck && moves % (u.uhave.amulet || u.ugangr ? 300 : 600) == 0) {
 	/* Cursed luckstones stop bad luck from timing out; blessed luckstones
@@ -116,9 +131,7 @@ nh_timeout()
 	if(Stoned) stoned_dialogue();
 	if(Vomiting) vomiting_dialogue();
 	if(Strangled) choke_dialogue();
-#ifdef POLYSELF
 	if(u.mtimedone) if(!--u.mtimedone) rehumanize();
-#endif
 	if(u.ucreamed) u.ucreamed--;
 
 	for(upp = u.uprops; upp < u.uprops+SIZE(u.uprops); upp++)
@@ -137,13 +150,28 @@ nh_timeout()
 			You("die from your illness.");
 			killer_format = KILLED_BY_AN;
 			killer = u.usick_cause;
+			if ((m_idx = name_to_mon(killer)) >= LOW_PM) {
+			    if (type_is_pname(&mons[m_idx])) {
+				killer_format = KILLED_BY;
+			    }
+#if 0				/* at present, there aren't any monster
+				   poisoners with titles rather than names */
+			    else if (mons[m_idx].geno & G_UNIQ) {
+				char buf[BUFSZ];
+				Sprintf(buf, "the %s", killer);
+				Strcpy(u.usick_cause, buf);
+				killer_format = KILLED_BY;
+			    }
+#endif
+			}
+			u.usick_type = 0;
 			done(POISONING);
 			break;
 		case FAST:
 			if (Fast & ~INTRINSIC) /* boot speed */
 				;
 			else
-				You("feel yourself slowing down%s.",
+				You_feel("yourself slowing down%s.",
 							Fast ? " a bit" : "");
 			break;
 		case CONFUSION:
@@ -163,7 +191,8 @@ nh_timeout()
 			break;
 		case INVIS:
 			newsym(u.ux,u.uy);
-			if (!Invis && !See_invisible && !Blind) {
+			if (!Invis && !(HInvis & I_BLOCKED) &&
+			    !See_invisible && !Blind) {
 				You("are no longer invisible.");
 				stop_occupation();
 			}
@@ -189,244 +218,734 @@ nh_timeout()
 			else {
 				You("fall asleep.");
 				sleeptime = rnd(20);
-				nomul(-sleeptime);
-				u.usleep = 1;
-				nomovemsg = "You wake up.";
+				fall_asleep(-sleeptime, TRUE);
 				Sleeping = sleeptime + rnd(100);
 			}
 			break;
 		case LEVITATION:
-			(void) float_down();
+			(void) float_down(I_SPECIAL|TIMEOUT);
 			break;
 		case STRANGLED:
 			killer_format = KILLED_BY;
-			killer = "strangulation";
+			killer = (u.uburied) ? "suffocation" : "strangulation";
 			done(DIED);
 			break;
 		case FUMBLING:
 			/* call this only when a move took place.  */
 			/* otherwise handle fumbling msgs locally. */
-			if (!Levitation && u.umoved) {
-			    if (OBJ_AT(u.ux, u.uy))
-				You("trip over something.");
-			    else if (rn2(3) && is_ice(u.ux, u.uy))
-				You("%s on the ice.",
-				    rn2(2) ? "slip" : "slide");
-			    else
-				switch (rn2(4)) {
-				    case 1:
-					if (ACCESSIBLE(levl[u.ux][u.uy].typ)) { /* not POOL or STONE */
-					    if (Hallucination) pline("A rock bites your %s.", body_part(FOOT));
-					    else You("trip over a rock.");
-					    break;
-					}
-				    case 2:
-					if (ACCESSIBLE(levl[u.ux][u.uy].typ)) { /* not POOL or STONE */
-					    if (Hallucination) You("slip on a banana peel.");
-					    else You("slip and nearly fall.");
-					    break;
-					}
-				    case 3:
-					You("flounder.");
-					break;
-				    default:
-					You("stumble.");
-				}
+			if (u.umoved && !Levitation) {
+			    slip_or_trip();
 			    nomul(-2);
 			    nomovemsg = "";
-			    /* Fumbling can be noisy */
+			    /* The more you are carrying the more likely you
+			     * are to make noise when you fumble.  Adjustments
+			     * to this number must be thoroughly play tested.
+			     */
 			    if ((inv_weight() > -500)) {
-			    	You("make a lot of noise!");
-			    	wake_nearby();
+				You("make a lot of noise!");
+				wake_nearby();
 			    }
 			}
-			Fumbling += rnd(20);
+			/* from outside means slippery ice; don't reset
+			   counter if that's the only fumble reason */
+			Fumbling &= ~FROMOUTSIDE;
+			if (Fumbling)
+			    Fumbling += rnd(20);
 			break;
 		}
 	}
+
+	run_timers();
 }
 
 #endif /* OVL0 */
-#ifdef OVLB
-
-STATIC_OVL void
-hatch_it(otmp)		/* hatch the egg "otmp" if possible */
-register struct obj *otmp;
-{
-	register struct monst *mtmp;
-#ifdef POLYSELF
-	int yours = otmp->spe;
-#endif
-	long egg_age = monstermoves - otmp->age;
-
-	if (egg_age > 200L) {		/* very old egg - it's dead */
-	    otmp->corpsenm = -1;
-	    return;
-	} else if (egg_age <= 150L) {	/* too young to hatch */
-	    return;
-	} else if (rnd((int)egg_age) > 150) {
-	    mtmp = makemon(&mons[big_to_little(otmp->corpsenm)], u.ux, u.uy);
-	    useup(otmp);
-	    if(mtmp) {
-
-		if(Blind)
-		    You("feel something %s from your pack!",
-			locomotion(mtmp->data, "drop"));
-		else
-		    You("see %s %s out of your pack!",
-			a_monnam(mtmp),
-			locomotion(mtmp->data, "drop"));
-
-#ifdef POLYSELF
-		if (yours) {
-		    struct monst *mtmp2;
-
-		    pline("Its cries sound like \"%s.\"",
-			flags.female ? "mommy" : "daddy");
-		    if ((mtmp2 = tamedog(mtmp, (struct obj *)0)) != 0)
-			mtmp = mtmp2;
-		    mtmp->mtame = 20;
-		    while ((otmp = (mtmp->minvent)) != 0) {
-			mtmp->minvent = otmp->nobj;
-			dealloc_obj(otmp);
-		    }
-		    return;
-		}
-#endif
-		if(mtmp->data->mlet == S_DRAGON) {
-		    struct monst *mtmp2;
-
-		    verbalize("Gleep!");		/* Mything eggs :-) */
-		    if ((mtmp2 = tamedog(mtmp, (struct obj *)0)) != 0)
-			mtmp = mtmp2;
-		    while ((otmp = (mtmp->minvent)) != 0) {
-			mtmp->minvent = otmp->nobj;
-			dealloc_obj(otmp);
-		    }
-		}
-	    }
-	}
-}
-
-#endif /* OVLB */
 #ifdef OVL1
 
 void
-hatch_eggs()	    /* hatch any eggs that have been too long in pack */
+fall_asleep(how_long, wakeup_msg)
+int how_long;
+boolean wakeup_msg;
 {
-	register struct obj *otmp, *otmp2;
+	stop_occupation();
+	nomul(how_long);
+	/* early wakeup from combat won't be possible until next monster turn */
+	u.usleep = monstermoves;
+	if (wakeup_msg) nomovemsg = "You wake up.";
+	/* otherwise defaults to "You can move again." */
+}
 
-	for(otmp = invent; otmp; otmp = otmp2) {
-	    otmp2 = otmp->nobj;	    /* otmp may hatch */
-	    if(otmp->otyp == EGG && otmp->corpsenm >= 0) hatch_it(otmp);
-	    /* else if (Has_contents(otmp)) ...				*/
-	    /*								*/
-	    /* Check for container here and hatch with the container.	*/
-	    /* One of these days...					*/
-	    /* Maybe call hatch_eggs() with invent as a parameter so	*/
-	    /* that we can call it recursively.				*/
+/* Attach an egg hatch timeout to the given egg. */
+void
+attach_egg_hatch_timeout(egg)
+struct obj *egg;
+{
+	int i;
+
+	/* stop previous timer, if any */
+	(void) stop_timer(HATCH_EGG, (genericptr_t) egg);
+
+	/*
+	 * Decide if and when to hatch the egg.  The old hatch_it() code tried
+	 * once a turn from age 151 to 200 (inclusive), hatching if it rolled
+	 * a number x, 1<=x<=age, where x>150.  This yields a chance of
+	 * hatching > 99.9993%.  Mimic that here.
+	 */
+	for (i = (MAX_EGG_HATCH_TIME-50)+1; i <= MAX_EGG_HATCH_TIME; i++)
+	    if (rnd(i) > 150) {
+		/* egg will hatch */
+		(void) start_timer((long)i, TIMER_OBJECT,
+						HATCH_EGG, (genericptr_t)egg);
+		break;
+	    }
+}
+
+/* prevent an egg from ever hatching */
+void
+kill_egg(egg)
+struct obj *egg;
+{
+	/* stop previous timer, if any */
+	(void) stop_timer(HATCH_EGG, (genericptr_t) egg);
+}
+
+/* timer callback routine: hatch the given egg */
+void
+hatch_egg(arg, timeout)
+genericptr_t arg;
+long timeout;
+{
+	xchar x, y;
+	boolean silent, canseeit;
+	struct obj *egg;
+	struct monst *mon = (struct monst *) 0;
+	int yours;
+
+	egg = (struct obj *) arg;
+
+	/* sterilized while waiting */
+	if (egg->corpsenm == NON_PM) return;
+
+	yours = egg->spe;
+	silent = (timeout != monstermoves);	/* hatched while away */
+
+	/* only can hatch when in INVENT, FLOOR, MINVENT */
+	if (get_obj_location(egg, &x, &y, 0)) {
+	    canseeit = cansee(x, y) && !silent;
+	    mon = makemon(&mons[big_to_little(egg->corpsenm)], x, y);
+	} else {
+	    canseeit = 0;
+	}
+#if 0
+	/*
+	 * We could possibly hatch while migrating, but the code isn't
+	 * set up for it...
+	 */
+	else if (obj->where == OBJ_MIGRATING) {
+	    /*
+	    We can do several things.  The first ones that come to
+	    mind are:
+
+	    + Create the hatched monster then place it on the migrating
+	      mons list.  This is tough because all makemon() is made
+	      to place the monster as well.    Makemon() also doesn't
+	      lend itself well to splitting off a "not yet placed"
+	      subroutine.
+
+	    + Mark the egg as hatched, then place the monster when we
+	      place the migrating objects.
+	    */
+	    canseeit = FALSE;
+	    mon = ???
+	    }
+#endif
+
+	if (mon) {
+	    struct monst *mon2;
+	    boolean learn_type = canseeit;
+	    int mnum = egg->corpsenm;
+
+	    discard_minvent(mon);		/* no initial inventory */
+	    switch (egg->where) {
+		case OBJ_INVENT:
+		    learn_type = TRUE;	/* always know type if in invent */
+		    if (Blind)
+			You_feel("%s %s from your pack!", something,
+			    locomotion(mon->data, "drop"));
+		    else
+			You("see %s %s out of your pack!",
+			    a_monnam(mon),
+			    locomotion(mon->data, "drop"));
+
+		    if (yours) {
+			pline("Its cries sound like \"%s.\"",
+			    flags.female ? "mommy" : "daddy");
+			if ((mon2 = tamedog(mon, (struct obj *)0)) != 0)
+			    mon = mon2;
+			mon->mtame = 20;
+		    } else if (mon->data->mlet == S_DRAGON) {
+			verbalize("Gleep!");		/* Mything eggs :-) */
+			if ((mon2 = tamedog(mon, (struct obj *)0)) != 0)
+			    mon = mon2;
+		    }
+		    break;
+
+		case OBJ_FLOOR:
+		    if (canseeit)
+			You("see %s hatch.", a_monnam(mon));
+		    break;
+
+		case OBJ_MINVENT:
+		    if (canseeit) {
+			char buf[BUFSZ];	/* avoid conflict */
+			Strcpy(buf,a_monnam(mon));
+			You("see %s %s out of %s pack!",
+			    buf, locomotion(mon->data, "drop"),
+			    s_suffix(a_monnam(egg->ocarry)));
+		    }
+		    break;
+#if 0
+		case OBJ_MIGRATING:
+		    break;
+#endif
+	    }
+	    /* free egg here because we use it above */
+	    obj_extract_self(egg);
+	    obfree(egg, (struct obj *)0);
+
+	    if (learn_type)
+		learn_egg_type(mnum);
 	}
 }
 
-/* Burn up lit lamps.  Only applies to non-magic lamps; magic lamps stay
- * lit as long as there's a genie inside.  We use obj->age to see how long
- * there is left for the lamp to burn, but this differs from the use of
- * age for corpses and eggs: for the latter items it's when the object was
- * created, but for lamps it's the number of moves remaining.
+/* Learn to recognize eggs of the given type. */
+void
+learn_egg_type(mnum)
+int mnum;
+{
+	boolean knew_egg = mvitals[mnum].mvflags & MV_KNOWS_EGG;
+
+	mvitals[mnum].mvflags |= MV_KNOWS_EGG;
+	if (!knew_egg) {
+	    struct obj *obj;
+
+	    /* update inventory if we find an egg of this type in there */
+	    for (obj = invent; obj; obj = obj->nobj)
+		if (obj->otyp == EGG && obj->corpsenm == mnum) {
+		    update_inventory();
+		    break;
+		}
+	}
+}
+
+/* give a fumble message */
+STATIC_OVL void
+slip_or_trip()
+{
+	struct obj *otmp = vobj_at(u.ux, u.uy);
+	const char *what, *pronoun;
+	char buf[BUFSZ];
+
+	if (otmp) {		/* trip over something in particular */
+	    /*
+		If there is only one item, it will have just been named
+		during the move, so refer to by via pronoun; otherwise,
+		if the top item has been or can be seen, refer to it by
+		name; if not, look for rocks to trip over; trip over
+		anonymous "something" if there aren't any rocks.
+	     */
+	    pronoun = otmp->quan == 1L ? "it" : Hallucination ? "they" : "them";
+	    what = !otmp->nexthere ? pronoun :
+		  (otmp->dknown || !Blind) ? doname(otmp) :
+		  ((otmp = sobj_at(ROCK, u.ux, u.uy)) == 0 ? something :
+		  (otmp->quan == 1L ? "a rock" : "some rocks"));
+	    if (Hallucination) {
+		what = strcpy(buf, what);
+		buf[0] = highc(buf[0]);
+		pline("Egads!  %s bite%s your %s!",
+			what, (!otmp || otmp->quan == 1L) ? "s" : "",
+			body_part(FOOT));
+	    } else {
+		You("trip over %s.", what);
+	    }
+	} else if (rn2(3) && is_ice(u.ux, u.uy)) {
+	    You("%s on the ice.", rn2(2) ? "slip" : "slide");
+	} else switch (rn2(4)) {
+	    case 1:
+		You("trip over your own %s.", Hallucination ?
+			"elbow" : makeplural(body_part(FOOT)));
+		break;
+	    case 2:
+		You("slip %s.", Hallucination ?
+			"on a banana peel" : "and nearly fall");
+		break;
+	    case 3:
+		You("flounder.");
+		break;
+	    default:
+		You("stumble.");
+		break;
+	}
+}
+
+/* Print a lamp flicker message with tailer. */
+static void
+see_lamp_flicker(obj, tailer)
+struct obj *obj;
+const char *tailer;
+{
+	char buf[BUFSZ];
+
+	switch (obj->where) {
+	    case OBJ_INVENT:
+	    case OBJ_MINVENT:
+		pline("%s %s flickers%s.",
+		    Shk_Your(buf, obj),
+		    xname(obj),
+		    tailer);
+		break;
+	    case OBJ_FLOOR:
+		You("see %s flicker%s.",
+		    an(xname(obj)),
+		    tailer);
+		break;
+	}
+}
+
+/* Print a dimming message for brass lanterns. */
+static void
+lantern_message(obj)
+struct obj *obj;
+{
+	/* from adventure */
+	switch (obj->where) {
+	    case OBJ_INVENT:
+		Your("lantern is getting dim.");
+		if (Hallucination)
+		    pline("Batteries have not been invented yet.");
+		break;
+	    case OBJ_FLOOR:
+		You("see a lantern getting dim.");
+		break;
+	    case OBJ_MINVENT:
+		pline("%s lantern is getting dim.",
+		    s_suffix(Monnam(obj->ocarry)));
+		break;
+	}
+}
+
+/*
+ * Timeout callback for for objects that are burning. E.g. lamps, candles.
+ * See begin_burn() for meanings of obj->age and obj->spe.
  */
 void
-burn_lamps()
+burn_object(arg, timeout)
+genericptr_t arg;
+long timeout;
 {
-	register struct obj *obj, *obj2;
+	struct obj *obj = (struct obj *) arg;
+	boolean canseeit, many, menorah, need_newsym;
+	xchar x, y;
+	char whose[BUFSZ];
 
-	/* Note: magic lamps never go out as long as the genie's inside */
-	for (obj=invent; obj; obj=obj2) {
-	    obj2 = obj->nobj;
-	    if ((obj->otyp == OIL_LAMP || obj->otyp == BRASS_LANTERN)
-							&& obj->lamplit) {
-		obj->age--;
+	menorah = obj->otyp == CANDELABRUM_OF_INVOCATION;
+	many = menorah ? obj->spe > 1 : obj->quan > 1L;
+
+	/* timeout while away */
+	if (timeout != monstermoves) {
+	    long how_long = monstermoves - timeout;
+
+	    if (how_long >= obj->age) {
+		obj->age = 0;
+		end_burn(obj, FALSE);
+
+		if (menorah) {
+		    obj->spe = 0;	/* no more candles */
+		} else if (Is_candle(obj) || obj->otyp == POT_OIL) {
+		    /* get rid of candles and burning oil potions */
+		    obj_extract_self(obj);
+		    obfree(obj, (struct obj *)0);
+		    obj = (struct obj *) 0;
+		}
+
+	    } else {
+		obj->age -= how_long;
+		begin_burn(obj, TRUE);
+	    }
+	    return;
+	}
+
+	/* only interested in INVENT, FLOOR, and MINVENT */
+	if (get_obj_location(obj, &x, &y, 0)) {
+	    canseeit = cansee(x, y);
+	    /* set up `whose[]' to be "Your" or "Fred's" or "The goblin's" */
+	    (void) Shk_Your(whose, obj);
+	} else {
+	    canseeit = FALSE;
+	}
+	need_newsym = FALSE;
+
+	/* obj->age is the age remaining at this point.  */
+	switch (obj->otyp) {
+	    case POT_OIL:
+		    /* this should only be called when we run out */
+		    if (canseeit) {
+			switch (obj->where) {
+			    case OBJ_INVENT:
+			    case OBJ_MINVENT:
+				pline("%s potion of oil has burnt away.",
+				    whose);
+				break;
+			    case OBJ_FLOOR:
+				You("see a burning potion of oil go out.");
+				need_newsym = TRUE;
+				break;
+			}
+		    }
+		    end_burn(obj, FALSE);	/* turn off light source */
+		    obj_extract_self(obj);
+		    obfree(obj, (struct obj *)0);
+		    obj = (struct obj *) 0;
+		    break;
+
+	    case BRASS_LANTERN:
+	    case OIL_LAMP:
 		switch((int)obj->age) {
 		    case 150:
 		    case 100:
-			if (obj->otyp == BRASS_LANTERN) goto advmsg;
-			if (!Blind)
-			    Your("%s flickers.", xname(obj));
-			break;
 		    case 50:
-			if (obj->otyp == BRASS_LANTERN) goto advmsg;
-			if (!Blind)
-			    Your("%s flickers considerably.", xname(obj));
-			break;
-		    case 25:
-	advmsg:		if (!Blind) {
-			    if (obj->otyp == BRASS_LANTERN) {
-				Your("lamp is getting dim.");
-				if (Hallucination)
-				    pline("Batteries have not been invented yet.");
-			    } else
-				Your("%s seems about to go out.", xname(obj));
+			if (canseeit) {
+			    if (obj->otyp == BRASS_LANTERN)
+				lantern_message(obj);
+			    else
+				see_lamp_flicker(obj,
+				    obj->age == 50L ? " considerably" : "");
 			}
 			break;
-		    case 0: /* even if blind you'll know */
-			if (obj->otyp == BRASS_LANTERN)
-				Your("lamp has run out of power.");
-			else Your("%s goes out.", xname(obj));
-			obj->lamplit = 0;
-			obj->spe = 0;
-			check_lamps();
+
+		    case 25:
+			if (canseeit) {
+			    if (obj->otyp == BRASS_LANTERN)
+				lantern_message(obj);
+			    else {
+				switch (obj->where) {
+				    case OBJ_INVENT:
+				    case OBJ_MINVENT:
+					pline("%s %s seems about to go out.",
+					    whose, xname(obj));
+					break;
+				    case OBJ_FLOOR:
+					You("see %s about to go out.",
+					    an(xname(obj)));
+					break;
+				}
+			    }
+			}
 			break;
-		    default: break;
+
+		    case 0:
+			/* even if blind you'll know if holding it */
+			if (canseeit || obj->where == OBJ_INVENT) {
+			    switch (obj->where) {
+				case OBJ_INVENT:
+				case OBJ_MINVENT:
+				    if (obj->otyp == BRASS_LANTERN)
+					pline("%s lantern has run out of power.",
+					    whose);
+				    else
+					pline("%s %s has gone out.",
+					    whose, xname(obj));
+				    break;
+				case OBJ_FLOOR:
+				    if (obj->otyp == BRASS_LANTERN)
+					You("see a lantern run out of power.");
+				    else
+					You("see %s go out.",
+					    an(xname(obj)));
+				    break;
+			    }
+			}
+			end_burn(obj, FALSE);
+			break;
+
+		    default:
+			/*
+			 * Someone added fuel to the lamp while it was
+			 * lit.  Just fall through and let begin burn
+			 * handle the new age.
+			 */
+			break;
 		}
-	    }
-	    if ((obj->otyp == CANDELABRUM_OF_INVOCATION || Is_candle(obj)) &&
-			obj->lamplit)
-		age_candle(obj);	/* candles may vanish */
+
+		if (obj->age)
+		    begin_burn(obj, TRUE);
+
+		break;
+
+	    case CANDELABRUM_OF_INVOCATION:
+	    case TALLOW_CANDLE:
+	    case WAX_CANDLE:
+		switch (obj->age) {
+		    case 75:
+			if (canseeit)
+			    switch (obj->where) {
+				case OBJ_INVENT:
+				case OBJ_MINVENT:
+				    pline("%s %scandle%s getting short.",
+					whose,
+					menorah ? "candelabrum's " : "",
+					many ? "s are" : " is");
+				    break;
+				case OBJ_FLOOR:
+				    You("see %scandle%s getting short.",
+					    menorah ? "a candelabrum's " :
+						many ? "some " : "a ",
+					    many ? "s" : "");
+				    break;
+			    }
+			break;
+
+		    case 15:
+			if (canseeit)
+			    switch (obj->where) {
+				case OBJ_INVENT:
+				case OBJ_MINVENT:
+				    pline(
+					"%s %scandle%s flame%s flicker%s low!",
+					    whose,
+					    menorah ? "candelabrum's " : "",
+					    many ? "s'" : "'s",
+					    many ? "s" : "",
+					    many ? "" : "s");
+				    break;
+				case OBJ_FLOOR:
+				    You("see %scandle%s flame%s flicker low!",
+					    menorah ? "a candelabrum's " :
+						many ? "some " : "a ",
+					    many ? "s'" : "'s",
+					    many ? "s" : "");
+				    break;
+			    }
+			break;
+
+		    case 0:
+			/* we know even if blind and in our inventory */
+			if (canseeit || obj->where == OBJ_INVENT) {
+			    if (menorah) {
+				switch (obj->where) {
+				    case OBJ_INVENT:
+				    case OBJ_MINVENT:
+					pline("%s candelabrum's flame%s.",
+					    whose,
+					    many ? "s die" : " dies");
+					break;
+				    case OBJ_FLOOR:
+					You("see a candelabrum's flame%s die.",
+						many ? "s" : "");
+					break;
+				}
+			    } else {
+				switch (obj->where) {
+				    case OBJ_INVENT:
+				    case OBJ_MINVENT:
+					pline("%s %s %s consumed!",
+					    whose,
+					    xname(obj),
+					    many ? "are" : "is");
+					break;
+				    case OBJ_FLOOR:
+					/*
+					You see some wax candles consumed!
+					You see a wax candle consumed!
+					*/
+					You("see %s%s consumed!",
+					    many ? "some " : "",
+					    many ? xname(obj):an(xname(obj)));
+					need_newsym = TRUE;
+					break;
+				}
+
+				/* post message */
+				pline(Hallucination ?
+					(many ? "They shriek!" :
+						"It shrieks!") :
+					Blind ? "" :
+					    (many ? "Their flames die." :
+						    "Its flame dies."));
+			    }
+			}
+			end_burn(obj, FALSE);
+
+			if (menorah) {
+			    obj->spe = 0;
+			} else {
+			    obj_extract_self(obj);
+			    obfree(obj, (struct obj *)0);
+			    obj = (struct obj *) 0;
+			}
+			break;
+
+		    default:
+			/*
+			 * Someone added fuel (candles) to the menorah while
+			 * it was lit.  Just fall through and let begin burn
+			 * handle the new age.
+			 */
+			break;
+		}
+
+		if (obj && obj->age)
+		    begin_burn(obj, TRUE);
+
+		break;
+
+	    default:
+		impossible("burn_object: unexpeced obj %s", xname(obj));
+		break;
 	}
+	if (need_newsym) newsym(x, y);
 }
 
-static void
-age_candle(otmp)
-register struct obj *otmp;
+/*
+ * Start a burn timeout on the given object. If not "already lit" then
+ * create a light source for the vision system.  There had better not
+ * be a burn already running on the object.
+ *
+ * Magic lamps stay lit as long as there's a genie inside, so don't start
+ * a timer.
+ *
+ * Burn rules:
+ *	potions of oil, lamps & candles:
+ *		age = # of turns of fuel left
+ *		spe = <unused>
+ *
+ *	magic lamps:
+ *		age = <unused>
+ *		spe = 0 not lightable, 1 lightable forever
+ *
+ *	candelabrum:
+ *		age = # of turns of fuel left
+ *		spe = # of candles
+ *
+ * Once the burn begins, the age will be set to the amount of fuel
+ * remaining _once_the_burn_finishes_.  If the burn is terminated
+ * early then fuel is added back.
+ *
+ * This use of age differs from the use of age for corpses and eggs.
+ * For the latter items, age is when the object was created, so we
+ * know when it becomes "bad".
+ *
+ * This is a "silent" routine - it should not print anything out.
+ */
+void
+begin_burn(obj, already_lit)
+	struct obj *obj;
+	boolean already_lit;
 {
-	register boolean many, 
-	                 menorah = otmp->otyp == CANDELABRUM_OF_INVOCATION;
+	int radius = 3;
+	long turns = 0;
+	boolean do_timer = TRUE;
 
-	otmp->age--;
+	if (obj->age == 0 && obj->otyp != MAGIC_LAMP) return;
 
-	if (otmp->age == 0L) {
-	    otmp->lamplit = 0;
-	    many = menorah ? otmp->spe > 1 : otmp->quan > 1L;
-	    if (menorah) {
-		pline("%s's flame%s.", 
-			The(xname(otmp)), (many ? "s die" : " dies"));
-		otmp->spe = 0;
+	switch (obj->otyp) {
+	    case MAGIC_LAMP:
+		obj->lamplit = 1;
+		do_timer = FALSE;
+		break;
+
+	    case POT_OIL:
+		turns = obj->age;
+		radius = 1;	/* very dim light */
+		break;
+
+	    case BRASS_LANTERN:
+	    case OIL_LAMP:
+		/* magic times are 150, 100, 50, 25, and 0 */
+		if (obj->age > 150L)
+		    turns = obj->age - 150L;
+		else if (obj->age > 100L)
+		    turns = obj->age - 100L;
+		else if (obj->age > 50L)
+		    turns = obj->age - 50L;
+		else if (obj->age > 25L)
+		    turns = obj->age - 25L;
+		else
+		    turns = obj->age;
+		break;
+
+	    case CANDELABRUM_OF_INVOCATION:
+	    case TALLOW_CANDLE:
+	    case WAX_CANDLE:
+		/* magic times are 75, 15, and 0 */
+		if (obj->age > 75L)
+		    turns = obj->age - 75L;
+		else if (obj->age > 15L)
+		    turns = obj->age - 15L;
+		else
+		    turns = obj->age;
+		break;
+
+	    default:
+		impossible("begin burn: unexpected %s", xname(obj));
+		turns = obj->age;
+		break;
+	}
+
+	if (do_timer) {
+	    if (start_timer(turns, TIMER_OBJECT,
+					BURN_OBJECT, (genericptr_t)obj)) {
+		obj->lamplit = 1;
+		obj->age -= turns;
+		if (obj->where == OBJ_INVENT && !already_lit)
+		    update_inventory();
 	    } else {
-		Your("%s %s consumed!  %s",
-			xname(otmp), (many ? "are" : "is"),
-			(Hallucination ?
-			    (many ? "They shriek!" : "It shrieks!") :
-			 Blind ? "" :
-			    (many ? "Their flames die." : "Its flame dies.")));
-		freeinv(otmp);
-		obfree(otmp, (struct obj *)0);
+		obj->lamplit = 0;
 	    }
-	    check_lamps();
-	} else if (Blind) {
-	    return;
-	} else if (otmp->age == 15L) {
-	    many = menorah ? otmp->spe > 1 : otmp->quan > 1L;
-	    Norep("The %scandle%s flame%s flicker%s low!",
-			(menorah ? "candelabrum's " : ""),
-			(many ? "s'" : "'s"),
-			(many ? "s" : ""),
-			(many ? "" : "s"));
-	} else if (otmp->age == 75L) {
-	    many = menorah ? otmp->spe > 1 : otmp->quan > 1L;
-	    Norep("The %scandle%s getting short.",
-			menorah ? "candelabrum's " : "",
-			(many ? "s are" : " is"));
+	}
+
+	if (obj->lamplit && !already_lit) {
+	    xchar x, y;
+
+	    if (get_obj_location(obj, &x, &y, CONTAINED_TOO|BURIED_TOO))
+		new_light_source(x, y, radius, LS_OBJECT, (genericptr_t) obj);
+	    else
+		impossible("begin_burn: can't get obj position");
 	}
 }
+
+/*
+ * Stop a burn timeout on the given object if timer attached.  Darken
+ * light source.
+ */
+void
+end_burn(obj, timer_attached)
+	struct obj *obj;
+	boolean timer_attached;
+{
+	long expire_time;
+
+	if (!obj->lamplit) {
+	    impossible("end_burn: obj %s not lit", xname(obj));
+	    return;
+	}
+
+	del_light_source(LS_OBJECT, (genericptr_t) obj);
+
+	if (obj->otyp == MAGIC_LAMP) timer_attached = FALSE;
+	if (timer_attached) {
+	    expire_time = stop_timer(BURN_OBJECT, (genericptr_t) obj);
+	    if (expire_time)
+		/* restore unused time */
+		obj->age += expire_time - monstermoves;
+	    else
+		impossible("end_burn: obj %s not timed!", xname(obj));
+	}
+	obj->lamplit = 0;
+
+	if (obj->where == OBJ_INVENT)
+	    update_inventory();
+}
+
 void
 do_storms()
 {
@@ -464,8 +983,638 @@ do_storms()
 	    nomul(-3);
 	}
     } else
-	You("hear a rumbling noise.");
+	You_hear("a rumbling noise.");
 }
 #endif /* OVL1 */
+
+
+#ifdef OVL0
+/* ------------------------------------------------------------------------- */
+/*
+ * Generic Timeout Functions.
+ *
+ * Interface:
+ *
+ * General:
+ *	boolean start_timer(long timeout,short kind,short func_index,
+ *							genericptr_t arg)
+ *		Start a timer of kind 'kind' that will expire at time
+ *		monstermoves+'timeout'.  Call the function at 'func_index'
+ *		in the timeout table using argument 'arg'.  Return TRUE if
+ *		a timer was started.  This places the timer on a list ordered
+ *		"sooner" to "later".  If an object, increment the object's
+ *		timer count.
+ *
+ *	long stop_timer(short func_index, genericptr_t arg)
+ *		Stop a timer specified by the (func_index, arg) pair.  This
+ *		assumes that such a pair is unique.  Return the time the
+ *		timer would have gone off.  If no timer is found, return 0.
+ *		If an object, decrement the object's timer count.
+ *
+ *	void run_timers(void)
+ *		Call timers that have timed out.
+ *
+ *
+ * Save/Restore:
+ *	void save_timers(int fd, int mode, int range)
+ *		Save all timers of range 'range'.  Range is either global
+ *		or local.  Global timers follow game play, local timers
+ *		are saved with a level.  Object and monster timers are
+ *		saved using their respective id's instead of pointers.
+ *
+ *	void restore_timers(int fd, int range, boolean ghostly, long adjust)
+ *		Restore timers of range 'range'.  If from a ghost pile,
+ *		adjust the timeout by 'adjust'.  The object and monster
+ *		ids are not restored until later.
+ *
+ *	void relink_timers(boolean ghostly)
+ *		Relink all object and monster timers that had been saved
+ *		using their object's or monster's id number.
+ *
+ * Object Specific:
+ *	void obj_move_timers(struct obj *src, struct obj *dest)
+ *		Reassign all timers from src to dest.
+ *
+ *	void obj_split_timers(struct obj *src, struct obj *dest)
+ *		Duplicate all timers assigned to src and attach them to dest.
+ *
+ *	void obj_stop_timers(struct obj *obj)
+ *		Stop all timers attached to obj.
+ */
+
+
+typedef struct fe {
+    struct fe *next;		/* next item in chain */
+    long timeout;		/* when we time out */
+    unsigned long tid;		/* timer ID */
+    short kind;			/* kind of use */
+    short func_index;		/* what to call when we time out */
+    genericptr_t arg;		/* pointer to timeout argument */
+    Bitfield (needs_fixup,1);	/* does arg need to be patched? */
+} timer_element;
+
+#ifdef WIZARD
+static const char *FDECL(kind_name, (SHORT_P));
+static void FDECL(print_queue, (winid, timer_element *));
+#endif
+static void FDECL(insert_timer, (timer_element *));
+static timer_element *FDECL(remove_timer, (timer_element **, SHORT_P,
+								genericptr_t));
+static boolean FDECL(mon_is_local, (struct monst *));
+static boolean FDECL(timer_is_local, (timer_element *));
+static int FDECL(maybe_write_timer, (int, int, BOOLEAN_P));
+
+/* ordered timer list */
+static timer_element *timer_base;		/* "active" */
+static unsigned long timer_id = 1;
+
+/* If defined, then include names when printing out the timer queue */
+#define VERBOSE_TIMER
+
+typedef struct {
+    timeout_proc f;
+#ifdef VERBOSE_TIMER
+    const char *name;
+# define TTAB(a, b) {a,b}
+#else
+# define TTAB(a, b) {a}
+#endif
+} ttable;
+
+/* table of timeout functions */
+static ttable timeout_funcs[NUM_TIME_FUNCS] = {
+    TTAB(rot_organic,	"rot_organic"),
+    TTAB(rot_corpse,	"rot_corpse"),
+    TTAB(revive_mon,	"revive_mon"),
+    TTAB(burn_object,	"burn_object"),
+    TTAB(hatch_egg,	"hatch_egg")
+};
+#undef TTAB
+
+
+#if defined(WIZARD)
+
+static const char *
+kind_name(kind)
+    short kind;
+{
+    switch (kind) {
+	case TIMER_LEVEL: return "level";
+	case TIMER_GLOBAL: return "global";
+	case TIMER_OBJECT: return "object";
+	case TIMER_MONSTER: return "monster";
+    }
+    return "unknown";
+}
+
+static void
+print_queue(win, base)
+    winid win;
+    timer_element *base;
+{
+    timer_element *curr;
+    char buf[BUFSZ], arg_address[20];
+
+    if (!base) {
+	putstr(win, 0, "<empty>");
+    } else {
+	putstr(win, 0, "timeout  id   kind   call");
+	for (curr = base; curr; curr = curr->next) {
+#ifdef VERBOSE_TIMER
+	    Sprintf(buf, " %4ld   %4ld  %-6s %s(%s)",
+		curr->timeout, curr->tid, kind_name(curr->kind),
+		timeout_funcs[curr->func_index].name,
+		fmt_ptr((genericptr_t)curr->arg, arg_address));
+#else
+	    Sprintf(buf, " %4ld   %4ld  %-6s #%d(%s)",
+		curr->timeout, curr->tid, kind_name(curr->kind),
+		curr->func_index,
+		fmt_ptr((genericptr_t)curr->arg, arg_address));
+#endif
+	    putstr(win, 0, buf);
+	}
+    }
+}
+
+int
+wiz_timeout_queue()
+{
+    winid win;
+    char buf[BUFSZ];
+
+    win = create_nhwindow(NHW_MENU);	/* corner text window */
+    if (win == WIN_ERR) return 0;
+
+    Sprintf(buf, "Current time = %ld.", monstermoves);
+    putstr(win, 0, buf);
+    putstr(win, 0, "");
+    putstr(win, 0, "Active timeout queue:");
+    putstr(win, 0, "");
+    print_queue(win, timer_base);
+
+    display_nhwindow(win, FALSE);
+    destroy_nhwindow(win);
+
+    return 0;
+}
+
+void
+timer_sanity_check()
+{
+    timer_element *curr;
+    char obj_address[20];
+
+    /* this should be much more complete */
+    for (curr = timer_base; curr; curr = curr->next)
+	if (curr->kind == TIMER_OBJECT) {
+	    struct obj *obj = (struct obj *) curr->arg;
+	    if (obj->timed == 0) {
+		pline("timer sanity: untimed obj %s, timer %ld",
+		      fmt_ptr((genericptr_t)obj, obj_address), curr->tid);
+	    }
+	}
+}
+
+#endif /* WIZARD */
+
+
+/*
+ * Pick off timeout elements from the global queue and call their functions.
+ * Do this until their time is less than or equal to the move count.
+ */
+void
+run_timers()
+{
+    timer_element *curr;
+
+    /*
+     * Always use the first element.  Elements may be added or deleted at
+     * any time.  The list is ordered, we are done when the first element
+     * is in the future.
+     */
+    while (timer_base && timer_base->timeout <= monstermoves) {
+	curr = timer_base;
+	timer_base = curr->next;
+
+	if (curr->kind == TIMER_OBJECT) ((struct obj *)(curr->arg))->timed--;
+	(*timeout_funcs[curr->func_index].f)(curr->arg, curr->timeout);
+	free((genericptr_t) curr);
+    }
+}
+
+
+/*
+ * Start a timer.  Return TRUE if successful.
+ */
+boolean
+start_timer(when, kind, func_index, arg)
+long when;
+short kind;
+short func_index;
+genericptr_t arg;
+{
+    timer_element *gnu;
+
+    if (func_index < 0 || func_index >= NUM_TIME_FUNCS)
+	panic("start_timer");
+
+    gnu = (timer_element *) alloc(sizeof(timer_element));
+    gnu->next = 0;
+    gnu->tid = timer_id++;
+    gnu->timeout = monstermoves + when;
+    gnu->kind = kind;
+    gnu->needs_fixup = 0;
+    gnu->func_index = func_index;
+    gnu->arg = arg;
+    insert_timer(gnu);
+
+    if (kind == TIMER_OBJECT)	/* increment object's timed count */
+	((struct obj *)arg)->timed++;
+
+    /* should check for duplicates and fail if any */
+    return TRUE;
+}
+
+
+/*
+ * Remove the timer from the current list and free it up.  Return the time
+ * it would have gone off, 0 if not found.
+ */
+long
+stop_timer(func_index, arg)
+short func_index;
+genericptr_t arg;
+{
+    timer_element *doomed;
+    long timeout;
+
+    doomed = remove_timer(&timer_base, func_index, arg);
+
+    if (doomed) {
+	timeout = doomed->timeout;
+	if (doomed->kind == TIMER_OBJECT)
+	    ((struct obj *)arg)->timed--;
+	free((genericptr_t) doomed);
+	return timeout;
+    }
+    return 0;
+}
+
+
+/*
+ * Move all object timers from src to dest, leaving src untimed.
+ */
+void
+obj_move_timers(src, dest)
+    struct obj *src, *dest;
+{
+    int count;
+    timer_element *curr;
+
+    for (count = 0, curr = timer_base; curr; curr = curr->next)
+	if (curr->kind == TIMER_OBJECT && curr->arg == (genericptr_t)src) {
+	    curr->arg = (genericptr_t) dest;
+	    dest->timed++;
+	    count++;
+	}
+    if (count != src->timed)
+	panic("obj_move_timers");
+    src->timed = 0;
+}
+
+
+/*
+ * Find all object timers and duplicate them for the new object "dest".
+ */
+void
+obj_split_timers(src, dest)
+    struct obj *src, *dest;
+{
+    timer_element *curr, *next_timer=0;
+
+    for (curr = timer_base; curr; curr = next_timer) {
+	next_timer = curr->next;	/* things may be inserted */
+	if (curr->kind == TIMER_OBJECT && curr->arg == (genericptr_t)src) {
+	    (void) start_timer(curr->timeout-monstermoves, TIMER_OBJECT,
+					curr->func_index, (genericptr_t)dest);
+	}
+    }
+}
+
+
+/*
+ * Stop all timers attached to this object.  We can get away with this because
+ * all object pointers are unique.
+ */
+void
+obj_stop_timers(obj)
+    struct obj *obj;
+{
+    timer_element *curr, *prev, *next_timer=0;
+
+    for (prev = 0, curr = timer_base; curr; curr = next_timer) {
+	next_timer = curr->next;
+	if (curr->kind == TIMER_OBJECT && curr->arg == (genericptr_t)obj) {
+	    if (prev)
+		prev->next = curr->next;
+	    else
+		timer_base = curr->next;
+	    free((genericptr_t) curr);
+	} else {
+	    prev = curr;
+	}
+    }
+    obj->timed = 0;
+}
+
+
+/* Insert timer into the global queue */
+static void
+insert_timer(gnu)
+    timer_element *gnu;
+{
+    timer_element *curr, *prev;
+
+    for (prev = 0, curr = timer_base; curr; prev = curr, curr = curr->next)
+	if (curr->timeout >= gnu->timeout) break;
+
+    gnu->next = curr;
+    if (prev)
+	prev->next = gnu;
+    else
+	timer_base = gnu;
+}
+
+
+static timer_element *
+remove_timer(base, func_index, arg)
+timer_element **base;
+short func_index;
+genericptr_t arg;
+{
+    timer_element *prev, *curr;
+
+    for (prev = 0, curr = *base; curr; prev = curr, curr = curr->next)
+	if (curr->func_index == func_index && curr->arg == arg) break;
+
+    if (curr) {
+	if (prev)
+	    prev->next = curr->next;
+	else
+	    *base = curr->next;
+    }
+
+    return curr;
+}
+
+
+static void
+write_timer(fd, timer)
+    int fd;
+    timer_element *timer;
+{
+    genericptr_t arg_save;
+
+    switch (timer->kind) {
+	case TIMER_GLOBAL:
+	case TIMER_LEVEL:
+	    /* assume no pointers in arg */
+	    bwrite(fd, (genericptr_t) timer, sizeof(timer_element));
+	    break;
+
+	case TIMER_OBJECT:
+	    if (timer->needs_fixup)
+		bwrite(fd, (genericptr_t)timer, sizeof(timer_element));
+	    else {
+		/* replace object pointer with id */
+		arg_save = timer->arg;
+		timer->arg = (genericptr_t)((struct obj *)timer->arg)->o_id;
+		timer->needs_fixup = 1;
+		bwrite(fd, (genericptr_t)timer, sizeof(timer_element));
+		timer->arg = arg_save;
+		timer->needs_fixup = 0;
+	    }
+	    break;
+
+	case TIMER_MONSTER:
+	    if (timer->needs_fixup)
+		bwrite(fd, (genericptr_t)timer, sizeof(timer_element));
+	    else {
+		/* replace monster pointer with id */
+		arg_save = timer->arg;
+		timer->arg = (genericptr_t)((struct monst *)timer->arg)->m_id;
+		timer->needs_fixup = 1;
+		bwrite(fd, (genericptr_t)timer, sizeof(timer_element));
+		timer->arg = arg_save;
+		timer->needs_fixup = 0;
+	    }
+	    break;
+
+	default:
+	    panic("write_timer");
+	    break;
+    }
+}
+
+
+/*
+ * Return TRUE if the object will stay on the level when the level is
+ * saved.
+ */
+boolean
+obj_is_local(obj)
+    struct obj *obj;
+{
+    switch (obj->where) {
+	case OBJ_INVENT:
+	case OBJ_MIGRATING:	return FALSE;
+	case OBJ_FLOOR:
+	case OBJ_BURIED:	return TRUE;
+	case OBJ_CONTAINED:	return obj_is_local(obj->ocontainer);
+	case OBJ_MINVENT:	return mon_is_local(obj->ocarry);
+    }
+    panic("obj_is_local");
+    return FALSE;
+}
+
+
+/*
+ * Return TRUE if the given monster will stay on the level when the
+ * level is saved.
+ */
+static boolean
+mon_is_local(mon)
+struct monst *mon;
+{
+    struct monst *curr;
+
+    for (curr = migrating_mons; curr; curr = curr->nmon)
+	if (curr == mon) return FALSE;
+    /* `mydogs' is used during level changes, never saved and restored */
+    for (curr = mydogs; curr; curr = curr->nmon)
+	if (curr == mon) return FALSE;
+    return TRUE;
+}
+
+
+/*
+ * Return TRUE if the timer is attached to something that will stay on the
+ * level when the level is saved.
+ */
+static boolean
+timer_is_local(timer)
+    timer_element *timer;
+{
+    switch (timer->kind) {
+	case TIMER_LEVEL:	return TRUE;
+	case TIMER_GLOBAL:	return FALSE;
+	case TIMER_OBJECT:	return obj_is_local((struct obj *)timer->arg);
+	case TIMER_MONSTER:	return mon_is_local((struct monst *)timer->arg);
+    }
+    panic("timer_is_local");
+    return FALSE;
+}
+
+
+/*
+ * Part of the save routine.  Count up the number of timers that would
+ * be written.  If write_it is true, actually write the timer.
+ */
+static int
+maybe_write_timer(fd, range, write_it)
+    int fd, range;
+    boolean write_it;
+{
+    int count = 0;
+    timer_element *curr;
+
+    for (curr = timer_base; curr; curr = curr->next) {
+	if (range == RANGE_GLOBAL) {
+	    /* global timers */
+
+	    if (!timer_is_local(curr)) {
+		count++;
+		if (write_it) write_timer(fd, curr);
+	    }
+
+	} else {
+	    /* local timers */
+
+	    if (timer_is_local(curr)) {
+		count++;
+		if (write_it) write_timer(fd, curr);
+	    }
+
+	}
+    }
+
+    return count;
+}
+
+
+/*
+ * Save part of the timer list.  The parameter 'range' specifies either
+ * global or level timers to save.  The timer ID is saved with the global
+ * timers.
+ *
+ * Global range:
+ *		+ timeouts that follow the hero (global)
+ *		+ timeouts that follow obj & monst that are migrating
+ *
+ * Level range:
+ *		+ timeouts that are level specific (e.g. storms)
+ *		+ timeouts that stay with the level (obj & monst)
+ */
+void
+save_timers(fd, mode, range)
+    int fd, mode, range;
+{
+    timer_element *curr, *prev, *next_timer=0;
+    int count;
+
+    if (perform_bwrite(mode)) {
+	if (range == RANGE_GLOBAL)
+	    bwrite(fd, (genericptr_t) &timer_id, sizeof(timer_id));
+
+	count = maybe_write_timer(fd, range, FALSE);
+	bwrite(fd, (genericptr_t) &count, sizeof count);
+	(void) maybe_write_timer(fd, range, TRUE);
+    }
+
+    if (release_data(mode)) {
+	for (prev = 0, curr = timer_base; curr; curr = next_timer) {
+	    next_timer = curr->next;	/* in case curr is removed */
+
+	    if ( !(!!(range == RANGE_LEVEL) ^ !!timer_is_local(curr)) ) {
+		if (prev)
+		    prev->next = curr->next;
+		else
+		    timer_base = curr->next;
+		free((genericptr_t) curr);
+		/* prev stays the same */
+	    } else {
+		prev = curr;
+	    }
+	}
+    }
+}
+
+
+/*
+ * Pull in the structures from disk, but don't recalculate the object and
+ * monster pointers.
+ */
+void
+restore_timers(fd, range, ghostly, adjust)
+    int fd, range;
+    boolean ghostly;	/* restoring from a ghost level */
+    long adjust;	/* how much to adjust timeout */
+{
+    int count;
+    timer_element *curr;
+
+    if (range == RANGE_GLOBAL)
+	mread(fd, (genericptr_t) &timer_id, sizeof timer_id);
+
+    /* restore elements */
+    mread(fd, (genericptr_t) &count, sizeof count);
+    while (count-- > 0) {
+	curr = (timer_element *) alloc(sizeof(timer_element));
+	mread(fd, (genericptr_t) curr, sizeof(timer_element));
+	if (ghostly)
+	    curr->timeout += adjust;
+	insert_timer(curr);
+    }
+}
+
+
+/* reset all timers that are marked for reseting */
+void
+relink_timers(ghostly)
+    boolean ghostly;
+{
+    timer_element *curr;
+    unsigned nid;
+
+    for (curr = timer_base; curr; curr = curr->next) {
+	if (curr->needs_fixup) {
+	    if (curr->kind == TIMER_OBJECT) {
+		if (ghostly) {
+		    if (!lookup_id_mapping((unsigned)curr->arg, &nid))
+			panic("relink_timers 1");
+		} else
+		    nid = (unsigned) curr->arg;
+		curr->arg = (genericptr_t) find_oid(nid);
+		if (!curr->arg) panic("cant find o_id %d", nid);
+		curr->needs_fixup = 0;
+	    } else if (curr->kind == TIMER_MONSTER) {
+		panic("relink_timers: no monster timer implemented");
+	    } else
+		panic("relink_timers 2");
+	}
+    }
+}
+
+#endif /* OVL0 */
 
 /*timeout.c*/

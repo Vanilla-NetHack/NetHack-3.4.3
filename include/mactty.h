@@ -1,13 +1,13 @@
-/*	SCCS Id: @(#)mactty.h	3.1	93/03/01			*/
+/*	SCCS Id: @(#)mactty.h	3.2	93/03/01	*/
 /* Copyright (c) Jon W{tte 1993.					*/
 /* NetHack may be freely redistributed.  See license for details.	*/
 
 /*
  * This header is the supported external interface for the "tty" window
- * package. This package sports care-free handling of "dumb" tty windows 
+ * package. This package sports care-free handling of "dumb" tty windows
  * (preferrably using monospaced fonts) - it does NOT remember the strings
  * sent to it; rather, it uses an offscreen bitmap.
- * 
+ *
  * For best performance, make sure it is aligned on a 32-pixel boundary
  * (or at least a 16-pixel one) in black & white. For 24bit color,
  * alignment doesn't matter, and for 8-bit color, alignment to every

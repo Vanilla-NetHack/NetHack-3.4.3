@@ -1,4 +1,4 @@
-#	SCCS Id: @(#)tower.des	3.1	90/02/26
+#	SCCS Id: @(#)tower.des	3.2	90/02/26
 #	Copyright (c) 1989 by Jean-Christophe Collet
 # NetHack may be freely redistributed.  See license for details.
 #
@@ -77,8 +77,10 @@ MONSTER:'&',random,place[1]
 MONSTER:'d',"hell hound pup",place[2]
 MONSTER:'d',"hell hound pup",place[3]
 MONSTER:'d',"winter wolf",place[4]
-OBJECT:'"',"amulet of life saving",place[5]
-OBJECT:'"',"amulet of strangulation",place[6]
+CONTAINER:'(',"chest",place[5]
+OBJECT:'"',"amulet of life saving",contained
+CONTAINER:'(',"chest",place[6]
+OBJECT:'"',"amulet of strangulation",contained
 OBJECT:'[',"water walking boots",place[7]
 OBJECT:'[',"crystal plate mail",place[8]
 OBJECT:'+',"invisibility",place[9]
@@ -92,9 +94,9 @@ FLAGS: noteleport,hardfloor
 GEOMETRY:half-left,center
 MAP
     --- --- ---  
-    |.| |.| |.|  
+    |.| |.| |.|    
   ---S---S---S---
-  |.S.........S.|
+  |.S.........S.|  
 -----.........-----
 |...|.........+...|
 |.---.........---.|

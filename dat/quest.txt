@@ -1,8 +1,8 @@
-#	SCCS Id: @(#)quest.txt	3.1	93/07/05
+#	SCCS Id: @(#)quest.txt	3.2	95/06/29
 #	Copyright (c) 1991 by M. Stephenson
 # NetHack may be freely redistributed.  See license for details.
 #
-#	The quest text file for NetHack 3.1 (MULDGN version).
+#	The quest text file for NetHack 3.2
 #
 #	These are the "standard" message numbers from qtext.h.  All class
 #	dialogue must have at least these entries.
@@ -1879,7 +1879,7 @@ Even before your senses adjust, you recognize the kami of
 %H.
 
 But why is the standard of your teki, %n, flying
-above the town?  Why are ronin wandering freely, where are the
+above the town?  Why are ninja wandering freely, where are the
 samurai of your daimyo, %l?
 
 You quickly say a prayer to Izanagi and Izanami and walk towards
@@ -1908,7 +1908,7 @@ the kami of %H before you return again.
 "%n has hired the Ninja -- be careful."
 %E
 %Cp S 00009
-"If %o is not returned, we will all be ronin."
+"If %o is not returned, we will all be ninja."
 %E
 %Cc S 00010
 "Ah, %p-san, it is good to see you again.  I need someone who can
@@ -1940,8 +1940,8 @@ are ready, return to me."
 "%p-san, you would do better to join the kyokaku.
 
 "You have skills, but until you can call upon the bushido to know when and
-how to use them you are not samurai.  When you can think %A and
-act %A then return."
+how to use them you are not samurai.  When you can think %a and
+act %a then return."
 %E
 %Cc S 00016
 "Domo %p-san, indeed you are ready.  I can now tell you what
@@ -1987,7 +1987,7 @@ hate, adoration, joy, anxiety, anger, grief, and fear."
 "If you fail, %n will be like a tai-fun on the land."
 %E
 %Cp S 00028
-"If you are truly %A, %d will listen."
+"If you are truly %a, %d will listen."
 %E
 %Cp S 00029
 "Sharpen your swords and your wits for the task before you."
@@ -2824,6 +2824,9 @@ You couldn't quite make out that last message.
 %Cp - 00003
 You again sense %l pleading for help.
 %E
+%Cp - 00004
+You again sense %l demanding your attendance.
+%E
 #
 #	Angelic maledictions.
 #
@@ -2937,9 +2940,9 @@ You again sense %l pleading for help.
  %n:	return((char *)neminame());
  %g:	return((char *)guardname());
  %H:	return((char *)homebase());
- %a:	return(Alignnam(u.ualignbase[0]));
+ %a:	return(Alignnam(u.ualignbase[1]));
  %A:	return(Alignnam(u.ualign.type));
- %d:	return((char *)u_gname());
+ %d:	return((char *)align_gname(u.ualignbase[1]));
  %D:	return((char *)align_gname(A_LAWFUL));
  %C:	return("chaotic");
  %N:	return("neutral");

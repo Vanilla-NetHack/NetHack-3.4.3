@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)display.c	3.1	93/05/15	*/
+/*	SCCS Id: @(#)display.c	3.2	95/02/27	*/
 /* Copyright (c) Dean Luick, with acknowledgements to Kevin Darcy */
 /* and Dave Cohrs, 1990.					  */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -101,15 +101,15 @@
  *	lit	- True if the position is lit.  An optimization for
  *		  lit/unlit rooms.
  *	waslit	- True if the position was *remembered* as lit.
- *	seen	- Set to true when the location is seen or felt as it really
- *		  is.  This is used primarily for walls, which look like stone
- *		  if seen from the outside of a room.  However, this is
- *		  also used as a guide for blind heros.  If the hero has
- *		  seen or felt a room feature underneath a boulder, when the
- *		  boulder is moved, the hero should see it again.  This is
- *		  also used as an indicator for unmapping detected objects.
- *
- *	doormask   - Additional information for the typ field.
+ *	seenv	- A vector of bits representing the directions from which the
+ *		  hero has seen this position.  The vector's primary use is
+ *		  determining how walls are seen.  E.g. a wall sometimes looks
+ *		  like stone on one side, but is seen as a wall from the other.
+ *		  Other uses are for unmapping detected objects and felt
+ *		  locations, where we need to know if the hero has ever
+ *		  seen the location.
+ *	flags   - Additional information for the typ field.  Different for
+ *		  each typ.
  *	horizontal - Indicates whether the wall or door is horizontal or
  *		     vertical.
  */
@@ -117,6 +117,16 @@
 
 static void FDECL(display_monster,(XCHAR_P,XCHAR_P,struct monst *,int,XCHAR_P));
 static int FDECL(swallow_to_glyph, (int, int));
+
+static int FDECL(check_pos, (int, int, int));
+static boolean FDECL(more_than_one, (int, int, int, int, int));
+static int FDECL(set_twall, (int,int, int,int, int,int, int,int));
+static int FDECL(set_wall, (int, int, int));
+static int FDECL(set_corn, (int,int, int,int, int,int, int,int));
+static int FDECL(set_crosswall, (int, int));
+static void FDECL(set_seenv, (struct rm *, int, int, int, int));
+static void FDECL(t_warn, (struct rm *));
+static int FDECL(wall_angle, (struct rm *));
 
 #ifdef INVISIBLE_OBJECTS
 /*
@@ -217,9 +227,6 @@ map_object(obj, show)
  * there any more.  Replace it with background or known trap, but not
  * with any other remembered object.  No need to update the display;
  * a full update is imminent.
- *
- * This isn't quite correct due to overloading of the seen bit.  But
- * it works well enough for now.
  */
 void
 unmap_object(x, y)
@@ -231,7 +238,7 @@ unmap_object(x, y)
 
     if ((trap = t_at(x,y)) != 0 && trap->tseen && !covers_traps(x,y))
 	map_trap(trap, 0);
-    else if (levl[x][y].seen) {
+    else if (levl[x][y].seenv) {
 	struct rm *lev = &levl[x][y];
 
 	map_background(x, y, 0);
@@ -240,7 +247,7 @@ unmap_object(x, y)
 	if (!lev->waslit && lev->glyph == cmap_to_glyph(S_room) &&
 							    lev->typ == ROOM)
 	    lev->glyph = cmap_to_glyph(S_stone);
-    } else 
+    } else
 	levl[x][y].glyph = cmap_to_glyph(S_stone);	/* default val */
 }
 
@@ -282,7 +289,7 @@ void map_location(x,y,show)
  * Yuck.  Display body parts by recognizing that the display position is
  * not the same as the monster position.  Currently the only body part is
  * a worm tail.
- *  
+ *
  */
 static void
 display_monster(x, y, mon, in_sight, worm_tail)
@@ -347,15 +354,15 @@ display_monster(x, y, mon, in_sight, worm_tail)
 
     /* If the mimic is unsucessfully mimicing something, display the monster */
     if (!mon_mimic || sensed) {
-	if (mon->mtame) {
+	if (mon->mtame && !Hallucination) {
 	    if (worm_tail)
-		show_glyph(x,y, petnum_to_glyph(what_mon(PM_LONG_WORM_TAIL)));
-	    else    
+		show_glyph(x,y, petnum_to_glyph(PM_LONG_WORM_TAIL));
+	    else
 		show_glyph(x,y, pet_to_glyph(mon));
 	} else {
 	    if (worm_tail)
 		show_glyph(x,y, monnum_to_glyph(what_mon(PM_LONG_WORM_TAIL)));
-	    else    
+	    else
 		show_glyph(x,y, mon_to_glyph(mon));
 	}
     }
@@ -380,11 +387,9 @@ feel_location(x, y)
     if (Underwater && !Is_waterlevel(&u.uz) && ! is_pool(x,y))
 	return;
 
-    /* If the hero is not in a corridor, then she will feel the wall as a */
-    /* wall.  It doesn't matter if the hero is levitating or not.	  */
-    if ((IS_WALL(lev->typ) || lev->typ == SDOOR) &&
-						levl[u.ux][u.uy].typ != CORR)
-	lev->seen = 1;
+    /* Set the seen vector as if the hero had seen it.  It doesn't matter */
+    /* if the hero is levitating or not.				  */
+    set_seenv(lev, u.ux, u.uy, x, y);
 
     if (Levitation && !Is_airlevel(&u.uz) && !Is_waterlevel(&u.uz)) {
 	/*
@@ -428,7 +433,7 @@ feel_location(x, y)
 	     * object stack (if anything).
 	     */
 	    if (lev->glyph == objnum_to_glyph(BOULDER)) {
-		if (lev->typ != ROOM && lev->seen) {
+		if (lev->typ != ROOM && lev->seenv) {
 		    map_background(x, y, 1);
 		} else {
 		    lev->glyph = lev->waslit ? cmap_to_glyph(S_room) :
@@ -490,7 +495,7 @@ feel_location(x, y)
  */
 void
 newsym(x,y)
-    register xchar x,y;
+    register int x,y;
 {
     register struct monst *mon;
     register struct rm *lev = &(levl[x][y]);
@@ -513,6 +518,18 @@ newsym(x,y)
 
     /* Can physically see the location. */
     if (cansee(x,y)) {
+	/*
+	 * Don't use templit here:  E.g.
+	 *
+	 *	lev->waslit = !!(lev->lit || templit(x,y));
+	 *
+	 * Otherwise we have the "light pool" problem, where non-permanently
+	 * lit areas just out of sight stay remembered as lit.  They should
+	 * re-darken.
+	 *
+	 * Perhaps ALL areas should revert to their "unlit" look when
+	 * out of sight.
+	 */
 	lev->waslit = (lev->lit!=0);	/* remember lit condition */
 
 	if (x == u.ux && y == u.uy) {
@@ -523,14 +540,19 @@ newsym(x,y)
 		/* we can see what is there */
 		_map_location(x,y,1);
 	}
-	else if ((mon = m_at(x,y)) &&
-		 ((see_it = mon_visible(mon)) || sensemon(mon))) {
-	    _map_location(x,y,0); 	/* map under the monster */
-    	    worm_tail = ((x != mon->mx)  || (y != mon->my));
-	    display_monster(x,y,mon,see_it,worm_tail);
+	else {
+	    mon = m_at(x,y);
+	    worm_tail = mon && ((x != mon->mx)  || (y != mon->my));
+	    if (mon &&
+		 ((see_it = (worm_tail
+			? (!mon->minvis || See_invisible)
+			: (mon_visible(mon)) || sensemon(mon))))) {
+		_map_location(x,y,0);	/* map under the monster */
+		display_monster(x,y,mon,see_it,worm_tail);
+	    }
+	    else
+		_map_location(x,y,1);	/* map the location */
 	}
-	else
-	    _map_location(x,y,1);	/* map the location */
     }
 
     /* Can't see the location. */
@@ -541,7 +563,7 @@ newsym(x,y)
 	    if (canseeself()) display_self();
 	}
 	else if ((mon = m_at(x,y)) && sensemon(mon) &&
-    		 		!((x != mon->mx)  || (y != mon->my))) {
+				!((x != mon->mx)  || (y != mon->my))) {
 	    /* Monsters are printed every time. */
 	    display_monster(x,y,mon,0,0);
 	}
@@ -615,6 +637,7 @@ shieldeff(x,y)
  * Call:
  *	(DISP_BEAM,   glyph)	open, initialize glyph
  *	(DISP_FLASH,  glyph)	open, initialize glyph
+ *	(DISP_ALWAYS, glyph)	open, initialize glyph
  *	(DISP_CHANGE, glyph)	change glyph
  *	(DISP_END,    0)	close & clean up (second argument doesn't
  *				matter)
@@ -624,6 +647,7 @@ shieldeff(x,y)
  *		any until the close call.
  * DISP_FLASH - Display the given glyph at each location, but erase the
  *		previous location's glyph.
+ * DISP_ALWAYS- Like DISP_FLASH, but vision is not taken into account.
  */
 void
 tmp_at(x, y)
@@ -638,6 +662,7 @@ tmp_at(x, y)
     switch (x) {
 	case DISP_BEAM:
 	case DISP_FLASH:
+	case DISP_ALWAYS:
 	    status = x;
 	    glyph  = y;
 	    flush_screen(0);	/* flush buffered glyphs */
@@ -656,21 +681,21 @@ tmp_at(x, y)
 		    newsym(saved[i].x,saved[i].y);
 		sidx = 0;
 		
-	    } else if (sx >= 0) {	/* DISP_FLASH (called at least once) */
+	    } else if (sx >= 0) { /* DISP_FLASH/ALWAYS (called at least once) */
 		newsym(sx,sy);	/* reset the location */
 		sx = -1;	/* reset sx to an illegal pos for next time */
 	    }
 	    break;
 
 	default:	/* do it */
-	    if (!cansee(x,y)) break;
+	    if (!cansee(x,y) && status != DISP_ALWAYS) break;
 
 	    if (status == DISP_BEAM) {
 		saved[sidx  ].x = x;	/* save pos for later erasing */
 		saved[sidx++].y = y;
 	    }
 
-	    else {	/* DISP_FLASH */
+	    else {	/* DISP_FLASH/MISC */
 		if (sx >= 0)		/* not first call */
 		    newsym(sx,sy);	/* update the old position */
 
@@ -698,7 +723,7 @@ swallowed(first)
     int first;
 {
     static xchar lastx, lasty;	/* last swallowed position */
-    int swallower;
+    int swallower, left_ok, rght_ok;
 
     if (first)
 	cls();
@@ -707,29 +732,36 @@ swallowed(first)
 
 	/* Clear old location */
 	for (y = lasty-1; y <= lasty+1; y++)
-	    if(isok(lastx,y)) {
-		for (x = lastx-1; x <= lastx+1; x++)
-		    show_glyph(x,y,cmap_to_glyph(S_stone));
-	    }
+	    for (x = lastx-1; x <= lastx+1; x++)
+		if (isok(x,y)) show_glyph(x,y,cmap_to_glyph(S_stone));
     }
 
     swallower = monsndx(u.ustuck->data);
+    /* assume isok(u.ux,u.uy) */
+    left_ok = isok(u.ux-1,u.uy);
+    rght_ok = isok(u.ux+1,u.uy);
     /*
      *  Display the hero surrounded by the monster's stomach.
      */
     if(isok(u.ux, u.uy-1)) {
+	if (left_ok)
 	show_glyph(u.ux-1, u.uy-1, swallow_to_glyph(swallower, S_sw_tl));
 	show_glyph(u.ux  , u.uy-1, swallow_to_glyph(swallower, S_sw_tc));
+	if (rght_ok)
 	show_glyph(u.ux+1, u.uy-1, swallow_to_glyph(swallower, S_sw_tr));
     }
 
+    if (left_ok)
     show_glyph(u.ux-1, u.uy  , swallow_to_glyph(swallower, S_sw_ml));
     display_self();
+    if (rght_ok)
     show_glyph(u.ux+1, u.uy  , swallow_to_glyph(swallower, S_sw_mr));
 
     if(isok(u.ux, u.uy+1)) {
+	if (left_ok)
 	show_glyph(u.ux-1, u.uy+1, swallow_to_glyph(swallower, S_sw_bl));
 	show_glyph(u.ux  , u.uy+1, swallow_to_glyph(swallower, S_sw_bc));
+	if (rght_ok)
 	show_glyph(u.ux+1, u.uy+1, swallow_to_glyph(swallower, S_sw_br));
     }
 
@@ -759,7 +791,7 @@ under_water(mode)
     if (mode == 1 || dela) {
 	cls();
 	dela = FALSE;
-    }   
+    }
     /* delayed full update */
     else if (mode == 2) {
 	dela = TRUE;
@@ -769,7 +801,7 @@ under_water(mode)
     else {
 	for (y = lasty-1; y <= lasty+1; y++)
 	    for (x = lastx-1; x <= lastx+1; x++)
-		if (isok(x,y)) 
+		if (isok(x,y))
 		    show_glyph(x,y,cmap_to_glyph(S_stone));
     }
     for (x = u.ux-1; x <= u.ux+1; x++)
@@ -782,6 +814,35 @@ under_water(mode)
 	    }
     lastx = u.ux;
     lasty = u.uy;
+}
+
+/*
+ *	under_ground()
+ *
+ *	Very restricted display.  You can only see yourself.
+ */
+void
+under_ground(mode)
+    int mode;
+{
+    static boolean dela;
+
+    /* swallowing has a higher precedence than under ground */
+    if (u.uswallow) return;
+
+    /* full update */
+    if (mode == 1 || dela) {
+	cls();
+	dela = FALSE;
+    }
+    /* delayed full update */
+    else if (mode == 2) {
+	dela = TRUE;
+	return;
+    }
+    /* limited update */
+    else
+	newsym(u.ux,u.uy);
 }
 
 
@@ -875,6 +936,10 @@ docrt()
 	under_water(1);
 	return;
     }
+    if (u.uburied) {
+	under_ground(1);
+	return;
+    }
 
     /* shut down vision */
     vision_recalc(2);
@@ -921,8 +986,7 @@ static char gbuf_stop[ROWNO];
  */
 void
 show_glyph(x,y,glyph)
-    xchar x,y;
-    int   glyph;
+    int x, y, glyph;
 {
     /*
      * Check for bad positions and glyphs.
@@ -944,12 +1008,12 @@ show_glyph(x,y,glyph)
 	    text = "zap beam";		offset = glyph - GLYPH_ZAP_OFF;
 	} else if (glyph >= GLYPH_CMAP_OFF) {		/* cmap */
 	    text = "cmap_index";	offset = glyph - GLYPH_CMAP_OFF;
-	} else if (glyph >= GLYPH_TRAP_OFF) {		/* trap */
-	    text = "trap";		offset = glyph - GLYPH_TRAP_OFF;
 	} else if (glyph >= GLYPH_OBJ_OFF) {		/* object */
 	    text = "object";		offset = glyph - GLYPH_OBJ_OFF;
 	} else if (glyph >= GLYPH_BODY_OFF) {		/* a corpse */
 	    text = "corpse";		offset = glyph - GLYPH_BODY_OFF;
+	} else if (glyph >= GLYPH_PET_OFF) {		/* a pet */
+	    text = "pet";		offset = glyph - GLYPH_PET_OFF;
 	} else {					/* a monster */
 	    text = "monster";		offset = glyph;
 	}
@@ -1095,22 +1159,19 @@ back_to_glyph(x,y)
 	case CORR:
 	    idx = (ptr->waslit || flags.lit_corridor) ? S_litcorr : S_corr;
 	    break;
-	case HWALL:	idx = ptr->seen ? S_hwall  : S_stone;   break;
-	case VWALL:	idx = ptr->seen ? S_vwall  : S_stone;   break;
-	case TLCORNER:	idx = ptr->seen ? S_tlcorn : S_stone;	break;
-	case TRCORNER:	idx = ptr->seen ? S_trcorn : S_stone;	break;
-	case BLCORNER:	idx = ptr->seen ? S_blcorn : S_stone;	break;
-	case BRCORNER:	idx = ptr->seen ? S_brcorn : S_stone;	break;
-	case CROSSWALL:	idx = ptr->seen ? S_crwall : S_stone;	break;
-	case TUWALL:	idx = ptr->seen ? S_tuwall : S_stone;	break;
-	case TDWALL:	idx = ptr->seen ? S_tdwall : S_stone;	break;
-	case TLWALL:	idx = ptr->seen ? S_tlwall : S_stone;	break;
-	case TRWALL:	idx = ptr->seen ? S_trwall : S_stone;	break;
+	case HWALL:
+	case VWALL:
+	case TLCORNER:
+	case TRCORNER:
+	case BLCORNER:
+	case BRCORNER:
+	case CROSSWALL:
+	case TUWALL:
+	case TDWALL:
+	case TLWALL:
+	case TRWALL:
 	case SDOOR:
-	    if (ptr->seen)
-		idx = (ptr->horizontal) ? S_hwall : S_vwall;
-	    else
-		idx = S_stone;
+	    idx = ptr->seenv ? wall_angle(ptr) : S_stone;
 	    break;
 	case DOOR:
 	    if (ptr->doormask) {
@@ -1229,6 +1290,660 @@ glyph_at(x, y)
     if(x < 0 || y < 0 || x >= COLNO || y >= ROWNO)
 	return cmap_to_glyph(S_room);			/* XXX */
     return gbuf[y][x].glyph;
+}
+
+
+/* ------------------------------------------------------------------------- */
+/* Wall Angle -------------------------------------------------------------- */
+
+/*#define WA_VERBOSE	/* give (x,y) locations for all "bad" spots */
+
+#ifdef WA_VERBOSE
+
+static const char *FDECL(type_to_name, (int));
+static void FDECL(error4, (int,int,int,int,int,int));
+
+static int bad_count[MAX_TYPE]; /* count of positions flagged as bad */
+static const char *type_names[MAX_TYPE] = {
+	"STONE",	"VWALL",	"HWALL",	"TLCORNER",
+	"TRCORNER",	"BLCORNER",	"BRCORNER",	"CROSSWALL",
+	"TUWALL",	"TDWALL",	"TLWALL",	"TRWALL",
+	"DBWALL",	"SDOOR",	"SCORR",	"POOL",
+	"MOAT",		"WATER",	"DRAWBRIDGE_UP","LAVAPOOL",
+	"DOOR",		"CORR",		"ROOM",		"STAIRS",
+	"LADDER",	"FOUNTAIN",	"THRONE",	"SINK",
+	"ALTAR",	"ICE",		"DRAWBRIDGE_DOWN","AIR",
+	"CLOUD"
+};
+
+
+static const char *
+type_to_name(type)
+    int type;
+{
+    return (type < 0 || type > MAX_TYPE) ? "unknown" : type_names[type];
+}
+
+static void
+error4(x, y, a, b, c, dd)
+    int x, y, a, b, c, dd;
+{
+    pline("set_wall_state: %s @ (%d,%d) %s%s%s%s",
+	type_to_name(levl[x][y].typ), x, y,
+	a ? "1":"", b ? "2":"", c ? "3":"", dd ? "4":"");
+    bad_count[levl[x][y].typ]++;
+}
+#endif /* WA_VERBOSE */
+
+/*
+ * Return 'which' if position is implies an unfinshed exterior.  Return
+ * zero otherwise.  Unfinished implies outer area is rock or a corridor.
+ *
+ * Things that are ambigious: lava
+ */
+static int
+check_pos(x, y, which)
+    int x, y, which;
+{
+    int type;
+    if (!isok(x,y)) return which;
+    type = levl[x][y].typ;
+    if (IS_ROCK(type) || type == CORR || type == SCORR) return which;
+    return 0;
+}
+
+/* Return TRUE if more than one is non-zero. */
+/*ARGSUSED*/
+static boolean
+more_than_one(x, y, a, b, c)
+    int x, y, a, b, c;
+{
+    if ((a && (b|c)) || (b && (a|c)) || (c && (a|b))) {
+#ifdef WA_VERBOSE
+	error4(x,y,a,b,c,0);
+#endif
+	return TRUE;
+    }
+    return FALSE;
+}
+
+/* Return the wall mode for a T wall. */
+static int
+set_twall(x0,y0, x1,y1, x2,y2, x3,y3)
+int x0,y0, x1,y1, x2,y2, x3,y3;
+{
+    int wmode, is_1, is_2, is_3;
+
+    is_1 = check_pos(x1, y1, WM_T_LONG);
+    is_2 = check_pos(x2, y2, WM_T_BL);
+    is_3 = check_pos(x3, y3, WM_T_BR);
+    if (more_than_one(x0, y0, is_1, is_2, is_3)) {
+	wmode = 0;
+    } else {
+	wmode = is_1 + is_2 + is_3;
+    }
+    return wmode;
+}
+
+/* Return wall mode for a horizontal or vertical wall. */
+static int
+set_wall(x, y, horiz)
+    int x, y, horiz;
+{
+    int wmode, is_1, is_2;
+
+    if (horiz) {
+	is_1 = check_pos(x,y-1, WM_W_TOP);
+	is_2 = check_pos(x,y+1, WM_W_BOTTOM);
+    } else {
+	is_1 = check_pos(x-1,y, WM_W_LEFT);
+	is_2 = check_pos(x+1,y, WM_W_RIGHT);
+    }
+    if (more_than_one(x, y, is_1, is_2, 0)) {
+	wmode = 0;
+    } else {
+	wmode = is_1 + is_2;
+    }
+    return wmode;
+}
+
+
+/* Return a wall mode for a corner wall. (x4,y4) is the "inner" position. */
+static int
+set_corn(x1,y1, x2,y2, x3,y3, x4,y4)
+	int x1, y1, x2, y2, x3, y3, x4, y4;
+{
+    int wmode, is_1, is_2, is_3, is_4;
+
+    is_1 = check_pos(x1, y1, 1);
+    is_2 = check_pos(x2, y2, 1);
+    is_3 = check_pos(x3, y3, 1);
+    is_4 = check_pos(x4, y4, 1);	/* inner location */
+
+    /*
+     * All 4 should not be true.  So if the inner location is rock,
+     * use it.  If all of the outer 3 are true, use outer.  We currently
+     * can't cover the case where only part of the outer is rock, so
+     * we just say that all the walls are finished (if not overridden
+     * by the inner section).
+     */
+    if (is_4) {
+	wmode = WM_C_INNER;
+    } else if (is_1 && is_2 && is_3)
+	wmode = WM_C_OUTER;
+     else
+	wmode = 0;	/* finished walls on all sides */
+
+    return wmode;
+}
+
+/* Return mode for a crosswall. */
+static int
+set_crosswall(x, y)
+    int x, y;
+{
+    int wmode, is_1, is_2, is_3, is_4;
+
+    is_1 = check_pos(x-1, y-1, 1);
+    is_2 = check_pos(x+1, y-1, 1);
+    is_3 = check_pos(x+1, y+1, 1);
+    is_4 = check_pos(x-1, y+1, 1);
+
+    wmode = is_1+is_2+is_3+is_4;
+    if (wmode > 1) {
+	if (is_1 && is_3 && (is_2+is_4 == 0)) {
+	    wmode = WM_X_TLBR;
+	} else if (is_2 && is_4 && (is_1+is_3 == 0)) {
+	    wmode = WM_X_BLTR;
+	} else {
+#ifdef WA_VERBOSE
+	    error4(x,y,is_1,is_2,is_3,is_4);
+#endif
+	    wmode = 0;
+	}
+    } else if (is_1)
+	wmode = WM_X_TL;
+    else if (is_2)
+	wmode = WM_X_TR;
+    else if (is_3)
+	wmode = WM_X_BR;
+    else if (is_4)
+	wmode = WM_X_BL;
+
+    return wmode;
+}
+
+/* Called from mklev.  Scan the level and set the wall modes. */
+void
+set_wall_state()
+{
+    int x, y;
+    int wmode;
+    struct rm *lev;
+
+#ifdef WA_VERBOSE
+    for (x = 0; x < MAX_TYPE; x++) bad_count[x] = 0;
+#endif
+
+    for (x = 0; x < COLNO; x++)
+	for (lev = &levl[x][0], y = 0; y < ROWNO; y++, lev++) {
+	    switch (lev->typ) {
+		case SDOOR:
+		    wmode = set_wall(x, y, (int) lev->horizontal);
+		    break;
+		case VWALL:
+		    wmode = set_wall(x, y, 0);
+		    break;
+		case HWALL:
+		    wmode = set_wall(x, y, 1);
+		    break;
+		case TDWALL:
+		    wmode = set_twall(x,y, x,y-1, x-1,y+1, x+1,y+1);
+		    break;
+		case TUWALL:
+		    wmode = set_twall(x,y, x,y+1, x+1,y-1, x-1,y-1);
+		    break;
+		case TLWALL:
+		    wmode = set_twall(x,y, x+1,y, x-1,y-1, x-1,y+1);
+		    break;
+		case TRWALL:
+		    wmode = set_twall(x,y, x-1,y, x+1,y+1, x+1,y-1);
+		    break;
+		case TLCORNER:
+		    wmode = set_corn(x-1,y-1, x,y-1, x-1,y, x+1,y+1);
+		    break;
+		case TRCORNER:
+		    wmode = set_corn(x,y-1, x+1,y-1, x+1,y, x-1,y+1);
+		    break;
+		case BLCORNER:
+		    wmode = set_corn(x,y+1, x-1,y+1, x-1,y, x+1,y-1);
+		    break;
+		case BRCORNER:
+		    wmode = set_corn(x+1,y, x+1,y+1, x,y+1, x-1,y-1);
+		    break;
+		case CROSSWALL:
+		    wmode = set_crosswall(x, y);
+		    break;
+
+		default:
+		    wmode = -1;	/* don't set wall info */
+		    break;
+	    }
+
+	if (wmode >= 0)
+	    lev->wall_info = (lev->wall_info & ~WM_MASK) | wmode;
+	}
+
+#ifdef WA_VERBOSE
+    /* check if any bad positions found */
+    for (x = y = 0; x < MAX_TYPE; x++)
+	if (bad_count[x]) {
+	    if (y == 0) {
+		y = 1;	/* only print once */
+		pline("set_wall_type: wall mode problems with: ");
+	    }
+	    pline("%s %d;", type_names[x], bad_count[x]);
+	}
+#endif /* WA_VERBOSE */
+}
+
+/* ------------------------------------------------------------------------- */
+/* This matrix is used here and in vision.c. */
+unsigned char seenv_matrix[3][3] = { {SV2,   SV1, SV0},
+				     {SV3, SVALL, SV7},
+				     {SV4,   SV5, SV6} };
+
+#define sign(z) ((z) < 0 ? -1 : ((z) > 0 ? 1 : 0))
+
+/* Set the seen vector of lev as if seen from (x0,y0) to (x,y). */
+static void
+set_seenv(lev, x0, y0, x, y)
+    struct rm *lev;
+    int x0, y0, x, y;	/* from, to */
+{
+    int dx = x-x0, dy = y0-y;
+    lev->seenv |= seenv_matrix[sign(dy)+1][sign(dx)+1];
+}
+
+/* ------------------------------------------------------------------------- */
+
+/* T wall types, one for each row in wall_matrix[][]. */
+#define T_d 0
+#define T_l 1
+#define T_u 2
+#define T_r 3
+
+/*
+ * These are the column names of wall_matrix[][].  They are the "results"
+ * of a tdwall pattern match.  All T walls are rotated so they become
+ * a tdwall.  Then we do a single pattern match, but return the
+ * correct result for the original wall by using different rows for
+ * each of the wall types.
+ */
+#define T_stone  0
+#define T_tlcorn 1
+#define T_trcorn 2
+#define T_hwall  3
+#define T_tdwall 4
+
+static const int wall_matrix[4][5] = {
+    { S_stone, S_tlcorn, S_trcorn, S_hwall, S_tdwall },	/* tdwall */
+    { S_stone, S_trcorn, S_brcorn, S_vwall, S_tlwall },	/* tlwall */
+    { S_stone, S_brcorn, S_blcorn, S_hwall, S_tuwall },	/* tuwall */
+    { S_stone, S_blcorn, S_tlcorn, S_vwall, S_trwall },	/* trwall */
+};
+
+
+/* Cross wall types, one for each "solid" quarter.  Rows of cross_matrix[][]. */
+#define C_bl 0
+#define C_tl 1
+#define C_tr 2
+#define C_br 3
+
+/*
+ * These are the column names for cross_matrix[][].  They express results
+ * in C_br (bottom right) terms.  All crosswalls with a single solid
+ * quarter are rotated so the solid section is at the bottom right.
+ * We pattern match on that, but return the correct result depending
+ * on which row we'ere looking at.
+ */
+#define C_trcorn 0
+#define C_brcorn 1
+#define C_blcorn 2
+#define C_tlwall 3
+#define C_tuwall 4
+#define C_crwall 5
+
+static const int cross_matrix[4][6] = {
+    { S_brcorn, S_blcorn, S_tlcorn, S_tuwall, S_trwall, S_crwall },
+    { S_blcorn, S_tlcorn, S_trcorn, S_trwall, S_tdwall, S_crwall },
+    { S_tlcorn, S_trcorn, S_brcorn, S_tdwall, S_tlwall, S_crwall },
+    { S_trcorn, S_brcorn, S_blcorn, S_tlwall, S_tuwall, S_crwall },
+};
+
+
+/* Print out a T wall warning and all interesting info. */
+static void
+t_warn(lev)
+    struct rm *lev;
+{
+    static const char *warn_str = "wall_angle: %s: case %d: seenv = 0x%x";
+    const char *wname;
+
+    if (lev->typ == TUWALL) wname = "tuwall";
+    else if (lev->typ == TLWALL) wname = "tlwall";
+    else if (lev->typ == TRWALL) wname = "trwall";
+    else if (lev->typ == TDWALL) wname = "tdwall";
+    else wname = "unknown";
+    impossible(warn_str, wname, lev->wall_info & WM_MASK,
+	(unsigned int) lev->seenv);
+}
+
+
+/*
+ * Return the correct graphics character index using wall type, wall mode,
+ * and the seen vector.  It is expected that seenv is non zero.
+ *
+ * All T-wall vectors are rotated to be TDWALL.  All single crosswall
+ * blocks are rotated to bottom right.  All double crosswall are rotated
+ * to W_X_BLTR.  All results are converted back.
+ *
+ * The only way to understand this is to take out pen and paper and
+ * draw diagrams.  See rm.h for more details on the wall modes and
+ * seen vector (SV).
+ */
+static int
+wall_angle(lev)
+    struct rm *lev;
+{
+    register unsigned int seenv = lev->seenv & 0xff;
+    const int *row;
+    int col, idx;
+
+#define only(sv, bits)	(((sv) & (bits)) && ! ((sv) & ~(bits)))
+    switch (lev->typ) {
+	case TUWALL:
+		row = wall_matrix[T_u];
+		seenv = (seenv >> 4 | seenv << 4) & 0xff;/* rotate to tdwall */
+		goto do_twall;
+	case TLWALL:
+		row = wall_matrix[T_l];
+		seenv = (seenv >> 2 | seenv << 6) & 0xff;/* rotate to tdwall */
+		goto do_twall;
+	case TRWALL:
+		row = wall_matrix[T_r];
+		seenv = (seenv >> 6 | seenv << 2) & 0xff;/* rotate to tdwall */
+		goto do_twall;
+	case TDWALL:
+		row = wall_matrix[T_d];
+do_twall:
+		switch (lev->wall_info & WM_MASK) {
+		    case 0:
+			if (seenv == SV4) {
+			    col = T_tlcorn;
+			} else if (seenv == SV6) {
+			    col = T_trcorn;
+			} else if (seenv & (SV3|SV5|SV7) ||
+					    ((seenv & SV4) && (seenv & SV6))) {
+			    col = T_tdwall;
+			} else if (seenv & (SV0|SV1|SV2)) {
+			    col = (seenv & (SV4|SV6) ? T_tdwall : T_hwall);
+			} else {
+			    t_warn(lev);
+			    col = T_stone;
+			}
+			break;
+		    case WM_T_LONG:
+			if (seenv & (SV3|SV4) && !(seenv & (SV5|SV6|SV7))) {
+			    col = T_tlcorn;
+			} else if (seenv&(SV6|SV7) && !(seenv&(SV3|SV4|SV5))) {
+			    col = T_trcorn;
+			} else if ((seenv & SV5) ||
+				((seenv & (SV3|SV4)) && (seenv & (SV6|SV7)))) {
+			    col = T_tdwall;
+			} else {
+			    /* only SV0|SV1|SV2 */
+			    if (! only(seenv, SV0|SV1|SV2) )
+				t_warn(lev);
+			    col = T_stone;
+			}
+			break;
+		    case WM_T_BL:
+#if 0	/* older method, fixed */
+			if (only(seenv, SV4|SV5)) {
+			    col = T_tlcorn;
+			} else if ((seenv & (SV0|SV1|SV2)) &&
+					only(seenv, SV0|SV1|SV2|SV6|SV7)) {
+			    col = T_hwall;
+			} else if (seenv & SV3 ||
+			    ((seenv & (SV0|SV1|SV2)) && (seenv & (SV4|SV5)))) {
+			    col = T_tdwall;
+			} else {
+			    if (seenv != SV6)
+				t_warn(lev);
+			    col = T_stone;
+			}
+#endif	/* 0 */
+			if (only(seenv, SV4|SV5))
+			    col = T_tlcorn;
+			else if ((seenv & (SV0|SV1|SV2|SV7)) &&
+					!(seenv & (SV3|SV4|SV5)))
+			    col = T_hwall;
+			else if (only(seenv, SV6))
+			    col = T_stone;
+			else
+			    col = T_tdwall;
+			break;
+		    case WM_T_BR:
+#if 0	/* older method, fixed */
+			if (only(seenv, SV5|SV6)) {
+			    col = T_trcorn;
+			} else if ((seenv & (SV0|SV1|SV2)) &&
+					    only(seenv, SV0|SV1|SV2|SV3|SV4)) {
+			    col = T_hwall;
+			} else if (seenv & SV7 ||
+			    ((seenv & (SV0|SV1|SV2)) && (seenv & (SV5|SV6)))) {
+			    col = T_tdwall;
+			} else {
+			    if (seenv != SV4)
+				t_warn(lev);
+			    col = T_stone;
+			}
+#endif	/* 0 */
+			if (only(seenv, SV5|SV6))
+			    col = T_trcorn;
+			else if ((seenv & (SV0|SV1|SV2|SV3)) &&
+					!(seenv & (SV5|SV6|SV7)))
+			    col = T_hwall;
+			else if (only(seenv, SV4))
+			    col = T_stone;
+			else
+			    col = T_tdwall;
+
+			break;
+		    default:
+			impossible("wall_angle: unknown T wall mode %d",
+				lev->wall_info & WM_MASK);
+			col = T_stone;
+			break;
+		}
+		idx = row[col];
+		break;
+
+	case SDOOR:
+		if (lev->horizontal) goto horiz;
+		/* fall through */
+	case VWALL:
+		switch (lev->wall_info & WM_MASK) {
+		    case 0: idx = seenv ? S_vwall : S_stone; break;
+		    case 1: idx = seenv & (SV1|SV2|SV3|SV4|SV5) ? S_vwall :
+								  S_stone;
+			    break;
+		    case 2: idx = seenv & (SV0|SV1|SV5|SV6|SV7) ? S_vwall :
+								  S_stone;
+			    break;
+		    default:
+			impossible("wall_angle: unknown vwall mode %d",
+				lev->wall_info & WM_MASK);
+			idx = S_stone;
+			break;
+		}
+		break;
+
+	case HWALL:
+horiz:
+		switch (lev->wall_info & WM_MASK) {
+		    case 0: idx = seenv ? S_hwall : S_stone; break;
+		    case 1: idx = seenv & (SV3|SV4|SV5|SV6|SV7) ? S_hwall :
+								  S_stone;
+			    break;
+		    case 2: idx = seenv & (SV0|SV1|SV2|SV3|SV7) ? S_hwall :
+								  S_stone;
+			    break;
+		    default:
+			impossible("wall_angle: unknown hwall mode %d",
+				lev->wall_info & WM_MASK);
+			idx = S_stone;
+			break;
+		}
+		break;
+
+#define set_corner(idx, lev, which, outer, inner, name)	\
+    switch ((lev)->wall_info & WM_MASK) {				    \
+	case 0:		 idx = which; break;				    \
+	case WM_C_OUTER: idx = seenv &  (outer) ? which : S_stone; break;   \
+	case WM_C_INNER: idx = seenv & ~(inner) ? which : S_stone; break;   \
+	default:							    \
+	    impossible("wall_angle: unknown %s mode %d", name,		    \
+		(lev)->wall_info & WM_MASK);				    \
+	    idx = S_stone;						    \
+	    break;							    \
+    }
+
+	case TLCORNER:
+	    set_corner(idx, lev, S_tlcorn, (SV3|SV4|SV5), SV4, "tlcorn");
+	    break;
+	case TRCORNER:
+	    set_corner(idx, lev, S_trcorn, (SV5|SV6|SV7), SV6, "trcorn");
+	    break;
+	case BLCORNER:
+	    set_corner(idx, lev, S_blcorn, (SV1|SV2|SV3), SV2, "blcorn");
+	    break;
+	case BRCORNER:
+	    set_corner(idx, lev, S_brcorn, (SV7|SV0|SV1), SV0, "brcorn");
+	    break;
+
+
+	case CROSSWALL:
+		switch (lev->wall_info & WM_MASK) {
+		    case 0:
+			if (seenv == SV0)
+			    idx = S_brcorn;
+			else if (seenv == SV2)
+			    idx = S_blcorn;
+			else if (seenv == SV4)
+			    idx = S_tlcorn;
+			else if (seenv == SV6)
+			    idx = S_trcorn;
+			else if (!(seenv & ~(SV0|SV1|SV2)) &&
+					(seenv & SV1 || seenv == (SV0|SV2)))
+			    idx = S_tuwall;
+			else if (!(seenv & ~(SV2|SV3|SV4)) &&
+					(seenv & SV3 || seenv == (SV2|SV4)))
+			    idx = S_trwall;
+			else if (!(seenv & ~(SV4|SV5|SV6)) &&
+					(seenv & SV5 || seenv == (SV4|SV6)))
+			    idx = S_tdwall;
+			else if (!(seenv & ~(SV0|SV6|SV7)) &&
+					(seenv & SV7 || seenv == (SV0|SV6)))
+			    idx = S_tlwall;
+			else
+			    idx = S_crwall;
+			break;
+
+		    case WM_X_TL:
+			row = cross_matrix[C_tl];
+			seenv = (seenv >> 4 | seenv << 4) & 0xff;
+			goto do_crwall;
+		    case WM_X_TR:
+			row = cross_matrix[C_tr];
+			seenv = (seenv >> 6 | seenv << 2) & 0xff;
+			goto do_crwall;
+		    case WM_X_BL:
+			row = cross_matrix[C_bl];
+			seenv = (seenv >> 2 | seenv << 6) & 0xff;
+			goto do_crwall;
+		    case WM_X_BR:
+			row = cross_matrix[C_br];
+do_crwall:
+			if (seenv == SV4)
+			    idx = S_stone;
+			else {
+			    seenv = seenv & ~SV4;	/* strip SV4 */
+			    if (seenv == SV0) {
+				col = C_brcorn;
+			    } else if (seenv & (SV2|SV3)) {
+				if (seenv & (SV5|SV6|SV7))
+				    col = C_crwall;
+				else if (seenv & (SV0|SV1))
+				    col = C_tuwall;
+				else
+				    col = C_blcorn;
+			    } else if (seenv & (SV5|SV6)) {
+				if (seenv & (SV1|SV2|SV3))
+				    col = C_crwall;
+				else if (seenv & (SV0|SV7))
+				    col = C_tlwall;
+				else
+				    col = C_trcorn;
+			    } else if (seenv & SV1) {
+				col = seenv & SV7 ? C_crwall : C_tuwall;
+			    } else if (seenv & SV7) {
+				col = seenv & SV1 ? C_crwall : C_tlwall;
+			    } else {
+				impossible(
+				    "wall_angle: bottom of crwall check");
+				col = C_crwall;
+			    }
+
+			    idx = row[col];
+			}
+			break;
+
+		    case WM_X_TLBR:
+			if ( only(seenv, SV1|SV2|SV3) )
+			    idx = S_blcorn;
+			else if ( only(seenv, SV5|SV6|SV7) )
+			    idx = S_trcorn;
+			else if ( only(seenv, SV0|SV4) )
+			    idx = S_stone;
+			else
+			    idx = S_crwall;
+			break;
+
+		    case WM_X_BLTR:
+			if ( only(seenv, SV0|SV1|SV7) )
+			    idx = S_brcorn;
+			else if ( only(seenv, SV3|SV4|SV5) )
+			    idx = S_tlcorn;
+			else if ( only(seenv, SV2|SV6) )
+			    idx = S_stone;
+			else
+			    idx = S_crwall;
+			break;
+
+		    default:
+			impossible("wall_angle: unknown crosswall mode");
+			idx = S_stone;
+			break;
+		}
+		break;
+
+	default:
+	    impossible("wall_angle: unexpected wall type %d", lev->typ);
+	    idx = S_stone;
+    }
+    return idx;
 }
 
 /*display.c*/

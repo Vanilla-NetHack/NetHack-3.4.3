@@ -1,10 +1,10 @@
+/*	SCCS Id: @(#)makedefs.c	3.2	95/10/09	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* Copyright (c) M. Stephenson, 1990, 1991.			  */
 /* Copyright (c) Dean Luick, 1990.				  */
 /* NetHack may be freely redistributed.  See license for details. */
-/* makedefs.c - NetHack version 3.1 */
 
-#define	MAKEDEFS_C	/* use to conditionally include file sections */
+#define MAKEDEFS_C	/* use to conditionally include file sections */
 /* #define DEBUG /* uncomment for debugging info */
 
 #include "config.h"
@@ -12,6 +12,7 @@
 #include "objclass.h"
 #include "monsym.h"
 #include "artilist.h"
+#include "dlb.h"
 
 /* version information */
 #ifdef SHORT_FILENAMES
@@ -23,9 +24,9 @@
 #ifdef MAC
 # ifdef applec	/* Means the MPW compiler, I hope */
 #  define MPWTOOL
-#  include <CursorCtl.h>
-#  include <string.h>
-#  include <ctype.h>
+#include <CursorCtl.h>
+#include <string.h>
+#include <ctype.h>
 # else		/* MAC without MPWTOOL */
 #  define MACsansMPWTOOL
 # endif
@@ -42,34 +43,15 @@
 #define rewind(fp) fseek((fp),0L,SEEK_SET)	/* guarantee a return value */
 #endif
 
-#ifdef NULL
-#undef NULL
-#endif
-#define NULL	((char *)0)
-
 #if defined(UNIX) && !defined(LINT) && !defined(GCC_WARN)
-static	const char	SCCS_Id[] = "@(#)makedefs.c\t3.1\t93/05/15";
+static	const char	SCCS_Id[] = "@(#)makedefs.c\t3.2\t95/06/10";
 #endif
 
 #ifdef MICRO
 # undef	exit
+# if !defined(MSDOS) && !defined(WIN32)
 extern void FDECL(exit, (int));
-#endif
-
-#define WRMODE  "w+"
-#define RDMODE  "r"
-/* the quest.dat file is binary, while everything else is text... */
-#if (defined(MICRO) && !defined(AMIGA)) || defined(THINK_C)
-# define WRBMODE "w+b"
-#else
-# define WRBMODE "w+"
-#endif
-
-#ifndef SEEK_SET
-# define SEEK_SET 0
-#endif
-#ifndef SEEK_END
-# define SEEK_END 2
+# endif
 #endif
 
 	/* names of files to be generated */
@@ -89,18 +71,25 @@ extern void FDECL(exit, (int));
 #define VIS_TAB_C	"vis_tab.c"
 	/* locations for those files */
 #ifdef AMIGA
-# define INCLUDE_TEMPLATE	"Incl:t.%s"
-# define SOURCE_TEMPLATE	"NHS:%s"
-# define DATA_TEMPLATE		"Dat:%s"
+# define FILE_PREFIX
+# define INCLUDE_TEMPLATE	"NH:include/t.%s"
+# define SOURCE_TEMPLATE	"NH:src/%s"
+# define DGN_TEMPLATE		"NH:dat/%s"  /* where dungeon.pdf file goes */
+# define DATA_TEMPLATE		"NH:slib/%s"
+# define DATA_IN_TEMPLATE	"NH:dat/%s"
 #else
 # ifdef MAC
 #   define INCLUDE_TEMPLATE	":include:%s"
 #   define SOURCE_TEMPLATE	":src:%s"
-#   define DATA_TEMPLATE	":dat:%s"
+#   define DGN_TEMPLATE		":dat:%s"  /* where dungeon.pdf file goes */
+#   define DATA_TEMPLATE	":lib:%s"
+#   define DATA_IN_TEMPLATE	":dat:%s"
 # else /* MAC */
 #   define INCLUDE_TEMPLATE	"../include/%s"
 #   define SOURCE_TEMPLATE	"../src/%s"
+#   define DGN_TEMPLATE		"../dat/%s"  /* where dungeon.pdf file goes */
 #   define DATA_TEMPLATE	"../dat/%s"
+#   define DATA_IN_TEMPLATE	"../dat/%s"
 # endif /* MAC */
 #endif	/* AMIGA */
 
@@ -113,6 +102,7 @@ static const char
 static struct {
 	long	incarnation;
 	long	features;
+	long	entity_cnt;
 } version;
 
 /* definitions used for vision tables */
@@ -123,8 +113,8 @@ static struct {
 #define MAX_ROW (BLOCK_HEIGHT + TEST_HEIGHT)
 #define MAX_COL (BLOCK_WIDTH + TEST_WIDTH)
 /* Use this as an out-of-bound value in the close table.  */
-#define CLOSE_OFF_TABLE_STRING "99,"	/* for the close table */
-#define FAR_OFF_TABLE_STRING "0xff,"	/* for the far table */
+#define CLOSE_OFF_TABLE_STRING "99"	/* for the close table */
+#define FAR_OFF_TABLE_STRING "0xff"	/* for the far table */
 
 #define sign(z) ((z) < 0 ? -1 : ((z) ? 1 : 0))
 #ifdef VISION_TABLES
@@ -132,15 +122,21 @@ static char xclear[MAX_ROW][MAX_COL];
 #endif
 /*-end of vision defs-*/
 
-static char	in_line[256], filename[30];
+static char	in_line[256], filename[60];
+
+#ifdef FILE_PREFIX
+		/* if defined, a first argument not starting with - is
+		 * taken as a text string to be prepended to any
+		 * output filename generated */
+char *file_prefix="";
+#endif
 
 #ifdef MACsansMPWTOOL
-void FDECL(macstart, (void));
 int FDECL(main, (void));
 #else
-int FDECL(main, (int, char **));
+int FDECL(main, (int,char **));
 #endif
-int FDECL(do_makedefs, (int, char **));
+void FDECL(do_makedefs, (char *));
 void NDECL(do_objs);
 void NDECL(do_data);
 void NDECL(do_dungeon);
@@ -165,19 +161,17 @@ static boolean FDECL(h_filter, (char *));
 static boolean FDECL(ranged_attk,(struct permonst*));
 static int FDECL(mstrength,(struct permonst *));
 
-#ifdef MULDGN
 static boolean FDECL(qt_comment, (char *));
 static boolean FDECL(qt_control, (char *));
 static int FDECL(get_hdr, (CHAR_P));
 static boolean FDECL(known_id, (CHAR_P));
 static boolean FDECL(new_id, (CHAR_P));
-static boolean FDECL(known_msg, (CHAR_P, char *));
+static boolean FDECL(known_msg, (CHAR_P,char *));
 static void FDECL(new_msg, (char *));
 static void FDECL(do_qt_control, (char *));
 static void FDECL(do_qt_text, (char *));
 static void NDECL(adjust_qt_hdrs);
 static void NDECL(put_qt_hdrs);
-#endif
 
 #ifdef VISION_TABLES
 static void NDECL(H_close_gen);
@@ -189,52 +183,75 @@ static int FDECL(clear_path, (int,int,int,int));
 
 static char *FDECL(tmpdup, (const char *));
 static char *FDECL(limit, (char *,int));
+static char *FDECL(eos, (char *));
 
 /* input, output, tmp */
-
 static FILE *ifp, *ofp, *tfp;
 
+#ifdef __BORLANDC__
+extern unsigned _stklen = STKSIZ;
+#endif
+
+
 #ifdef MACsansMPWTOOL
-char mac_opt;
-
-void
-macstart()
-{
-	static char buf[100];
-	static char *ptr = NULL;
-
-again :
-	if (!ptr || !*ptr) {
-		Fprintf(stderr, "Options: otdemvpqrhz\n");
-		buf[0] = 0;
-		fgets(buf, 100, stdin);
-		ptr = buf;
-	}
-
-	do {
-		mac_opt = *ptr++;
-	} while (mac_opt && isspace(mac_opt));
-
-	if (!mac_opt) {
-		Fprintf(stderr, "Makedefs done.\n");
-		exit(0);
-	}
-}
-#endif /* MAC */
-
-
 int
-#ifdef MACsansMPWTOOL
 main(void)
 {
-	int argc;
-	char **argv;
+    const char *def_options = "odemvpqrhz";
+    char buf[100];
+    int len;
+
+    printf("Enter options to run: [%s] ", def_options);
+    fflush(stdout);
+    fgets(buf, 100, stdin);
+    len = strlen(buf);
+    if (len <= 1)
+	Strcpy(buf, def_options);
+    else
+	buf[len-1] = 0;			/* remove return */
+
+    do_makedefs(buf);
+    exit(EXIT_SUCCESS);
+    return 0;
+}
+
 #else /* ! MAC */
+
+int
 main(argc, argv)
 int	argc;
 char	*argv[];
 {
-#endif /* MAC */
+	if ( (argc != 2)
+#ifdef FILE_PREFIX
+		&& (argc != 3)
+#endif
+	) {
+	    Fprintf(stderr, "Bad arg count (%d).\n", argc-1);
+	    (void) fflush(stderr);
+	    return 1;
+	}
+
+#ifdef FILE_PREFIX
+	if(argc >=2 && argv[1][0]!='-'){
+	    file_prefix=argv[1];
+	    argc--;argv++;
+	}
+#endif
+	do_makedefs(&argv[1][1]);
+	exit(EXIT_SUCCESS);
+	/*NOTREACHED*/
+	return 0;
+}
+
+#endif
+
+void
+do_makedefs(options)
+char	*options;
+{
+	boolean more_than_one;
+
 	/* Note:  these initializers don't do anything except guarantee that
 		we're linked properly.
 	*/
@@ -244,41 +261,15 @@ char	*argv[];
 	/* construct the current version number */
 	make_version();
 
-#ifdef MACsansMPWTOOL
-	while (1) {
-		macstart();
-		do_makedefs(argc, argv);
-	}
-#else
-	if (do_makedefs(argc, argv))
-		exit(1);
-#endif
-#ifndef VMS
-	return 0;
-#else
-	return 1;       /* vms success */
-#endif /*VMS*/
-}
 
-int
-do_makedefs(arrgc, arrgv)
-int	arrgc;
-char	*arrgv[];
-{
-#ifdef MACsansMPWTOOL
-	if (1) {
-		Fprintf(stderr, "makedefs -%c\n", mac_opt);
-		switch (mac_opt) {
-#else /* !MAC */
-	if (arrgc == 2) {
-	    char *option = arrgv[1];
-	    switch (option[1]) {
-#endif /* MAC */
+	more_than_one = strlen(options) > 1;
+	while (*options) {
+	    if (more_than_one)
+		Fprintf(stderr, "makedefs -%c\n", *options);
+
+	    switch (*options) {
 		case 'o':
 		case 'O':	do_objs();
-				break;
-		case 't':			/* this may go away... */
-		case 'T':	Fprintf(stderr,	"`-t' option is obsolete.\n");
 				break;
 		case 'd':
 		case 'D':	do_data();
@@ -309,23 +300,16 @@ char	*arrgv[];
 		case 'Z':	do_vision();
 				break;
 
-		default:
-				Fprintf(stderr,	"Unknown option '%c'.\n",
-#ifdef MACsansMPWTOOL
-					mac_opt
-#else /* MAC */
-					option[1]
-#endif /* MAC */
-					);
+		default:	Fprintf(stderr,	"Unknown option '%c'.\n",
+					*options);
 				(void) fflush(stderr);
-				return(1);
+				exit(EXIT_FAILURE);
+		
 	    }
-	    return 0;
-	} else {
-	    Fprintf(stderr, "Bad arg count (%d).\n", arrgc-1);
-	    (void) fflush(stderr);
-	    return 1;
+	    options++;
 	}
+	if (more_than_one) Fprintf(stderr, "Completed.\n");	/* feedback */
+
 }
 
 
@@ -351,22 +335,27 @@ const char *str;
 void
 do_rumors()
 {
-	char	infile[30];
+	char	infile[60];
 	long	true_rumor_size;
 
-	Sprintf(filename, DATA_TEMPLATE, RUMOR_FILE);
-	if (!(ofp = fopen(filename, WRMODE))) {
+	filename[0]='\0';
+#ifdef FILE_PREFIX
+	Strcat(filename,file_prefix);
+#endif
+	Sprintf(eos(filename), DATA_TEMPLATE, RUMOR_FILE);
+	if (!(ofp = fopen(filename, WRTMODE))) {
 		perror(filename);
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 	Fprintf(ofp,Dont_Edit_Data);
 
-	Strcat(strcpy(infile, filename), ".tru");
-	if (!(ifp = fopen(infile, RDMODE))) {
+	Sprintf(infile, DATA_IN_TEMPLATE, RUMOR_FILE);
+	Strcat(infile, ".tru");
+	if (!(ifp = fopen(infile, RDTMODE))) {
 		perror(infile);
 		Fclose(ofp);
 		Unlink(filename);	/* kill empty output file */
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	/* get size of true rumors file */
@@ -378,27 +367,29 @@ do_rumors()
 	   might be in record format, count the actual data bytes instead.
 	 */
 	true_rumor_size = 0;
-	while (fgets(in_line,sizeof(in_line),ifp) != NULL)
+	while (fgets(in_line, sizeof in_line, ifp) != 0)
 		true_rumor_size += strlen(in_line);	/* includes newline */
 #endif /* VMS */
 	Fprintf(ofp,"%06lx\n", true_rumor_size);
 	(void) fseek(ifp, 0L, SEEK_SET);
 
 	/* copy true rumors */
-	while(fgets(in_line,sizeof(in_line),ifp) != NULL)
+	while (fgets(in_line, sizeof in_line, ifp) != 0)
 		(void) fputs(xcrypt(in_line), ofp);
 
 	Fclose(ifp);
-	Strcat(strcpy(infile, filename), ".fal");
-	if (!(ifp = fopen(infile, RDMODE))) {
+
+	Sprintf(infile, DATA_IN_TEMPLATE, RUMOR_FILE);
+	Strcat(infile, ".fal");
+	if (!(ifp = fopen(infile, RDTMODE))) {
 		perror(infile);
 		Fclose(ofp);
 		Unlink(filename);	/* kill incomplete output file */
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	/* copy false rumors */
-	while(fgets(in_line,sizeof(in_line),ifp) != NULL)
+	while (fgets(in_line, sizeof in_line, ifp) != 0)
 		(void) fputs(xcrypt(in_line), ofp);
 
 	Fclose(ifp);
@@ -409,6 +400,8 @@ do_rumors()
 static void
 make_version()
 {
+	register int i;
+
 	/*
 	 * integer version number
 	 */
@@ -425,9 +418,6 @@ make_version()
 	 */
 	version.features = 0
 		/* levels and/or topology (0..4) */
-#ifdef MULDGN
-			| (1L <<  0)
-#endif
 #ifdef REINCARNATION
 			| (1L <<  1)
 #endif
@@ -435,9 +425,6 @@ make_version()
 			| (1L <<  2)
 #endif
 		/* monsters (5..9) */
-#ifdef ARMY
-			| (1L <<  5)
-#endif
 #ifdef KOPS
 			| (1L <<  6)
 #endif
@@ -448,19 +435,7 @@ make_version()
 #ifdef TOURIST
 			| (1L << 10)
 #endif
-#ifdef TUTTI_FRUTTI
-			| (1L << 11)
-#endif
-#ifdef WALKIES
-			| (1L << 12)
-#endif
 		/* flag bits and/or other global variables (15..26) */
-#ifdef MUSE
-			| (1L << 15)
-#endif
-#ifdef POLYSELF
-			| (1L << 16)
-#endif
 #ifdef TEXTCOLOR
 			| (1L << 17)
 #endif
@@ -476,6 +451,9 @@ make_version()
 #ifdef SCORE_ON_BOTL
 			| (1L << 21)
 #endif
+#ifdef WEAPON_SKILLS
+			| (1L << 22)
+#endif
 		/* data format [COMPRESS excluded] (27..31) */
 #ifdef ZEROCOMP
 			| (1L << 27)
@@ -484,6 +462,16 @@ make_version()
 			| (1L << 28)
 #endif
 			;
+	/*
+	 * Value used for object & monster sanity check.
+	 *    (NROFARTIFACTS<<24) | (NUM_OBJECTS<<12) | (NUMMONS<<0)
+	 */
+	for (i = 1; artifact_names[i]; i++) continue;
+	version.entity_cnt = (long) (i - 1);
+	for (i = 1; objects[i].oc_class != ILLOBJ_CLASS; i++) continue;
+	version.entity_cnt = (version.entity_cnt << 12) | (long) i;
+	for (i = 0; mons[i].mlet; i++) continue;
+	version.entity_cnt = (version.entity_cnt << 12) | (long) i;
 	return;
 }
 
@@ -491,14 +479,18 @@ void
 do_date()
 {
 	long	clocktim;
-	char	cbuf[30], *c;
+	char	cbuf[60], *c;
 
-	Sprintf(filename, INCLUDE_TEMPLATE, DATE_FILE);
-	if (!(ofp = fopen(filename, WRMODE))) {
+	filename[0]='\0';
+#ifdef FILE_PREFIX
+	Strcat(filename,file_prefix);
+#endif
+	Sprintf(eos(filename), INCLUDE_TEMPLATE, DATE_FILE);
+	if (!(ofp = fopen(filename, WRTMODE))) {
 		perror(filename);
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
-	Fprintf(ofp,"/*\tSCCS Id: @(#)date.h\t3.1\t92/04/07 */\n\n");
+	Fprintf(ofp,"/*\tSCCS Id: @(#)date.h\t3.2\t95/10/09 */\n\n");
 	Fprintf(ofp,Dont_Edit_Code);
 
 #ifdef KR1ED
@@ -514,16 +506,15 @@ do_date()
 	Fprintf(ofp,"\n");
 	Fprintf(ofp,"#define VERSION_NUMBER 0x%08lxL\n", version.incarnation);
 	Fprintf(ofp,"#define VERSION_FEATURES 0x%08lxL\n", version.features);
+	Fprintf(ofp,"#define VERSION_SANITY 0x%08lxL\n", version.entity_cnt);
 	Fprintf(ofp,"\n");
 #ifdef AMIGA
 	{
 	struct tm *tm = localtime((time_t *) &clocktim);
-	Fprintf(ofp,"#ifdef AMIGA\n");
-	Fprintf(ofp,"const char amiga_version_string[] = ");
-	Fprintf(ofp,"\"\\0$VER: NetHack %d.%d.%d (%d.%d.%d)\";\n",
+	Fprintf(ofp,"#define AMIGA_VERSION_STRING ");
+	Fprintf(ofp,"\"\\0$VER: NetHack %d.%d.%d (%d.%d.%d)\"\n",
 		VERSION_MAJOR, VERSION_MINOR, PATCHLEVEL,
 		tm->tm_mday, tm->tm_mon+1, tm->tm_year);
-	Fprintf(ofp,"#endif\n");
 	}
 #endif
 	Fclose(ofp);
@@ -537,9 +528,6 @@ static const char *build_opts[] = {
 #ifdef ANSI_DEFAULT
 		"ANSI default terminal",
 #endif
-#ifdef ARMY
-		"armies",
-#endif
 #ifdef TEXTCOLOR
 		"color",
 #endif
@@ -548,6 +536,9 @@ static const char *build_opts[] = {
 #endif
 #ifdef COMPRESS
 		"data file compression",
+#endif
+#ifdef DLB
+		"data librarian",
 #endif
 #ifdef WIZARD
 		"debug mode",
@@ -558,32 +549,20 @@ static const char *build_opts[] = {
 #ifdef EXP_ON_BOTL
 		"experience points on status line",
 #endif
-#ifdef EXPLORE_MODE
-		"explore mode",
-#endif
 #ifdef MFLOPPY
 		"floppy drive support",
 #endif
-#ifdef TUTTI_FRUTTI
-		"fruit names",
-#endif
 #ifdef INSURANCE
-		"insurance against game crashes",
+		"insurance files for recovering from crashes",
 #endif
 #ifdef KOPS
 		"Keystone Kops",
-#endif
-#ifdef WALKIES
-		"leashes",
 #endif
 #ifdef LOGFILE
 		"log file",
 #endif
 #ifdef MAIL
 		"mail daemon",
-#endif
-#ifdef MUSE
-		"monster item use",
 #endif
 #ifdef GNUDOS
 		"MSDOS protected mode",
@@ -592,10 +571,15 @@ static const char *build_opts[] = {
 		"news file",
 #endif
 #ifdef OVERLAY
+# ifdef MOVERLAY
+		"MOVE overlays",
+# else
+#  ifdef VROOMM
+		"VROOMM overlays",
+#  else
 		"overlays",
-#endif
-#ifdef MULDGN
-		"quest dungeon",
+#  endif
+# endif
 #endif
 #ifdef REDO
 		"redo command",
@@ -613,11 +597,20 @@ static const char *build_opts[] = {
 # ifdef MAC
 		"screen control via mactty",
 # endif
+# ifdef SCREEN_8514
+		"screen control via 8514/A graphics",
+# endif
 # ifdef SCREEN_BIOS
 		"screen control via BIOS",
 # endif
 # ifdef SCREEN_DJGPPFAST
 		"screen control via DJGPP fast",
+# endif
+# ifdef SCREEN_VESA
+		"screen control via VESA graphics",
+# endif
+# ifdef SCREEN_VGA
+		"screen control via VGA graphics",
 # endif
 # ifdef WIN32CON
 		"screen control via WIN32 console I/O",
@@ -626,17 +619,11 @@ static const char *build_opts[] = {
 #ifdef SEDUCE
 		"seduction",
 #endif
-#ifdef POLYSELF
-		"self-polymorph",
-#endif
 #ifdef SHELL
 		"shell command",
 #endif
 #ifdef SINKS
 		"sinks",
-#endif
-#ifdef SOUNDS
-		"sounds",
 #endif
 #ifdef SUSPEND
 		"suspend command",
@@ -648,6 +635,13 @@ static const char *build_opts[] = {
 		"terminal capability library",
 # endif
 #endif
+#ifdef TIMED_DELAY
+# ifdef MSDOS
+		"timed wait for display effects",
+# else
+		"timer-driven display effects",
+# endif
+#endif
 #ifdef TOURIST
 		"tourists",
 #endif
@@ -656,6 +650,9 @@ static const char *build_opts[] = {
 #endif
 #ifdef WALLIFIED_MAZE
 		"walled mazes",
+#endif
+#ifdef WEAPON_SKILLS
+		"weapon proficiency",
 #endif
 #ifdef ZEROCOMP
 		"zero-compressed save files",
@@ -676,7 +673,10 @@ static const char *window_opts[] = {
 #ifdef AMIGA_INTUITION
 		"Amiga Intuition",
 #endif
-		NULL
+#ifdef WIN32_GRAPHICS
+		"Win32",
+#endif
+		0
 	};
 
 void
@@ -685,10 +685,14 @@ do_options()
 	register int i, length;
 	register const char *str, *indent = "    ";
 
-	Sprintf(filename, DATA_TEMPLATE, OPTIONS_FILE);
-	if (!(ofp = fopen(filename, WRMODE))) {
+	filename[0]='\0';
+#ifdef FILE_PREFIX
+	Strcat(filename,file_prefix);
+#endif
+	Sprintf(eos(filename), DATA_TEMPLATE, OPTIONS_FILE);
+	if (!(ofp = fopen(filename, WRTMODE))) {
 		perror(filename);
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	Fprintf(ofp,
@@ -737,20 +741,6 @@ d_filter(line)
     char *line;
 {
     if (*line == '#') return TRUE;	/* ignore comment lines */
-#ifndef ARMY
-  { static int ignore_army = 0;
-
-    switch (ignore_army) {
-      case 0:   if (!strcmp(line, "*soldier")) ignore_army = 1;
-		break;		/* 0 => not in army related data */
-      case 1:   if (*line <= ' ') ignore_army = 2;
-		break;		/* 1 => in army name list */
-      case 2:   if (*line > ' ')  ignore_army = 0;
-		break;		/* 2 => in army descriptive text */
-    }
-    if (ignore_army) return TRUE;
-  }
-#endif
     return FALSE;
 }
 
@@ -765,7 +755,7 @@ name-b			next name of interest
 name-c			multiple names which share same description also
 456,7			share a single offset,count line
 .			sentinel to mark end of names
-789,0			dummy record containing offset,count of EOF
+789,0			dummy record containing offset, count of EOF
 text-a			4 lines of descriptive text for name-a
 text-a			at file position 0x01234567L + 123L
 text-a
@@ -779,35 +769,40 @@ text-b/text-c		at fseek(0x01234567L + 456L)
 void
 do_data()
 {
-	char	infile[30], tempfile[30];
+	char	infile[60], tempfile[60];
 	boolean ok;
 	long	txt_offset;
-	unsigned entry_cnt, line_cnt;
+	int	entry_cnt, line_cnt;
 
 	Sprintf(tempfile, DATA_TEMPLATE, "database.tmp");
-	Sprintf(filename, DATA_TEMPLATE, DATA_FILE);
-	Strcat(strcpy(infile, filename),
+	filename[0]='\0';
+#ifdef FILE_PREFIX
+	Strcat(filename,file_prefix);
+#endif
+	Sprintf(eos(filename), DATA_TEMPLATE, DATA_FILE);
+	Sprintf(infile, DATA_IN_TEMPLATE, DATA_FILE);
+	Strcat(infile,
 #ifdef SHORT_FILENAMES
 		".bas"
 #else
 		".base"
 #endif
 		);
-	if (!(ifp = fopen(infile, RDMODE))) {		/* data.base */
+	if (!(ifp = fopen(infile, RDTMODE))) {		/* data.base */
 		perror(infile);
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
-	if (!(ofp = fopen(filename, WRMODE))) {		/* data */
+	if (!(ofp = fopen(filename, WRTMODE))) {	/* data */
 		perror(filename);
 		Fclose(ifp);
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
-	if (!(tfp = fopen(tempfile, WRMODE))) {		/* database.tmp */
+	if (!(tfp = fopen(tempfile, WRTMODE))) {	/* database.tmp */
 		perror(tempfile);
 		Fclose(ifp);
 		Fclose(ofp);
 		Unlink(filename);
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	/* output a dummy header record; we'll rewind and overwrite it later */
@@ -860,7 +855,7 @@ dead_data:  perror(in_line);	/* report the problem */
 	    /* close and kill the aborted output file, then give up */
 	    Fclose(ofp);
 	    Unlink(filename);
-	    exit(1);
+	    exit(EXIT_FAILURE);
 	}
 
 	/* all done */
@@ -917,30 +912,35 @@ static const char *special_oracle[] = {
 void
 do_oracles()
 {
-	char	infile[30], tempfile[30];
+	char	infile[60], tempfile[60];
 	boolean in_oracle, ok;
 	long	txt_offset, offset, fpos;
-	unsigned oracle_cnt;
+	int	oracle_cnt;
 	register int i;
 
 	Sprintf(tempfile, DATA_TEMPLATE, "oracles.tmp");
-	Sprintf(filename, DATA_TEMPLATE, ORACLE_FILE);
-	Strcat(strcpy(infile, filename), ".txt");
-	if (!(ifp = fopen(infile, RDMODE))) {
+	filename[0]='\0';
+#ifdef FILE_PREFIX
+	Strcat(filename, file_prefix);
+#endif
+	Sprintf(eos(filename), DATA_TEMPLATE, ORACLE_FILE);
+	Sprintf(infile, DATA_IN_TEMPLATE, ORACLE_FILE);
+	Strcat(infile, ".txt");
+	if (!(ifp = fopen(infile, RDTMODE))) {
 		perror(infile);
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
-	if (!(ofp = fopen(filename, WRMODE))) {
+	if (!(ofp = fopen(filename, WRTMODE))) {
 		perror(filename);
 		Fclose(ifp);
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
-	if (!(tfp = fopen(tempfile, WRMODE))) {		/* oracles.tmp */
+	if (!(tfp = fopen(tempfile, WRTMODE))) {	/* oracles.tmp */
 		perror(tempfile);
 		Fclose(ifp);
 		Fclose(ofp);
 		Unlink(filename);
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	/* output a dummy header record; we'll rewind and overwrite it later */
@@ -1003,7 +1003,7 @@ do_oracles()
 	ok = (rewind(ofp) == 0);
 	if (ok) {
 	    Sprintf(in_line, "header rewrite of \"%s\"", filename);
-	    ok = (fprintf(ofp, "%s%5d\n", Dont_Edit_Data, (int)oracle_cnt) >=0);
+	    ok = (fprintf(ofp, "%s%5d\n", Dont_Edit_Data, oracle_cnt) >=0);
 	}
 	if (ok) {
 	    Sprintf(in_line, "data rewrite of \"%s\"", filename);
@@ -1024,7 +1024,7 @@ dead_data:  perror(in_line);	/* report the problem */
 	    /* close and kill the aborted output file, then give up */
 	    Fclose(ofp);
 	    Unlink(filename);
-	    exit(1);
+	    exit(EXIT_FAILURE);
 	}
 
 	/* all done */
@@ -1043,11 +1043,6 @@ static	struct deflist {
 	      {	"REINCARNATION", TRUE },
 #else
 	      {	"REINCARNATION", FALSE },
-#endif
-#ifdef MULDGN
-	      {	"MULDGN", TRUE },
-#else
-	      {	"MULDGN", FALSE },
 #endif
 	      { 0, 0 } };
 
@@ -1078,20 +1073,23 @@ do_dungeon()
 {
 	int rcnt = 0;
 
-	Sprintf(filename, DATA_TEMPLATE, DGN_I_FILE);
-	if (!(ifp = fopen(filename, RDMODE))) {
+	Sprintf(filename, DATA_IN_TEMPLATE, DGN_I_FILE);
+	if (!(ifp = fopen(filename, RDTMODE))) {
 		perror(filename);
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
-	Sprintf(filename, DATA_TEMPLATE, DGN_O_FILE);
-	if (!(ofp = fopen(filename, WRMODE))) {
+	filename[0]='\0';
+#ifdef FILE_PREFIX
+	Strcat(filename, file_prefix);
+#endif
+	Sprintf(eos(filename), DGN_TEMPLATE, DGN_O_FILE);
+	if (!(ofp = fopen(filename, WRTMODE))) {
 		perror(filename);
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 	Fprintf(ofp,Dont_Edit_Data);
 
-	while(fgets(in_line,sizeof(in_line),ifp) != NULL) {
-
+	while (fgets(in_line, sizeof in_line, ifp) != 0) {
 	    SpinCursor(3);
 
 	    rcnt++;
@@ -1101,14 +1099,14 @@ recheck:
 		int i = check_control(in_line);
 		if(i >= 0) {
 		    if(!deflist[i].true_or_false)  {
-			while(fgets(in_line,sizeof(in_line),ifp))
+			while (fgets(in_line, sizeof in_line, ifp) != 0)
 			    if(check_control(in_line) != i) goto recheck;
 		    } else
 			(void) fputs(without_control(in_line),ofp);
 		} else {
 		    Fprintf(stderr, "Unknown control option '%s' in file %s at line %d.\n",
 			    in_line, DGN_I_FILE, rcnt);
-		    exit(1);
+		    exit(EXIT_FAILURE);
 		}
 	    } else
 		(void) fputs(in_line,ofp);
@@ -1174,12 +1172,9 @@ struct permonst *ptr;
 	for(i = 0; i < NATTK; i++) {
 
 	    tmp2 = ptr->mattk[i].adtyp;
-	    if((tmp2 == AD_DRLI) || (tmp2 == AD_STON) || (tmp2 == AD_DRST)
-			|| (tmp2 == AD_DRDX) || (tmp2 == AD_DRCO)
-#ifdef POLYSELF
-					|| (tmp2 == AD_WERE)
-#endif
-								) n += 2;
+	    if ((tmp2 == AD_DRLI) || (tmp2 == AD_STON) || (tmp2 == AD_DRST)
+		|| (tmp2 == AD_DRDX) || (tmp2 == AD_DRCO) || (tmp2 == AD_WERE))
+			n += 2;
 	    else if (strcmp(ptr->mname, "grid bug")) n += (tmp2 != AD_PHYS);
 	    n += ((int) (ptr->mattk[i].damd * ptr->mattk[i].damn) > 23);
 	}
@@ -1205,10 +1200,14 @@ do_monstr()
     /*
      * create the source file, "monstr.c"
      */
-    Sprintf(filename, SOURCE_TEMPLATE, MON_STR_C);
-    if (!(ofp = fopen(filename, WRMODE))) {
+    filename[0]='\0';
+#ifdef FILE_PREFIX
+    Strcat(filename, file_prefix);
+#endif
+    Sprintf(eos(filename), SOURCE_TEMPLATE, MON_STR_C);
+    if (!(ofp = fopen(filename, WRTMODE))) {
 	perror(filename);
-	exit(1);
+	exit(EXIT_FAILURE);
     }
     Fprintf(ofp,Dont_Edit_Code);
     Fprintf(ofp,"#include \"config.h\"\n");
@@ -1241,17 +1240,23 @@ do_permonst()
 	int	i;
 	char	*c, *nam;
 
-	Sprintf(filename, INCLUDE_TEMPLATE, MONST_FILE);
-	if (!(ofp = fopen(filename, WRMODE))) {
+	filename[0]='\0';
+#ifdef FILE_PREFIX
+	Strcat(filename, file_prefix);
+#endif
+	Sprintf(eos(filename), INCLUDE_TEMPLATE, MONST_FILE);
+	if (!(ofp = fopen(filename, WRTMODE))) {
 		perror(filename);
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
-	Fprintf(ofp,"/*\tSCCS Id: @(#)pm.h\t3.1\t92/01/04 */\n\n");
+	Fprintf(ofp,"/*\tSCCS Id: @(#)pm.h\t3.2\t94/09/10 */\n\n");
 	Fprintf(ofp,Dont_Edit_Code);
 	Fprintf(ofp,"#ifndef PM_H\n#define PM_H\n");
 
-	for(i = 0; mons[i].mlet; i++) {
+	if (strcmp(mons[0].mname, "playermon") != 0)
+		Fprintf(ofp,"\n#define\tPM_PLAYERMON\t(-1)");
 
+	for (i = 0; mons[i].mlet; i++) {
 		SpinCursor(3);
 
 		Fprintf(ofp,"\n#define\tPM_");
@@ -1269,7 +1274,7 @@ do_permonst()
 	return;
 }
 
-#ifdef MULDGN
+
 /*	Start of Quest text file processing. */
 #include "qtext.h"
 
@@ -1280,7 +1285,7 @@ static struct qtmsg	*curr_msg;
 static int	qt_line;
 
 static boolean	in_msg;
-#define	NO_MSG	1	/* strlen of a null line returned by fgets() */
+#define NO_MSG	1	/* strlen of a null line returned by fgets() */
 
 static boolean
 qt_comment(s)
@@ -1288,7 +1293,7 @@ qt_comment(s)
 	char *s;
 {
 	if(s[0] == '#') return(TRUE);
-	return(!in_msg  && strlen(s) == NO_MSG);
+	return((boolean)(!in_msg  && strlen(s) == NO_MSG));
 }
 
 static boolean
@@ -1296,7 +1301,7 @@ qt_control(s)
 
 	char *s;
 {
-	return(s[0] == '%' && (s[1] == 'C' || s[1] == 'E'));
+	return((boolean)(s[0] == '%' && (s[1] == 'C' || s[1] == 'E')));
 }
 
 static int
@@ -1317,7 +1322,7 @@ known_id(c)
 
 	char c;
 {
-	return(get_hdr(c) > 0);
+	return((boolean)(get_hdr(c) > 0));
 }
 
 static boolean
@@ -1443,9 +1448,11 @@ put_qt_hdrs() {
 #ifdef DEBUG
 	Fprintf(stderr, "%ld: header info.\n", ftell(ofp));
 #endif
-	(void) fwrite(&(qt_hdr.n_hdr), sizeof(int), 1, ofp);
-	(void) fwrite(&(qt_hdr.id[0]), sizeof(char), qt_hdr.n_hdr, ofp);
-	(void) fwrite(&(qt_hdr.offset[0]), sizeof(long), qt_hdr.n_hdr, ofp);
+	(void) fwrite((genericptr_t)&(qt_hdr.n_hdr), sizeof(int), 1, ofp);
+	(void) fwrite((genericptr_t)&(qt_hdr.id[0]), sizeof(char),
+							qt_hdr.n_hdr, ofp);
+	(void) fwrite((genericptr_t)&(qt_hdr.offset[0]), sizeof(long),
+							qt_hdr.n_hdr, ofp);
 #ifdef DEBUG
 	for(i = 0; i < qt_hdr.n_hdr; i++)
 		Fprintf(stderr, "%c @ %ld, ", qt_hdr.id[i], qt_hdr.offset[i]);
@@ -1462,9 +1469,10 @@ put_qt_hdrs() {
 	    Fprintf(stderr, "%ld: %c header info.\n", ftell(ofp),
 		    qt_hdr.id[i]);
 #endif
-	    (void) fwrite(&(msg_hdr[i].n_msg), sizeof(int), 1, ofp);
-	    (void) fwrite(&(msg_hdr[i].qt_msg[0]), sizeof(struct qtmsg),
-		   msg_hdr[i].n_msg, ofp);
+	    (void) fwrite((genericptr_t)&(msg_hdr[i].n_msg), sizeof(int),
+							1, ofp);
+	    (void) fwrite((genericptr_t)&(msg_hdr[i].qt_msg[0]),
+			    sizeof(struct qtmsg), msg_hdr[i].n_msg, ofp);
 #ifdef DEBUG
 	    { int j;
 	      for(j = 0; j < msg_hdr[i].n_msg; j++)
@@ -1480,25 +1488,28 @@ put_qt_hdrs() {
 void
 do_questtxt()
 {
-	Sprintf(filename, DATA_TEMPLATE, QTXT_I_FILE);
-	if(!(ifp = fopen(filename, RDMODE))) {
+	Sprintf(filename, DATA_IN_TEMPLATE, QTXT_I_FILE);
+	if(!(ifp = fopen(filename, RDTMODE))) {
 		perror(filename);
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
-	Sprintf(filename, DATA_TEMPLATE, QTXT_O_FILE);
+	filename[0]='\0';
+#ifdef FILE_PREFIX
+	Strcat(filename, file_prefix);
+#endif
+	Sprintf(eos(filename), DATA_TEMPLATE, QTXT_O_FILE);
 	if(!(ofp = fopen(filename, WRBMODE))) {
 		perror(filename);
 		Fclose(ifp);
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	qt_hdr.n_hdr = 0;
 	qt_line = 0;
 	in_msg = FALSE;
 
-	while(fgets(in_line, 80, ifp) != NULL) {
-
+	while (fgets(in_line, 80, ifp) != 0) {
 	    SpinCursor (3);
 
 	    qt_line++;
@@ -1509,8 +1520,9 @@ do_questtxt()
 
 	(void) rewind(ifp);
 	in_msg = FALSE;
-	adjust_qt_hdrs(); put_qt_hdrs();
-	while(fgets(in_line, 80, ifp) != NULL) {
+	adjust_qt_hdrs();
+	put_qt_hdrs();
+	while (fgets(in_line, 80, ifp) != 0) {
 
 		if(qt_control(in_line)) {
 		    in_msg = (in_line[1] == 'C');
@@ -1525,20 +1537,7 @@ do_questtxt()
 	Fclose(ofp);
 	return;
 }
-#else	/* not MULDGN */
 
-void
-do_questtxt()
-{
-	Fprintf(stderr, "makedefs: `-q' option ignored.\n");
-	/* create an empty file to satisfy `make' */
-	Sprintf(filename, DATA_TEMPLATE, QTXT_O_FILE);
-	ofp = fopen(filename, WRBMODE);
-	Fclose(ofp);
-	return;
-}
-
-#endif /* MULDGN */
 
 static	char	temp[32];
 
@@ -1562,12 +1561,16 @@ do_objs()
 	char class = '\0';
 	boolean	sumerr = FALSE;
 
-	Sprintf(filename, INCLUDE_TEMPLATE, ONAME_FILE);
-	if (!(ofp = fopen(filename, WRMODE))) {
+	filename[0]='\0';
+#ifdef FILE_PREFIX
+	Strcat(filename, file_prefix);
+#endif
+	Sprintf(eos(filename), INCLUDE_TEMPLATE, ONAME_FILE);
+	if (!(ofp = fopen(filename, WRTMODE))) {
 		perror(filename);
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
-	Fprintf(ofp,"/*\tSCCS Id: @(#)onames.h\t3.1\t92/11/01 */\n\n");
+	Fprintf(ofp,"/*\tSCCS Id: @(#)onames.h\t3.2\t94/09/10 */\n\n");
 	Fprintf(ofp,Dont_Edit_Code);
 	Fprintf(ofp,"#ifndef ONAMES_H\n#define ONAMES_H\n\n");
 
@@ -1640,7 +1643,7 @@ do_objs()
 
 	Fprintf(ofp,"#define\tLAST_GEM\t(JADE)\n");
 	Fprintf(ofp,"#define\tMAXSPELL\t%d\n", nspell+1);
-	Fprintf(ofp,"#define\tNROFOBJECTS\t%d\n", i-1);
+	Fprintf(ofp,"#define\tNUM_OBJECTS\t%d\n", i);
 
 	Fprintf(ofp, "\n/* Artifacts (unique objects) */\n\n");
 
@@ -1664,7 +1667,7 @@ do_objs()
 	Fprintf(ofp, "#define\tNROFARTIFACTS\t%d\n", i-1);
 	Fprintf(ofp,"\n#endif /* ONAMES_H */\n");
 	Fclose(ofp);
-	if (sumerr) exit(1);
+	if (sumerr) exit(EXIT_FAILURE);
 	return;
 }
 
@@ -1679,11 +1682,17 @@ const char *str;
 	return buf;
 }
 
+static char *
+eos(str)
+char *str;
+{
+    while (*str) str++;
+    return str;
+}
 
 /*
- * macros used to control vision algorithms:
+ * macro used to control vision algorithms:
  *      VISION_TABLES => generate tables
- *      BRACES        => table elements should be enclosed in "{ }"
  */
 
 void
@@ -1708,10 +1717,14 @@ do_vision()
     /*
      * create the include file, "vis_tab.h"
      */
+    filename[0]='\0';
+#ifdef FILE_PREFIX
+    Strcat(filename, file_prefix);
+#endif
     Sprintf(filename, INCLUDE_TEMPLATE, VIS_TAB_H);
-    if (!(ofp = fopen(filename, WRMODE))) {
+    if (!(ofp = fopen(filename, WRTMODE))) {
 	perror(filename);
-	exit(1);
+	exit(EXIT_FAILURE);
     }
     Fprintf(ofp,Dont_Edit_Code);
     Fprintf(ofp,"#ifdef VISION_TABLES\n");
@@ -1727,12 +1740,16 @@ do_vision()
     /*
      * create the source file, "vis_tab.c"
      */
+    filename[0]='\0';
+#ifdef FILE_PREFIX
+    Strcat(filename, file_prefix);
+#endif
     Sprintf(filename, SOURCE_TEMPLATE, VIS_TAB_C);
-    if (!(ofp = fopen(filename, WRMODE))) {
+    if (!(ofp = fopen(filename, WRTMODE))) {
 	perror(filename);
 	Sprintf(filename, INCLUDE_TEMPLATE, VIS_TAB_H);
 	Unlink(filename);
-	exit(1);
+	exit(EXIT_FAILURE);
     }
     Fprintf(ofp,Dont_Edit_Code);
     Fprintf(ofp,"#include \"config.h\"\n");
@@ -1844,14 +1861,6 @@ H_far_gen()
     return;
 }
 
-# ifdef BRACES
-#  define L_BRACE "{"
-#  define R_BRACE "},"
-# else
-#  define L_BRACE ""
-#  define R_BRACE ""
-# endif /* BRACES */
-
 static void
 C_close_gen()
 {
@@ -1860,6 +1869,7 @@ C_close_gen()
     int block_row, block_col;	/* block */
     int this_row;
     int no_more;
+    const char *delim;
 
     block_row = BLOCK_HEIGHT-1;
     block_col = BLOCK_WIDTH-1;
@@ -1872,36 +1882,35 @@ C_close_gen()
 
     for (dy = 1; dy < TEST_HEIGHT; dy++) {
 	src_row = block_row + dy;
-	Fprintf(ofp,"/* DY = %2d (- 1)*/\n  {\n",dy);
+	Fprintf(ofp, "/* DY = %2d (- 1)*/\n  {{\n", dy);
 #ifndef no_vision_progress
 	Fprintf(stderr," %2d",dy),  (void)fflush(stderr);
 #endif
 	for (dx = 0; dx < TEST_WIDTH; dx++) {
 	    src_col = block_col - dx;
-	    Fprintf(ofp,"  /*%2d*/  %s",dx, L_BRACE);
+	    Fprintf(ofp, "  /*%2d*/ {", dx);
 
 	    no_more = 0;
 	    for (this_row = 0; this_row < TEST_HEIGHT; this_row++) {
+		delim = (this_row < TEST_HEIGHT - 1) ? "," : "";
 		if (no_more) {
-		    Fprintf(ofp,CLOSE_OFF_TABLE_STRING);
+		    Fprintf(ofp, "%s%s", CLOSE_OFF_TABLE_STRING, delim);
 		    continue;
 		}
-
 		SpinCursor(3);
 
 		/* Find the first column that we can see. */
 		for (i = block_col+1; i < MAX_COL; i++) {
-
 		    if (clear_path(src_row,src_col,block_row-this_row,i))
 			break;
 		}
 
 		if (i == MAX_COL) no_more = 1;
-		Fprintf(ofp,"%2d,",i-block_col);
+		Fprintf(ofp, "%2d%s", i - block_col, delim);
 	    }
-	    Fprintf(ofp,"%s\n", R_BRACE);
+	    Fprintf(ofp, "}%s", (dx < TEST_WIDTH - 1) ? ",\n" : "\n");
 	}
-	Fprintf(ofp,"  },\n");
+	Fprintf(ofp,"  }},\n");
     }
 
     Fprintf(ofp,"}; /* close_table[] */\n");		/* closing brace for table */
@@ -1919,6 +1928,7 @@ C_far_gen()
     int src_row, src_col;	/* source */
     int block_row, block_col;	/* block */
     int this_row;
+    const char *delim;
 
     block_row = BLOCK_HEIGHT-1;
     block_col = BLOCK_WIDTH-1;
@@ -1931,32 +1941,32 @@ C_far_gen()
 
     for (dy = 0; dy < TEST_HEIGHT; dy++) {
 	src_row = block_row - dy;
-	Fprintf(ofp,"/* DY = %2d */\n  {\n",dy);
+	Fprintf(ofp, "/* DY = %2d */\n  {{\n", dy);
 #ifndef no_vision_progress
 	Fprintf(stderr," %2d",dy),  (void)fflush(stderr);
 #endif
 	for (dx = 1; dx < TEST_WIDTH; dx++) {
 	    src_col = block_col + dx;
-	    Fprintf(ofp,"  /*%2d(-1)*/ %s",dx, L_BRACE);
+	    Fprintf(ofp, "  /*%2d(-1)*/ {", dx);
 
 	    for (this_row = block_row+1; this_row < block_row+TEST_HEIGHT;
 								this_row++) {
+		delim = (this_row < block_row + TEST_HEIGHT - 1) ? "," : "";
+
+		SpinCursor(3);
 		/* Find first col that we can see. */
 		for (i = 0; i <= block_col; i++) {
-
-		    SpinCursor(3);
-
 		    if (clear_path(src_row,src_col,this_row,i)) break;
 		}
 
 		if (block_col-i < 0)
-		    Fprintf(ofp,FAR_OFF_TABLE_STRING);
+		    Fprintf(ofp, "%s%s", FAR_OFF_TABLE_STRING, delim);
 		else
-		    Fprintf(ofp,"%2d,",block_col-i);
+		    Fprintf(ofp, "%2d%s", block_col - i, delim);
 	    }
-	    Fprintf(ofp,"%s\n", R_BRACE);
+	    Fprintf(ofp, "}%s", (dx < TEST_WIDTH - 1) ? ",\n" : "\n");
 	}
-	Fprintf(ofp,"  },\n");
+	Fprintf(ofp,"  }},\n");
     }
 
     Fprintf(ofp,"}; /* far_table[] */\n");	/* closing brace for table */
@@ -1968,7 +1978,7 @@ C_far_gen()
 }
 
 /*
- *  "Draw" a line from the hero to the given location.  Stop of we hit a
+ *  "Draw" a line from the hero to the given location.  Stop if we hit a
  *  wall.
  *
  *  Generalized integer Bresenham's algorithm (fast line drawing) for

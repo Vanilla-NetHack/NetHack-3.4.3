@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)pcunix.c	3.1	90/22/02
+/*	SCCS Id: @(#)pcunix.c	3.2	94/11/07	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -39,11 +39,11 @@ char *name;
     register char *np, *path;
     char filename[MAXPATHLEN+1], *getenv();
 
-    if (index(name, '/') != NULL || (path = getenv("PATH")) == NULL)
+    if (index(name, '/') != (char *)0 || (path = getenv("PATH")) == (char *)0)
 	path = "";
 
     for (;;) {
-	if ((np = index(path, ':')) == NULL)
+	if ((np = index(path, ':')) == (char *)0)
 	    np = path + strlen(path);       /* point to end str */
 	if (np - path <= 1)		     /* %% */
 	    Strcpy(filename, name);
@@ -62,6 +62,7 @@ char *name;
 # endif /* WANT_GETHDATE */
 }
 
+#if 0
 int
 uptodate(fd)
 int fd;
@@ -85,13 +86,22 @@ int fd;
     if(comp_times(buf.st_mtime)) { 
 	if(moves > 1) pline("Saved level is out of date");
 	else pline("Saved game is out of date. ");
+	/* This problem occurs enough times we need to give the player
+	 * some more information about what causes it, and how to fix.
+	 */
+#  ifdef MSDOS
+	    pline("Make sure that your system's date and time are correct.");
+	    pline("They must be more current than NetHack.EXE's date/time stamp.");
+#  endif /* MSDOS */
 	return(0);
     }
-#  endif  /* MICRO /* */
+#  endif  /* MICRO */
 # endif /* WANT_GETHDATE */
     return(1);
 }
+#endif
 
+# ifndef WIN32
 void
 regularize(s)
 /*
@@ -110,15 +120,6 @@ register char *s;
 # endif
 		    *lp == '|' || *lp >= 127 || (*lp >= '[' && *lp <= ']'))
                         *lp = '_';
-# ifdef WIN32
-              /* "Open" was failing on NT, but only on FAT file system     */
-              /* volumes, not on NTFS volumes.  NT does not auto-truncate  */
-              /* the way MSDOS did in such cases, so we need to check      */
-              /* the file name to see if it falls with-in the file systems */
-              /* limitations, and if necessary truncate it ourselves       */
-
-                nt_regularize(s);         /* In winnt.c */
-# endif
 }
-
+# endif /* WIN32 */
 #endif /* OVLB */

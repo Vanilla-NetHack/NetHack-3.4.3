@@ -1,6 +1,6 @@
-/*	SCCS Id: @(#)msdos.c	 3.1	 93/05/06		  */
-/* Copyright (c) NetHack PC Development Team 1990, 1991, 1992	  */
-/* NetHack may be freely redistributed.  See license for details. */
+/*	SCCS Id: @(#)msdos.c	 3.2	 94/02/19		          */
+/* Copyright (c) NetHack PC Development Team 1990, 1991, 1992, 1993, 1994 */
+/* NetHack may be freely redistributed.  See license for details.         */
 
 /*
  *  MSDOS system functions.
@@ -12,6 +12,7 @@
 #include "hack.h"
 
 #ifdef MSDOS
+#include "pcvideo.h"
 
 #include <dos.h>
 #include <ctype.h>
@@ -31,7 +32,7 @@
 /*
  * BIOS interrupts
  */
-#ifdef PC9801
+#ifdef PC9800
 #define KEYBRD_BIOS 0x18
 #else
 #define KEYBRD_BIOS 0x16
@@ -42,6 +43,7 @@
  */
 #define READCHAR    0x00    /* Read Character from Keyboard */
 #define GETKEYFLAGS 0x02    /* Get Keyboard Flags */
+/*#define KEY_DEBUG	    /* print values of unexpected key codes - devel*/
 
 void FDECL(get_cursor,(int *, int *));
 
@@ -53,6 +55,11 @@ static char NDECL(DOSgetch);
 static char NDECL(BIOSgetch);
 static char * NDECL(getdta);
 static unsigned int FDECL(dos_ioctl, (int,int,unsigned));
+#ifdef USE_TILES
+extern boolean tiles_on;	/* from video.c */
+extern boolean traditional;	/* from video.c */
+extern boolean overview;	/* from vidvga.c */
+#endif
 
 int
 tgetch()
@@ -60,10 +67,16 @@ tgetch()
 	char ch;
 
 	/* BIOSgetch can use the numeric key pad on IBM compatibles. */
+# ifdef SIMULATE_CURSOR
+	if (flags.grmode && cursor_flag) DrawCursor();
+# endif
 	if (flags.BIOS)
 		ch = BIOSgetch();
 	else
 		ch = DOSgetch();
+# ifdef SIMULATE_CURSOR
+	if (flags.grmode && cursor_flag) HideCursor();
+# endif
 	return ((ch == '\r') ? '\n' : ch);
 }
 
@@ -72,7 +85,7 @@ tgetch()
 /*
  *  Keyboard translation tables.
  */
-#ifdef PC9801
+#ifdef PC9800
 #define KEYPADLO	0x38
 #define KEYPADHI	0x50
 #else
@@ -91,7 +104,7 @@ tgetch()
 static const struct pad {
 	char normal, shift, cntrl;
 } keypad[PADKEYS] = {
-#ifdef PC9801
+#ifdef PC9800
 			{'>', '>', '>'},		/* Ins */
 			{'<', '<', '<'},		/* Del */
 			{'k', 'K', C('k')},		/* Up */
@@ -115,7 +128,7 @@ static const struct pad {
 			{'n', 'N', C('n')},		/* 3 */
 			{'=', '=', '='},		/* = */
 			{'i', 'I', C('i')},		/* 0 */
-			{',' ':', ':'}, 		/* , */
+			{',', ':', ':'}, 		/* , */
 			{'.', '.', '.'} 		/* . */
 #else
 			{'y', 'Y', C('y')},		/* 7 */
@@ -133,7 +146,7 @@ static const struct pad {
 			{'.', ':', ':'}			/* Del */
 #endif
 }, numpad[PADKEYS] = {
-#ifdef PC9801
+#ifdef PC9800
 			{'>', '>', '>'},		/* Ins */
 			{'<', '<', '<'},		/* Del */
 			{'8', M('8'), '8'},		/* Up */
@@ -184,14 +197,14 @@ static const struct pad {
  * scan code table to translate the scan code into a letter, then set the
  * "meta" bit for it.  -3.
  */
-#ifdef PC9801
+#ifdef PC9800
 #define SCANLO		0x5
 #else
 #define SCANLO		0x10
-#endif /* PC9801 */
+#endif /* PC9800 */
 
 static const char scanmap[] = { 	/* ... */
-#ifdef PC9801
+#ifdef PC9800
 			 0,  0,  0,  0,  0,  0, '-','^','\\','\b',
 	'\t','q','w','e','r','t','y','u','i','o','p','@','[', '\n',
 	'a','s','d','f','g','h','j','k','l',';',':', ']',
@@ -200,7 +213,7 @@ static const char scanmap[] = { 	/* ... */
 	'q','w','e','r','t','y','u','i','o','p','[',']', '\n',
 	0, 'a','s','d','f','g','h','j','k','l',';','\'', '`',
 	0, '\\', 'z','x','c','v','b','n','m',',','.','?'	/* ... */
-#endif /* PC9801 */
+#endif /* PC9800 */
 };
 
 #define inmap(x)	(SCANLO <= (x) && (x) < SCANLO + SIZE(scanmap))
@@ -208,7 +221,7 @@ static const char scanmap[] = { 	/* ... */
 /*
  * BIOSgetch gets keys directly with a BIOS call.
  */
-#ifdef PC9801
+#ifdef PC9800
 #define SHIFT		0x1
 #define KANA		0x4
 #define GRPH		0x8
@@ -217,16 +230,17 @@ static const char scanmap[] = { 	/* ... */
 #define SHIFT		(0x1 | 0x2)
 #define CTRL		0x4
 #define ALT		0x8
-#endif /* PC9801 */
+#endif /* PC9800 */
 
 static char
 BIOSgetch()
 {
-	unsigned char scan, shift, ch;
-	const struct pad *kpad;
+      unsigned char scan, shift, ch=0;
+      const struct pad *kpad;
 
-	union REGS regs;
+      union REGS regs;
 
+      do {
 	/* Get scan code.
 	 */
 	regs.h.ah = READCHAR;
@@ -249,8 +263,45 @@ BIOSgetch()
 		else
 			ch = kpad[scan - KEYPADLO].normal;
 	}
+
+	/* Check for special interface manipulation keys */
+#ifdef SIMULATE_CURSOR
+	if (scan == 0x3d) {	/* F3 = toggle cursor type */
+		HideCursor();
+		cursor_type += 1;
+		if (cursor_type >= NUM_CURSOR_TYPES) cursor_type = 0;
+		DrawCursor();
+		ch = 0xFF;		    /* signal non-nethack code */
+		continue;
+	}
+#endif
+#if defined(USE_TILES)
+	if (tiles_on) {
+ 		if (scan == 0x74 && (shift & CTRL)) {
+		/* scroll horizontal to right */
+			ch = 0xFF;	    /* signal non-nethack code */
+			vga_userpan(1);
+			continue;
+		} else if (scan == 0x73 && (shift & CTRL)) {
+		/* scroll horizontal to left */
+			ch = 0xFF;
+			vga_userpan(0);
+			continue;
+		} else if (scan == 0x3E) {
+			traditional = FALSE;
+			vga_overview(overview ? 0 : 1);
+			ch = 0xFF;
+			continue;
+		} else if (scan == 0x3F) {
+			overview = FALSE;
+			vga_traditional(traditional ? 0 : 1);
+			ch = 0xFF;
+			continue;
+		}
+	}
+#endif
 	/* Translate unassigned Alt-letters */
-#ifdef PC9801
+#ifdef PC9800
 	if (shift & KANA)
 		return 0;
 	if ((shift & GRPH) && (ch >= 0x80)) {
@@ -261,7 +312,8 @@ BIOSgetch()
 			ch = scanmap[scan - SCANLO];
 		return (isprint(ch) ? M(ch) : ch);
 	}
-	return ch;
+      } while (ch == 0xFF);
+      return ch;
 }
 
 static char
@@ -275,7 +327,7 @@ DOSgetch()
 	intdos(&regs, &regs);
 	ch = regs.h.al;
 
-#ifdef PC9801
+#ifdef PC9800
 	if (ch < 0)	/* KANA letters and GRPH-shifted letters(?) */
 		ch = 0; /* munch it */
 #else
@@ -410,7 +462,7 @@ char *str;
 	union REGS inregs;
 	char drive;
 
-	if ((ptr = index(str, ':')) != NULL) {
+	if ((ptr = index(str, ':')) != (char *)0) {
 		drive = toupper(*(ptr - 1));
 		inregs.h.ah = SELECTDISK;
 		inregs.h.dl = drive - 'A';

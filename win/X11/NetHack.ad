@@ -1,14 +1,42 @@
-! The display_file and tombstone windows should use a fixed width font ---
-! the text they display is formatted for a tty terminal.  For the same
-! reason, you may also also want a fixed-width font for the menu and text
-! windows.  However, the formatting is not nearly as critical.
+! The display_file, tombstone, and menu windows are all formatted assuming
+! a fixed width font.  Text windows may or may not be formatted as above.
+! The rip window applies if the GRAPHIC_TOMBSTONE option is turned on, and
+! requires a 12 pixel font for correct appearance.
 !
 NetHack*font:				variable
 NetHack*display_file*font:		fixed
 NetHack*tombstone*font:			fixed
-!NetHack*menu*font:			fixed
+NetHack*rip*font:			-*-times-medium-r-*-*-12-*-*-*-*-*-*-*
+NetHack*menu*font:			fixed
 !NetHack*text*font:			fixed
 NetHack*map*font:			nh10
+
+! To use full-color tiles for the map, uncomment the tile file name.
+! If you use a 100dpi (or greater) monitor you may wish to double the
+! tile size so you can see the figures.  If NetHack was compiled to
+! use XPM (USE_XPM in config.h), the tile_file is a standard XPM file.
+! Otherwise, it is a custom format.  double_tile_size only applies to
+! the custom format - to enlarge an XPM file, use processing tools
+! such as XV or preferably PBMplus.
+!
+!NetHack.tile_file: x11tiles
+!NetHack.double_tile_size: True
+!
+! The annotation of pets.
+!NetHack.pet_mark_bitmap: pet_mark.xbm
+!NetHack.pet_mark_color: Red
+
+! Tombstone
+! The image file
+!NetHack.tombstone: rip.xpm
+! Text starts at (tombtext_x, tombtext_y) and subsequent lines
+! are displaced by (tombtext_dx, tombtext_dy) pixels.  If you
+!NetHack.tombtext_x: 155
+!NetHack.tombtext_y: 78
+!NetHack.tombtext_dx: 0
+!NetHack.tombtext_dy: 13
+! The color to use for the text on the hero's tombstone
+NetHack*rip*foreground: black
 
 ! Translation tables.  There are currently several actions in nethack, but
 ! the only one you should be using is "input()", which, with no parameters,
@@ -33,6 +61,9 @@ NetHack*message*translations:	<KeyPress>: input()
 !
 ! If True, a popup for y/n questions is _not_ used.
 !NetHack*slow: True
+!
+! The number of lines the message window will show without scrolling.
+!NetHack*message_lines: 12
 !
 ! If True, the message window has a line that seperates old and new messages.
 !NetHack*message_line: True
@@ -62,6 +93,7 @@ NetHack*map*gray:		grey85
 NetHack*map*foreground:		wheat
 NetHack*map*background:		grey40
 
+NetHack*fancy_status.skipAdjust:        True
 NetHack*fancy_status.background:	wheat
 NetHack*status_info*foreground:		Sienna
 NetHack*status_info*background:		wheat
@@ -72,9 +104,14 @@ NetHack*status_condition*foreground:	red
 NetHack*status_condition*background:	wheat
 NetHack*Scrollbar*foreground:		Sienna
 NetHack*Scrollbar*background:		wheat
+NetHack*status_info*showGrip:		False
+NetHack*status_attributes*showGrip:	False
 
 NetHack*player_selection*random.borderColor:	blue
+NetHack*player_selection*random.borderWidth:    2
 NetHack*player_selection*random.foreground:	blue
+NetHack*player_selection*random.accelerators: #override\n\
+				<Key>Return:	set() notify() unset()
 NetHack*player_selection*quit.borderColor:	blue
 NetHack*player_selection*quit.foreground:	blue
 NetHack*player_selection*Command.borderColor:	red

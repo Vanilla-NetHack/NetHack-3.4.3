@@ -10,7 +10,7 @@
 
 
 /* wb.c */
-int main P(( int argc , struct WBStartup *argv ));
+int main P(( int argc , char **argv ));
 void CopyRight P(( void ));
 void InitWB P(( int argc , struct WBStartup *wbs ));
 void ReadConfig P(( void ));
@@ -52,7 +52,6 @@ int IsEditEntry P(( char *, GPTR ));
 void menu_comment P(( void ));
 void text_request P(( char *str , char *file ));
 void errmsg P(( int flash , char *str, ... ));
-void error P(( char *str ));
 void SetGadgetUP P(( struct Gadget *gad ));
 void SetGadgetDOWN P(( struct Gadget *gad ));
 void UpdatePropGad P(( struct Window *win , struct Gadget *gad , long vis ,
@@ -76,17 +75,19 @@ void SetBorder P(( struct Gadget *gd, int val ));
 GPTR NeedGame P(( void ));
 void ChgGameItems P(( struct Menu *menup , int enable ));
 void ChgNewGameItems P(( struct Menu *menup , int enable ));
-int EditOptions P(( OPTR optr, GPTR gptr ));
+void ZapOptions P(( void ));
+int EditOptions P(( GPTR gptr ));
 struct Gadget *FindGadget P(( struct Window *window ,
     struct NewWindow *newwindow , int id ));
-void ZapOptions P(( OPTR optr ));
-void CopyOptions P(( OPTR optr , GPTR gptr ));
-void CopyOptionStr P(( OPTR optr , char *str ));
-void SetOptions P(( OPTR optr , GPTR gptr ));
-void PutOptions P(( OPTR optr ));
+void CopyOptions P(( GPTR gptr ));
+void ParseOptionStr P(( char *str ));
+void SetOptions P(( GPTR gptr ));
+void PutOptions P(( GPTR gptr ));
 char *ToolsEntry P(( GPTR gptr , char *name ));
 void ReallocTools P(( GPTR gptr, int ));
 void FreeTools P(( GPTR gptr ));
+void DelToolLines P(( GPTR gptr , char *name ));
+void AddToolLine P(( GPTR gptr , char *name , char *value ));
 void SetToolLine P(( GPTR gptr , char *name , char *value ));
 void WriteDObj P(( GPTR gptr , long lock ));
 void UpdateGameIcon P(( GPTR gptr ));
@@ -106,5 +107,14 @@ void UpdateCnfFile( void );
 char *basename( char * );
 void flushIDCMP( struct MsgPort *);
 filecopy( char *, char * );
+/*void error(const char *);*/
+
+/* wbgads.c */
+struct OPTGAD * LayoutCompOpts( int maxx, int maxy, struct RastPort *rp,
+				int *cury, int *gadid );
+struct OPTGAD *LayoutBoolOpts( int maxx, int maxy, struct RastPort *rp,
+			    int *cury, int *gadid );
+void FreeBoolOpts( struct OPTGAD *boolgads );
+void FreeCompOpts( struct OPTGAD *compgads );
 
 #undef P

@@ -1,4 +1,4 @@
-  NetHack Porting Guidelines		v 3.1			93-01-08
+  NetHack Porting Guidelines		v 3.2			93-01-08
 
 
      1.0	Introduction
@@ -78,7 +78,7 @@ place for other #defines.
 			You may have to put a #define for your OS here.
 			If your OS is yet another UNIX variant, put the
 			#define in unixconf.h instead.
-			A unfortunately large amount of stuff shares
+			An unfortunately large amount of stuff shares
 			this section because the #definitions have to
 			be seen before *conf.h is reached.  Don't add
 			to this unless necessary.
@@ -141,7 +141,7 @@ add to one of those provided.
 of a termcap or terminfo database, you may have to put the appropriate
 terminal control strings into termcap.c.  This has already been done for
 MSDOS, and these mods can be used as an example.  You can also consider
-using the termcap code from sys/share/termcap.uu or sys/vms/gnutermcap.c,
+using the termcap code from sys/share/tclib.c or sys/share/termcap.uu,
 especially if your system supports multiple kinds of terminals.
 
      3.3	main.c

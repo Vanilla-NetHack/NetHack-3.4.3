@@ -6,6 +6,10 @@
 
 #include "hack.h"
 
+#ifdef _DCC
+# define isascii(ch) ((ch) >= 0 && (ch) < 0x80 ? 1 : 0)
+#endif
+
 /* Have to #undef CLOSE, because it's used in display.h and intuition.h */
 #undef CLOSE
 
@@ -14,6 +18,12 @@
 # include <proto/exec.h>
 # include <proto/dos.h>
 # include <proto/icon.h>
+#else
+# ifdef _DCC
+#  include <clib/exec_protos.h>
+#  include <clib/dos_protos.h>
+#  include <clib/icon_protos.h>
+# endif
 #endif
 
 #include <workbench/startup.h>
@@ -22,15 +32,18 @@
 #include <ctype.h>
 
 #ifdef __SASC
+# include <ios1.h>
 # include <string.h>
 # undef strlen          /* grrr */
 #endif
 
 #define ALLOC_SIZE      ((long)sizeof(struct FileInfoBlock))
 
-#ifdef AZTEC_C
-# include <functions.h>
+#if defined(AZTEC_C) || defined(_DCC)
 extern struct Library *IconBase;
+# ifdef AZTEC_C
+#  include <functions.h>
+# endif
 #endif
 
 extern void NDECL( preserve_icon );
@@ -41,8 +54,10 @@ extern void FDECL( amii_set_text_font, ( char *, int ) );
 extern int FDECL(parse_config_line, (FILE *, char *, char *, char *));
 extern char *FDECL( ami_default_icon, ( char * ) );
 
-int ami_argc;           /* global argc */
-char **ami_argv;        /* global argv */
+/*XXXint ami_argc;           /* global argc */
+/*XXXchar **ami_argv;        /* global argv */
+struct WBStartup *wbs;	/* startup message */
+
 boolean FromWBench=0;       /* how did we get started? */
 boolean FromCLI=0;      /* via frontend and INTERNALCLI */
 static BOOL FromTool=0;     /* or from Project (ergo nothing to restore) */
@@ -53,6 +68,13 @@ static char iconname[PATHLEN+5];
 static char origicon[PATHLEN+5];
 static char savefname[PL_NSIZ];     /* name from name of save file */
 int amibbs=0;			/* BBS mode */
+char bbs_id[80]="";		/* BBS uid equivalent */
+long afh_in, afh_out;		/* BBS mode Amiga filehandles */
+
+static unsigned long FDECL(ahtoi, (const char *));
+long bbs_save_stdin=0;
+long bbs_save_stdout=0;
+long bbs_save_stderr=0;
 
 #ifdef AMII_GRAPHICS
 extern int bigscreen;
@@ -62,12 +84,21 @@ extern char PATH[];
 
 static void score(char *);
 
+#ifdef _DCC
+/* When run from Workbench, DICE calls wbmain() instead of main(), so we
+ * need to call main() ourselves.
+ */
+wbmain(struct WBStartup *WBMsg) 
+{
+	main(0, (char **)WBMsg);
+}
+#endif
+
 /* Called after NetHack.cnf (and maybe NETHACKOPTIONS) are read.
  * If this is a request to show the score file, do it here and quit.
  */
 void ami_wbench_init()
 {
-    struct WBStartup *wbs=(struct WBStartup *)ami_argv;
     struct WBArg *wa;
     int ia;         /* arg of active icon */
     int x,doscore=0;
@@ -77,7 +108,6 @@ void ami_wbench_init()
     char    *scorearg, *t;
     char    tmp_levels[PATHLEN];
 
-    FromWBench=(ami_argc==0);
     if(!FromWBench)return;          /* nothing if from CLI */
 
     /*
@@ -123,7 +153,6 @@ void ami_wbench_init()
 #ifdef AMII_GRAPHICS
     if( p = FindToolType( dobj->do_ToolTypes, "SCREEN" ) )
     {
-	extern int bigscreen;
 	if( MatchToolValue( p, "NOLACE" ) )
 	    bigscreen = -1;
 	else if( MatchToolValue( p, "LACE" ) )
@@ -157,17 +186,45 @@ void ami_wbench_init()
 		if(*p=='I'){
 		    FromTool=0; /* ugly hack bugfix */
 		    FromCLI=1;  /* frontend ICLI only */
-		    if(*argline==':'){
-			char *x=lp;
+		    if(*argline==':'){		/* BBS mode */
+				/* bbs info: :%08x %08x ;%s
+				 * where the info is : Input() Output()
+				 * ; bbs_id
+				 */
+			char *ptri, *ptro;
 			amibbs=1;
-#ifdef for_later
-			copy to next blank in argline to amibasename
-			delete from argline
+			afh_in=ahtoi(lp+1);
+			afh_out=ahtoi(lp+10);
+			ptri = lp+19, ptro = bbs_id;
+			if(*ptri == ';'){
+			    ptri++;
+			    while(*ptri && !isspace(*ptri)){
+				if(ptro < &bbs_id[sizeof(bbs_id)-1])
+				    *ptro++ = *ptri++;
+				}
+			    *ptro++ = '_';
+			}
+			*ptro = '\0';
+#ifdef __SASC
+# if (__VERSION__== 6) && (__REVISION__ >= 51)
+
+	chkufb(fileno(stdout))->ufbfh=afh_out;
+	
+# else
+   VERSION SPECIFIC SUPPORT REQUIRED
+# endif
 #else
-			while(*x && !isspace(*x))x++;
-			while(*x && isspace(*x))x++;
-			strncpy(argline,x,79);
+# if _DCC
+	_IoStaticFD[fileno(stdin)].fd_Fh = afh_in;
+	_IoStaticFD[fileno(stdout)].fd_Fh = afh_out;
+	_IoStaticFD[fileno(stderr)].fd_Fh = afh_out;
+# else
+  COMPILER SPECIFIC SUPPORT REQUIRED
+	Move stdin, stdout, stderr to the Input and Output values
+	passed from the front end.
+# endif
 #endif
+			strncpy(argline,ptri,79);
 		    }
 		}
 	    }
@@ -220,6 +277,7 @@ void ami_wbench_init()
     }
 }
 
+#if 0
 /* Simulate the command line. Note that we do not handle the
  * entire range of standard NetHack flags.
  */
@@ -235,10 +293,6 @@ void ami_wbench_args(){
 #ifdef NEWS
 	case 'n':   flags.news = FALSE;
 #endif
-#if defined(WIZARD) || defined(EXPLORE_MODE)
-# ifndef EXPLORE_MODE
-	case 'X':
-# endif
 	case 'D':
 # ifdef WIZARD
 #  ifdef KR1ED
@@ -251,11 +305,8 @@ void ami_wbench_args(){
 	    }
 	    /* else fall through */
 # endif
-# ifdef EXPLORE_MODE
 	case 'X':   discover=TRUE;
-# endif
 	    break;
-#endif
 #ifdef AMII_GRAPHICS
 	case 'L':   /* interlaced screen */
 	    bigscreen = 1;
@@ -303,9 +354,7 @@ void ami_wbench_args(){
 		  hname, classes);
 		raw_print("       or");
 		sprintf(buf,"       %s [-u name] [-[%s]]", hname, classes);
-#if defined(WIZARD) || defined(EXPLORE_MODE)
 		strcat(buf," [-[DX]]");
-#endif
 #ifdef NEWS
 		strcat(buf," [-n]");
 #endif
@@ -320,7 +369,7 @@ void ami_wbench_args(){
 	}
     }
 }
-
+#endif
 
 /* IF (from workbench) && (currently parsing ToolTypes)
  * THEN print error message and return 0
@@ -461,7 +510,7 @@ int mode;
 
     if(!FromWBench)return(open(SAVEF,mode));
 	    /* if the file will be created anyway, skip the
-	     * checks and just do it            */
+	     * checks and just do it       */
     if(mode & O_CREAT)return(open(SAVEF,mode));
     if(FromTool)return(-1);	/* otherwise, by definition, there
 				 * isn't a save file (even if a
@@ -490,6 +539,47 @@ int mode;
     return(-1);     /* give up */
 }
 
+/* Check the original args to the program, set up internal state the rest
+ * of NetHack doesn't care about, and if we don't have a real command line,
+ * build one.  This is split this way to get around the fruit setting problem.
+ */
+void
+ami_argset(argcp, argv)
+    int *argcp;
+    char *argv[];
+{
+    wbs = (struct WBStartup *)argv;
+    FromWBench=(*argcp==0);
+
+}
+void
+ami_mkargline(argcp, argvp)
+    int *argcp;
+    char **argvp[];
+{
+    int ac = 0;
+    char **argv;
+    char *p;
+
+    if(!FromWBench)return;	/* already have an argv */
+
+    for(p=argline;*p;p++) ac += isspace(*p);
+
+    *argvp = argv = (char**)alloc(sizeof(char *) * (ac+1));   /* upper bound */
+    argv[0] = "NetHack";
+
+    for(*argcp = 0,p=argline;*p;){
+	(*argcp)++;
+	argv[*argcp] = p;	/* remember start */
+	while(*p && !isspace(*p))p++;
+	if(!*p)break;		/* done */
+	*p = '\0';
+	p++;
+	while(*p && isspace(*p))p++;
+    }
+    argv[++(*argcp)] = 0;
+}
+
 static void
 score(scorearg)
 	char *scorearg;
@@ -515,4 +605,22 @@ score(scorearg)
 	prscore(ac+1,av);
 	free( av );
 	exit(0);        /* #defined to msexit() */
+}
+
+static
+unsigned long
+ahtoi(p)
+    const char *p;
+{
+    static char hex[]="0123456789abcdef";
+    unsigned long r;
+    char *cp;
+
+/*fprintf(stderr,"conv: '%s'\n",p);*/
+    for(r=0;*p && (cp=index(hex,*p)); p++){
+	r *= 16;
+	r += cp-hex;
+    }
+
+    return r;
 }

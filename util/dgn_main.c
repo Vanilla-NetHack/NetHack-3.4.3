@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dgn_main.c 3.1	93/05/15	*/
+/*	SCCS Id: @(#)dgn_main.c 3.2	94/09/23	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet	*/
 /*	Copyright (c) 1990 by M. Stephenson		*/
 /* NetHack may be freely redistributed.  See license for details. */
@@ -9,24 +9,22 @@
  */
 
 #include "config.h"
+#include "dlb.h"
 
 #ifdef MICRO
 # undef exit
-# ifndef AMIGA
+# if !defined(AMIGA) && !defined(MSDOS) && !defined(WIN32)
 extern void FDECL(exit, (int));
 # endif
-#endif
-
-#if (defined(MICRO) && !defined(AMIGA)) || defined(THINK_C)
-# define WRMODE "w+b"
-#else
-# define WRMODE "w+"
 #endif
 
 #ifdef MAC
 # ifdef applec
 #  define MPWTOOL
-#  include <CursorCtl.h>
+#include <CursorCtl.h>
+# else
+   /* put dungeon file in library location */
+#  define PREFIX ":lib:"
 # endif
 #endif
 
@@ -36,12 +34,12 @@ extern void FDECL(exit, (int));
 
 #define MAX_ERRORS	25
 
+extern int  NDECL (yyparse);
 extern int line_number;
 const char *fname = "(stdin)";
 int fatal_error = 0;
 
-int  FDECL (main, (int, char **));
-int  NDECL (yyparse);
+int  FDECL (main, (int,char **));
 void FDECL (yyerror, (const char *));
 void FDECL (yywarning, (const char *));
 int  NDECL (yywrap);
@@ -49,18 +47,24 @@ void FDECL (init_yyin, (FILE *));
 void FDECL (init_yyout, (FILE *));
 
 #ifdef AZTEC_36
-FILE *FDECL (freopen, (char *, char *, FILE *));
+FILE *FDECL (freopen, (char *,char *,FILE *));
 #endif
+#define Fprintf (void)fprintf
 
+#ifdef __BORLANDC__
+extern unsigned _stklen = STKSIZ;
+#endif
 int
 main(argc, argv)
 int argc;
 char **argv;
 {
-	char	infile[64], outfile[64];
+	char	infile[64], outfile[64], basename[64];
 	FILE	*fin, *fout;
 	int	i, len;
-#ifdef THINK_C
+	boolean errors_encountered = FALSE;
+#if defined(THINK_C) || defined(__MWERKS__)
+	char	*mark;
 	static char *mac_argv[] = {	"dgn_comp",	/* dummy argv[0] */
 				":dat:dungeon.pdf"
 				};
@@ -69,49 +73,85 @@ char **argv;
 	argv = mac_argv;
 #endif
 
-	if (argc == 1) {	/* Read standard input */
-	    init_yyin(stdin);
-	    init_yyout(stdout);
-	    yyparse();
-	} else			/* Otherwise every argument is a filename */
-	    for(i=1; i<argc; i++) {
-		    fname = strcpy(infile, argv[i]);
-		    len = strlen(fname) - 4;	/* length excluding suffix */
-		    if (len < 0 || strncmp(".pdf", fname + len, 4)) {
-			fprintf(stderr,
-				"Error - file name \"%s\" in wrong format.\n",
-				fname);
-			continue;
-		    }
-#ifdef VMS	/* make sure to avoid possible interaction with logical name */
-		    len++;	/* retain "." as trailing punctuation */
-#endif
-		    (void) strncpy(outfile, infile, len);
-		    outfile[len] = '\0';
+	Strcpy(infile, "(stdin)");
+	fin = stdin;
+	Strcpy(outfile, "(stdout)");
+	fout = stdout;
 
-		    fin = freopen(infile, "r", stdin);
-		    if (!fin) {
-			fprintf(stderr,"Can't open %s for input\n", infile);
-			perror(infile);
-			continue;
-		    }
-		    fout = freopen(outfile, WRMODE, stdout);
-		    if (!fout) {
-			fprintf(stderr,"Can't open %s for output\n", outfile);
-			perror(outfile);
-			continue;
-		    }
-		    init_yyin(fin);
-		    init_yyout(fout);
-		    yyparse();
-		    line_number = 1;
-		    fatal_error = 0;
-	    }
-#ifndef VMS
-	return 0;
+	if (argc == 1) {	/* Read standard input */
+	    init_yyin(fin);
+	    init_yyout(fout);
+	    (void) yyparse();
+	    if (fatal_error > 0)
+		errors_encountered = TRUE;
+	} else {		/* Otherwise every argument is a filename */
+	    for(i=1; i<argc; i++) {
+		fname = strcpy(infile, argv[i]);
+		/* the input file had better be a .pdf file */
+		len = strlen(fname) - 4;	/* length excluding suffix */
+		if (len < 0 || strncmp(".pdf", fname + len, 4)) {
+		    Fprintf(stderr,
+			    "Error - file name \"%s\" in wrong format.\n",
+			    fname);
+		    errors_encountered = TRUE;
+		    continue;
+		}
+
+		/* build output file name */
+#if defined(THINK_C) || defined(__MWERKS__)
+		/* extract basename from path to infile */
+		mark = strrchr(infile, ':');
+		strcpy(basename, mark ? mark+1 : infile);
+		mark = strchr(basename, '.');
+		if (mark) *mark = '\0';
 #else
-	return 1;       /* vms success */
-#endif /*VMS*/
+		/* Use the whole name - strip off the last 3 or 4 chars. */
+
+#ifdef VMS	/* avoid possible interaction with logical name */
+		len++;	/* retain "." as trailing punctuation */
+#endif
+		(void) strncpy(basename, infile, len);
+		basename[len] = '\0';
+#endif
+
+		outfile[0] = '\0';
+#ifdef PREFIX
+		(void) strcat(outfile, PREFIX);
+#endif
+		(void) strcat(outfile, basename);
+
+		fin = freopen(infile, "r", stdin);
+		if (!fin) {
+		    Fprintf(stderr, "Can't open %s for input.\n", infile);
+		    perror(infile);
+		    errors_encountered = TRUE;
+		    continue;
+		}
+		fout = freopen(outfile, WRBMODE, stdout);
+		if (!fout) {
+		    Fprintf(stderr, "Can't open %s for output.\n", outfile);
+		    perror(outfile);
+		    errors_encountered = TRUE;
+		    continue;
+		}
+		init_yyin(fin);
+		init_yyout(fout);
+		(void) yyparse();
+		line_number = 1;
+		if (fatal_error > 0) {
+			errors_encountered = TRUE;
+			fatal_error = 0;
+		}
+	    }
+	}
+	if (fout && fclose(fout) < 0) {
+	    Fprintf(stderr, "Can't finish output file.");
+	    perror(outfile);
+	    errors_encountered = TRUE;
+	}
+	exit(errors_encountered ? EXIT_FAILURE : EXIT_SUCCESS);
+	/*NOTREACHED*/
+	return 0;
 }
 
 /*
@@ -123,10 +163,10 @@ char **argv;
 void yyerror(s)
 const char *s;
 {
-	fprintf(stderr,"%s : line %d : %s\n",fname,line_number, s);
+	(void) fprintf(stderr,"%s : line %d : %s\n",fname,line_number, s);
 	if (++fatal_error > MAX_ERRORS) {
-		fprintf(stderr,"Too many errors, good bye!\n");
-		exit(1);
+		(void) fprintf(stderr,"Too many errors, good bye!\n");
+		exit(EXIT_FAILURE);
 	}
 }
 
@@ -137,7 +177,7 @@ const char *s;
 void yywarning(s)
 const char *s;
 {
-	fprintf(stderr,"%s : line %d : WARNING : %s\n",fname,line_number,s);
+	(void) fprintf(stderr,"%s : line %d : WARNING : %s\n",fname,line_number,s);
 }
 
 int yywrap()

@@ -1,5 +1,5 @@
-/*	SCCS Id: @(#)music.c	3.1	93/05/25	*/
-/* 	Copyright (c) 1989 by Jean-Christophe Collet */
+/*	SCCS Id: @(#)music.c	3.2	96/01/15	*/
+/*	Copyright (c) 1989 by Jean-Christophe Collet */
 /* NetHack may be freely redistributed.  See license for details. */
 
 /*
@@ -46,7 +46,9 @@ static void NDECL(playinit);
 static void FDECL(playstring, (char *,size_t));
 static void FDECL(speaker,(struct obj *,char *));
 #endif
-
+#ifdef PCMUSIC
+void FDECL( pc_speaker, ( struct obj *, char * ) );
+#endif
 #ifdef AMIGA
 void FDECL( amii_speaker, ( struct obj *, char *, int ) );
 #endif
@@ -89,13 +91,9 @@ int distance;
 
 	while(mtmp) {
 		if (distu(mtmp->mx, mtmp->my) < distance &&
-			!resist(mtmp, WAND_CLASS, 0, NOTELL)) {
-		    register int min_sleep = d(10,10);
-		    /* 10d10 turns + wake_nearby() to rouse */
-		    mtmp->msleep = 1;
-		    mtmp->mcanmove = 0;
-		    if ((int)mtmp->mfrozen < min_sleep)
-			mtmp->mfrozen = min_sleep;
+			sleep_monst(mtmp, d(10,10), WAND_CLASS)) {
+		    mtmp->msleep = 1;  /* 10d10 turns + wake_nearby to rouse */
+		    slept_monst(mtmp);
 		}
 		mtmp = mtmp->nmon;
 	}
@@ -110,16 +108,27 @@ charm_snakes(distance)
 int distance;
 {
 	register struct monst *mtmp = fmon;
+	int could_see_mon, was_peaceful;
 
 	while (mtmp) {
-		if (mtmp->data->mlet == S_SNAKE &&
+	    if (mtmp->data->mlet == S_SNAKE && mtmp->mcanmove &&
 		    distu(mtmp->mx, mtmp->my) < distance) {
-			mtmp->mpeaceful = 1;
-			if (cansee(mtmp->mx, mtmp->my))
-				pline(
- "%s freezes and sways with the music, then seems quieter.", Monnam(mtmp));
+		was_peaceful = mtmp->mpeaceful;
+		mtmp->mpeaceful = 1;
+		could_see_mon = canseemon(mtmp);
+		mtmp->mundetected = 0;
+		newsym(mtmp->mx, mtmp->my);
+		if (canseemon(mtmp)) {
+		    if (!could_see_mon)
+			You("notice %s, swaying with the music.",
+			    an(mon_nam(mtmp)));
+		    else
+			pline("%s freezes, then sways with the music%s.",
+			      Monnam(mtmp),
+			      was_peaceful ? "" : ", and now seems quieter");
 		}
-		mtmp = mtmp->nmon;
+	    }
+	    mtmp = mtmp->nmon;
 	}
 }
 
@@ -134,14 +143,16 @@ int distance;
 	register struct monst *mtmp = fmon;
 
 	while (mtmp) {
-		if (mtmp->data->mlet == S_NYMPH &&
+	    if (mtmp->data->mlet == S_NYMPH && mtmp->mcanmove &&
 		    distu(mtmp->mx, mtmp->my) < distance) {
-			mtmp->mpeaceful = 1;
-			if (cansee(mtmp->mx, mtmp->my))
-				pline(
- "%s listens cheerfully to the music, then seems quieter.", Monnam(mtmp));
-		}
-		mtmp = mtmp->nmon;
+		mtmp->msleep = 0;
+		mtmp->mpeaceful = 1;
+		if (canseemon(mtmp))
+		    pline(
+		     "%s listens cheerfully to the music, then seems quieter.",
+			  Monnam(mtmp));
+	    }
+	    mtmp = mtmp->nmon;
 	}
 }
 
@@ -150,7 +161,6 @@ int distance;
 void
 awaken_soldiers()
 {
-#ifdef ARMY
 	register struct monst *mtmp = fmon;
 
 	while(mtmp) {
@@ -164,7 +174,6 @@ awaken_soldiers()
 	    }
 	    mtmp = mtmp->nmon;
 	}
-#endif /* ARMY */
 }
 
 /* Charm monsters in range.  Note that they may resist the spell. */
@@ -216,7 +225,7 @@ int force;
 			pline("%s is shaken loose from the ceiling!",
 							    Amonnam(mtmp));
 		    else
-			You("hear a thumping sound.");
+			You_hear("a thumping sound.");
 		    if (x==u.ux && y==u.uy)
 			You("easily dodge the falling %s.",
 							    mon_nam(mtmp));
@@ -226,21 +235,21 @@ int force;
 	    if (!rn2(14 - force)) switch (levl[x][y].typ) {
 		  case FOUNTAIN : /* Make the fountain disappear */
 			if (cansee(x,y))
-				pline("The fountain falls into a chasm.");
+				pline_The("fountain falls into a chasm.");
 			goto do_pit;
 #ifdef SINKS
 		  case SINK :
 			if (cansee(x,y))
-				pline("The kitchen sink falls into a chasm.");
+				pline_The("kitchen sink falls into a chasm.");
 			goto do_pit;
 #endif
 		  case ALTAR :
 			if (cansee(x,y))
-				pline("The altar falls into a chasm.");
+				pline_The("altar falls into a chasm.");
 			goto do_pit;
 		  case THRONE :
 			if (cansee(x,y))
-				pline("The throne falls into a chasm.");
+				pline_The("throne falls into a chasm.");
 			/* Falls into next case */
 		  case ROOM :
 		  case CORR : /* Try to make a pit */
@@ -258,7 +267,7 @@ do_pit:		    chasm = maketrap(x,y,PIT);
 			      ((x == u.ux) && (y == u.uy)) ? " below you" : "");
 			if (mtmp)
 				mtmp->mtrapped = 0;
-			freeobj(otmp);
+			obj_extract_self(otmp);
 			(void) flooreffects(otmp, x, y, "");
 			break;
 		    }
@@ -272,28 +281,23 @@ do_pit:		    chasm = maketrap(x,y,PIT);
 			    if(cansee(x,y))
 				pline("%s falls into a chasm!", Monnam(mtmp));
 			    else if (flags.soundok && humanoid(mtmp->data))
-				You("hear a scream!");
-#ifdef MUSE
+				You_hear("a scream!");
 			    mselftouch(mtmp, "Falling, ", TRUE);
 			    if (mtmp->mhp > 0)
-#endif
-			    if ((mtmp->mhp -= rnd(6)) <= 0) {
-				if(!cansee(x,y))
-				    pline("It is destroyed!");
-				else {
-				    You("destroy %s!", mtmp->mtame ?
-					x_monnam(mtmp, 0, "poor", 0) :
-					mon_nam(mtmp));
+				if ((mtmp->mhp -= rnd(6)) <= 0) {
+				    if(!cansee(x,y))
+					pline("It is destroyed!");
+				    else {
+					You("destroy %s!", mtmp->mtame ?
+					    x_monnam(mtmp, 0, "poor", 0) :
+					    mon_nam(mtmp));
+				    }
+				    xkilled(mtmp,0);
 				}
-				xkilled(mtmp,0);
-			    }
 			}
 		    } else if (x == u.ux && y == u.uy) {
-			    if (Levitation
-#ifdef POLYSELF
-				|| is_flyer(uasmon) || is_clinger(uasmon)
-#endif
-				) {
+			    if (Levitation || is_flyer(uasmon) ||
+						is_clinger(uasmon)) {
 				    pline("A chasm opens up under you!");
 				    You("don't fall in!");
 			    } else {
@@ -307,9 +311,11 @@ do_pit:		    chasm = maketrap(x,y,PIT);
 		    } else newsym(x,y);
 		    break;
 		  case DOOR : /* Make the door collapse */
-		    if (levl[x][y].doormask == D_NODOOR) break;
+		    if (levl[x][y].doormask == D_NODOOR) goto do_pit;
 		    if (cansee(x,y))
-			pline("The door collapses.");
+			pline_The("door collapses.");
+		    if (*in_rooms(x, y, SHOPBASE))
+			add_damage(x, y, 0L);
 		    levl[x][y].doormask = D_NODOOR;
 		    newsym(x,y);
 		    break;
@@ -325,108 +331,121 @@ static int
 do_improvisation(instr)
 struct obj *instr;
 {
-	int damage;
+	int damage, do_spec = !Confusion;
+#if defined(MAC) || defined(AMIGA) || defined(VPIX_MUSIC) || defined (PCMUSIC)
+	struct obj itmp;
 
-#ifdef MAC
-	mac_speaker ( instr , "C" ) ;
-#endif
-#ifdef AMIGA
-	amii_speaker ( instr , "Cw", AMII_OKAY_VOLUME ) ;
-#endif
-#ifdef VPIX_MUSIC
+	itmp = *instr;
+	/* if won't yield special effect, make sound of mundane counterpart */
+	if (!do_spec || instr->spe <= 0)
+	    while (objects[itmp.otyp].oc_magic) itmp.otyp -= 1;
+# ifdef MAC
+	mac_speaker(&itmp, "C");
+# endif
+# ifdef AMIGA
+	amii_speaker(&itmp, "Cw", AMII_OKAY_VOLUME);
+# endif
+# ifdef VPIX_MUSIC
 	if (sco_flag_console)
-		speaker(instr, "C");
+	    speaker(&itmp, "C");
+# endif
+#ifdef PCMUSIC
+	  pc_speaker ( &itmp, "C");
 #endif
-	if (Confusion)
-	  pline("What you produce is quite far from music...");
+#endif /* MAC || AMIGA || VPIX_MUSIC || PCMUSIC */
+
+	if (!do_spec)
+	    pline("What you produce is quite far from music...");
 	else
-	  You("start playing %s.", the(xname(instr)));
+	    You("start playing %s.", the(xname(instr)));
+
 	switch (instr->otyp) {
-	      case WOODEN_FLUTE:	/* May charm snakes */
-		if (rn2(ACURR(A_DEX)) + u.ulevel > 25)
-		  charm_snakes((int)u.ulevel*3);
+	case MAGIC_FLUTE:		/* Make monster fall asleep */
+	    if (do_spec && instr->spe > 0) {
+		check_unpaid(instr);
+		instr->spe--;
+		You("produce soft music.");
+		put_monsters_to_sleep(u.ulevel * 5);
 		exercise(A_DEX, TRUE);
 		break;
-	      case MAGIC_FLUTE: /* Make monster fall asleep */
-		if (instr->spe > 0) {
-			instr->spe--;
-			check_unpaid(instr);
-			You("produce soft music.");
-			put_monsters_to_sleep((int)u.ulevel*5);
+	    } /* else FALLTHRU */
+	case WOODEN_FLUTE:		/* May charm snakes */
+	    do_spec &= (rn2(ACURR(A_DEX)) + u.ulevel > 25);
+	    pline("%s %s.", The(xname(instr)),
+		  do_spec ? "trills" : "toots");
+	    if (do_spec) charm_snakes(u.ulevel * 3);
+	    exercise(A_DEX, TRUE);
+	    break;
+	case FROST_HORN:		/* Idem wand of cold */
+	case FIRE_HORN:			/* Idem wand of fire */
+	    if (do_spec && instr->spe > 0) {
+		check_unpaid(instr);
+		instr->spe--;
+		if (!getdir((char *)0)) {
+		    pline("%s vibrates.", The(xname(instr)));
+		    break;
+		} else if (!u.dx && !u.dy && !u.dz) {
+		    if ((damage = zapyourself(instr, TRUE)) != 0)
+			losehp(damage,
+			       self_pronoun("using a magical horn on %sself",
+					    "him"),
+			       NO_KILLER_PREFIX);
+		} else {
+		    buzz((instr->otyp == FROST_HORN) ? AD_COLD-1 : AD_FIRE-1,
+			 rn1(6,6), u.ux, u.uy, u.dx, u.dy);
 		}
+		makeknown(instr->otyp);
+		break;
+	    } /* else FALLTHRU */
+	case TOOLED_HORN:		/* Awaken or scare monsters */
+	    You("produce a frightful, grave sound.");
+	    awaken_monsters(u.ulevel * 30);
+	    exercise(A_WIS, FALSE);
+	    break;
+	case BUGLE:			/* Awaken & attract soldiers */
+	    You("extract a loud noise from %s.", the(xname(instr)));
+	    awaken_soldiers();
+	    exercise(A_WIS, FALSE);
+	    break;
+	case MAGIC_HARP:		/* Charm monsters */
+	    if (do_spec && instr->spe > 0) {
+		check_unpaid(instr);
+		instr->spe--;
+		pline("%s produces very attractive music.",
+		      The(xname(instr)));
+		charm_monsters((u.ulevel - 1) / 3 + 1);
 		exercise(A_DEX, TRUE);
 		break;
-	      case TOOLED_HORN:	/* Awaken monsters or scare monsters */
-		You("produce a frightful, grave sound.");
-		awaken_monsters((int)u.ulevel*30);
-		exercise(A_WIS, FALSE);
+	    } /* else FALLTHRU */
+	case WOODEN_HARP:		/* May calm Nymph */
+	    do_spec &= (rn2(ACURR(A_DEX)) + u.ulevel > 25);
+	    pline("%s %s.", The(xname(instr)),
+		  do_spec ? "produces a lilting melody" : "twangs");
+	    if (do_spec) calm_nymphs(u.ulevel * 3);
+	    exercise(A_DEX, TRUE);
+	    break;
+	case DRUM_OF_EARTHQUAKE:	/* create several pits */
+	    if (do_spec && instr->spe > 0) {
+		check_unpaid(instr);
+		instr->spe--;
+		You("produce a heavy, thunderous rolling!");
+		pline_The("entire dungeon is shaking around you!");
+		do_earthquake((u.ulevel - 1) / 3 + 1);
+		/* shake up monsters in a much larger radius... */
+		awaken_monsters(ROWNO * COLNO);
+		makeknown(DRUM_OF_EARTHQUAKE);
 		break;
-	      case FROST_HORN:	/* Idem wand of cold */
-	      case FIRE_HORN:	/* Idem wand of fire */
-		if (instr->spe > 0) {
-			instr->spe--;
-			check_unpaid(instr);
-			if (!getdir(NULL)) {
-				if (!Blind)
-				    pline("%s glows then fades.",
-					  The(xname(instr)));
-			} else {
-				if (!u.dx && !u.dy && !u.dz) {
-					if((damage = zapyourself(instr)))
-					  losehp(damage,
-		self_pronoun("using a magical horn on %sself", "him"),
-					  NO_KILLER_PREFIX);
-					makeknown(instr->otyp);
-					return(2);
-				}
-				buzz((instr->otyp == FROST_HORN) ? AD_COLD-1 : AD_FIRE-1, rn1(6,6), u.ux, u.uy, u.dx, u.dy);
-				makeknown(instr->otyp);
-				return(2);
-			}
-		}
-		break;
-	      case BUGLE:	/* Awaken & attract soldiers */
-		You("extract a loud noise from %s.", the(xname(instr)));
-		awaken_soldiers();
-		exercise(A_WIS, FALSE);
-		break;
-	      case WOODEN_HARP:	/* May calm Nymph */
-		if (rn2(ACURR(A_DEX)) + u.ulevel > 25)
-		  calm_nymphs((int)u.ulevel*3);
-		exercise(A_DEX, TRUE);
-		break;
-	      case MAGIC_HARP:	/* Charm monsters */
-		if (instr->spe > 0) {
-			instr->spe--;
-			check_unpaid(instr);
-			pline("%s produces very attractive music.",
-			      The(xname(instr)));
-			charm_monsters(((int)u.ulevel - 1) / 3 + 1);
-		}
-		exercise(A_DEX, TRUE);
-		break;
-	      case LEATHER_DRUM:	/* Awaken monsters */
-		You("beat a deafening row!");
-		awaken_monsters((int)u.ulevel * 40);
-		exercise(A_WIS, FALSE);
-		break;
-	      case DRUM_OF_EARTHQUAKE:	/* create several pits */
-		if (instr->spe > 0) {
-			instr->spe--;
-			check_unpaid(instr);
-			You("produce a heavy, thunderous rolling!");
-			pline("The entire dungeon is shaking around you!");
-			do_earthquake(((int)u.ulevel - 1) / 3 + 1);
-			/* shake up monsters in a much larger radius... */
-			awaken_monsters(ROWNO * COLNO);
-			makeknown(DRUM_OF_EARTHQUAKE);
-		}
-		break;
-	      default:
-		impossible("What a weird instrument (%d)!",instr->otyp);
-		break;
+	    } /* else FALLTHRU */
+	case LEATHER_DRUM:		/* Awaken monsters */
+	    You("beat a deafening row!");
+	    awaken_monsters(u.ulevel * 40);
+	    exercise(A_WIS, FALSE);
+	    break;
+	default:
+	    impossible("What a weird instrument (%d)!", instr->otyp);
+	    break;
 	}
-	return (2);		/* That takes time */
+	return 2;		/* That takes time */
 }
 
 /*
@@ -445,7 +464,7 @@ struct obj *instr;
     boolean ok;
 
     if (Underwater) {
-	You("can't play music underwater!");
+	You_cant("play music underwater!");
 	return(0);
     }
     if (instr->otyp != LEATHER_DRUM && instr->otyp != DRUM_OF_EARTHQUAKE) {
@@ -473,6 +492,9 @@ struct obj *instr;
 #ifdef MAC
 	mac_speaker ( instr , buf ) ;
 #endif
+#ifdef PCMUSIC
+	pc_speaker ( instr, buf );
+#endif
 #ifdef AMIGA
 	{
 		char nbuf[ 20 ];
@@ -497,6 +519,7 @@ struct obj *instr;
 		    for(x=u.ux-1;x<=u.ux+1;x++)
 			if(isok(x,y))
 			if(find_drawbridge(&x,&y)) {
+			    u.uevent.uheard_tune = 2; /* tune now fully known */
 			    if(levl[x][y].typ == DRAWBRIDGE_DOWN)
 				close_drawbridge(x,y);
 			    else
@@ -540,13 +563,16 @@ struct obj *instr;
 			}
 		    if(tumblers)
 			if(gears)
-			    You("hear %d tumbler%s click and %d gear%s turn.",
+			    You_hear("%d tumbler%s click and %d gear%s turn.",
 				tumblers, plur(tumblers), gears, plur(gears));
 			else
-			    You("hear %d tumbler%s click.",
+			    You_hear("%d tumbler%s click.",
 				tumblers, plur(tumblers));
 		    else if(gears) {
-			You("hear %d gear%s turn.", gears, plur(gears));
+			You_hear("%d gear%s turn.", gears, plur(gears));
+			/* could only get `gears == 5' by playing five
+			   correct notes followed by excess; otherwise,
+			   tune would have matched above */
 			if (gears == 5) u.uevent.uheard_tune = 2;
 		    }
 		}
@@ -634,8 +660,6 @@ char	*buf;
 
 #define noDEBUG
 
-#include "interp.c"	/* from snd86unx.shr */
-
 static void tone(hz, ticks)
 /* emit tone of frequency hz for given number of ticks */
 unsigned int hz, ticks;
@@ -647,7 +671,6 @@ unsigned int hz, ticks;
     nap(ticks * 10);
 }
 
-
 static void rest(ticks)
 /* rest for given number of ticks */
 int	ticks;
@@ -657,6 +680,9 @@ int	ticks;
     printf("REST:        %6d\n",ticks * 10);
 # endif
 }
+
+
+#include "interp.c"	/* from snd86unx.shr */
 
 
 static void

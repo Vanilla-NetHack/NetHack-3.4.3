@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)Window.c	3.1	93/02/02		  */
+/*	SCCS Id: @(#)Window.c	3.2	93/02/02	*/
 /* Copyright (c) Dean Luick, 1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -77,16 +77,13 @@ static XtResource resources[] = {
     { XtNfont, XtCFont, XtRFontStruct, sizeof(XFontStruct *),
 	  offset(font), XtRString, XtDefaultFont },
     { XtNexposeCallback, XtCCallback, XtRCallback, sizeof(XtCallbackList),
-	  offset(expose_callback), XtRCallback, NULL },
+	  offset(expose_callback), XtRCallback, (char *)0 },
     { XtNcallback, XtCCallback, XtRCallback, sizeof(XtCallbackList),
-	  offset(input_callback), XtRCallback, NULL },
+	  offset(input_callback), XtRCallback, (char *)0 },
     { XtNresizeCallback, XtCCallback, XtRCallback, sizeof(XtCallbackList),
-	  offset(resize_callback), XtRCallback, NULL },
+	  offset(resize_callback), XtRCallback, (char *)0 },
 #undef offset
 };
-
-extern void FDECL(map_input, (Widget, XEvent*, String*, Cardinal*));
-							/* from winmap.c */
 
 /* ARGSUSED */
 static void no_op(w, event, params, num_params)
@@ -99,13 +96,11 @@ static void no_op(w, event, params, num_params)
 
 static XtActionsRec actions[] =
 {
-    {"input",	map_input},
     {"no-op",	no_op},
 };
 
 static char translations[] =
-"<Key>:		input()	\n\
- <BtnDown>:	input() \
+"<BtnDown>:     input() \
 ";
 
 /* ARGSUSED */
@@ -122,7 +117,7 @@ static void Redisplay(w, event, region)
 static void Resize(w)
     Widget w;
 {
-    XtCallCallbacks(w, XtNresizeCallback, (caddr_t) NULL);
+    XtCallCallbacks(w, XtNresizeCallback, (caddr_t) 0);
 }
 
 
@@ -131,11 +126,11 @@ WindowClassRec windowClassRec = {
     /* superclass		*/	(WidgetClass) &widgetClassRec,
     /* class_name		*/	"Window",
     /* widget_size		*/	sizeof(WindowRec),
-    /* class_initialize		*/	NULL,
-    /* class_part_initialize	*/	NULL,
+    /* class_initialize		*/	0,
+    /* class_part_initialize	*/	0,
     /* class_inited		*/	FALSE,
-    /* initialize		*/	NULL,
-    /* initialize_hook		*/	NULL,
+    /* initialize		*/	0,
+    /* initialize_hook		*/	0,
     /* realize			*/	XtInheritRealize,
     /* actions			*/	actions,
     /* num_actions		*/	XtNumber(actions),
@@ -146,20 +141,20 @@ WindowClassRec windowClassRec = {
     /* compress_exposure	*/	TRUE,
     /* compress_enterleave	*/	TRUE,
     /* visible_interest		*/	FALSE,
-    /* destroy			*/	NULL,
+    /* destroy			*/	0,
     /* resize			*/	Resize,
     /* expose			*/	Redisplay,
-    /* set_values		*/	NULL,
-    /* set_values_hook		*/	NULL,
+    /* set_values		*/	0,
+    /* set_values_hook		*/	0,
     /* set_values_almost	*/	XtInheritSetValuesAlmost,
-    /* get_values_hook		*/	NULL,
-    /* accept_focus		*/	NULL,
+    /* get_values_hook		*/	0,
+    /* accept_focus		*/	0,
     /* version			*/	XtVersion,
-    /* callback_private		*/	NULL,
+    /* callback_private		*/	0,
     /* tm_table			*/	translations,
     /* query_geometry		*/	XtInheritQueryGeometry,
     /* display_accelerator	*/	XtInheritDisplayAccelerator,
-    /* extension		*/	NULL
+    /* extension		*/	0
   },
   { /* window fields */
     /* empty			*/	0

@@ -1,15 +1,16 @@
-/*	SCCS Id: @(#)mcastu.c	3.1	93/05/04	*/
+/*	SCCS Id: @(#)mcastu.c	3.2	95/08/12	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
 
+STATIC_DCL void FDECL(cursetxt,(struct monst *));
+
 #ifdef OVL0
-static void FDECL(cursetxt,(struct monst *));
 
 extern const char *flash_types[];	/* from zap.c */
 
-static
+STATIC_OVL
 void
 cursetxt(mtmp)
 	register struct monst *mtmp;
@@ -17,10 +18,7 @@ cursetxt(mtmp)
 	if(canseemon(mtmp)) {
 	    if ((Invis && !perceives(mtmp->data) &&
 				(mtmp->mux != u.ux || mtmp->muy != u.uy))
-#ifdef POLYSELF
-			|| u.usym == S_MIMIC_DEF || u.uundetected
-#endif
-									)
+			|| u.usym == S_MIMIC_DEF || u.uundetected)
 		pline("%s points and curses in your general direction.",
 				Monnam(mtmp));
 	    else if (Displaced && (mtmp->mux != u.ux || mtmp->muy != u.uy))
@@ -28,7 +26,7 @@ cursetxt(mtmp)
 				Monnam(mtmp));
 	    else
 		pline("%s points at you, then curses.", Monnam(mtmp));
-	} else if((!(moves%4) || !rn2(4)) && flags.soundok) 
+	} else if((!(moves%4) || !rn2(4)) && flags.soundok)
 		Norep("You hear a mumbled curse.");
 }
 
@@ -48,12 +46,8 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 	} else {
 	    nomul(0);
 	    if(rn2(ml*10) < (mtmp->mconf ? 100 : 20)) {	/* fumbled attack */
-		if(canseemon(mtmp)
-#ifdef SOUNDS
-				&& flags.soundok
-#endif
-							)
-		    pline("The air crackles around %s.", mon_nam(mtmp));
+		if (canseemon(mtmp) && flags.soundok)
+		    pline_The("air crackles around %s.", mon_nam(mtmp));
 		return(0);
 	    }
 	}
@@ -88,7 +82,7 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 		You("are hit by a shower of missiles!");
 		if(Antimagic) {
 			shieldeff(u.ux, u.uy);
-			pline("The missiles bounce off!");
+			pline_The("missiles bounce off!");
 			dmg = 0;
 		} else dmg = d((int)mtmp->m_lev/2 + 1,6);
 		break;
@@ -105,12 +99,9 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 				  ? (mtmp->female ? "she" : "he")
 				  : "it"
 			     );
-#ifdef POLYSELF
-			if (is_undead(uasmon))
+			if (nonliving(uasmon) || is_demon(uasmon))
 			    You("seem no deader than before.");
-			else
-#endif
-			if (!Antimagic && rn2(ml) > 12) {
+			else if (!Antimagic && rn2(ml) > 12) {
 
 			    if(Hallucination)
 				You("have an out of body experience.");
@@ -164,7 +155,7 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 		    case 6:		/* drain strength */
 			if(Antimagic) {
 			    shieldeff(u.ux, u.uy);
-			    You("feel momentarily weakened.");
+			    You_feel("momentarily weakened.");
 			} else {
 			    You("suddenly feel weaker!");
 			    dmg = ml - 6;
@@ -177,12 +168,10 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 			break;
 		    case 5:		/* make invisible if not */
 		    case 4:
-			if(!mtmp->minvis) {
+			if (!mtmp->minvis && !mtmp->invis_blkd) {
 			    if(canseemon(mtmp) && !See_invisible)
-				pline("%s suddenly disappears!",
-				      Monnam(mtmp));
-			    mtmp->minvis = 1;
-			    newsym(mtmp->mx,mtmp->my);
+				pline("%s suddenly disappears!", Monnam(mtmp));
+			    mon_set_minvis(mtmp);
 			    dmg = 0;
 			    break;
 			} /* else fall into the next case */
@@ -190,7 +179,7 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 			if(Antimagic) {
 			    shieldeff(u.ux, u.uy);
 			    if(!Stunned)
-				You("feel momentarily disoriented.");
+				You_feel("momentarily disoriented.");
 			    make_stunned(1L, FALSE);
 			} else {
 			    if (Stunned)
@@ -240,7 +229,7 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 		    default:		/* confuse */
 			if(Antimagic) {
 			    shieldeff(u.ux, u.uy);
-			    You("feel momentarily dizzy.");
+			    You_feel("momentarily dizzy.");
 			} else {
 			    dmg = (int)mtmp->m_lev;
 			    if(Half_spell_damage) dmg = (dmg+1) / 2;
@@ -263,7 +252,7 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 			struct permonst *pm = mkclass(S_ANT,0);
 			struct monst *mtmp2;
 			char let = (pm ? S_ANT : S_SNAKE);
-  
+
 			for (i = 0; i <= (int) mtmp->m_lev; i++)
 			   if ((pm = mkclass(let,0)) &&
 					(mtmp2 = makemon(pm, u.ux, u.uy))) {
@@ -300,9 +289,9 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 			    if(multi >= 0)
 				You("stiffen briefly.");
 			    nomul(-1);
-		 	} else {
-			    if (multi >= 0)	
-			        You("are frozen in place!");
+			} else {
+			    if (multi >= 0)
+				You("are frozen in place!");
 			    dmg = 4 + (int)mtmp->m_lev;
 			    if (Half_spell_damage) dmg = (dmg+1) / 2;
 			    nomul(-dmg);

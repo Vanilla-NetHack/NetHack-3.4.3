@@ -1,12 +1,13 @@
-/*	SCCS Id: @(#)epri.h	3.1	90/22/02	*/
+/*	SCCS Id: @(#)epri.h	3.2	90/02/22	*/
 /* Copyright (c) Izchak Miller, 1989.				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #ifndef EPRI_H
 #define EPRI_H
 
-#include "dungeon.h"
-#include "align.h"
+#ifndef DUNGEON_H
+#include "dungeon.h"	/* nested #include "align.h" */
+#endif
 
 struct epri {
 	aligntyp shralign;	/* alignment of priest's shrine */

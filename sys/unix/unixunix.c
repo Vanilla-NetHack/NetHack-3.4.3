@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)unixunix.c	3.1	90/22/02
+/*	SCCS Id: @(#)unixunix.c	3.2	94/11/07	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -8,13 +8,10 @@
 
 #include <errno.h>
 #include <sys/stat.h>
-#ifdef NO_FILE_LINKS
+#if defined(NO_FILE_LINKS) || defined(SUNOS4) || defined(POSIX_TYPES)
 #include <fcntl.h>
 #endif
 #include <signal.h>
-#if defined(BSD) || defined(ULTRIX)
-#include <sys/wait.h>
-#endif
 
 #ifdef _M_UNIX
 extern void NDECL(sco_mapon);
@@ -24,7 +21,9 @@ extern void NDECL(sco_mapoff);
 static struct stat buf, hbuf;
 
 void
-gethdate(name) const char *name; {
+gethdate(name)
+	const char *name;
+{
 /* old version - for people short of space */
 /*
 /* register char *np;
@@ -34,7 +33,6 @@ gethdate(name) const char *name; {
 /*
 /* version using PATH from: seismo!gregc@ucsf-cgl.ARPA (Greg Couch) */
 
-
 /*
  * The problem with   #include	<sys/param.h>   is that this include file
  * does not exist on all systems, and moreover, that it sometimes includes
@@ -42,13 +40,15 @@ gethdate(name) const char *name; {
  */
 #define		MAXPATHLEN	1024
 
-register const char *np, *path;
-char filename[MAXPATHLEN+1];
-	if (index(name, '/') != NULL || (path = getenv("PATH")) == NULL)
+	register const char *np, *path;
+	char filename[MAXPATHLEN+1];
+
+	if (index(name, '/') != (char *)0 ||
+					(path = getenv("PATH")) == (char *)0)
 		path = "";
 
 	for (;;) {
-		if ((np = index(path, ':')) == NULL)
+		if ((np = index(path, ':')) == (char *)0)
 			np = path + strlen(path);	/* point to end str */
 		if (np - path <= 1)			/* %% */
 			Strcpy(filename, name);
@@ -77,6 +77,7 @@ char filename[MAXPATHLEN+1];
 #endif
 }
 
+#if 0
 int
 uptodate(fd)
 int fd;
@@ -93,6 +94,7 @@ int fd;
 	}
 	return(1);
 }
+#endif
 
 /* see whether we should throw away this xlock file */
 static int
@@ -127,7 +129,7 @@ int fd;
 #ifndef NETWORK
 		/* It will do a VERY BAD THING if the playground is shared
 		   by more than one machine! -pem */
-  		if(!(kill(lockedpid, 0) == -1 && errno == ESRCH))
+		if(!(kill(lockedpid, 0) == -1 && errno == ESRCH))
 #endif
 			return(0);
 	}
@@ -176,7 +178,7 @@ getlock()
 	/* we ignore QUIT and INT at this point */
 	if (!lock_file(HLOCK, 10)) {
 		wait_synch();
-		error("");
+		error("%s", "");
 	}
 
 	regularize(lock);
@@ -235,7 +237,7 @@ getlock()
 			}
 		else {
 			unlock_file(HLOCK);
-			error("");
+			error("%s", "");
 		}
 	}
 
@@ -253,7 +255,7 @@ gotlock:
 			error("cannot close lock");
 		}
 	}
-}	
+}
 
 void
 regularize(s)	/* normalize file name - we don't like .'s, /'s, spaces */
@@ -292,12 +294,12 @@ dosh()
 {
 	register char *str;
 	if(child(0)) {
-		if(str = getenv("SHELL"))
-			(void) execl(str, str, NULL);
+		if((str = getenv("SHELL")) != (char*)0)
+			(void) execl(str, str, (char *)0);
 		else
-			(void) execl("/bin/sh", "sh", NULL);
+			(void) execl("/bin/sh", "sh", (char *)0);
 		raw_print("sh: cannot execute.");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 	return 0;
 }
@@ -309,7 +311,7 @@ child(wt)
 int wt;
 {
 	register int f;
-	suspend_nhwindows(NULL);	/* also calls end_screen() */
+	suspend_nhwindows((char *)0);	/* also calls end_screen() */
 #ifdef _M_UNIX
 	sco_mapon();
 #endif

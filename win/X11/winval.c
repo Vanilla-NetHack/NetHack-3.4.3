@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)winval.c	3.1	92/3/7
+/*	SCCS Id: @(#)winval.c	3.2	92/3/7	*/
 /* Copyright (c) Dean Luick, 1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -25,10 +25,11 @@
 # undef PRESERVE_NO_SYSV
 #endif
 
-#include "config.h"	/* #define for const for non __STDC__ compilers */
+#include "hack.h"	/* #define for const for non __STDC__ compilers */
+#include "winX.h"
 
-#define NAME "name"
-#define VALUE "value"
+#define WNAME "name"
+#define WVALUE "value"
 
 
 Widget
@@ -52,7 +53,7 @@ create_value(parent, name_value)
     XtSetArg(args[num_args], XtNborderWidth, 0);		num_args++;
     XtSetArg(args[num_args], XtNlabel, name_value);		num_args++;
     XtSetArg(args[num_args], XtNinternalHeight, 0);		num_args++;
-    name = XtCreateManagedWidget(NAME,
+    name = XtCreateManagedWidget(WNAME,
 				labelWidgetClass,
 				form, args, num_args);
 
@@ -61,7 +62,7 @@ create_value(parent, name_value)
     XtSetArg(args[num_args], XtNborderWidth, 0);		num_args++;
     XtSetArg(args[num_args], XtNfromHoriz, name);		num_args++;
     XtSetArg(args[num_args], XtNinternalHeight, 0);		num_args++;
-    (void) XtCreateManagedWidget(VALUE,
+    (void) XtCreateManagedWidget(WVALUE,
 				labelWidgetClass,
 				form, args, num_args);
     return form;
@@ -75,7 +76,7 @@ set_name(w, new_label)
     Arg args[1];
     Widget name;
 
-    name = XtNameToWidget(w, NAME);
+    name = XtNameToWidget(w, WNAME);
     XtSetArg(args[0], XtNlabel, new_label);
     XtSetValues(name, args, ONE);
 }
@@ -88,7 +89,7 @@ set_name_width(w, new_width)
     Arg args[1];
     Widget name;
 
-    name = XtNameToWidget(w, NAME);
+    name = XtNameToWidget(w, WNAME);
     XtSetArg(args[0], XtNwidth, new_width);
     XtSetValues(name, args, ONE);
 }
@@ -101,7 +102,7 @@ get_name_width(w)
     Dimension width;
     Widget name;
 
-    name = XtNameToWidget(w, NAME);
+    name = XtNameToWidget(w, WNAME);
     XtSetArg(args[0], XtNwidth, &width);
     XtGetValues(name, args, ONE);
     return (int) width;
@@ -115,8 +116,8 @@ set_value(w, new_value)
 {
     Arg args[1];
     Widget val;
-    
-    val = XtNameToWidget(w, VALUE);
+
+    val = XtNameToWidget(w, WVALUE);
     XtSetArg(args[0], XtNlabel, new_value);
     XtSetValues(val, args, ONE);
 }
@@ -128,8 +129,8 @@ set_value_width(w, new_width)
 {
     Arg args[1];
     Widget val;
-    
-    val = XtNameToWidget(w, VALUE);
+
+    val = XtNameToWidget(w, WVALUE);
     XtSetArg(args[0], XtNwidth, new_width);
     XtSetValues(val, args, ONE);
 }
@@ -142,7 +143,7 @@ get_value_width(w)
     Widget val;
     Dimension width;
 
-    val = XtNameToWidget(w, VALUE);
+    val = XtNameToWidget(w, WVALUE);
     XtSetArg(args[0], XtNwidth, &width);
     XtGetValues(val, args, ONE);
     return (int) width;
@@ -154,17 +155,23 @@ void
 hilight_value(w)
     Widget w;
 {
+    swap_fg_bg(XtNameToWidget(w, WVALUE));
+}
+
+/* Swap the foreground and background colors of the given widget */
+void
+swap_fg_bg(w)
+    Widget w;
+{
     Arg args[2];
-    Widget val;
     Pixel fg, bg;
 
-    val = XtNameToWidget(w, VALUE);
     XtSetArg(args[0], XtNforeground, &fg);
     XtSetArg(args[1], XtNbackground, &bg);
-    XtGetValues(val, args, TWO);
+    XtGetValues(w, args, TWO);
 
     XtSetArg(args[0], XtNforeground, bg);
     XtSetArg(args[1], XtNbackground, fg);
-    XtSetValues(val, args, TWO);
+    XtSetValues(w, args, TWO);
 }
 

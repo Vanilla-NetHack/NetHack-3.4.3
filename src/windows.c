@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)windows.c	3.1	93/07/13	*/
+/*	SCCS Id: @(#)windows.c	3.2	95/12/10	*/
 /* Copyright (c) D. Cohrs, 1993. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -18,8 +18,11 @@ extern struct window_procs mac_procs;
 #ifdef AMIGA_INTUITION
 extern struct window_procs amii_procs;
 extern struct window_procs amiv_procs;
-extern void NDECL(amii_loadlib);
-extern void NDECL(amiv_loadlib);
+extern void NDECL(ami_wininit_data);
+#endif
+#ifdef WIN32_GRAPHICS
+extern struct window_procs win32_procs;
+extern void NDECL(win_win32_init);
 #endif
 
 static void FDECL(def_raw_print, (const char *s));
@@ -41,13 +44,11 @@ struct win_choices {
     { &mac_procs, 0 },
 #endif
 #ifdef AMIGA_INTUITION
-	/* A shared library is used for implementing the access to these two
-	 * different display mechanisms.  This means that the function names
-	 * are actually the same (assembler stubs) and the libraries do
-	 * different things.
-	 */
-    { &amii_procs, amii_loadlib },
-    { &amiv_procs, amiv_loadlib },
+    { &amii_procs, ami_wininit_data },		/* Old font version of the game */
+    { &amiv_procs, ami_wininit_data },		/* Tile version of the game */
+#endif
+#ifdef WIN32_GRAPHICS
+    { &win32_procs, win_win32_init },
 #endif
     { 0, 0 }		/* must be last */
 };
@@ -81,7 +82,22 @@ const char *s;
 	raw_printf("        %s", winchoices[i].procs->name);
 
     if (windowprocs.win_raw_print == def_raw_print)
-	terminate(0);
+	terminate(EXIT_SUCCESS);
+}
+
+/*
+ * tty_message_menu() provides a means to get feedback from the
+ * --More-- prompt; other interfaces generally don't need that.
+ */
+/*ARGSUSED*/
+char
+genl_message_menu(let, how, mesg)
+char let;
+int how;
+const char *mesg;
+{
+    pline("%s", mesg);
+    return 0;
 }
 
 /*windows.c*/

@@ -1,11 +1,11 @@
-/*	SCCS Id: @(#)eshk.h	3.1	93/01/06	*/
+/*	SCCS Id: @(#)eshk.h	3.2	93/01/06	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #ifndef ESHK_H
 #define ESHK_H
 
-#define REPAIR_DELAY	5 	/* minimum delay between shop damage & repair */
+#define REPAIR_DELAY	5	/* minimum delay between shop damage & repair */
 
 #define BILLSZ	200
 
@@ -16,7 +16,9 @@ struct bill_x {
 	long bquan;		/* amount used up */
 };
 
+#ifndef DUNGEON_H
 #include "dungeon.h"
+#endif
 
 struct eshk {
 	long robbed;		/* amount stolen by most recent customer */

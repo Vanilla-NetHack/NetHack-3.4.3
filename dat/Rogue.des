@@ -1,4 +1,4 @@
-#	SCCS Id: @(#)Rogue.des	3.1	93/05/10
+#	SCCS Id: @(#)Rogue.des	3.2	93/05/10
 #	Copyright (c) 1992 by Dean Luick
 # NetHack may be freely redistributed.  See license for details.
 #
@@ -11,7 +11,7 @@ MAZE: "R-start",' '
 FLAGS: noteleport, hardfloor, nommap
 GEOMETRY:center,center
 MAP
-#         1         2         3         4         5         6         7 
+#         1         2         3         4         5         6         7
 #123456789012345678901234567890123456789012345678901234567890123456789012345
 ---------------------------------.------------------------------------------
 |.....|.||..........|....|......|.|.........|.......+............---.......|
@@ -35,8 +35,6 @@ MAP
 |..........S.....|......|.|..........S............|.....||...|.....|....|..|
 -------------------------.--------------------------------------------------
 ENDMAP
-# Random Monsters
-RANDOM_MONSTERS: 'l', 'N'
 # Dungeon Description
 #REGION:(00,00,75,20),lit,"ordinary"
 # The down stairs is at one of the 4 "exits".  The others are mimics,
@@ -174,7 +172,7 @@ MONSTER: ':',"chameleon",random,hostile
 MAZE: "R-locate",' '
 GEOMETRY:center,center
 MAP
-#         1         2         3         4         5         6         7 
+#         1         2         3         4         5         6         7
 #123456789012345678901234567890123456789012345678901234567890123456789012345
              ----------------------------------------------------   --------
            ---.................................................-    --.....|
@@ -198,8 +196,6 @@ MAP
 |...........|............................-----                |....|
 ------------------------------------------                    ------
 ENDMAP
-# Random Monsters
-RANDOM_MONSTERS: 'l', 'N'
 # Dungeon Description
 REGION:(00,00,75,20),lit,"ordinary"
 # Doors
@@ -302,8 +298,6 @@ MAP
     |.............|..........|.............S...   |S-------|.....|..-----..|
     ----------------------------------------  ......       ----------   ----
 ENDMAP
-# Random Monsters
-RANDOM_MONSTERS: '@', 'g', 'n'
 # Dungeon Description
 REGION:(00,00,75,20),lit,"ordinary"
 # Stairs
@@ -385,8 +379,6 @@ MONSTER: ':',"chameleon",random,hostile
 #	levels as defined above.
 #
 LEVEL: "R-filla"
-# Random Monsters
-RANDOM_MONSTERS: 'l', 'N', 'n', ':'
 #
 ROOM: "ordinary" , random, random, random, random
 STAIR: random, up
@@ -434,8 +426,6 @@ RANDOM_CORRIDORS
 # currently a & b are the same.
 #
 LEVEL: "R-fillb"
-# Random Monsters
-RANDOM_MONSTERS: 'l', 'N', 'n', ':'
 #
 ROOM: "ordinary" , random, random, random, random
 STAIR: random, up

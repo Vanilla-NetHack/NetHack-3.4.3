@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)getline.c	3.1	92/01/05	*/
+/*	SCCS Id: @(#)getline.c	3.2	96/01/27	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -10,10 +10,15 @@
 #include "func_tab.h"
 
 #ifdef OVL1
-
 char morc = 0;	/* tell the outside world what char you chose */
-
 #endif /* OVL1 */
+#ifdef OVL2
+static boolean FDECL(ext_cmd_getlin_hook, (char *));
+#endif /* OVL2 */
+
+typedef boolean FDECL((*getlin_hook_proc), (char *));
+
+STATIC_DCL void FDECL(hooked_tty_getlin, (const char*,char*,getlin_hook_proc));
 
 extern char erase_char, kill_char;	/* from appropriate tty.c file */
 
@@ -30,6 +35,15 @@ tty_getlin(query, bufp)
 const char *query;
 register char *bufp;
 {
+    hooked_tty_getlin(query, bufp, (getlin_hook_proc) 0);
+}
+
+STATIC_OVL void
+hooked_tty_getlin(query, bufp, hook)
+const char *query;
+register char *bufp;
+getlin_hook_proc hook;
+{
 	register char *obufp = bufp;
 	register int c;
 	struct WinDesc *cw = wins[WIN_MESSAGE];
@@ -42,6 +56,8 @@ register char *bufp;
 	pline("%s ", query);
 	for(;;) {
 		(void) fflush(stdout);
+		Sprintf(toplines, "%s ", query);
+		Strcat(toplines, obufp);
 		if((c = Getchar()) == EOF) {
 			*bufp = 0;
 			break;
@@ -54,7 +70,6 @@ register char *bufp;
 		if (ttyDisplay->intr) {
 		    ttyDisplay->intr--;
 		    *bufp = 0;
-		    putsyms(obufp);
 		}
 		if(c == '\020') { /* ctrl-P */
 		    if(!doprev)
@@ -83,7 +98,7 @@ register char *bufp;
 #endif
 			*bufp = 0;
 			break;
-		} else if(' ' <= c && c < '\177' && 
+		} else if(' ' <= c && c < '\177' &&
 			    (bufp-obufp < BUFSZ-1 && bufp-obufp < COLNO)) {
 				/* avoid isprint() - some people don't have it
 				   ' ' is not always a printing char */
@@ -91,6 +106,10 @@ register char *bufp;
 			bufp[1] = 0;
 			putsyms(bufp);
 			bufp++;
+			if (hook && (*hook)(obufp)) {
+			    putsyms(bufp);
+			    bufp = eos(bufp);
+			}
 		} else if(c == kill_char || c == '\177') { /* Robert Viduya */
 				/* this test last - @ might be the kill_char */
 			while(bufp != obufp) {
@@ -107,17 +126,16 @@ register char *bufp;
 
 void
 xwaitforspace(s)
-register const char *s;	/* chars allowed besides space or return */
+register const char *s;	/* chars allowed besides return */
 {
-    register int c;
+    register int c, x = ttyDisplay ? (int) ttyDisplay->dismiss_more : '\n';
 
     morc = 0;
 
     while((c = tty_nhgetch()) != '\n') {
 	if(flags.cbreak) {
-	    if(c == ' ') break;
-	    if(s && index(s,c)) {
-		morc = c;
+	    if ((s && index(s,c)) || c == x) {
+		morc = (char) c;
 		break;
 	    }
 	    tty_nhbell();
@@ -129,97 +147,65 @@ register const char *s;	/* chars allowed besides space or return */
 #endif /* OVL1 */
 #ifdef OVL2
 
-#ifdef COM_COMPL
-/* Read in an extended command - doing command line completion for
- * when enough characters have been entered to make a unique command.
- * This is just a modified getlin().   -jsb
+/*
+ * Implement extended command completion by using this hook into
+ * tty_getlin.  Check the characters already typed, if they uniquely
+ * identify an extended command, expand the string to the whole
+ * command.
+ *
+ * Return TRUE if we've extended the string at base.  Otherwise return FALSE.
+ * Assumptions:
+ *
+ *	+ we don't change the characters that are already in base
+ *	+ base has enough room to hold our string
  */
-void
-tty_get_ext_cmd(bufp)
-register char *bufp;
+static boolean
+ext_cmd_getlin_hook(base)
+	char *base;
 {
-	register char *obufp = bufp;
-	register int c;
-	int com_index, oindex;
+	int oindex, com_index;
 
-	ttyDisplay->toplin = 3; /* special prompt state */
-	ttyDisplay->inread++;
-	pline("# ");
-
-	for(;;) {
-		(void) fflush(stdout);
-		if((c = readchar()) == EOF) {
-			*bufp = 0;
-			break;
-		}
-		if(c == '\033') {
-			*obufp = c;
-			obufp[1] = 0;
-			break;
-		}
-		if (ttyDisplay->intr) {
-		    ttyDisplay->intr--;
-		    *bufp = 0;
-		    putsyms(obufp);
-		}
-		if(c == erase_char || c == '\b') {
-			if(bufp != obufp) {
-				bufp--;
-				putsyms("\b \b"); /* putsym converts \b */
-			} else	tty_nhbell();
-#if defined(apollo)
-		} else if(c == '\n' || c == '\r') {
-#else
-		} else if(c == '\n') {
-#endif
-			*bufp = 0;
-			break;
-		} else if(' ' <= c && c < '\177' &&
-			    (bufp-obufp < BUFSZ-1 && bufp-obufp < COLNO)) {
-				/* avoid isprint() - some people don't have it
-				   ' ' is not always a printing char */
-			*bufp = c;
-			bufp[1] = 0;
-			oindex = 0;
-			com_index = -1;
-
-			while(extcmdlist[oindex].ef_txt != NULL){
-				if(!strncmpi(obufp, extcmdlist[oindex].ef_txt,
-				    strlen(obufp)))
-					if(com_index == -1) /* No matches yet*/
-					    com_index = oindex;
-					else /* More than 1 match */
-					    com_index = -2;
-				oindex++;
-			}
-			if(com_index >= 0){
-				Strcpy(obufp, extcmdlist[com_index].ef_txt);
-				/* finish printing our string */
-				putsyms(bufp);
-				bufp = obufp; /* reset it */
-				if((int)strlen(obufp) < BUFSZ-1 &&
-						(int)strlen(obufp) < COLNO)
-					/* set bufp at the end of our string */
-					bufp += strlen(obufp);
-			} else {
-				putsyms(bufp);
-				if(bufp-obufp < BUFSZ-1 && bufp-obufp < COLNO)
-					bufp++;
-			}
-		} else if(c == kill_char || c == '\177') { /* Robert Viduya */
-				/* this test last - @ might be the kill_char */
-			while(bufp != obufp) {
-				bufp--;
-				putsyms("\b \b");
-			}
-		} else
-			tty_nhbell();
+	com_index = -1;
+	for (oindex = 0; extcmdlist[oindex].ef_txt != (char *)0; oindex++) {
+		if (!strncmpi(base, extcmdlist[oindex].ef_txt, strlen(base)))
+			if (com_index == -1)	/* no matches yet */
+			    com_index = oindex;
+			else			/* more than 1 match */
+			    return FALSE;
 	}
-	ttyDisplay->toplin = 2;		/* nonempty, no --More-- required */
-	ttyDisplay->inread--;
-	clear_nhwindow(WIN_MESSAGE);	/* clean up after ourselves */
+	if (com_index >= 0) {
+		Strcpy(base, extcmdlist[com_index].ef_txt);
+		return TRUE;
+	}
+
+	return FALSE;	/* didn't match anything */
 }
-#endif /* COM_COMPL */
+
+/*
+ * Read in an extended command, doing command line completion.  We
+ * stop when we have found enough characters to make a unique command.
+ */
+int
+tty_get_ext_cmd()
+{
+	int i;
+	char buf[BUFSZ];
+
+	/* maybe a runtime option? */
+	/* hooked_tty_getlin("#", buf, flags.cmd_comp ? ext_cmd_getlin_hook : (getlin_hook_proc) 0); */
+	hooked_tty_getlin("#", buf, ext_cmd_getlin_hook);
+	if (buf[0] == 0 || buf[0] == '\033') return -1;
+
+	for (i = 0; extcmdlist[i].ef_txt != (char *)0; i++)
+		if (!strcmpi(buf, extcmdlist[i].ef_txt)) break;
+
+	if (extcmdlist[i].ef_txt == (char *)0) {
+		pline("%s: unknown extended command.", buf);
+		i = -1;
+	}
+
+	return i;
+}
 
 #endif /* OVL2 */
 

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)vmsfiles.c	3.1	93/01/20	*/
+/*	SCCS Id: @(#)vmsfiles.c	3.2	95/11/08	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -7,6 +7,16 @@
  *  routines or substitute for ones where we want behavior modification.
  */
 #include "config.h"
+#include <ctype.h>
+
+/* lint supression due to lack of extern.h */
+int FDECL(vms_link, (const char *,const char *));
+int FDECL(vms_unlink, (const char *));
+int FDECL(vms_creat, (const char *,unsigned int));
+int FDECL(vms_open, (const char *,int,unsigned int));
+boolean FDECL(same_dir, (const char *,const char *));
+int FDECL(c__translate, (int));
+char *FDECL(vms_basename, (const char *));
 
 #include <rms.h>
 #if 0
@@ -14,13 +24,12 @@
 #else
 #define PSL$C_EXEC 1	/* executive mode, for priv'd logical name handling */
 #endif
-#ifndef C$$TRANSLATE	/* don't rely on VAXCRTL's internal routine */
 #include <errno.h>
+#ifndef C$$TRANSLATE	/* don't rely on VAXCRTL's internal routine */
 #define C$$TRANSLATE(status) (errno = EVMSERR,  vaxc$errno = (status))
-#else
-int FDECL(c__translate, (int));
 #endif
-extern unsigned long SYS$PARSE(), SYS$SEARCH(), SYS$ENTER(), SYS$REMOVE();
+extern unsigned long sys$parse(), sys$search(), sys$enter(), sys$remove();
+extern int VDECL(lib$match_cond, (int,int,...));
 
 #define vms_success(sts) ((sts)&1)		/* odd, */
 #define vms_failure(sts) (!vms_success(sts))	/* even */
@@ -43,21 +52,21 @@ const char *file, *new;
     nam.nam$l_esa = esa;
     nam.nam$b_ess = sizeof esa;
 
-    if (vms_success(SYS$PARSE(&fab)) && vms_success(SYS$SEARCH(&fab))) {
+    if (vms_success(sys$parse(&fab)) && vms_success(sys$search(&fab))) {
 	fid[0] = nam.nam$w_fid[0];
 	fid[1] = nam.nam$w_fid[1];
 	fid[2] = nam.nam$w_fid[2];
 	fab.fab$l_fna = (char *) new;
 	fab.fab$b_fns = strlen(new);
 
-	if (vms_success(SYS$PARSE(&fab))) {
+	if (vms_success(sys$parse(&fab))) {
 	    nam.nam$w_fid[0] = fid[0];
 	    nam.nam$w_fid[1] = fid[1];
 	    nam.nam$w_fid[2] = fid[2];
 	    nam.nam$l_esa = nam.nam$l_name;
 	    nam.nam$b_esl = nam.nam$b_name + nam.nam$b_type + nam.nam$b_ver;
 
-	    (void) SYS$ENTER(&fab);
+	    (void) sys$enter(&fab);
 	}
     }
 
@@ -89,7 +98,7 @@ const char *file;
     nam.nam$l_esa = esa;
     nam.nam$b_ess = sizeof esa;
 
-    if (vms_failure(SYS$PARSE(&fab)) || vms_failure(SYS$REMOVE(&fab))) {
+    if (vms_failure(sys$parse(&fab)) || vms_failure(sys$remove(&fab))) {
 	C$$TRANSLATE(fab.fab$l_sts);
 	return -1;
     }
@@ -108,15 +117,20 @@ int vms_creat(file, mode)
 const char *file;
 unsigned int mode;
 {
-    if (index(file, ';'))
-	(void) unlink(file);	/* assumes remove or delete, not vms_unlink */
-    return creat(file, mode, "shr=nil", "mbc=32");
+    if (index(file, ';')) {
+	/* assumes remove or delete, not vms_unlink */
+	if (!unlink(file)) {
+	    (void)sleep(1);
+	    (void)unlink(file);
+	}
+    }
+    return creat(file, mode, "shr=nil", "mbc=32", "mbf=2", "rop=wbh");
 }
 
 /*
-   Similar substitute for open() -- can't disallow sharing, because we're
-   relying on deleting a file that we've got open, so must share it with
-   ourself!
+   Similar substitute for open() -- if an open attempt fails due to being
+   locked by another user, retry it once (work-around for a limitation of
+   at least one NFS implementation).
  */
 #undef open
 int vms_open(file, flags, mode)
@@ -124,7 +138,13 @@ const char *file;
 int flags;
 unsigned int mode;
 {
-    return open(file, flags, mode, "mbc=32");
+    int fd = open(file, flags, mode, "mbc=32", "mbf=2", "rop=rah");
+
+    if (fd < 0 && errno == EVMSERR && lib$match_cond(vaxc$errno, RMS$_FLK)) {
+	(void)sleep(1);
+	fd = open(file, flags, mode, "mbc=32", "mbf=2", "rop=rah");
+    }
+    return fd;
 }
 
 /*
@@ -154,7 +174,7 @@ const char *d1, *d2;
 	f2.fab$l_nam = (genericptr_t)&n2;
 	n1.nam$b_nop = n2.nam$b_nop = NAM$M_NOCONCEAL; /* want true device name */
 
-	return (vms_success(SYS$PARSE(&f1)) && vms_success(SYS$PARSE(&f2))
+	return (vms_success(sys$parse(&f1)) && vms_success(sys$parse(&f2))
 	     && n1.nam$t_dvi[0] == n2.nam$t_dvi[0]
 	     && !strncmp(&n1.nam$t_dvi[1], &n2.nam$t_dvi[1], n1.nam$t_dvi[0])
 	     && !memcmp((genericptr_t)n1.nam$w_did,
@@ -236,5 +256,38 @@ int c__translate(code)
 #undef VALUE
 #undef CASE1
 #undef CASE2
+
+static char basename[NAM$C_MAXRSS+1];
+
+/* return a copy of the 'base' portion of a filename */
+char *
+vms_basename(name)
+const char *name;
+{
+    unsigned len;
+    char *base, *base_p;
+    register const char *name_p;
+
+    /* skip directory/path */
+    if ((name_p = strrchr(name, ']')) != 0) name = name_p + 1;
+    if ((name_p = strrchr(name, '>')) != 0) name = name_p + 1;
+    if ((name_p = strrchr(name, ':')) != 0) name = name_p + 1;
+    if ((name_p = strrchr(name, '/')) != 0) name = name_p + 1;
+    if (!*name) name = ".";		/* this should never happen */
+
+    /* find extension/version and derive length of basename */
+    if ((name_p = strchr(name, '.')) == 0 || name_p == name)
+	name_p = strchr(name, ';');
+    len = (name_p && name_p > name) ? name_p - name : strlen(name);
+
+    /* return a lowercase copy of the name in a private static buffer */
+    base = strncpy(basename, name, len);
+    base[len] = '\0';
+    /* we don't use lcase() so that utilities won't need hacklib.c */
+    for (base_p = base; base_p < &base[len]; base_p++)
+	if (isupper(*base_p)) *base_p = tolower(*base_p);
+
+    return base;
+}
 
 /*vmsfiles.c*/

@@ -1,8 +1,9 @@
-/*	SCCS Id: @(#)rumors.c	3.1	92/12/05	*/
+/*	SCCS Id: @(#)rumors.c	3.2	95/08/04	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
+#include "dlb.h"
 
 /*	[note: this comment is fairly old, but still accurate for 3.1]
  * Rumors have been entirely rewritten to speed up the access.  This is
@@ -26,18 +27,8 @@
  * and placed there by 'makedefs'.
  */
 
-#ifndef SEEK_SET
-# define SEEK_SET 0
-#endif
-#ifndef SEEK_CUR
-# define SEEK_CUR 1
-#endif
-#ifndef SEEK_END	/* aka SEEK_EOF */
-# define SEEK_END 2
-#endif
-
-static void FDECL(init_rumors, (FILE *));
-static void FDECL(init_oracles, (FILE *));
+static void FDECL(init_rumors, (dlb *));
+static void FDECL(init_oracles, (dlb *));
 static void FDECL(outoracle, (BOOLEAN_P));
 
 static long true_rumor_start,  true_rumor_size,  true_rumor_end,
@@ -48,18 +39,19 @@ static long *oracle_loc = 0;
 
 static void
 init_rumors(fp)
-FILE *fp;
+dlb *fp;
 {
 	char line[BUFSZ];
 
-	(void) fgets(line, sizeof line, fp);	/* skip "don't edit" comment */
-	if (fscanf(fp, "%6lx\n", &true_rumor_size) == 1 &&
+	(void) dlb_fgets(line, sizeof line, fp); /* skip "don't edit" comment */
+	(void) dlb_fgets(line, sizeof line, fp);
+	if (sscanf(line, "%6lx\n", &true_rumor_size) == 1 &&
 	    true_rumor_size > 0L) {
-	    (void) fseek(fp, 0L, SEEK_CUR);
-	    true_rumor_start  = ftell(fp);
+	    (void) dlb_fseek(fp, 0L, SEEK_CUR);
+	    true_rumor_start  = dlb_ftell(fp);
 	    true_rumor_end    = true_rumor_start + true_rumor_size;
-	    (void) fseek(fp, 0L, SEEK_END);
-	    false_rumor_end   = ftell(fp);
+	    (void) dlb_fseek(fp, 0L, SEEK_END);
+	    false_rumor_end   = dlb_ftell(fp);
 	    false_rumor_start = true_rumor_end;	/* ok, so it's redundant... */
 	    false_rumor_size  = false_rumor_end - false_rumor_start;
 	} else
@@ -67,19 +59,19 @@ FILE *fp;
 }
 
 char *
-getrumor(truth)
+getrumor(truth, rumor_buf)
 int truth; /* 1=true, -1=false, 0=either */
+char *rumor_buf;
 {
-	static char rumor_buf[COLNO + 28];
-	FILE	*rumors;
+	dlb	*rumors;
 	long tidbit, beginning;
-	char	*endp, line[sizeof rumor_buf];
+	char	*endp, line[BUFSZ], xbuf[BUFSZ];
 
 	rumor_buf[0] = '\0';
 	if (true_rumor_size < 0L)	/* we couldn't open RUMORFILE */
 		return rumor_buf;
 
-	rumors = fopen_datafile(RUMORFILE, "r");
+	rumors = dlb_fopen(RUMORFILE, "r");
 
 	if (rumors) {
 		if (true_rumor_size == 0L) {	/* if this is 1st outrumor() */
@@ -108,17 +100,17 @@ int truth; /* 1=true, -1=false, 0=either */
 			    impossible("strange truth value for rumor");
 			return strcpy(rumor_buf, "Oops...");
 		}
-		(void) fseek(rumors, beginning + tidbit, SEEK_SET);
-		(void) fgets(line, sizeof line, rumors);
-		if (!fgets(line, sizeof line, rumors) ||
-		    (truth > 0 && ftell(rumors) > true_rumor_end)) {
+		(void) dlb_fseek(rumors, beginning + tidbit, SEEK_SET);
+		(void) dlb_fgets(line, sizeof line, rumors);
+		if (!dlb_fgets(line, sizeof line, rumors) ||
+		    (truth > 0 && dlb_ftell(rumors) > true_rumor_end)) {
 			/* reached end of rumors -- go back to beginning */
-			(void) fseek(rumors, beginning, SEEK_SET);
-			(void) fgets(line, sizeof line, rumors);
+			(void) dlb_fseek(rumors, beginning, SEEK_SET);
+			(void) dlb_fgets(line, sizeof line, rumors);
 		}
 		if ((endp = index(line, '\n')) != 0) *endp = 0;
-		Strcat(rumor_buf, xcrypt(line));
-		(void) fclose(rumors);
+		Strcat(rumor_buf, xcrypt(line, xbuf));
+		(void) dlb_fclose(rumors);
 		exercise(A_WIS, (truth > 0));
 	} else {
 		pline("Can't open rumors file!");
@@ -135,13 +127,14 @@ boolean cookie;
 	static const char fortune_msg[] =
 		"This cookie has a scrap of paper inside.";
 	const char *line;
+	char buf[BUFSZ];
 
 	if (cookie && Blind) {
 		pline(fortune_msg);
 		pline("What a pity that you cannot read it!");
 		return;
 	}
-	line = getrumor(truth);
+	line = getrumor(truth, buf);
 	if (!*line)
 		line = "NetHack rumors file closed for renovation.";
 	if (cookie) {
@@ -159,19 +152,22 @@ boolean cookie;
 
 static void
 init_oracles(fp)
-FILE *fp;
+dlb *fp;
 {
 	register int i;
 	char line[BUFSZ];
 	int cnt = 0;
 
 	/* this assumes we're only called once */
-	(void) fgets(line, sizeof line, fp);	/* skip "don't edit" comment */
-	if (fscanf(fp, "%5d", &cnt) == 1 && cnt > 0) {
+	(void) dlb_fgets(line, sizeof line, fp); /* skip "don't edit" comment*/
+	(void) dlb_fgets(line, sizeof line, fp);
+	if (sscanf(line, "%5d\n", &cnt) == 1 && cnt > 0) {
 	    oracle_cnt = (unsigned) cnt;
-	    oracle_loc = (long *) alloc(cnt * sizeof (long));
-	    for (i = 0; i < cnt; i++)
-		(void) fscanf(fp, "%5lx", &oracle_loc[i]);
+	    oracle_loc = (long *) alloc((unsigned)cnt * sizeof (long));
+	    for (i = 0; i < cnt; i++) {
+		(void) dlb_fgets(line, sizeof line, fp);
+		(void) sscanf(line, "%5lx\n", &oracle_loc[i]);
+	    }
 	}
 	return;
 }
@@ -203,14 +199,15 @@ boolean special;
 {
 	char	line[COLNO];
 	char	*endp;
-	FILE	*oracles;
+	dlb	*oracles;
 	int oracle_idx;
+	char xbuf[BUFSZ];
 
 	if(oracle_flg < 0 ||			/* couldn't open ORACLEFILE */
 	   (oracle_flg > 0 && oracle_cnt == 0))	/* oracles already exhausted */
 		return;
 
-	oracles = fopen_datafile(ORACLEFILE, "r");
+	oracles = dlb_fopen(ORACLEFILE, "r");
 
 	if (oracles) {
 		winid tmpwin;
@@ -223,7 +220,7 @@ boolean special;
 		/* oracle_loc[1..oracle_cnt-1] are normal ones	*/
 		if (oracle_cnt <= 1 && !special) return;  /*(shouldn't happen)*/
 		oracle_idx = special ? 0 : rnd((int) oracle_cnt - 1);
-		(void) fseek(oracles, oracle_loc[oracle_idx], SEEK_SET);
+		(void) dlb_fseek(oracles, oracle_loc[oracle_idx], SEEK_SET);
 		if (!special) oracle_loc[oracle_idx] = oracle_loc[--oracle_cnt];
 
 		tmpwin = create_nhwindow(NHW_TEXT);
@@ -232,13 +229,13 @@ boolean special;
 		      "The Oracle meditates for a moment and then intones:");
 		putstr(tmpwin, 0, "");
 
-		while (fgets(line, COLNO, oracles) && strcmp(line,"---\n")) {
+		while(dlb_fgets(line, COLNO, oracles) && strcmp(line,"---\n")) {
 			if ((endp = index(line, '\n')) != 0) *endp = 0;
-			putstr(tmpwin, 0, xcrypt(line));
+			putstr(tmpwin, 0, xcrypt(line, xbuf));
 		}
 		display_nhwindow(tmpwin, TRUE);
 		destroy_nhwindow(tmpwin);
-		(void) fclose(oracles);
+		(void) dlb_fclose(oracles);
 	} else {
 		pline("Can't open oracles file!");
 		oracle_flg = -1;	/* don't try to open it again */
@@ -259,7 +256,7 @@ register struct monst *oracl;
 		pline("There is no one here to consult.");
 		return 0;
 	} else if (!oracl->mpeaceful) {
-		pline("The Oracle is in no mood for consultations.");
+		pline("%s is in no mood for consultations.", Monnam(oracl));
 		return 0;
 	} else if (!u.ugold) {
 		You("have no money.");

@@ -1,11 +1,11 @@
-/*	SCCS Id: @(#)mfndpos.h	3.1	93/05/15	*/
+/*	SCCS Id: @(#)mfndpos.h	3.2	93/05/15	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #ifndef MFNDPOS_H
 #define MFNDPOS_H
 
-#define ALLOW_TRAPS	0x0002FFFFL	/* can enter 18 kinds of traps */
+#define ALLOW_TRAPS	0x00020000L	/* can enter traps */
 #define ALLOW_U		0x00040000L	/* can attack you */
 #define ALLOW_M		0x00080000L	/* can attack other monsters */
 #define ALLOW_TM	0x00100000L	/* can attack tame monsters */

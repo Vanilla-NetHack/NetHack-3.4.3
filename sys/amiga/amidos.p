@@ -34,13 +34,13 @@ void FDECL(msmsg, ( const char *, ... ));
 #if 0
 FILE *FDECL(fopenp, (const char * , const char *));
 #endif
-#ifndef	__SASC_60
+#if !defined(__SASC_60) && !defined(_DCC)
 int FDECL(chdir, (char *));
 #endif
 void FDECL(msexit, (int ));
 #ifndef	strcmpi
 int FDECL(strcmpi, (char * , char *));
 #endif
-#if !defined(memcmp) && !defined(AZTEC_C)
+#if !defined(memcmp) && !defined(AZTEC_C) && !defined(_DCC)
 int FDECL(memcmp, (unsigned char * , unsigned char * , int ));
 #endif

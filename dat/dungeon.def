@@ -1,5 +1,5 @@
-#	SCCS Id: @(#)dungeon.def	3.1	92/01/26
-#	Copyright (c) 1990-92 by M. Stephenson
+#	SCCS Id: @(#)dungeon.def	3.2	96/03/10
+#	Copyright (c) 1990-95 by M. Stephenson
 # NetHack may be freely redistributed.  See license for details.
 #
 #	The dungeon description file for the "standard" 3.1 NetHack.
@@ -11,13 +11,13 @@
 
 DUNGEON:	"The Dungeons of Doom" "D" (25, 5)
 ALIGNMENT:	unaligned
-%MULDGN	BRANCH:	"The Gnomish Mines" @ (2, 3)
+BRANCH:		"The Gnomish Mines" @ (2, 3)
 %REINCARNATION LEVEL:		"rogue" "R" @ (15, 4)
 LEVEL:		"oracle" "O" @ (5, 5)
 LEVALIGN:	neutral
-LEVEL:		"bigroom" "B" @ (10, 3) 15
-%MULDGN	CHAINBRANCH:	"The Quest" "oracle" + (6, 2) portal
-%MULDGN BRANCH:		"Fort Ludios" @ (18, 4) portal
+RNDLEVEL:	"bigrm" "B" @ (10, 3) 40 5
+CHAINBRANCH:	"The Quest" "oracle" + (6, 2) portal
+BRANCH:		"Fort Ludios" @ (18, 4) portal
 RNDLEVEL:	"medusa" "none" @ (-5, 4) 2
 LEVALIGN:	chaotic
 LEVEL:		"castle" "none" @ (-1, 0)
@@ -61,12 +61,14 @@ LEVEL:		"fakewiz2" "G" @ (-6,4)
 #
 #	The Mines of the Gnomes of Zurich.
 #
-%MULDGN	DUNGEON:	"The Gnomish Mines" "M" (8, 2)
-%MULDGN ALIGNMENT:	lawful
-%MULDGN	DESCRIPTION:	mazelike
-%MULDGN	LEVEL:		"minetown" "T" @ (3, 2)
-%MULDGN	LEVELDESC:	town
-%MULDGN	LEVEL:		"mine_end" "E" @ (-1, 0)
+DUNGEON:	"The Gnomish Mines" "M" (8, 2)
+ALIGNMENT:	lawful
+DESCRIPTION:	mazelike
+# LEVEL:	"minetown" "T" @ (3, 2)
+RNDLEVEL:	"minetn" "T" @ (3, 2) 2
+LEVELDESC:	town
+# LEVEL:	"mine_end" "E" @ (-1, 0)
+RNDLEVEL:	"minend" "E" @ (-1, 0) 2
 
 #
 #	The Questdungeon
@@ -76,38 +78,45 @@ LEVEL:		"fakewiz2" "G" @ (-6,4)
 #	A special "x-fill" level must be defined in the levels description
 #	file.  It will be used for all levels not defined explicitly below.
 #
-%MULDGN	DUNGEON:	"The Quest" "Q" (5, 2)
-%MULDGN	LEVEL:	"x-start" "none" @ (1, 1)
-%MULDGN	LEVEL:	"x-locate" "L" @ (3, 1)
-%MULDGN	LEVEL:	"x-goal" "none" @ (-1, 0)
+DUNGEON:	"The Quest" "Q" (5, 2)
+LEVEL:	"x-start" "none" @ (1, 1)
+LEVEL:	"x-locate" "L" @ (3, 1)
+LEVEL:	"x-goal" "none" @ (-1, 0)
 
 #
 #	The Central Vault of Croesus.
 #
-%MULDGN DUNGEON:	"Fort Ludios" "K" (1, 0)
-%MULDGN DESCRIPTION:	mazelike
-%MULDGN ALIGNMENT:	unaligned
-%MULDGN LEVEL:		"knox" "K" @ (-1, 0)
+DUNGEON:	"Fort Ludios" "K" (1, 0)
+DESCRIPTION:	mazelike
+ALIGNMENT:	unaligned
+LEVEL:		"knox" "K" @ (-1, 0)
 #
 #	Vlad's Tower
 #
 #	It has been removed from Gehennom, and it is surrounded by stone.
+#	Must not allow bones files for its top level.
 #
 DUNGEON:	"Vlad's Tower" "T" (3, 0)
 PROTOFILE:	"tower"
 DESCRIPTION:	mazelike
 ALIGNMENT:	chaotic
 ENTRY:		-1
+LEVEL:		"tower1" "none" @ (1, 0)
 
 #
 #	The Endgame levels
 #
-DUNGEON:	"The Elemental Planes" "E" (5, 0)
+#	Enter on 2nd level from bottom; 1st (from bottom) is a
+#	placeholder for surface level, and should be unreachable.
+#	[Note: the name "dummy" is checked for in init_dungeons().]
+#
+DUNGEON:	"The Elemental Planes" "E" (6, 0)
 DESCRIPTION:	mazelike
 ALIGNMENT:	unaligned
-ENTRY:		-1
+ENTRY:		-2
 LEVEL:		"astral" "none" @ (1, 0)
 LEVEL:		"water"  "none" @ (2, 0)
 LEVEL:		"fire"   "none" @ (3, 0)
 LEVEL:		"air"    "none" @ (4, 0)
 LEVEL:		"earth"  "none" @ (5, 0)
+LEVEL:		"dummy"  "none" @ (6, 0)

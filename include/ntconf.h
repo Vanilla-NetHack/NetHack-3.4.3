@@ -1,13 +1,11 @@
-/*	SCCS Id: @(#)ntconf.h	3.1	93/04/08	*/
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/*	SCCS Id: @(#)ntconf.h	3.2	94/12/08	*/
+/* Copyright (c) NetHack PC Development Team 1993, 1994.  */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #ifndef NTCONF_H
 #define NTCONF_H
 
-#define MICRO		/* always define this! */
-
-#define SHELL
+/* #define SHELL	/* nt use of pcsys routines caused a hang */
 
 #define RANDOM		/* have Berkeley random(3) */
 
@@ -15,18 +13,23 @@
 
 #define PATHLEN		64	/* maximum pathlength */
 #define FILENAME	80	/* maximum filename length (conservative) */
-#ifndef MICRO_H
-#include "micro.h"      /* contains necessary externs for [os_name].c */
-#endif
-
-
+#define SHORT_FILENAMES
+#define EXEPATH			/* Allow .exe location to be used as HACKDIR */
 /*
+ * -----------------------------------------------------------------
  *  The remaining code shouldn't need modification.
+ * -----------------------------------------------------------------
  */
 
-#define NO_TERMS       /* April 8/93 mja */
+#define MICRO		/* always define this! */
+#define NO_TERMS
 #define ASCIIGRAPH
- 
+
+/* The following is needed for prototypes of certain functions */
+#if defined(_MSC_VER)
+#include <process.h>	/* Provides prototypes of exit(), spawn()      */
+#endif
+
 #ifndef SYSTEM_H
 #include "system.h"
 #endif
@@ -43,19 +46,50 @@
 #endif
 
 #define FCMASK	0660	/* file creation mask */
+#define regularize	nt_regularize
+
+#ifndef M
+#define M(c)		(0x80 | (c))
+/* #define M(c)		((c) - 128) */
+#endif
+
+#ifndef C
+#define C(c)		(0x1f & (c))
+#endif
+
+#if defined(DLB)
+#define FILENAME_CMP  stricmp                 /* case insensitive */
+#endif
+
+#ifdef MICRO
+# ifndef MICRO_H
+#include "micro.h"      /* contains necessary externs for [os_name].c */
+# endif
+#endif
 
 #include <fcntl.h>
 #include <io.h>
 #include <direct.h>
 #include <conio.h>
 #undef kbhit	        /* Use our special NT kbhit */
+#define kbhit (*nt_kbhit)
 
+#ifndef alloca
+#define ALLOCA_HACK	/* used in util/panic.c */
+#endif
+
+#ifdef MICRO
 #define exit	msexit		/* do chdir first */
+#endif
 
 #ifndef REDO
 #undef	Getchar
 #define Getchar nhgetch
 #endif
 
+#ifdef _MSC_VER
+#pragma warning(disable:4018)	/* signed/unsigned mismatch */
+#pragma warning(disable:4305)	/* init, conv from 'const int' to 'char' */
+#endif
 
 #endif /* NTCONF_H */

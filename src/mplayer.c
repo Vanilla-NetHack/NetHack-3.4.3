@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mplayer.c	3.1	93/03/14	*/
+/*	SCCS Id: @(#)mplayer.c	3.2	96/02/27	*/
 /*	Copyright (c) Izchak Miller, 1992.			  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -9,7 +9,7 @@ static void FDECL(get_mplname, (struct monst *, char *));
 static void FDECL(mk_mplayer_armor, (struct monst *, int, int));
 
 /* These are the names of those who
- * contributed to the development of NetHack 3.1.
+ * contributed to the development of NetHack 3.2.
  *
  * Keep in alphabetical order within teams.
  * Same first name is entered once within each team.
@@ -17,17 +17,16 @@ static void FDECL(mk_mplayer_armor, (struct monst *, int, int));
 static const char *developers[] = {
 	/* devteam */
 	"Dave", "Dean", "Eric", "Izchak", "Janet", "Jessie",
-	"Ken", "Kevin", "Matt", "Mike", "Pat", "Steve", "Timo",
+	"Ken", "Kevin", "Michael", "Mike", "Pat", "Paul", "Steve", "Timo",
 	/* PC team */
-	"Bill", "Carl", "John", "Kevin", "Mike", "Norm", "Paul",
-	"Stephen", "Steve",
+	"Bill", "Eric", "Ken", "Kevin", "Michael", "Mike", "Paul",
+	"Stephen", "Steve", "Timo", "Yamamoto", "Yitzhak",
 	/* Amiga team */
-	"Greg", "Gregg", "Keni", "Mike", "Olaf", "Richard",
+	"Andy", "Gregg", "Keni", "Mike", "Olaf", "Richard",
 	/* Mac team */
-	"Barton", "David", "Johnny", "Jon", "Jonathan", "Michael", "Rob",
-	"Tim", "Wang",
+	"Andy", "Chris", "Dean", "Jon", "Jonathan", "Wang",
 	/* Atari team */
-	"Eric",
+	"Eric", "Warwick",
 	/* NT team */
 	"Michael",
 	/* OS/2 team */
@@ -39,7 +38,7 @@ static const char *developers[] = {
 
 /* return a randomly chosen developer name */
 static const char *
-dev_name() 
+dev_name()
 {
 	register int i, m = 0, n = SIZE(developers);
 	register struct monst *mtmp;
@@ -48,7 +47,7 @@ dev_name()
 	do {
 	    match = FALSE;
 	    i = rn2(n);
-	    for (mtmp = fmon; mtmp; mtmp = mtmp->nmon) { 
+	    for (mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
 		if(!is_mplayer(mtmp->data)) continue;
 		if(!strncmp(developers[i], NAME(mtmp),
 			               strlen(developers[i]))) {
@@ -59,7 +58,7 @@ dev_name()
 	    m++;
 	} while (match && m < 100); /* m for insurance */
 
-	if (match) return NULL;
+	if (match) return (const char *)0;
 	return(developers[i]);
 }
 
@@ -83,8 +82,9 @@ char *nam;
 	else
 	    mtmp->female = 0;
 	Strcat(nam, " the ");
-	Strcat(nam, rank_of((unsigned)rn1(12, 20), 
-		       highc(mtmp->data->mname[0]), (boolean)mtmp->female));
+	Strcat(nam, rank_of(rn1(11, 20),
+			    highc(mtmp->data->mname[0]),
+			    (boolean)mtmp->female));
 }
 
 static void
@@ -115,7 +115,7 @@ register boolean special;
 	register struct monst *mtmp;
 	char nam[PL_NSIZ];
 
-	if(!is_mplayer(ptr)) 
+	if(!is_mplayer(ptr))
 		return((struct monst *)0);
 
 	if(MON_AT(x, y))
@@ -128,18 +128,17 @@ register boolean special;
 	    struct obj *otmp;
 
 	    mtmp->m_lev = (special ? rn1(8,12) : rnd(16));
-	    mtmp->mhp = mtmp->mhpmax = (special ?
-	                      (d((int)mtmp->m_lev,10) + 30 + rnd(30)) :
-	                      (d((int)mtmp->m_lev,10) + 30));
+	    mtmp->mhp = mtmp->mhpmax = d((int)mtmp->m_lev,10) +
+					(special ? (30 + rnd(30)) : 30);
 	    if(special) {
 	        get_mplname(mtmp, nam);
 	        mtmp = christen_monst(mtmp, nam);
+		/* that's why they are "stuck" in the endgame :-) */
+		(void)mongets(mtmp, FAKE_AMULET_OF_YENDOR);
 	    }
 	    mtmp->mpeaceful = 0;
 	    set_malign(mtmp); /* peaceful may have changed again */
-	    if(special && In_endgame(&u.uz))
-		/* that's why they are "stuck" in the endgame :-) */
-		(void)mongets(mtmp, FAKE_AMULET_OF_YENDOR);
+
 	    switch(monsndx(ptr)) {
 		case PM_ARCHEOLOGIST:
 		    weapon = BULLWHIP;
@@ -188,15 +187,16 @@ register boolean special;
 	    if (rn2(2) && weapon)
 		otmp = mksobj(weapon, TRUE, FALSE);
 	    else
-		otmp = mksobj(rn2(2) ? LONG_SWORD : 
+		otmp = mksobj(rn2(2) ? LONG_SWORD :
 			      rnd_class(SPEAR, BULLWHIP), TRUE, FALSE);
 	    otmp->spe = (special ? rn1(5,4) : rn2(4));
-	    if (!rn2(3)) otmp->oerodeproof = 0;
+	    if (!rn2(3)) otmp->oerodeproof = 1;
+	    else if (!rn2(2)) otmp->greased = 1;
+	    if (special && rn2(2))
+		otmp = mk_artifact(otmp, A_NONE);
+	    mpickobj(mtmp, otmp);
+
 	    if(special) {
-	        /* probably the player got most artifacts anyway. */
-	        if(In_endgame(&u.uz) && rn2(2)) 
-		          otmp = mk_artifact(otmp, A_NONE);
-	        mpickobj(mtmp, otmp);
 	        if (!rn2(10))
 		    (void) mongets(mtmp, rn2(3) ? LUCKSTONE : LOADSTONE);
 	        if (rn2(8))
@@ -207,17 +207,15 @@ register boolean special;
 	        else if (rn2(15))
 		    mk_mplayer_armor(mtmp, PLATE_MAIL, CHAIN_MAIL);
 	        if (rn2(8))
-		    mk_mplayer_armor(mtmp, ELVEN_SHIELD, 
+		    mk_mplayer_armor(mtmp, ELVEN_SHIELD,
 				               SHIELD_OF_REFLECTION);
 	        if (rn2(8))
-		    mk_mplayer_armor(mtmp, LEATHER_GLOVES, 
+		    mk_mplayer_armor(mtmp, LEATHER_GLOVES,
 				               GAUNTLETS_OF_DEXTERITY);
 	        if (rn2(8))
 		    mk_mplayer_armor(mtmp, LOW_BOOTS, LEVITATION_BOOTS);
-#ifdef MUSE
-	        /* Not clear what to do without MUSE. */
 	        m_dowear(mtmp, TRUE);
-#endif
+
 	        quan = rn2(3) ? rn2(3) : rn2(16);
 	        while(quan--)
 		    (void)mongets(mtmp, rnd_class(DILITHIUM_CRYSTAL, JADE));
@@ -228,7 +226,6 @@ register boolean special;
 	        while(quan--)
 		    mpickobj(mtmp, mkobj(RANDOM_CLASS, FALSE));
 	    }
-#ifdef MUSE
 	    quan = rnd(3);
 	    while(quan--)
 		(void)mongets(mtmp, rnd_offensive_item(mtmp));
@@ -238,7 +235,6 @@ register boolean special;
 	    quan = rnd(3);
 	    while(quan--)
 		(void)mongets(mtmp, rnd_misc_item(mtmp));
-#endif
 	}
 
 	return(mtmp);
@@ -295,7 +291,7 @@ register struct monst *mtmp;
 
 	if(mtmp->mpeaceful) return; /* will drop to humanoid talk */
 
-	pline("Talk? -- %s", pl_character[0] == highc(*mtmp->data->mname) ?
+	pline("Talk? -- %s", u.role == highc(*mtmp->data->mname) ?
 		same_class_msg[rn2(3)] : other_class_msg[rn2(3)]);
 }
 

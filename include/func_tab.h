@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)func_tab.h	3.1	92/04/03	*/
+/*	SCCS Id: @(#)func_tab.h	3.2	92/04/03	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -7,6 +7,7 @@
 
 struct func_tab {
 	char f_char;
+	boolean	can_if_buried;
 	int NDECL((*f_funct));
 	const char *f_text;
 };
@@ -14,8 +15,9 @@ struct func_tab {
 struct ext_func_tab {
 	const char *ef_txt, *ef_desc;
 	int NDECL((*ef_funct));
+	boolean	can_if_buried;
 };
 
-extern const struct ext_func_tab extcmdlist[];
+extern struct ext_func_tab extcmdlist[];
 
 #endif /* FUNC_TAB_H */

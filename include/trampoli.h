@@ -1,11 +1,11 @@
-/*	SCCS Id: @(#)trampoli.h 	3.1	92/10/06	  */
+/*	SCCS Id: @(#)trampoli.h	3.2	95/06/01	*/
 /* Copyright (c) 1989, by Norm Meluch and Stephen Spackman	  */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #ifndef TRAMPOLI_H
 #define TRAMPOLI_H
 
-#ifdef OVERLAY
+#ifdef USE_TRAMPOLI
 
 /* ### apply.c ### */
 #define dig()     dig_()
@@ -21,17 +21,11 @@
 /* ### cmd.c ### */
 #define doextcmd()         doextcmd_()
 #define doextlist()        doextlist_()
-#ifdef POLYSELF
 #define domonability()     domonability_()
-#endif /* POLYSELF */
-#ifdef EXPLORE_MODE
 #define enter_explore_mode() enter_explore_mode_()
-#endif /* EXPLORE_MODE */
 #define doprev_message() doprev_message_()
 #define timed_occupation() timed_occupation_()
-#if defined(WIZARD) || defined(EXPLORE_MODE)
 #define wiz_attributes()   wiz_attributes_()
-#endif
 #ifdef WIZARD
 #define wiz_detect()       wiz_detect_()
 #define wiz_genesis()      wiz_genesis_()
@@ -101,13 +95,12 @@
 
 
 /* ### end.c ### */
-#define done1()     done1_()
+#define done1(sig)  done1_(sig)
 #define done2()     done2_()
-#define hangup()    hangup_()
-#define done_intr() done_intr_()
+#define done_intr(sig) done_intr_(sig)
 #if defined(UNIX) || defined (VMS)
-#define done_hangup() done_hangup_()
-#endif /* UNIX || VMS */
+#define done_hangup(sig) done_hangup_(sig)
+#endif
 
 
 /* ### engrave.c ### */
@@ -227,6 +220,9 @@
 
 /* ### save.c ### */
 #define dosave() dosave_()
+#if defined(UNIX) || defined (VMS)
+#define hangup(sig) hangup_(sig)
+#endif
 
 
 /* ### search.c ### */
@@ -281,9 +277,7 @@
 
 /* ### getline.c ### */
 #define tty_getlin(x,y)			tty_getlin_(x,y)
-#ifdef COM_COMPL
-#define tty_get_ext_cmd(x)		tty_get_ext_cmd_(x)
-#endif /* COM_COMPL */
+#define tty_get_ext_cmd()		tty_get_ext_cmd_()
 
 
 /* ### termcap.c ### */
@@ -300,7 +294,7 @@
 
 
 /* ### wintty.c ### */
-#define tty_init_nhwindows()		tty_init_nhwindows_()
+#define tty_init_nhwindows(x,y)		tty_init_nhwindows_(x,y)
 #define tty_player_selection()		tty_player_selection_()
 #define tty_askname()			tty_askname_()
 #define tty_get_nh_event()		tty_get_nh_event_()
@@ -315,14 +309,17 @@
 #define tty_putstr(x,y,z)		tty_putstr_(x,y,z)
 #define tty_display_file(x,y)		tty_display_file_(x,y)
 #define tty_start_menu(x)		tty_start_menu_(x)
-#define tty_add_menu(a,b,c,d)		tty_add_menu_(a,b,c,d)
-#define tty_end_menu(a,b,c,d)		tty_end_menu_(a,b,c,d)
-#define tty_select_menu(x)		tty_select_menu_(x)
+#define tty_add_menu(a,b,c,d,e,f,g)	tty_add_menu_(a,b,c,d,e,f,g)
+#define tty_end_menu(a,b)		tty_end_menu_(a,b)
+#define tty_select_menu(a,b,c)		tty_select_menu_(a,b,c)
 #define tty_update_inventory()		tty_update_inventory_()
 #define tty_mark_synch()		tty_mark_synch_()
 #define tty_wait_synch()		tty_wait_synch_()
 #ifdef CLIPPING
 #define tty_cliparound(x,y)		tty_cliparound_(x,y)
+#endif
+#ifdef POSITIONBAR
+#define tty_update_positionbar(x)	tty_update_positionbar_(x)
 #endif
 #define tty_print_glyph(a,b,c,d)	tty_print_glyph_(a,b,c,d)
 #define tty_raw_print(x)		tty_raw_print_(x)
@@ -330,6 +327,6 @@
 #define tty_nhgetch()			tty_nhgetch_()
 #define tty_nh_poskey(x,y,z)		tty_nh_poskey_(x,y,z)
 
-#endif /* OVERLAY */
+#endif /* USE_TRAMPOLI */
 
 #endif /* TRAMPOLI_H */

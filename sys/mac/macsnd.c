@@ -15,18 +15,18 @@
  */
 
 #include "hack.h"
+#include "macwin.h"
 #include <Sound.h>
 #include <Resources.h>
 
 #define SND_BUFFER(s) (&(*s)[20])
 #define SND_LEN(s) (GetHandleSize(s)-42)
 
-void mac_speaker ( struct obj * instr , char * melody ) ;
 
 void
 mac_speaker ( struct obj * instr , char * melody )
 {
-	SndChannelPtr theChannel = (SndChannelPtr) NULL ;
+	SndChannelPtr theChannel = (SndChannelPtr) 0 ;
 	SndCommand theCmd ;
 	Handle theSound ;
 	unsigned char theName [ 32 ] ;
@@ -61,7 +61,7 @@ mac_speaker ( struct obj * instr , char * melody )
 	 *
 	 */
 	if ( itworked ( SndNewChannel ( & theChannel , sampledSynth , initMono +
-		initNoInterp , ( void * ) NULL ) ) ) {
+		initNoInterp , ( void * ) 0 ) ) ) {
 
 		char midi_note [ ] = { 57 , 59 , 60 , 62 , 64 , 65 , 67 } ;
 

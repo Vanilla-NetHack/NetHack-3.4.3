@@ -1,8 +1,8 @@
-/*	SCCS Id: @(#)decl.c	3.1	93/03/18	*/
+/*	SCCS Id: @(#)decl.c	3.2	95/08/13	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
-#include	"hack.h"
+#include "hack.h"
 
 int NDECL((*afternmv));
 int NDECL((*occupation));
@@ -38,37 +38,33 @@ NEARDATA int in_doagain = 0;
  */
 struct dgn_topology dungeon_topology = {DUMMY};
 
-#ifdef MULDGN
-#include	"quest.h"
+#include "quest.h"
 struct q_score	quest_status = DUMMY;
-#endif
 
 NEARDATA int smeq[MAXNROFROOMS+1] = DUMMY;
 NEARDATA int doorindex = 0;
 
 NEARDATA char *save_cm = 0;
 NEARDATA int killer_format = 0;
-NEARDATA const char *killer = 0;
-NEARDATA const char *nomovemsg = 0;
-NEARDATA const char nul[40] = DUMMY;		/* contains zeros */
+const char *killer = 0;
+const char *nomovemsg = 0;
+const char nul[40] = DUMMY;			/* contains zeros */
 NEARDATA char plname[PL_NSIZ] = DUMMY;		/* player name */
 NEARDATA char pl_character[PL_CSIZ] = DUMMY;
 
-#ifdef TUTTI_FRUTTI
 NEARDATA char pl_fruit[PL_FSIZ] = DUMMY;
 NEARDATA int current_fruit = 0;
 NEARDATA struct fruit *ffruit = (struct fruit *)0;
-#endif
 
 NEARDATA char tune[6] = DUMMY;
 
-NEARDATA const char *occtxt = DUMMY;
-NEARDATA const char quitchars[] = " \r\n\033";
-NEARDATA const char vowels[] = "aeiouAEIOU";
-NEARDATA const char ynchars[] = "yn";
-NEARDATA const char ynqchars[] = "ynq";
-NEARDATA const char ynaqchars[] = "ynaq";
-NEARDATA const char ynNaqchars[] = "yn#aq";
+const char *occtxt = DUMMY;
+const char quitchars[] = " \r\n\033";
+const char vowels[] = "aeiouAEIOU";
+const char ynchars[] = "yn";
+const char ynqchars[] = "ynq";
+const char ynaqchars[] = "ynaq";
+const char ynNaqchars[] = "yn#aq";
 NEARDATA long yn_number = 0L;
 
 #ifdef MICRO
@@ -76,38 +72,32 @@ char hackdir[PATHLEN];		/* where rumors, help, record are */
 char levels[PATHLEN];		/* where levels are */
 #endif /* MICRO */
 
-#define INFOSIZE	MAXLEVEL * MAXDUNGEON
 
 #ifdef MFLOPPY
 char permbones[PATHLEN];	/* where permanent copy of bones go */
 int ramdisk = FALSE;		/* whether to copy bones to levels or not */
 int saveprompt = TRUE;
-struct finfo fileinfo[INFOSIZE];
 const char *alllevels = "levels.*";
 const char *allbones = "bones*.*";
-#else
-boolean level_exists[INFOSIZE];
 #endif
 
-#undef INFOSIZE
+struct linfo level_info[MAXLINFO];
+
+NEARDATA struct sinfo program_state;
 
 /* 'rogue'-like direction commands (cmd.c) */
-NEARDATA const char sdir[] = "hykulnjb><";
-NEARDATA const char ndir[] = "47896321><";	/* number pad mode */
-NEARDATA const schar xdir[10] = { -1,-1, 0, 1, 1, 1, 0,-1, 0, 0 };
-NEARDATA const schar ydir[10] = {  0,-1,-1,-1, 0, 1, 1, 1, 0, 0 };
-NEARDATA const schar zdir[10]	      = {  0, 0, 0, 0, 0, 0, 0, 0, 1,-1 };
+const char sdir[] = "hykulnjb><";
+const char ndir[] = "47896321><";	/* number pad mode */
+const schar xdir[10] = { -1,-1, 0, 1, 1, 1, 0,-1, 0, 0 };
+const schar ydir[10] = {  0,-1,-1,-1, 0, 1, 1, 1, 0, 0 };
+const schar zdir[10] = {  0, 0, 0, 0, 0, 0, 0, 0, 1,-1 };
 
 NEARDATA schar tbx = 0, tby = 0;	/* mthrowu: target */
-NEARDATA int dig_effort = 0;	/* effort expended on current pos */
-NEARDATA d_level dig_level = { 0, 0 };
-NEARDATA coord dig_pos = DUMMY;
-NEARDATA boolean dig_down = FALSE;
+
+NEARDATA struct dig_info digging;
 
 NEARDATA dungeon dungeons[MAXDUNGEON];	/* ini'ed by init_dungeon() */
 NEARDATA s_level *sp_levchn;
-NEARDATA int done_stopprint = 0;
-NEARDATA int done_hup = 0;
 NEARDATA stairway upstair = { 0, 0 }, dnstair = { 0, 0 };
 NEARDATA stairway upladder = { 0, 0 }, dnladder = { 0, 0 };
 NEARDATA stairway sstairs = { 0, 0 };
@@ -120,10 +110,7 @@ NEARDATA boolean stoned = FALSE;	/* done to monsters hit by 'c' */
 NEARDATA boolean unweapon = FALSE;
 NEARDATA boolean mrg_to_wielded = FALSE;
 			 /* weapon picked is merged with wielded one */
-
-#ifdef KOPS
-NEARDATA boolean allow_kops = TRUE;
-#endif
+NEARDATA struct obj *current_wand = 0;	/* wand currently zapped/applied */
 
 NEARDATA coord bhitpos = DUMMY;
 NEARDATA coord doors[DOORMAX] = {DUMMY};
@@ -138,22 +125,20 @@ NEARDATA struct monst youmonst = DUMMY;
 NEARDATA struct flag flags = DUMMY;
 NEARDATA struct you u = DUMMY;
 
-NEARDATA struct obj *invent = (struct obj *)0, 
+NEARDATA struct obj *invent = (struct obj *)0,
 	*uwep = (struct obj *)0, *uarm = (struct obj *)0,
 #ifdef TOURIST
 	*uarmu = (struct obj *)0, /* under-wear, so to speak */
 #endif
-#ifdef POLYSELF
-	 *uskin = (struct obj *)0, /* dragon armor, if a dragon */
-#endif
-	*uarmc = (struct obj *)0, *uarmh = (struct obj *)0, 
-        *uarms = (struct obj *)0, *uarmg = (struct obj *)0,
-        *uarmf = (struct obj *)0, *uamul = (struct obj *)0,
+	*uskin = (struct obj *)0, /* dragon armor, if a dragon */
+	*uarmc = (struct obj *)0, *uarmh = (struct obj *)0,
+	*uarms = (struct obj *)0, *uarmg = (struct obj *)0,
+	*uarmf = (struct obj *)0, *uamul = (struct obj *)0,
 	*uright = (struct obj *)0,
-        *uleft = (struct obj *)0,
-        *ublindf = (struct obj *)0,
+	*uleft = (struct obj *)0,
+	*ublindf = (struct obj *)0,
 	*uchain = (struct obj *)0,
-        *uball = (struct obj *)0;
+	*uball = (struct obj *)0;
 
 #ifdef TEXTCOLOR
 /*
@@ -161,13 +146,13 @@ NEARDATA struct obj *invent = (struct obj *)0,
  */
 const int zapcolors[NUM_ZAP] = {
     HI_ZAP,		/* 0 - missile */
-    ORANGE_COLORED,	/* 1 - fire */
-    WHITE,		/* 2 - frost */
+    CLR_ORANGE,		/* 1 - fire */
+    CLR_WHITE,		/* 2 - frost */
     HI_ZAP,		/* 3 - sleep */
-    BLACK,		/* 4 - death */
-    WHITE,		/* 5 - lightning */
-    YELLOW,		/* 6 - poison gas */
-    GREEN,		/* 7 - acid */
+    CLR_BLACK,		/* 4 - death */
+    CLR_WHITE,		/* 5 - lightning */
+    CLR_YELLOW,		/* 6 - poison gas */
+    CLR_GREEN,		/* 7 - acid */
 };
 #endif /* text color */
 
@@ -192,18 +177,20 @@ NEARDATA struct obj *billobjs = (struct obj *)0;
 NEARDATA struct obj zeroobj = DUMMY;
 
 /* monster pronouns, index is return value of gender(mtmp) */
-NEARDATA const char *he[3]  = { "he",  "she", "it" };
-NEARDATA const char *him[3] = { "him", "her", "it" };
-NEARDATA const char *his[3] = { "his", "her", "its" };
+const char *he[3]  = { "he",  "she", "it" };
+const char *him[3] = { "him", "her", "it" };
+const char *his[3] = { "his", "her", "its" };
 
 /* originally from dog.c */
-NEARDATA char dogname[63] = DUMMY;
-NEARDATA char catname[63] = DUMMY;
+NEARDATA char dogname[PL_PSIZ] = DUMMY;
+NEARDATA char catname[PL_PSIZ] = DUMMY;
 char preferred_pet;	/* '\0', 'c', 'd' */
 /* monsters that went down/up together with @ */
 NEARDATA struct monst *mydogs = (struct monst *)0;
 /* monsters that are moving to another dungeon level */
 NEARDATA struct monst *migrating_mons = (struct monst *)0;
+
+NEARDATA struct mvitals mvitals[NUMMONS];
 
 NEARDATA struct c_color_names c_color_names = {
 	"black", "amber", "golden",
@@ -214,7 +201,8 @@ NEARDATA struct c_color_names c_color_names = {
 
 struct c_common_strings c_common_strings = {
 	"Nothing happens.",		"That's enough tries!",
-	"That is a silly thing to %s.",	"shudder for a moment."
+	"That is a silly thing to %s.",	"shudder for a moment.",
+	"something", "Something"
 };
 
 /* Vision */
@@ -229,9 +217,9 @@ char toplines[BUFSZ];
 struct tc_gbl_data tc_gbl_data = { 0,0, 0,0 };	/* AS,AE, LI,CO */
 
 #ifdef TOURIST
-const char NEARDATA *pl_classes = "ABCEHKPRSTVW";
+const char *pl_classes = "ABCEHKPRSTVW";
 #else
-const char NEARDATA *pl_classes = "ABCEHKPRSVW";
+const char *pl_classes = "ABCEHKPRSVW";
 #endif
 
 /* dummy routine used to force linkage */

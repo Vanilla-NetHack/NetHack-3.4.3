@@ -1,5 +1,5 @@
 %{
-/*	SCCS Id: @(#)dgn_lex.c	3.1	93/06/17	*/
+/*	SCCS Id: @(#)dgn_lex.c	3.2	96/03/02	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /*	Copyright (c) 1990 by M. Stephenson	     */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -10,13 +10,12 @@
 #include "dgn_comp.h"
 #include "dgn_file.h"
 
-long *FDECL(alloc, (unsigned int));
 /*
  * Most of these don't exist in flex, yywrap is macro and
  * yyunput is properly declared in flex.skel.
  */
 #if !defined(FLEX_SCANNER) && !defined(FLEXHACK_SCANNER)
-int FDECL(yyback, (int *, int));
+int FDECL(yyback, (int *,int));
 int NDECL(yylook);
 int NDECL(yyinput);
 int NDECL(yywrap);
@@ -30,16 +29,16 @@ int NDECL(yylex);
 	 * compiler do not.  To detect this, we need help from outside --
 	 * sys/unix/Makefile.utl.
 	 */
-# if defined(NeXT) || defined(SVR4)
+# if defined(NeXT) || defined(SVR4) || defined(_AIX32)
 #  define VOIDYYPUT
 # endif
 # if !defined(VOIDYYPUT)
-#  if defined(POSIX_TYPES) && !defined(BOS) && !defined(HISX) && !defined(_M_UNIX)
+#  if defined(POSIX_TYPES) && !defined(BOS) && !defined(HISX) && !defined(_M_UNIX) && !defined(VMS)
 #   define VOIDYYPUT
 #  endif
 # endif
 # if !defined(VOIDYYPUT) && defined(WEIRD_LEX)
-#  if defined(SUNOS4) && defined(__STDC__) && (WEIRD_LEX > 1) 
+#  if defined(SUNOS4) && defined(__STDC__) && (WEIRD_LEX > 1)
 #   define VOIDYYPUT
 #  endif
 # endif
@@ -52,12 +51,21 @@ int FDECL(yyoutput, (int));
 # endif
 #endif	/* !FLEX_SCANNER && !FLEXHACK_SCANNER */
 
+#ifdef FLEX_SCANNER
+#define YY_MALLOC_DECL \
+	       genericptr_t FDECL(malloc, (size_t)); \
+	       genericptr_t FDECL(realloc, (genericptr_t,size_t));
+#endif
+
+
 void FDECL(init_yyin, (FILE *));
 void FDECL(init_yyout, (FILE *));
 
 #ifdef MICRO
 #undef exit
+# if !defined(MSDOS) && !defined(WIN32)
 extern void FDECL(exit, (int));
+# endif
 #endif
 
 /* this doesn't always get put in dgn_comp.h
@@ -74,7 +82,7 @@ int line_number = 1;
 #if defined(applec) && !defined(FLEX_SCANNER) && !defined(FLEXHACK_SCANNER)
 #undef input
 #undef unput
-#define unput(c) { yytchar = (c); if (yytchar == 10) yylineno--; *yysptr++ = yytchar; }				  
+#define unput(c) { yytchar = (c); if (yytchar == 10) yylineno--; *yysptr++ = yytchar; }				
 # ifndef YYNEWLINE
 # define YYNEWLINE 10
 # endif
@@ -85,7 +93,7 @@ input()		/* Under MPW \n is chr(13)! Compensate for this. */
 	if (yysptr > yysbuf) return(*--yysptr);
 	else {
 		yytchar = getc(yyin);
-	 	if (yytchar == '\n') {
+		if (yytchar == '\n') {
 		    yylineno++;
 		    return(YYNEWLINE);
 		}
@@ -128,7 +136,7 @@ RNDCHLEVEL	return(RNDCHLEVEL);
 [-0-9]+		{ yylval.i=atoi(yytext); return(INTEGER); }
 \"[^"]*\"	{ yytext[yyleng-1] = 0; /* Discard the trailing \" */
 		  yylval.str = (char *) alloc(strlen(yytext+1)+1);
-		  strcpy(yylval.str, yytext+1); /* Discard the first \" */
+		  Strcpy(yylval.str, yytext+1); /* Discard the first \" */
 		  return(STRING); }
 ^#.*\n		{ line_number++; }
 \n		{ line_number++; }
@@ -154,3 +162,4 @@ FILE *output_f;
 	yyout = output_f;
 }
 
+/*dgn_comp.l*/

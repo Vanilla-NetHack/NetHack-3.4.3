@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)monsym.h	3.1	92/10/18	*/
+/*	SCCS Id: @(#)monsym.h	3.2	92/10/18	*/
 /*	Monster symbols and creation information rev 1.0	  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -144,19 +144,5 @@ extern uchar monsyms[MAXMCLASSES];		/* current class symbols */
 
 #define DEF_WORM_TAIL	'~'
 #define DEF_MIMIC_DEF	']'
-
-
-#define G_UNIQ		0x1000		/* generated only once */
-#define G_NOHELL	0x0800		/* not generated in "hell" */
-#define G_HELL		0x0400		/* generated only in "hell" */
-#define G_NOGEN		0x0200		/* generated only specially */
-#define G_NOCORPSE	0x0100		/* no corpse left ever */
-#define G_SGROUP	0x0080		/* appear in small groups normally */
-#define G_LGROUP	0x0040		/* appear in large groups normally */
-#define G_GENO		0x0020		/* can be genocided */
-#define G_GENOD		0x0010		/* have been genocided */
-#define G_EXTINCT	0x0008		/* have been extinguished as
-					   population control */
-#define G_FREQ		0x0007		/* creation frequency mask */
 
 #endif /* MONSYM_H */

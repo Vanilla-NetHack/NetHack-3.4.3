@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)sp_lev.h	3.1	92/04/19	*/
+/*	SCCS Id: @(#)sp_lev.h	3.2	95/06/12	*/
 /* Copyright (c) 1989 by Jean-Christophe Collet			  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -30,6 +30,11 @@
  * Structures manipulated by the special levels loader & compiler
  */
 
+typedef union str_or_len {
+	char *str;
+	int   len;
+} Str_or_Len;
+
 typedef struct {
 	boolean	init_present;
 	char	fg, bg;
@@ -46,7 +51,7 @@ typedef struct {
 } room_door;
 
 typedef struct {
-	xchar x, y, type;
+	xchar x, y, chance, type;
 } trap;
 
 typedef struct {
@@ -54,8 +59,7 @@ typedef struct {
 	schar peaceful, asleep;
 	aligntyp	align;
 	short id;
-	char  *name;
-	char  *appear_as;
+	Str_or_Len name, appear_as;
 } monster;
 
 typedef struct {
@@ -64,10 +68,13 @@ typedef struct {
 	short id;
 	short spe;
 	int   corpsenm;
-	char  *name;
+	xchar containment;
+	Str_or_Len name;
 } object;
 
+#ifndef ALIGN_H
 #include "align.h"
+#endif
 
 typedef struct {
 	xchar		x, y;
@@ -106,7 +113,7 @@ typedef struct {
 	struct { xchar x1, y1, x2, y2; } delarea;
 	boolean in_islev, del_islev;
 	xchar rtype;
-	char *rname;
+	Str_or_Len rname;
 } lev_region;
 
 typedef struct {
@@ -116,10 +123,7 @@ typedef struct {
 
 typedef struct {
 	xchar x, y;
-    union {
-	int length;
-	char  *text;
-    } e;
+	Str_or_Len engr;
 	xchar etype;
 } engraving;
 

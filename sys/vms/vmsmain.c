@@ -1,22 +1,24 @@
-/*	SCCS Id: @(#)vmsmain.c	3.1	93/06/27	*/
+/*	SCCS Id: @(#)vmsmain.c	3.2	96/01/15	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 /* main.c - VMS NetHack */
 
 #include "hack.h"
+#include "dlb.h"
 
 #include <signal.h>
-
-volatile int exiting = 0;
 
 static void NDECL(whoami);
 static void FDECL(process_options, (int, char **));
 static void NDECL(byebye);
 #ifndef SAVE_ON_FATAL_ERROR
 # ifndef __DECC
-extern void FDECL(VAXC$ESTABLISH, (int (*)(genericptr_t,genericptr_t)));
+#  define vms_handler_type int
+# else
+#  define vms_handler_type unsigned int
 # endif
-static int FDECL(vms_handler, (genericptr_t,genericptr_t));
+extern void FDECL(VAXC$ESTABLISH, (vms_handler_type (*)(genericptr_t,genericptr_t)));
+static vms_handler_type FDECL(vms_handler, (genericptr_t,genericptr_t));
 #include <ssdef.h>	/* system service status codes */
 #endif
 
@@ -39,7 +41,7 @@ char *argv[];
 	atexit(byebye);
 	hname = argv[0];
 	gethdate(hname);		/* find executable's creation date */
-	hname = basename(hname);	/* name used in 'usage' type messages */
+	hname = vms_basename(hname);	/* name used in 'usage' type messages */
 	hackpid = getpid();
 	(void) umask(0);
 
@@ -73,19 +75,20 @@ char *argv[];
 		}
 		if(!*dir)
 		    error("Flag -d must be followed by a directory name.");
-	    } else
+	    }
+	    if (argc > 1)
 #endif /* CHDIR */
 
-	/*
-	 * Now we know the directory containing 'record' and
-	 * may do a prscore().
-	 */
+	    /*
+	     * Now we know the directory containing 'record' and
+	     * may do a prscore().
+	     */
 	    if (!strncmp(argv[1], "-s", 2)) {
 #ifdef CHDIR
 		chdirx(dir, FALSE);
 #endif
 		prscore(argc, argv);
-		exit(0);
+		exit(EXIT_SUCCESS);
 	    }
 	}
 
@@ -100,7 +103,7 @@ char *argv[];
 	privoff();
 #endif
 	initoptions();
-	init_nhwindows();
+	init_nhwindows(&argc, argv);
 	whoami();
 #ifdef SECURE
 	privon();
@@ -148,11 +151,12 @@ char *argv[];
 	}
 #endif /* WIZARD */
 
+	dlb_init();	/* must be before newgame() */
+
 	/*
-	 * Initialisation of the boundaries of the mazes
+	 * Initialization of the boundaries of the mazes
 	 * Both boundaries have to be even.
 	 */
-
 	x_maze_max = COLNO-1;
 	if (x_maze_max % 2)
 		x_maze_max--;
@@ -168,10 +172,7 @@ char *argv[];
 
 	display_gamewindows();
 
-	set_savefile_name();
-	if((fd = open_savefile()) >= 0 &&
-	   /* if not up-to-date, quietly unlink file via false condition */
-	   (uptodate(fd) || delete_savefile())) {
+	if ((fd = restore_saved_game()) >= 0) {
 #ifdef WIZARD
 		/* Since wizard is actually flags.debug, restoring might
 		 * overwrite it.
@@ -195,18 +196,16 @@ char *argv[];
 #endif
 		pline("Hello %s, welcome back to NetHack!", plname);
 		check_special_room(FALSE);
-#ifdef EXPLORE_MODE
 		if (discover)
 			You("are in non-scoring discovery mode.");
-#endif
-#if defined(EXPLORE_MODE) || defined(WIZARD)
+
 		if (discover || wizard) {
 			if (yn("Do you want to keep the save file?") == 'n')
 			    (void) delete_savefile();
 			else
 			    (void) chmod(SAVEF,FCMASK); /* back to readable */
 		}
-#endif
+
 		flags.move = 0;
 	} else {
 not_recovered:
@@ -214,30 +213,17 @@ not_recovered:
 		newgame();
 		/* give welcome message before pickup messages */
 		pline("Hello %s, welcome to NetHack!", plname);
-#ifdef EXPLORE_MODE
 		if (discover)
 			You("are in non-scoring discovery mode.");
-#endif
+
 		flags.move = 0;
 		set_wear();
 		pickup(1);
 	}
 
-	flags.moonphase = phase_of_the_moon();
-	if(flags.moonphase == FULL_MOON) {
-		You("are lucky!  Full moon tonight.");
-		change_luck(1);
-	} else if(flags.moonphase == NEW_MOON) {
-		pline("Be careful!  New moon tonight.");
-	}
-	if ((flags.friday13 = friday_13th()) != 0) {
-		pline("Watch out!  Bad things can happen on Friday the 13th.");
-		change_luck(-1);
-	}
-
-	initrack();
-
 	moveloop();
+	exit(EXIT_SUCCESS);
+	/*NOTREACHED*/
 	return(0);
 }
 
@@ -253,11 +239,6 @@ char *argv[];
 		argv++;
 		argc--;
 		switch(argv[0][1]){
-#if defined(WIZARD) || defined(EXPLORE_MODE)
-# ifndef EXPLORE_MODE
-		case 'X':
-		case 'x':
-# endif
 		case 'D':
 # ifdef WIZARD
 			if(!strcmpi(getenv("USER"), WIZARD_NAME)) {
@@ -266,13 +247,10 @@ char *argv[];
 			}
 			/* otherwise fall thru to discover */
 # endif
-# ifdef EXPLORE_MODE
 		case 'X':
 		case 'x':
 			discover = TRUE;
-# endif
 			break;
-#endif
 #ifdef NEWS
 		case 'n':
 			flags.news = FALSE;
@@ -326,7 +304,7 @@ boolean wr;
 # else
 	static const char *defdir = HACKDIR;
 
-	if(dir == NULL)
+	if(dir == (const char *)0)
 		dir = defdir;
 	else if (wr && !same_dir(HACKDIR, dir))
 		/* If we're playing anywhere other than HACKDIR, turn off any
@@ -374,16 +352,17 @@ byebye()
     int (*hup)();
 #ifdef SHELL
     extern unsigned long dosh_pid, mail_pid;
-    extern unsigned long FDECL(SYS$DELPRC,(unsigned long *,const genericptr_t));
+    extern unsigned long FDECL(sys$delprc,(unsigned long *,const genericptr_t));
 
     /* clean up any subprocess we've spawned that may still be hanging around */
-    if (dosh_pid) (void) SYS$DELPRC(&dosh_pid, 0), dosh_pid = 0;
-    if (mail_pid) (void) SYS$DELPRC(&mail_pid, 0), mail_pid = 0;
+    if (dosh_pid) (void) sys$delprc(&dosh_pid, 0), dosh_pid = 0;
+    if (mail_pid) (void) sys$delprc(&mail_pid, 0), mail_pid = 0;
 #endif
 
     /* SIGHUP doesn't seem to do anything on VMS, so we fudge it here... */
     hup = (int(*)()) signal(SIGHUP, SIG_IGN);
-    if (!exiting++ && hup != (int(*)()) SIG_DFL && hup != (int(*)()) SIG_IGN)
+    if (!program_state.exiting++ &&
+	hup != (int(*)()) SIG_DFL && hup != (int(*)()) SIG_IGN)
 	(void) (*hup)();
 
 #ifdef CHDIR
@@ -394,17 +373,17 @@ byebye()
 #ifndef SAVE_ON_FATAL_ERROR
 /* Condition handler to prevent byebye's hangup simulation
    from saving the game after a fatal error has occurred.  */
-static int			/* should be `unsigned long', but the -*/
+/*ARGSUSED*/
+static vms_handler_type		/* should be `unsigned long', but the -*/
 vms_handler(sigargs, mechargs)	/*+ prototype in <signal.h> is screwed */
 genericptr_t sigargs, mechargs;	/* [0] is argc, [1..argc] are the real args */
 {
-    extern boolean hu;		/* src/save.c */
     unsigned long condition = ((unsigned long *)sigargs)[1];
 
     if (condition == SS$_ACCVIO		/* access violation */
      || (condition >= SS$_ASTFLT && condition <= SS$_TBIT)
      || (condition >= SS$_ARTRES && condition <= SS$_INHCHME)) {
-	hu = TRUE;	/* pretend that hangup has already been attempted */
+	program_state.done_hup = TRUE;	/* pretend hangup has been attempted */
 # if defined(WIZARD) && !defined(BETA)
 	if (wizard)
 # endif /*WIZARD && !BETA*/

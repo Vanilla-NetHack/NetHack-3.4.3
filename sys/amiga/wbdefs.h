@@ -15,11 +15,19 @@
 #include <libraries/dosextens.h>
 #include <functions.h>
 #else
+#ifdef _DCC
+#include <clib/exec_protos.h>
+#include <clib/dos_protos.h>
+#include <clib/intuition_protos.h>
+#include <clib/icon_protos.h>
+#include <clib/graphics_protos.h>
+#else
 #include <proto/exec.h>
 #include <proto/dos.h>
 #include <proto/intuition.h>
 #include <proto/icon.h>
 #include <proto/graphics.h>
+#endif
 #endif
 
 #include <stdlib.h>
@@ -29,7 +37,10 @@
 #include <stdio.h>
 
 #ifdef  IDCMP_CLOSEWINDOW
+#include <graphics/displayinfo.h>
+#ifndef	INTUI_NEW_LOOK
 #define INTUI_NEW_LOOK  1
+#endif
 #endif
 
 #define R_DISK		1   /* Refresh reasons */
@@ -97,6 +108,9 @@
 #define GADUSEINFO	40
 #define GADQUITINFO	41
 #define GADPLNAME	42
+
+#define GADOPTOKAY	243
+#define GADOPTCANCEL	244
 
 /*
  *  Option gadgets GadgetID's

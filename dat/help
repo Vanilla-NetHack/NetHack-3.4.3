@@ -1,12 +1,12 @@
-        Welcome to NetHack!                ( description of version 3.1 )
+        Welcome to NetHack!                ( description of version 3.2 )
 
         NetHack is a Dungeons and Dragons like game where you (the adventurer)
-descend into the depths of the dungeon in search of the Amulet of Yendor
-(reputed to be hidden somewhere below the twentieth level).  You are
-accompanied by a dog or cat that can help you in many ways and can be trained
+descend into the depths of the dungeon in search of the Amulet of Yendor,
+reputed to be hidden somewhere below the twentieth level.  You begin your
+adventure with a dog or cat that can help you in many ways, and can be trained
 to do all sorts of things.  On the way you will find useful (or useless)
-items (quite possibly with magic properties), and assorted monsters.  You
-attack a monster by trying to move into the space a monster is in (but often
+items, quite possibly with magic properties, and assorted monsters.  You can
+attack a monster by trying to move onto the space a monster is on (but often
 it is much wiser to leave it alone).
 
         Unlike most adventure games, which give you a verbal description of
@@ -15,16 +15,16 @@ on.
 
         NetHack uses the following symbols:
 
-        - and |  The walls of a room, also open doors.
+        - and |  The walls of a room, possibly also open doors.
         .        The floor of a room or a doorway.
         #        A corridor, a kitchen sink (if your dungeon has sinks), or
                  a drawbridge.
         >        A way to the next level.
         <        A way to the previous level.
-        @        You (usually) or another human.
+        @        You (usually), or another human.
         )        A weapon of some sort.
         [        A suit or piece of armor.
-        %        A piece of food (not necessarily healthy).
+        %        Something edible (not necessarily healthy).
         /        A wand.
         =        A ring.
         ?        A scroll.
@@ -57,9 +57,9 @@ h-.-l   4-.-6           YUHJKLBN: go in specified direction until you
 b j n   1 2 3           g<dir>:   run in direction <dir> until something
       numberpad                     interesting is seen
                         G<dir>,   same, except a branching corridor isn't
-                        ^<dir>:     considered interesting
-                        m<dir>:   move without picking up objects
-                If the numberpad option is set, the number keys move instead.
+ <  up                  ^<dir>:     considered interesting
+ >  down                m<dir>:   move without picking up objects
+                If the number_pad option is set, the number keys move instead.
 
 Commands:
         NetHack knows the following commands:
@@ -70,16 +70,25 @@ Commands:
         <       Go up a staircase (if you are standing on it).
         >       Go down a staircase (if you are standing on it).
         .       Rest, do nothing for one turn.
-        a       Apply (use) an tool (pick-axe, key, lamp...)
+        a       Apply (use) a tool (pick-axe, key, lamp...)
         A       Remove all armor.
         ^A      Redo the previous command
         c       Close a door.
         C       Call (name) an individual monster.
         d       Drop something.  d7a:  drop seven items of object a.
-        D       Drop several things.  In answer to the question
-                "What kinds of things do you want to drop? [!%= au]"
-                you should type zero or more object symbols possibly
-                followed by 'a' and/or 'u'.
+        D       Drop multiple items.  This command is implemented in two
+                different ways.  One way is:
+                "D" displays a list of all of your items, from which you can
+                pick and choose what to drop.  A "+" next to an item means
+                that it will be dropped, a "-" means that it will not be
+                dropped.  Toggle an item to be selected/deselected by typing
+                the letter adjacent to its description.  Select all items
+                with "+", deselect all items with "=".  The <SPACEBAR> moves
+                you from one page of the listing to the next.
+                The other way is:
+                "D" will ask the question "What kinds of things do you want
+                to drop? [!%= au]".  You should type zero or more object
+                symbols possibly followed by 'a' and/or 'u'.
                 Da - drop all objects, without asking for confirmation.
                 Du - drop only unpaid objects (when in a shop).
                 D%u - drop only unpaid food.
@@ -87,22 +96,18 @@ Commands:
         e       Eat food.
         E       Engrave a message on the floor.
                 E- - write in the dust with your fingers.
-
-
-
-        i       Print your inventory.
-        I       Print selected parts of your inventory, as in
+        i       Display your inventory.
+        I       Display selected parts of your inventory, as in
                 I* - list all gems in inventory.
                 Iu - list all unpaid items.
                 Ix - list all used up items that are on your shopping bill.
                 I$ - count your money.
         o       Open a door.
-        O       Set options.  You will be asked to enter an option line.
-                If the line is empty, the current options are reported.
-                Descriptions of possible options and their formats can be
-                obtained by entering "?".  Options are usually set before
-                the game with a NETHACKOPTIONS environment variable, not
-                with the 'O' command.
+        O       Set or display current options.  Descriptions of possible
+                options and their formats can be obtained by entering "?".
+                Options are usually set before the game with a NETHACKOPTIONS
+                environment variable, or via the nethack.cnf file, not with
+                the 'O' command.
         p       Pay your shopping bill.
         P       Put on an accessory (ring, amulet, etc).
         ^P      Repeat last message (subsequent ^P's repeat earlier messages).
@@ -116,8 +121,8 @@ Commands:
         t       Throw an object or shoot a projectile.
         T       Take off armor.
         ^T      Teleport, if you are able.
-        v       Prints the version number.
-        V       Prints a longer identification of the version, including the
+        v       Displays the version number.
+        V       Display a longer identification of the version, including the
                 history of the game.
         w       Wield weapon.  w- means wield nothing, use bare hands.
         W       Wear armor.
@@ -139,7 +144,7 @@ Commands:
         $       Count your gold pieces.
         +       List the spells you know (same as 'x').
         \       Show what types of objects have been discovered.
-        !       Escape to a shell.
+        !       Escape to a shell, if supported in your version and OS.
         #       Introduces one of the "extended" commands.  To get a list of
                 the commands you can use with "#" type "#?".  The extended
                 commands you can use depends upon what options the game was
@@ -163,7 +168,7 @@ Commands:
         as in "40." or "20s.".  If you have the number_pad option set, you
         must type 'n' to prefix the count, as in "n40." or "n20s".
 
- 
+
         Some information is displayed on the bottom line.  You see your
         attributes, your alignment, what dungeon level you are on, how many
         hit points you have now (and will have when fully recovered), what

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)trampoli.c 	3.1	93/01/18	  */
+/*	SCCS Id: @(#)trampoli.c 	3.1	95/06/01	  */
 /* Copyright (c) 1989 - 1993 by Norm Meluch and Stephen Spackman  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -51,21 +51,15 @@ int doinvoke()		{ return doinvoke_(); }
 #undef doextlist
 #undef doprev_message
 
-#ifdef POLYSELF
 #undef domonability
-#endif /* POLYSELF */
 
-#ifdef EXPLORE_MODE
 #undef enter_explore_mode
 
 int enter_explore_mode()	{ return enter_explore_mode_(); }
-#endif
 
 #undef timed_occupation
 
-#if defined(WIZARD) || defined(EXPLORE_MODE)
 #undef wiz_attributes
-#endif
 
 #ifdef WIZARD
 #undef wiz_detect
@@ -81,15 +75,11 @@ int doextcmd()		{ return doextcmd_(); }
 int doextlist()		{ return doextlist_(); }
 int doprev_message()	{ return doprev_message_(); }
 
-#ifdef POLYSELF
 int domonability()	{ return domonability_(); }
-#endif /* POLYSELF */
 
 int timed_occupation()	{ return timed_occupation_(); }
 
-#if defined(WIZARD) || defined(EXPLORE_MODE)
 int wiz_attributes()	{ return wiz_attributes_(); }
-#endif
 
 #ifdef WIZARD
 int wiz_detect()	{ return wiz_detect_(); }
@@ -204,21 +194,17 @@ int unfaint()		{ return unfaint_(); }
 /* ### end.c ### */
 #undef done1
 #undef done2
-#undef hangup
 #undef done_intr
-
 #if defined(UNIX) || defined(VMS)
 #undef done_hangup
-#endif /* UNIX || VMS */
+#endif
 
-int done1()		{ return done1_(); }
+void done1(sig) int sig; { done1_(sig); }
 int done2()		{ return done2_(); }
-int hangup()		{ return hangup_(); }
-int done_intr()		{ return done_intr_(); }
-
+void done_intr(sig) int sig; { done_intr_(sig); }
 #if defined(UNIX) || defined(VMS)
-int done_hangup()	{ return done_hangup_(); }
-#endif /* UNIX || VMS */
+void done_hangup(sig) int sig; { done_hangup_(sig); }
+#endif
 
 
 /* ### engrave.c ### */
@@ -422,8 +408,14 @@ void genl_outrip(tmpwin, how)
 
 /* ### save.c ### */
 #undef dosave
+#if defined(UNIX) || defined(VMS)
+#undef hangup
+#endif
 
 int dosave()		{ return dosave_(); }
+#if defined(UNIX) || defined(VMS)
+void hangup(sig) int sig; { hangup_(sig); }
+#endif
 
 
 /* ### search.c ### */
@@ -516,12 +508,9 @@ int dozap()		{ return dozap_(); }
 
 /* ### getline.c ### */
 #undef tty_getlin
-#ifdef COM_COMPL
 #undef tty_get_ext_cmd
 
-void tty_get_ext_cmd(bufp)
-  char *bufp;			{ tty_get_ext_cmd_(bufp); }
-#endif /* COM_COMPL */
+int tty_get_ext_cmd()		{ return tty_get_ext_cmd_(); }
 void tty_getlin(query,bufp)
   const char *query; char *bufp;{ tty_getlin_(query,bufp); }
 
@@ -577,13 +566,18 @@ char tty_yn_function(query,resp,def)
 #ifdef CLIPPING
 #undef tty_cliparound
 #endif
+#ifdef POSITIONBAR
+#undef tty_update_positionbar
+#endif
 #undef tty_print_glyph
 #undef tty_raw_print
 #undef tty_raw_print_bold
 #undef tty_nhgetch
 #undef tty_nh_poskey
 
-void tty_init_nhwindows()	{ tty_init_nhwindows_(); }
+void tty_init_nhwindows(argcp,argv)
+	int *argcp; char **argv;
+				{ tty_init_nhwindows_(argcp,argv); }
 void tty_player_selection()	{ tty_player_selection_(); }
 void tty_askname()		{ tty_askname_(); }
 void tty_get_nh_event()		{ tty_get_nh_event_(); }
@@ -625,6 +619,10 @@ void tty_wait_synch()		{ tty_wait_synch_(); }
 #ifdef CLIPPING
 void tty_cliparound(x,y)
   int x,y;			{ tty_cliparound_(x,y); }
+#endif
+#ifdef POSITIONBAR
+void tty_update_positionbar(str)
+  char *str;			{ tty_update_positionbar_(str); }
 #endif
 void tty_print_glyph(window,x,y,glyph)
   winid window; xchar x,y; int glyph;

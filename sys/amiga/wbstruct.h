@@ -42,3 +42,11 @@ typedef struct OPTIONS
 				 * options value.
 				 */
 } OPTIONS, *OPTR;
+
+typedef struct OPTGAD
+{
+	struct Gadget gad;
+	char *val;
+	struct OPTGAD *next;
+} OPTGAD;
+

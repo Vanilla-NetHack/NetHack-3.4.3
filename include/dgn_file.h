@@ -1,11 +1,13 @@
-/*	SCCS Id: @(#)dgn_file.h	3.1	93/01/17	*/
+/*	SCCS Id: @(#)dgn_file.h	3.2	93/01/17	*/
 /* Copyright (c) 1989 by M. Stephenson				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #ifndef DGN_FILE_H
 #define DGN_FILE_H
 
+#ifndef ALIGN_H
 #include "align.h"
+#endif
 
 /*
  * Structures manipulated by the dungeon loader & compiler

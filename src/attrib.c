@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)attrib.c	3.1	93/02/17	*/
+/*	SCCS Id: @(#)attrib.c	3.2	96/03/28	*/
 /*	Copyright 1988, 1989, 1990, 1992, M. Stephenson		  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -7,7 +7,7 @@
 #include "hack.h"
 #include "artifact.h"
 
-/* #define	DEBUG	/* uncomment for debugging info */
+/* #define DEBUG	/* uncomment for debugging info */
 
 #ifdef OVLB
 
@@ -22,10 +22,10 @@ const char	*plusattr[] = {
 
 	/* maximum and minimum values for the attributes */
 struct attribs	attrmax = {
-	118, 18, 18, 18, 18, 18
+	{ 118, 18, 18, 18, 18, 18 }
 },
 		attrmin = {
-	3, 3, 3, 3, 3, 3
+	{ 3, 3, 3, 3, 3, 3 }
 };
 
 static
@@ -88,72 +88,69 @@ const struct innate {
 static
 const struct clattr {
 	struct	attribs	base, cldist;
- 	align	align;
+	align	align;
 	schar	shp, hd, xlev, ndx;
 /* According to AD&D, HD for some classes (ex. Wizard) should be smaller
  * (4-sided for wizards).  But this is not AD&D, and using the AD&D
- * rule here produces an unplayable character.  This I have used a minimum
+ * rule here produces an unplayable character.  Thus I have used a minimum
  * of an 10-sided hit die for everything.  Another AD&D change: wizards get
  * a minimum strength of 6 since without one you can't teleport or cast
  * spells. --KAA
  */
 	const struct	innate *abil;
-}	a_attr = { {	 7, 10, 10,  7,  7,  7 },  /* Archeologist */
-		   {	20, 20, 20, 10, 20, 10 },
-		    { A_LAWFUL, 10 },  13, 10, 14,  2, a_abil },
+}	a_attr = { {{  7, 10, 10,  7,  7,  7 }},  /* Archeologist */
+		   {{ 20, 20, 20, 10, 20, 10 }},
+		   { A_LAWFUL,  10 },  13, 10, 14,  2, a_abil },
 
-	b_attr = { {	16,  7,  7, 15, 16,  6 },  /* Barbarian */
-		   {	30,  6,  7, 20, 30,  7 },
-		    { A_NEUTRAL, 10 }, 16, 12, 10,  3, b_abil },
+	b_attr = { {{ 16,  7,  7, 15, 16,  6 }},  /* Barbarian */
+		   {{ 30,  6,  7, 20, 30,  7 }},
+		   { A_NEUTRAL, 10 },  16, 12, 10,  3, b_abil },
 
-	c_attr = { {	10,  7,  7,  7,  8,  6 },  /* Caveman (fighter) */
-		   {	30,  6,  7, 20, 30,  7 },
-		     { A_LAWFUL, 0 },  16, 10, 10,  3, c_abil },
+	c_attr = { {{ 10,  7,  7,  7,  8,  6 }},  /* Caveman (fighter) */
+		   {{ 30,  6,  7, 20, 30,  7 }},
+		   { A_LAWFUL,   0 },  16, 10, 10,  3, c_abil },
 
-/*
-	e_attr = { {	13, 13, 14,  6, 14,  6 },
- */
-	e_attr = { {	13, 13, 13,  9, 13,  7 },  /* Elf (ranger) */
-		   {	30, 10, 10, 20, 20, 10 },
-		    { A_CHAOTIC, 10 },  15, 10, 11,  2, e_abil },
+	e_attr = { {{ 13, 13, 13,  9, 13,  7 }},  /* Elf (ranger) */
+		   {{ 30, 10, 10, 20, 20, 10 }},
+		   { A_CHAOTIC, 10 },  15, 10, 11,  2, e_abil },
 
-	h_attr = { {	 7,  7, 13,  7, 11, 16 },  /* Healer (druid) */
-		   {	15, 20, 20, 15, 25, 10 },
-		    { A_NEUTRAL, 10 },  13, 10, 20,  2, h_abil },
+	h_attr = { {{  7,  7, 13,  7, 11, 16 }},  /* Healer (druid) */
+		   {{ 15, 20, 20, 15, 25, 10 }},
+		   { A_NEUTRAL, 10 },  13, 10, 20,  2, h_abil },
 
-	k_attr = { {	13,  7, 14,  8, 10, 17 },  /* Knight (paladin) */
-		   {	20, 15, 15, 10, 20, 10 },
-		    { A_LAWFUL, 10 },  16, 10, 10,  3, k_abil },
+	k_attr = { {{ 13,  7, 14,  8, 10, 17 }},  /* Knight (paladin) */
+		   {{ 20, 15, 15, 10, 20, 10 }},
+		   { A_LAWFUL,  10 },  16, 10, 10,  3, k_abil },
 
-	p_attr = { {	 7,  7, 10,  7,  7,  7 },  /* Priest (cleric) */
-		   {	15, 10, 30, 15, 20, 10 },
-		    { A_NEUTRAL, 0 },  14, 10, 10,  2, p_abil },
+	p_attr = { {{  7,  7, 10,  7,  7,  7 }},  /* Priest (cleric) */
+		   {{ 15, 10, 30, 15, 20, 10 }},
+		   { A_NEUTRAL,  0 },  14, 10, 10,  2, p_abil },
 
-	r_attr = { {	 7,  7,  7, 10,  7,  6 },  /* Rogue (thief) */
-		   {	20, 10, 10, 30, 20, 10 },
-		    { A_CHAOTIC, 10 }, 12, 10, 11,  2, r_abil },
+	r_attr = { {{  7,  7,  7, 10,  7,  6 }},  /* Rogue (thief) */
+		   {{ 20, 10, 10, 30, 20, 10 }},
+		   { A_CHAOTIC, 10 },  12, 10, 11,  2, r_abil },
 
-	s_attr = { {	10,  8,  7, 10, 17,  6 },  /* Samurai (fighter/thief) */
-		   {	30, 10, 10, 30, 14, 10 },
-		    { A_LAWFUL, 10 },  15, 10, 11,  2, s_abil },
+	s_attr = { {{ 10,  8,  7, 10, 17,  6 }},  /* Samurai (fighter/thief) */
+		   {{ 30, 10, 10, 30, 14, 10 }},
+		   { A_LAWFUL,  10 },  15, 10, 11,  2, s_abil },
 
 #ifdef TOURIST
-	t_attr = { {	 7, 10,  6,  7,  7, 10 },  /* Tourist */
-		   {	15, 10, 10, 15, 30, 20 },
-		    { A_NEUTRAL, 0 },  10, 10, 14,  1, t_abil },
+	t_attr = { {{  7, 10,  6,  7,  7, 10 }},  /* Tourist */
+		   {{ 15, 10, 10, 15, 30, 20 }},
+		   { A_NEUTRAL,  0 },  10, 10, 14,  1, t_abil },
 #endif
 
-	v_attr = { {	10,  7,  7,  7, 10,  7 },  /* Valkyrie (fighter) */
-		   {	30,  6,  7, 20, 30,  7 },
-		    { A_NEUTRAL, 0 },  16, 10, 10,  3, v_abil },
+	v_attr = { {{ 10,  7,  7,  7, 10,  7 }},  /* Valkyrie (fighter) */
+		   {{ 30,  6,  7, 20, 30,  7 }},
+		   { A_NEUTRAL,  0 },  16, 10, 10,  3, v_abil },
 
-	w_attr = { {	 7, 10,  7,  7,  7,  7 },  /* Wizard (magic-user) */
-		   {	10, 30, 10, 20, 20, 10 },
-		    { A_NEUTRAL, 0 },  12, 10, 12,  1, w_abil },
+	w_attr = { {{  7, 10,  7,  7,  7,  7 }},  /* Wizard (magic-user) */
+		   {{ 10, 30, 10, 20, 20, 10 }},
+		   { A_NEUTRAL,  0 },  12, 10, 12,  1, w_abil },
 
-	X_attr = { {	 3,  3,  3,  3,  3,  3 },
-		   {	20, 15, 15, 15, 20, 15 },
-		    { A_NEUTRAL, 0 },  12, 10, 14,  1,  0 };
+	X_attr = { {{  3,  3,  3,  3,  3,  3 }},
+		   {{ 20, 15, 15, 15, 20, 15 }},
+		   { A_NEUTRAL,  0 },  12, 10, 14,  1,  0 };
 
 static long next_check = 600L;	/* arbitrary first setting */
 static NEARDATA const struct clattr *NDECL(clx);
@@ -167,6 +164,13 @@ adjattrib(ndx, incr, msgflg)
 	int	msgflg;	    /* positive => no message, zero => message, and */
 {			    /* negative => conditional (msg if change made) */
 	if (!incr) return FALSE;
+
+	if ((ndx == A_INT || ndx == A_WIS)
+				&& uarmh && uarmh->otyp == DUNCE_CAP) {
+		if (msgflg == 0)
+		    Your("cap constricts briefly, then relaxes again.");
+		return FALSE;
+	}
 
 	if (incr > 0) {
 	    if ((AMAX(ndx) >= ATTRMAX(ndx)) && (ACURR(ndx) >= AMAX(ndx))) {
@@ -204,10 +208,12 @@ adjattrib(ndx, incr, msgflg)
 	    }
 	}
 	if (msgflg <= 0)
-	    You("feel %s%s!",
+	    You_feel("%s%s!",
 		  (incr > 1 || incr < -1) ? "very ": "",
 		  (incr > 0) ? plusattr[ndx] : minusattr[ndx]);
 	flags.botl = 1;
+	if (moves > 0 && (ndx == A_STR || ndx == A_CON))
+		(void)encumber_msg();
 	return TRUE;
 }
 
@@ -268,12 +274,23 @@ boolean parameter; /* So I can't think up of a good name.  So sue me. --KAA */
 	return sgn((int)bonchance);
 }
 
+/* there has just been an inventory change affecting a luck-granting item */
+void
+set_moreluck()
+{
+	int luckbon = stone_luck(TRUE);
+
+	if (!luckbon && !carrying(LUCKSTONE)) u.moreluck = 0;
+	else if (luckbon >= 0) u.moreluck = LUCKADD;
+	else u.moreluck = -LUCKADD;
+}
+
 #endif /* OVLB */
 #ifdef OVL1
 
 void
-restore_attrib() {
-
+restore_attrib()
+{
 	int	i;
 
 	for(i = 0; i < A_MAX; i++) {	/* all temporary losses/gains */
@@ -287,6 +304,7 @@ restore_attrib() {
 		}
 	    }
 	}
+	(void)encumber_msg();
 }
 
 #endif /* OVL1 */
@@ -304,10 +322,9 @@ boolean	inc_or_dec;
 #endif
 	if (i == A_INT || i == A_CHA) return;	/* can't exercise these */
 
-#ifdef POLYSELF
 	/* no physical exercise while polymorphed; the body's temporary */
-	if (u.umonnum >= 0 && i != A_WIS) return;
-#endif
+	if (u.umonnum >= LOW_PM && i != A_WIS) return;
+
 	if(abs(AEXE(i)) < AVAL) {
 		/*
 		 *	Law of diminishing returns (Part I):
@@ -326,6 +343,7 @@ boolean	inc_or_dec;
 			(inc_or_dec) ? "inc" : "dec", AEXE(i));
 #endif
 	}
+	if (moves > 0 && (i == A_STR || i == A_CON)) (void)encumber_msg();
 }
 
 /* hunger values - from eat.c */
@@ -378,8 +396,9 @@ exerper()
 #ifdef DEBUG
 		pline("exerper: Status checks");
 #endif
-		if(Clairvoyant)		exercise(A_WIS, TRUE);
-		if(HRegeneration)	exercise(A_STR, TRUE);
+		if ((HClairvoyant & (INTRINSIC|TIMEOUT)) &&
+			!(HClairvoyant & I_BLOCKED))	exercise(A_WIS, TRUE);
+		if (HRegeneration)			exercise(A_STR, TRUE);
 
 		if(Sick || Vomiting)			exercise(A_CON, FALSE);
 		if(Confusion || Hallucination)		exercise(A_WIS, FALSE);
@@ -477,12 +496,11 @@ reset_attribute_clock()
 }
 
 static const struct	clattr *
-clx()  {
-
+clx()
+{
 	register const struct	clattr	*attr;
 
-	switch	(pl_character[0]) {
-
+	switch (u.role) {
 	    case 'A':	attr = &a_attr;
 			break;
 	    case 'B':	attr = &b_attr;
@@ -517,13 +535,13 @@ clx()  {
 }
 
 static void
-init_align() {	/* called from newhp if u.ulevel is 0 */
-
+init_align()	/* called from newhp if u.ulevel is 0 */
+{
 	register const struct	clattr	*attr = clx();
 
 	u.ualign = attr->align;
 	/* there should be priests of every stripe */
-	if(pl_character[0] == 'P')
+	if (Role_is('P'))
 	     u.ualign.type = (rn2(2)) ? attr->align.type : (rn2(2)) ? 1 : -1;
 	else u.ualign.type = attr->align.type;
 }
@@ -580,8 +598,8 @@ init_attr(np)
 }
 
 void
-redist_attr() {
-
+redist_attr()
+{
 	register int i, tmp;
 
 	for(i = 0; i < A_MAX; i++) {
@@ -595,6 +613,7 @@ redist_attr() {
 	    /* ABASE(i) > ATTRMAX(i) is impossible */
 	    if (ABASE(i) < ATTRMIN(i)) ABASE(i) = ATTRMIN(i);
 	}
+	(void)encumber_msg();
 }
 
 void
@@ -625,15 +644,15 @@ int oldlevel, newlevel;
 				*(abil->ability) |= FROMEXPER;
 			if(!(*(abil->ability) & FROMOUTSIDE)) {
 			    if(*(abil->gainstr))
-				You("feel %s!", abil->gainstr);
+				You_feel("%s!", abil->gainstr);
 			}
 		} else if (oldlevel >= abil->ulevel && newlevel < abil->ulevel) {
 			*(abil->ability) &= ~FROMEXPER;
 			if((*(abil->ability) & INTRINSIC)) {
 			    if(*(abil->losestr))
-				You("feel %s!", abil->losestr);
+				You_feel("%s!", abil->losestr);
 			    else if(*(abil->gainstr))
-				You("feel less %s!", abil->gainstr);
+				You_feel("less %s!", abil->gainstr);
 			}
 		}
 	    }
@@ -641,7 +660,8 @@ int oldlevel, newlevel;
 }
 
 int
-newhp() {
+newhp()
+{
 	register const struct clattr	*attr = clx();
 	int	hp, conplus;
 
@@ -679,7 +699,7 @@ newhp() {
 schar
 acurr(x)
 int x;
-{ 
+{
 	register int tmp = (u.abon.a[x] + u.atemp.a[x] + u.acurr.a[x]);
 
 	if (x == A_STR) {
@@ -689,14 +709,16 @@ int x;
 #else
 		else return((schar)((tmp >= 125) ? 125 : (tmp <= 3) ? 3 : tmp));
 #endif
-	} 
-#ifdef POLYSELF
-	else if(x == A_CHA) {
+	} else if (x == A_CHA) {
 		if (tmp < 18 && (u.usym == S_NYMPH ||
 		    u.umonnum==PM_SUCCUBUS || u.umonnum == PM_INCUBUS))
 		    return 18;
+	} else if (x == A_INT || x == A_WIS) {
+		/* yes, this may raise int/wis if player is sufficiently
+		 * stupid.  there are lower levels of cognition than "dunce".
+		 */
+		if (uarmh && uarmh->otyp == DUNCE_CAP) return(6);
 	}
-#endif
 #ifdef WIN32_BUG
 	return(x=((tmp >= 25) ? 25 : (tmp <= 3) ? 3 : tmp));
 #else
@@ -704,10 +726,10 @@ int x;
 #endif
 }
 
-schar
-acurrstr()
 /* condense clumsy ACURR(A_STR) value into value that fits into game formulas
  */
+schar
+acurrstr()
 {
 	register int str = ACURR(A_STR);
 

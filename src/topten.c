@@ -1,8 +1,14 @@
-/*	SCCS Id: @(#)topten.c	3.1	92/11/20	*/
+/*	SCCS Id: @(#)topten.c	3.2	96/03/10	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
+#include "dlb.h"
+#ifdef SHORT_FILENAMES
+#include "patchlev.h"
+#else
+#include "patchlevel.h"
+#endif
 
 #ifdef VMS
  /* We don't want to rewrite the whole file, because that entails	 */
@@ -17,27 +23,21 @@
  * which reads the scores will ignore it.
  */
 #ifdef UPDATE_RECORD_IN_PLACE
-# ifndef SEEK_SET
-#  define SEEK_SET 0
-# endif
 static long final_fpos;
 #endif
 
-#ifdef NO_SCAN_BRACK
-static void FDECL(nsb_mung_line,(char*));
-static void FDECL(nsb_unmung_line,(char*));
-#endif
+#define done_stopprint program_state.stopprint
 
 #define newttentry() (struct toptenentry *) alloc(sizeof(struct toptenentry))
 #define dealloc_ttentry(ttent) free((genericptr_t) (ttent))
-#define	NAMSZ	10
-#define	DTHSZ	60
-#define	PERSMAX	 3		/* entries per name/uid per char. allowed */
-#define	POINTSMIN	1	/* must be > 0 */
-#define	ENTRYMAX	100	/* must be >= 10 */
+#define NAMSZ	10
+#define DTHSZ	60
+#define PERSMAX	 3		/* entries per name/uid per char. allowed */
+#define POINTSMIN	1	/* must be > 0 */
+#define ENTRYMAX	100	/* must be >= 10 */
 
 #if !defined(MICRO) && !defined(MAC)
-#define	PERS_IS_UID		/* delete for PERSMAX per name; now per uid */
+#define PERS_IS_UID		/* delete for PERSMAX per name; now per uid */
 #endif
 struct toptenentry {
 	struct toptenentry *tt_next;
@@ -46,27 +46,79 @@ struct toptenentry {
 #endif
 	long points;
 	int deathdnum, deathlev;
-	int maxlvl,hp,maxhp;
+	int maxlvl, hp, maxhp, deaths;
+	int ver_major, ver_minor, patchlevel;
+	char deathdate[7], birthdate[7];
 	int uid;
 	char plchar;
 	char sex;
 	char name[NAMSZ+1];
 	char death[DTHSZ+1];
-	char date[7];		/* yymmdd */
 } *tt_head;
 
+static void FDECL(topten_print, (const char *));
+static void FDECL(topten_print_bold, (const char *));
+static xchar FDECL(observable_depth, (d_level *));
 static void NDECL(outheader);
-static int FDECL(outentry, (int,struct toptenentry *,int));
+static void FDECL(outentry, (int,struct toptenentry *,BOOLEAN_P));
 static void FDECL(readentry, (FILE *,struct toptenentry *));
 static void FDECL(writeentry, (FILE *,struct toptenentry *));
+static void FDECL(free_ttlist, (struct toptenentry *));
 static int FDECL(classmon, (CHAR_P,BOOLEAN_P));
+static int FDECL(score_wanted,
+		(BOOLEAN_P, int,struct toptenentry *,int,const char **,int));
+#ifdef NO_SCAN_BRACK
+static void FDECL(nsb_mung_line,(char*));
+static void FDECL(nsb_unmung_line,(char*));
+#endif
 
-/* must fit with end.c */
+/* must fit with end.c; used in rip.c */
 NEARDATA const char *killed_by_prefix[] = {
 	"killed by ", "choked on ", "poisoned by ", "", "drowned in ",
-	"", "crushed to death by ", "petrified by ", "",
+	"", "dissolved in ", "crushed to death by ", "petrified by ", "",
 	"", "",
-	"", "", "" };
+	"", "", ""
+};
+
+static winid toptenwin = WIN_ERR;
+
+static void
+topten_print(x)
+const char *x;
+{
+	if (toptenwin == WIN_ERR)
+	    raw_print(x);
+	else
+	    putstr(toptenwin, ATR_NONE, x);
+}
+
+static void
+topten_print_bold(x)
+const char *x;
+{
+	if (toptenwin == WIN_ERR)
+	    raw_print_bold(x);
+	else
+	    putstr(toptenwin, ATR_BOLD, x);
+}
+
+static xchar
+observable_depth(lev)
+d_level *lev;
+{
+#if 0	/* if we ever randomize the order of the elemental planes, we
+	   must use a constant external representation in the record file */
+	if (In_endgame(lev)) {
+	    if (Is_astralevel(lev))	 return -5;
+	    else if (Is_waterlevel(lev)) return -4;
+	    else if (Is_firelevel(lev))	 return -3;
+	    else if (Is_airlevel(lev))	 return -2;
+	    else if (Is_earthlevel(lev)) return -1;
+	    else			 return 0;	/* ? */
+	} else
+#endif
+	    return depth(lev);
+}
 
 static void
 readentry(rfile,tt)
@@ -77,16 +129,17 @@ struct toptenentry *tt;
 	/* note: fscanf() below must read the record's terminating newline */
 	final_fpos = tt->fpos = ftell(rfile);
 #endif
-#define TTFIELDS 12
+#define TTFIELDS 17
 #ifdef NO_SCAN_BRACK
-	if(fscanf(rfile,"%6s %d %d %d %d %d %d %ld%*c%c%c %s %s%*c",
+	if(fscanf(rfile,"%d %d %d %ld %d %d %d %d %d %d %6s %6s %d%*c%c%c %s %s%*c",
 #else
-	if(fscanf(rfile, "%6s %d %d %d %d %d %d %ld %c%c %[^,],%[^\n]%*c",
+	if(fscanf(rfile, "%d.%d.%d %ld %d %d %d %d %d %d %6s %6s %d %c%c %[^,],%[^\n]%*c",
 #endif
-			tt->date, &tt->uid,
-			&tt->deathdnum, &tt->deathlev,
-			&tt->maxlvl, &tt->hp, &tt->maxhp, &tt->points,
-			&tt->plchar, &tt->sex,
+			&tt->ver_major, &tt->ver_minor, &tt->patchlevel,
+			&tt->points, &tt->deathdnum, &tt->deathlev,
+			&tt->maxlvl, &tt->hp, &tt->maxhp, &tt->deaths,
+			tt->deathdate, tt->birthdate,
+			&tt->uid, &tt->plchar, &tt->sex,
 			tt->name, tt->death) != TTFIELDS)
 #undef TTFIELDS
 		tt->points = 0;
@@ -108,19 +161,34 @@ struct toptenentry *tt;
 #ifdef NO_SCAN_BRACK
 	nsb_mung_line(tt->name);
 	nsb_mung_line(tt->death);
-	(void) fprintf(rfile,"%6s %d %d %d %d %d %d %ld %c%c %s %s\n",
+	(void) fprintf(rfile,"%d %d %d %ld %d %d %d %d %d %d %6s %6s %d %c%c %s %s\n",
 #else
-	(void) fprintf(rfile,"%6s %d %d %d %d %d %d %ld %c%c %s,%s\n",
+	(void) fprintf(rfile,"%d.%d.%d %ld %d %d %d %d %d %d %6s %6s %d %c%c %s,%s\n",
 #endif
-		tt->date, tt->uid,
-		tt->deathdnum, tt->deathlev,
-		tt->maxlvl, tt->hp, tt->maxhp, tt->points,
-		tt->plchar, tt->sex,
+		tt->ver_major, tt->ver_minor, tt->patchlevel,
+		tt->points, tt->deathdnum, tt->deathlev,
+		tt->maxlvl, tt->hp, tt->maxhp, tt->deaths,
+		tt->deathdate, tt->birthdate,
+		tt->uid, tt->plchar, tt->sex,
 		onlyspace(tt->name) ? "_" : tt->name, tt->death);
 #ifdef NO_SCAN_BRACK
 	nsb_unmung_line(tt->name);
 	nsb_unmung_line(tt->death);
 #endif
+}
+
+static void
+free_ttlist(tt)
+struct toptenentry *tt;
+{
+	struct toptenentry *ttnext;
+
+	while (tt->points > 0) {
+		ttnext = tt->tt_next;
+		dealloc_ttentry(tt);
+		tt = ttnext;
+	}
+	dealloc_ttentry(tt);
 }
 
 void
@@ -134,14 +202,27 @@ int how;
 	struct toptenentry *t1;
 	FILE *rfile;
 	register int flg = 0;
+	boolean t0_used;
 #ifdef LOGFILE
 	FILE *lfile;
 #endif /* LOGFILE */
 
-#if defined(MICRO)
-#define HUP
+/* Under DICE 3.0, this crashes the system consistently, apparently due to
+ * corruption of *rfile somewhere.  Until I figure this out, just cut out
+ * topten support entirely - at least then the game exits cleanly.  --AC
+ */
+#ifdef _DCC
+	return;
+#endif
+
+	if (flags.toptenwin) {
+	    toptenwin = create_nhwindow(NHW_TEXT);
+	}
+
+#if defined(UNIX) || defined(VMS)
+#define HUP	if (!program_state.done_hup)
 #else
-#define	HUP	if(!done_hup)
+#define HUP
 #endif
 
 #ifdef TOS
@@ -155,15 +236,19 @@ int how;
 	 * as well (which also seems reasonable since that's all the player
 	 * sees on the screen anyway)
 	 */
+	t0->ver_major = VERSION_MAJOR;
+	t0->ver_minor = VERSION_MINOR;
+	t0->patchlevel = PATCHLEVEL;
+	t0->points = u.urexp;
 	t0->deathdnum = u.uz.dnum;
-	t0->deathlev = depth(&u.uz);
+	t0->deathlev = observable_depth(&u.uz);
 	t0->maxlvl = deepest_lev_reached(TRUE);
 	t0->hp = u.uhp;
 	t0->maxhp = u.uhpmax;
-	t0->points = u.urexp;
+	t0->deaths = u.umortality;
+	t0->uid = uid;
 	t0->plchar = pl_character[0];
 	t0->sex = (flags.female ? 'F' : 'M');
-	t0->uid = uid;
 	(void) strncpy(t0->name, plname, NAMSZ);
 	t0->name[NAMSZ] = '\0';
 	t0->death[0] = '\0';
@@ -183,7 +268,8 @@ int how;
 			(void) strncat(t0->death, killer, DTHSZ);
 			break;
 	}
-	Strcpy(t0->date, get_date());
+	Strcpy(t0->birthdate, yymmdd(u.ubirthday));
+	Strcpy(t0->deathdate, yymmdd(0L));
 	t0->tt_next = 0;
 #ifdef UPDATE_RECORD_IN_PLACE
 	t0->fpos = -1L;
@@ -201,19 +287,21 @@ int how;
 	}
 #endif /* LOGFILE */
 
-#if defined(WIZARD) || defined(EXPLORE_MODE)
 	if (wizard || discover) {
-	    HUP {
-		raw_print("");
-		raw_printf(
+	    if (how != PANICKED) HUP {
+		char pbuf[BUFSZ];
+		topten_print("");
+		Sprintf(pbuf,
 	      "Since you were in %s mode, the score list will not be checked.",
 		    wizard ? "wizard" : "discover");
+		topten_print(pbuf);
 	    }
-	    return;
+	    dealloc_ttentry(t0);
+	    goto showwin;
 	}
-#endif
 
-	if (!lock_file(RECORD, 60)) return;
+	if (!lock_file(RECORD, 60))
+		goto destroywin;
 
 #ifdef UPDATE_RECORD_IN_PLACE
 	rfile = fopen_datafile(RECORD, "r+");
@@ -224,16 +312,18 @@ int how;
 	if (!rfile) {
 		HUP raw_print("Cannot open record file!");
 		unlock_file(RECORD);
-		return;
+		dealloc_ttentry(t0);
+		goto destroywin;
 	}
 
-	HUP raw_print("");
+	HUP topten_print("");
 
 	/* assure minimum number of points */
 	if(t0->points < POINTSMIN) t0->points = 0;
 
 	t1 = tt_head = newttentry();
 	tprev = 0;
+	t0_used = FALSE;
 	/* rank0: -1 undefined, 0 not_on_list, n n_th on list */
 	for(rank = 1; ; ) {
 	    readentry(rfile, t1);
@@ -248,6 +338,7 @@ int how;
 #ifdef UPDATE_RECORD_IN_PLACE
 		t0->fpos = t1->fpos;	/* insert here */
 #endif
+		t0_used = TRUE;
 		occ_cnt--;
 		flg++;		/* ask for a rewrite */
 	    } else tprev = t1;
@@ -264,10 +355,12 @@ int how;
 			rank0 = 0;
 			rank1 = rank;
 			HUP {
-			    raw_printf(
+			    char pbuf[BUFSZ];
+			    Sprintf(pbuf,
 			  "You didn't beat your previous score of %ld points.",
 				    t1->points);
-			    raw_print("");
+			    topten_print(pbuf);
+			    topten_print("");
 			}
 		    }
 		    if(occ_cnt < 0) {
@@ -293,18 +386,22 @@ int how;
 		if(!(rfile = fopen_datafile(RECORD,"w"))){
 			HUP raw_print("Cannot write record file");
 			unlock_file(RECORD);
-			return;
+			free_ttlist(tt_head);
+			if (!t0_used) dealloc_ttentry(t0);
+			goto destroywin;
 		}
 #endif	/* UPDATE_RECORD_IN_PLACE */
 		if(!done_stopprint) if(rank0 > 0){
 		    if(rank0 <= 10)
-			raw_print("You made the top ten list!");
+			topten_print("You made the top ten list!");
 		    else {
-			raw_printf(
+			char pbuf[BUFSZ];
+			Sprintf(pbuf,
 			  "You reached the %d%s place on the top %d list.",
 				rank0, ordin(rank0), ENTRYMAX);
+			topten_print(pbuf);
 		    }
-		    raw_print("");
+		    topten_print("");
 		}
 	}
 	if(rank0 == 0) rank0 = rank1;
@@ -317,33 +414,32 @@ int how;
 		    && rank >= rank0
 #endif
 		) writeentry(rfile, t1);
-	    if(done_stopprint) continue;
-	    if(rank > flags.end_top &&
-	      (rank < rank0-flags.end_around || rank > rank0+flags.end_around)
-	      && (!flags.end_own ||
+	    if (done_stopprint) continue;
+	    if (rank > flags.end_top &&
+		    (rank < rank0 - flags.end_around ||
+		     rank > rank0 + flags.end_around) &&
+		    (!flags.end_own ||
 #ifdef PERS_IS_UID
-				  t1->uid != t0->uid
+					t1->uid != t0->uid
 #else
-				  strncmp(t1->name, t0->name, NAMSZ)
+					strncmp(t1->name, t0->name, NAMSZ)
 #endif
 		)) continue;
-	    if(rank == rank0-flags.end_around &&
-	       rank0 > flags.end_top+flags.end_around+1 &&
-	       !flags.end_own)
-	  	raw_print("");
+	    if (rank == rank0 - flags.end_around &&
+		    rank0 > flags.end_top + flags.end_around + 1 &&
+		    !flags.end_own)
+		topten_print("");
 	    if(rank != rank0)
-		(void) outentry(rank, t1, 0);
+		outentry(rank, t1, FALSE);
 	    else if(!rank1)
-		(void) outentry(rank, t1, 1);
+		outentry(rank, t1, TRUE);
 	    else {
-		int t0lth = outentry(0, t0, -1);
-		int t1lth = outentry(rank, t1, t0lth);
-		if(t1lth > t0lth) t0lth = t1lth;
-		(void) outentry(0, t0, t0lth);
+		outentry(rank, t1, TRUE);
+		outentry(0, t0, TRUE);
 	    }
 	}
 	if(rank0 >= rank) if(!done_stopprint)
-		(void) outentry(0, t0, 1);
+		outentry(0, t0, TRUE);
 #ifdef UPDATE_RECORD_IN_PLACE
 	if (flg) {
 # ifdef TRUNCATE_FILE
@@ -352,9 +448,11 @@ int how;
 # else
 		/* use sentinel record rather than relying on truncation */
 		t0->points = 0L;	/* terminates file when read back in */
+		t0->ver_major = t0->ver_minor = t0->patchlevel = 0;
 		t0->uid = t0->deathdnum = t0->deathlev = 0;
-		t0->maxlvl = t0->hp = t0->maxhp = 0;
+		t0->maxlvl = t0->hp = t0->maxhp = t0->deaths = 0;
 		t0->plchar = t0->sex = '-';
+		Strcpy(t0->birthdate, strcpy(t0->deathdate, yymmdd(0L)));
 		Strcpy(t0->name, "@");
 		Strcpy(t0->death, "<eod>\n");
 		writeentry(rfile, t0);
@@ -364,10 +462,21 @@ int how;
 #endif	/* UPDATE_RECORD_IN_PLACE */
 	(void) fclose(rfile);
 	unlock_file(RECORD);
+	free_ttlist(tt_head);
+	if (!t0_used) dealloc_ttentry(t0);
+
+  showwin:
+	if (flags.toptenwin && !done_stopprint) display_nhwindow(toptenwin, 1);
+  destroywin:
+	if (flags.toptenwin) {
+	    destroy_nhwindow(toptenwin);
+	    toptenwin=WIN_ERR;
+	}
 }
 
 static void
-outheader() {
+outheader()
+{
 	char linebuf[BUFSZ];
 	register char *bp;
 
@@ -375,131 +484,174 @@ outheader() {
 	bp = eos(linebuf);
 	while(bp < linebuf + COLNO - 9) *bp++ = ' ';
 	Strcpy(bp, "Hp [max]");
-	raw_print(linebuf);
+	topten_print(linebuf);
 }
 
-/* so>0: standout line; so=0: ordinary line; so<0: no output, return lth */
-static int
+/* so>0: standout line; so=0: ordinary line */
+static void
 outentry(rank, t1, so)
-register struct toptenentry *t1;
-register int rank, so;
+struct toptenentry *t1;
+int rank;
+boolean so;
 {
-	register boolean second_line = TRUE;
-	char linebuf[BUFSZ], linebuf2[BUFSZ], linebuf3[BUFSZ], pbuf[BUFSZ];
+	boolean second_line = TRUE;
+	char linebuf[BUFSZ];
+	char *bp, hpbuf[24], linebuf3[BUFSZ];
+	int hppos, lngr;
 
-	linebuf[0] = linebuf2[0] = linebuf3[0] = 0;
-	if(rank) Sprintf(eos(linebuf), "%3d", rank);
+
+	linebuf[0] = '\0';
+	if (rank) Sprintf(eos(linebuf), "%3d", rank);
 	else Strcat(linebuf, "   ");
 
 	Sprintf(eos(linebuf), " %10ld  %.10s", t1->points, t1->name);
 	Sprintf(eos(linebuf), "-%c ", t1->plchar);
-	if(!strncmp("escaped", t1->death, 7)) {
-	  second_line = FALSE;
-	  if(!strcmp(" (with the Amulet)", t1->death+7))
-	    Strcat(linebuf, "escaped the dungeon with the Amulet");
-	  else
-	    Sprintf(eos(linebuf), "escaped the dungeon [max level %d]",
-	      t1->maxlvl);
-	} else if(!strncmp("ascended", t1->death, 8)) {
-	   Strcat(linebuf, "ascended to demigod");
-	   if (t1->sex == 'F') Strcat(linebuf, "dess");
-	   Strcat(linebuf, "-hood");
-	   second_line = FALSE;
+	if (!strncmp("escaped", t1->death, 7)) {
+	    second_line = FALSE;
+	    if (!strcmp(" (with the Amulet)", t1->death + 7))
+		Strcat(linebuf, "escaped the dungeon with the Amulet");
+	    else
+		Sprintf(eos(linebuf), "escaped the dungeon [max level %d]",
+			t1->maxlvl);
+	} else if (!strncmp("ascended", t1->death, 8)) {
+	    Sprintf(eos(linebuf), "ascended to demigod%s-hood",
+		    (t1->sex == 'F') ? "dess" : "");
+	    second_line = FALSE;
 	} else {
-	  if(!strncmp(t1->death,"quit",4)) {
+	    if (!strncmp(t1->death, "quit", 4)) {
 		Strcat(linebuf, "quit");
 		second_line = FALSE;
-	  } else if(!strncmp(t1->death,"starv",5)) {
+	    } else if (!strncmp(t1->death, "starv", 5)) {
 		Strcat(linebuf, "starved to death");
 		second_line = FALSE;
-	  } else if(!strncmp(t1->death,"choked",6)) {
+	    } else if (!strncmp(t1->death, "choked", 6)) {
 		Sprintf(eos(linebuf), "choked on h%s food",
 			(t1->sex == 'F') ? "er" : "is");
-	  } else if(!strncmp(t1->death,"poisoned",8)) {
+	    } else if (!strncmp(t1->death, "poisoned", 8)) {
 		Strcat(linebuf, "was poisoned");
-	  } else if(!strncmp(t1->death,"crushed",7)) {
+	    } else if (!strncmp(t1->death, "crushed", 7)) {
 		Strcat(linebuf, "was crushed to death");
-	  } else if(!strncmp(t1->death, "petrified by ",13)) {
+	    } else if (!strncmp(t1->death, "petrified by ", 13)) {
 		Strcat(linebuf, "turned to stone");
-	  } else Strcat(linebuf, "died");
+	    } else Strcat(linebuf, "died");
 
-	  if (t1->deathdnum == astral_level.dnum)
-		Strcpy(linebuf3, " in the endgame");
-	  else
-		Sprintf(linebuf3, " in %s on level %d",
-		    dungeons[t1->deathdnum].dname, t1->deathlev);
-	  if(t1->deathlev != t1->maxlvl)
-		Sprintf(eos(linebuf3), " [max %d]", t1->maxlvl);
-	  /* kludge for "quit while already on Charon's boat" */
-	  if(!strncmp(t1->death, "quit ", 5))
-		Strcat(linebuf3, t1->death + 4);
+	    if (t1->deathdnum == astral_level.dnum) {
+		const char *arg, *fmt = " on the Plane of %s";
+
+		switch (t1->deathlev) {
+		case -5:
+			fmt = " on the %s Plane";
+			arg = "Astral";	break;
+		case -4:
+			arg = "Water";	break;
+		case -3:
+			arg = "Fire";	break;
+		case -2:
+			arg = "Air";	break;
+		case -1:
+			arg = "Earth";	break;
+		default:
+			arg = "Void";	break;
+		}
+		Sprintf(eos(linebuf), fmt, arg);
+	    } else {
+		Sprintf(eos(linebuf), " in %s on level %d",
+			dungeons[t1->deathdnum].dname, t1->deathlev);
+		if (t1->deathlev != t1->maxlvl)
+		    Sprintf(eos(linebuf), " [max %d]", t1->maxlvl);
+	    }
+
+	    /* kludge for "quit while already on Charon's boat" */
+	    if (!strncmp(t1->death, "quit ", 5))
+		Strcat(linebuf, t1->death + 4);
 	}
-	Strcat(linebuf3, ".");
-
-	if(t1->maxhp) {
-	  register char *bp;
-	  char hpbuf[10];
-	  int hppos;
-	  int lngr = strlen(linebuf) + strlen(linebuf3);
-	  if (t1->hp <= 0) hpbuf[0] = '-', hpbuf[1] = '\0';
-	  else Sprintf(hpbuf, "%d", t1->hp);
-	  hppos = COLNO - 7 - (int)strlen(hpbuf);
-	  if (lngr >= hppos) {
-	      if(so > 0) {
-		  bp = eos(linebuf);
-		  while(bp < linebuf + (COLNO-1)) *bp++ = ' ';
-		  *bp = 0;
-		  raw_print_bold(linebuf);
-	      } else if(so == 0)
-		  raw_print(linebuf);
-	      Strcpy(linebuf, "               ");
-	  }
-	  Strcat(linebuf, linebuf3);
-	  bp = eos(linebuf);
-
-	  if(bp <= linebuf + hppos) {
-	    /* pad any necessary blanks to the hit point entry */
-	    while(bp < linebuf + hppos) *bp++ = ' ';
-	    Strcpy(bp, hpbuf);
-	    if(t1->maxhp < 10)
-		 Sprintf(eos(bp), "   [%d]", t1->maxhp);
-	    else if(t1->maxhp < 100)
-		 Sprintf(eos(bp), "  [%d]", t1->maxhp);
-	    else Sprintf(eos(bp), " [%d]", t1->maxhp);
-	  }
-	}
-
-/*	Line 2 now contains the killer name */
+	Strcat(linebuf, ".");
 
 	/* Quit, starved, ascended, and escaped contain no second line */
-	if (second_line) {
-		Strcpy(linebuf2, t1->death);
-		*linebuf2 = highc(*linebuf2);
-		Strcat(linebuf2, ".");
+	if (second_line)
+	    Sprintf(eos(linebuf), "  %c%s.", highc(*(t1->death)), t1->death+1);
+
+	lngr = (int)strlen(linebuf);
+	if (t1->hp <= 0) hpbuf[0] = '-', hpbuf[1] = '\0';
+	else Sprintf(hpbuf, "%d", t1->hp);
+	/* beginning of hp column after padding (not actually padded yet) */
+	hppos = COLNO - (sizeof("  Hp [max]")-1); /* sizeof(str) includes \0 */
+	while (lngr >= hppos) {
+	    for(bp = eos(linebuf);
+		    !(*bp == ' ' && (bp-linebuf < hppos));
+		    bp--)
+		;
+	    Strcpy(linebuf3, bp+1);
+	    *bp = 0;
+	    if (so) {
+		while (bp < linebuf + (COLNO-1)) *bp++ = ' ';
+		*bp = 0;
+		topten_print_bold(linebuf);
+	    } else
+		topten_print(linebuf);
+	    Sprintf(linebuf, "%15s %s", "", linebuf3);
+	    lngr = strlen(linebuf);
+	}
+	/* beginning of hp column not including padding */
+	hppos = COLNO - 7 - (int)strlen(hpbuf);
+	bp = eos(linebuf);
+
+	if (bp <= linebuf + hppos) {
+	    /* pad any necessary blanks to the hit point entry */
+	    while (bp < linebuf + hppos) *bp++ = ' ';
+	    Strcpy(bp, hpbuf);
+	    Sprintf(eos(bp), " %s[%d]",
+		    (t1->maxhp < 10) ? "  " : (t1->maxhp < 100) ? " " : "",
+		    t1->maxhp);
 	}
 
-	if(so == 0) {
-	    raw_print(linebuf);
-	    if (second_line)
-		raw_printf("                %s", linebuf2);
-	} else if(so > 0) {
-	  register char *bp = eos(linebuf);
-	  if(so >= COLNO) so = COLNO-1;
-	  while(bp < linebuf + so) *bp++ = ' ';
-	  *bp = 0;
-	  raw_print_bold(linebuf);
-	  if(second_line) {
-	      Sprintf(pbuf, "                %s", linebuf2);
-	      raw_print_bold(pbuf);
-	  }
+	if (so) {
+	    bp = eos(linebuf);
+	    if (so >= COLNO) so = COLNO-1;
+	    while (bp < linebuf + so) *bp++ = ' ';
+	    *bp = 0;
+	    topten_print_bold(linebuf);
+	} else
+	    topten_print(linebuf);
+}
+
+static int
+score_wanted(current_ver, rank, t1, playerct, players, uid)
+boolean current_ver;
+int rank;
+struct toptenentry *t1;
+int playerct;
+const char **players;
+int uid;
+{
+	int i;
+
+	if (current_ver && (t1->ver_major != VERSION_MAJOR ||
+			    t1->ver_minor != VERSION_MINOR ||
+			    t1->patchlevel != PATCHLEVEL))
+		return 0;
+
+#ifdef PERS_IS_UID
+	if (!playerct && t1->uid == uid)
+		return 1;
+#endif
+
+	for (i = 0; i < playerct; i++) {
+		if (strcmp(players[i], "all") == 0 ||
+		    strncmp(t1->name, players[i], NAMSZ) == 0 ||
+		    (players[i][0] == '-' &&
+		     players[i][1] == t1->plchar &&
+		     players[i][2] == 0) ||
+		    (digit(players[i][0]) && rank <= atoi(players[i])))
+		return 1;
 	}
-	return((int)strlen(linebuf)+(int)strlen(linebuf2));
+	return 0;
 }
 
 /*
- * Called with args from main if argc >= 0. In this case, list scores as
- * requested. Otherwise, find scores for the current player (and list them
- * if argc == -1).
+ * print selected parts of score list.
+ * argc >= 2, with argv[0] untrustworthy (directory names, et al.),
+ * and argv[1] starting with "-s".
  */
 void
 prscore(argc,argv)
@@ -507,23 +659,22 @@ int argc;
 char **argv;
 {
 	const char **players;
-	int playerct;
-	int rank;
-	register struct toptenentry *t1, *t2;
+	int playerct, rank;
+	boolean current_ver = TRUE;
+	register struct toptenentry *t1;
 	FILE *rfile;
-	register int flg = 0, i;
+	boolean match_found = FALSE;
+	register int i;
 	char pbuf[BUFSZ];
-#ifdef nonsense
-	long total_score = 0L;
-	char totchars[10];
-	int totcharct = 0;
-#endif
-	int outflg = (argc >= -1);
-#ifdef PERS_IS_UID
 	int uid = -1;
-#else
+#ifndef PERS_IS_UID
 	const char *player0;
 #endif
+	if (argc < 2 || strncmp(argv[1], "-s", 2)) {
+		raw_printf("prscore: bad arguments (%d)", argc);
+		return;
+	}
+
 	rfile = fopen_datafile(RECORD, "r");
 	if (!rfile) {
 		raw_print("Cannot open record file!");
@@ -533,39 +684,48 @@ char **argv;
 #ifdef	AMIGA
 	{
 	    extern winid amii_rawprwin;
-	    init_nhwindows();
-	    amii_rawprwin = create_nhwindow( NHW_TEXT );
+	    init_nhwindows(&argc, argv);
+	    amii_rawprwin = create_nhwindow(NHW_TEXT);
 	}
 #endif
 
-	/* If the score list isn't after a game, we never went through */
-	/* init_dungeons() */
-	if (wiz1_level.dlevel == 0) init_dungeons();
-
-	if(argc > 1 && !strncmp(argv[1], "-s", 2)){
-		if(!argv[1][2]){
-			argc--;
-			argv++;
-		} else if(!argv[1][3] && index(pl_classes, argv[1][2])) {
-			argv[1]++;
-			argv[1][0] = '-';
-		} else	argv[1] += 2;
+	/* If the score list isn't after a game, we never went through
+	 * initialization. */
+	if (wiz1_level.dlevel == 0) {
+		dlb_init();
+		init_dungeons();
 	}
-	if(argc <= 1){
+
+	if (!argv[1][2]){	/* plain "-s" */
+		argc--;
+		argv++;
+	} else if (!argv[1][3] && index(pl_classes, argv[1][2])) {
+		/* may get this case instead of next accidentally,
+		 * but neither is listed in the documentation, so
+		 * anything useful that happens is a bonus anyway */
+		argv[1]++;
+		argv[1][0] = '-';
+	} else	argv[1] += 2;
+
+	if (argc > 1 && !strcmp(argv[1], "-v")) {
+		current_ver = FALSE;
+		argc--;
+		argv++;
+	}
+
+	if (argc <= 1) {
 #ifdef PERS_IS_UID
 		uid = getuid();
 		playerct = 0;
-#  if defined(LINT) || defined(GCC_WARN)
-		players = 0;
-#  endif
+		players = (const char **)0;
 #else
 		player0 = plname;
-		if(!*player0)
-#ifdef AMIGA
+		if (!*player0)
+# ifdef AMIGA
 			player0 = "all";	/* single user system */
-#else
+# else
 			player0 = "hackplayer";
-#endif
+# endif
 		playerct = 1;
 		players = &player0;
 #endif
@@ -573,101 +733,51 @@ char **argv;
 		playerct = --argc;
 		players = (const char **)++argv;
 	}
-	if(outflg) raw_print("");
+	raw_print("");
 
 	t1 = tt_head = newttentry();
-	for(rank = 1; ; rank++) {
+	for (rank = 1; ; rank++) {
 	    readentry(rfile, t1);
-	    if(t1->points == 0) break;
-#ifdef PERS_IS_UID
-	    if(!playerct && t1->uid == uid)
-		flg++;
-	    else
-#endif
-	    for(i = 0; i < playerct; i++){
-		if(strcmp(players[i], "all") == 0 ||
-		   strncmp(t1->name, players[i], NAMSZ) == 0 ||
-		  (players[i][0] == '-' &&
-		   players[i][1] == t1->plchar &&
-		   players[i][2] == 0) ||
-		  (digit(players[i][0]) && rank <= atoi(players[i])))
-			flg++;
-	    }
+	    if (t1->points == 0) break;
+	    if (!match_found &&
+		    score_wanted(current_ver, rank, t1, playerct, players, uid))
+		match_found = TRUE;
 	    t1 = t1->tt_next = newttentry();
 	}
 	(void) fclose(rfile);
-	if(!flg) {
-	    if(outflg) {
-		Strcpy(pbuf, "Cannot find any entries for ");
-		if(playerct < 1) Strcat(pbuf, "you.");
-		else {
-		  if(playerct > 1) Strcat(pbuf, "any of ");
-		  for(i=0; i<playerct; i++) {
-		      Strcat(pbuf, players[i]);
-		      if(i<playerct-1) Strcat(pbuf, ":");
-		  }
-		  raw_print(pbuf);
-		  raw_printf("Call is: %s -s [-role] [maxrank] [playernames]",
-			     hname);
-		}
+	if (!match_found) {
+	    Sprintf(pbuf, "Cannot find any %sentries for ",
+				current_ver ? "current " : "");
+	    if (playerct < 1) Strcat(pbuf, "you.");
+	    else {
+		    if (playerct > 1) Strcat(pbuf, "any of ");
+		    for (i = 0; i < playerct; i++) {
+			    Strcat(pbuf, players[i]);
+			    if (i < playerct-1) Strcat(pbuf, ":");
+		    }
 	    }
+	    raw_print(pbuf);
+	    raw_printf("Call is: %s -s [-v] [-role] [maxrank] [playernames]",
+			 hname);
 #ifdef	AMIGA
-	    display_nhwindow( amii_rawprwin, 1 );
-	    destroy_nhwindow( amii_rawprwin );
+	    display_nhwindow(amii_rawprwin, 1);
+	    destroy_nhwindow(amii_rawprwin);
 	    amii_rawprwin = WIN_ERR;
 #endif
+	    free_ttlist(tt_head);
 	    return;
 	}
 
-	if(outflg) outheader();
+	outheader();
 	t1 = tt_head;
-	for(rank = 1; t1->points != 0; rank++, t1 = t2) {
-		t2 = t1->tt_next;
-#ifdef PERS_IS_UID
-		if(!playerct && t1->uid == uid)
-			goto outwithit;
-		else
-#endif
-		for(i = 0; i < playerct; i++){
-			if(strcmp(players[i], "all") == 0 ||
-			   strncmp(t1->name, players[i], NAMSZ) == 0 ||
-			  (players[i][0] == '-' &&
-			   players[i][1] == t1->plchar &&
-			   players[i][2] == 0) ||
-			  (digit(players[i][0]) && rank <= atoi(players[i]))){
-#ifdef PERS_IS_UID
-			outwithit:
-#endif
-				if(outflg)
-				    (void) outentry(rank, t1, 0);
-#ifdef nonsense
-				total_score += t1->points;
-				if(totcharct < sizeof(totchars)-1)
-				    totchars[totcharct++] = t1->plchar;
-#endif
-				break;
-			}
-		}
-		dealloc_ttentry(t1);
+	for (rank = 1; t1->points != 0; rank++, t1 = t1->tt_next) {
+	    if (score_wanted(current_ver, rank, t1, playerct, players, uid))
+		(void) outentry(rank, t1, 0);
 	}
-#ifdef nonsense
-	totchars[totcharct] = 0;
-
-	/* We would like to determine whether you're experienced.  However,
-	   the information collected here only tells about the scores/roles
-	   that got into the topten (top 100?).  We should maintain a
-	   .hacklog or something in his home directory. */
-	flags.beginner = (total_score < 6000);
-	for(i=0; i<6; i++)
-	    if(!index(totchars, pl_classes[i])) {
-		flags.beginner = 1;
-		if(!pl_character[0]) pl_character[0] = pl_classes[i];
-		break;
-	}
-#endif /* nonsense /**/
+	free_ttlist(tt_head);
 #ifdef	AMIGA
-	display_nhwindow( amii_rawprwin, 1 );
-	destroy_nhwindow( amii_rawprwin );
+	display_nhwindow(amii_rawprwin, 1);
+	destroy_nhwindow(amii_rawprwin);
 	amii_rawprwin = WIN_ERR;
 #endif
 }
@@ -735,17 +845,16 @@ pickentry:
 			rewind(rfile);
 			goto pickentry;
 		}
-		dealloc_ttentry(tt);
 		otmp = (struct obj *) 0;
 	} else {
+		/* reset timer in case corpse started out as lizard or troll */
+		if (otmp->otyp == CORPSE) obj_stop_timers(otmp);
 		otmp->corpsenm = classmon(tt->plchar, (tt->sex == 'F'));
 		otmp->owt = weight(otmp);
-		/* Note: oname() is safe since otmp is first in chains */
-		otmp = oname(otmp, tt->name, 0);
-		fobj = otmp;
-		level.objects[otmp->ox][otmp->oy] = otmp;
-		dealloc_ttentry(tt);
+		otmp = oname(otmp, tt->name);
+		if (otmp->otyp == CORPSE) start_corpse_timeout(otmp);
 	}
+	dealloc_ttentry(tt);
 
 	(void) fclose(rfile);
 	return otmp;
@@ -758,16 +867,16 @@ pickentry:
 static void
 nsb_mung_line(p)
 	char *p;
-	{
-	while(p=index(p,' '))*p='|';
+{
+	while ((p = index(p, ' ')) != 0) *p = '|';
 }
 
 static void
 nsb_unmung_line(p)
 	char *p;
-	{
-	while(p=index(p,'|'))*p=' ';
+{
+	while ((p = index(p, '|')) != 0) *p = ' ';
 }
-#endif
+#endif /* NO_SCAN_BRACK */
 
 /*topten.c*/

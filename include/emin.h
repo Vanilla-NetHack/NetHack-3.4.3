@@ -1,11 +1,13 @@
-/*	SCCS Id: @(#)emin.h	3.1	90/15/12	*/
+/*	SCCS Id: @(#)emin.h	3.2	90/12/15	*/
 /* Copyright (c) David Cohrs, 1990.				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #ifndef EMIN_H
 #define EMIN_H
 
-#include "dungeon.h"
+#ifndef ALIGN_H
+#include "align.h"
+#endif
 
 struct emin {
 	aligntyp	min_align;	/* alignment of minion */

@@ -1,4 +1,4 @@
-#	SCCS Id: @(#)Caveman.des	3.1	91/12/24
+#	SCCS Id: @(#)Caveman.des	3.2	95/10/07
 #	Copyright (c) 1989 by Jean-Christophe Collet
 #	Copyright (c) 1991 by M. Stephenson
 # NetHack may be freely redistributed.  See license for details.
@@ -33,8 +33,6 @@ MAP
        ..  ...    .  .....         ....    ..       ...            ..       
                                                                             
 ENDMAP
-# Random Monsters
-RANDOM_MONSTERS: 'h', 'H'
 # Dungeon Description
 REGION:(00,00,75,19),unlit,"ordinary"
 REGION:(13,01,40,05),lit,"temple",unfilled,true
@@ -89,7 +87,7 @@ MONSTER: 'h',"bugbear",(65,09),hostile
 MONSTER: 'h',"bugbear",(67,10),hostile
 MONSTER: 'h',"bugbear",(69,11),hostile
 WALLIFY
- 
+
 #
 #	The "locate" level for the quest.
 #
@@ -122,8 +120,6 @@ MAP
                .......       .....   ......                      .......    
                                                                             
 ENDMAP
-# Random Monsters
-RANDOM_MONSTERS: 'h', 'H'
 # Dungeon Description
 REGION:(00,00,75,19),unlit,"ordinary"
 REGION:(52,06,73,15),lit,"ordinary",unfilled,true
@@ -219,8 +215,6 @@ MAP
                          .......................                            
                                                                             
 ENDMAP
-# Random Monsters
-RANDOM_MONSTERS: 'h', 'H'
 # Dungeon Description
 REGION:(00,00,75,19),lit,"ordinary"
 # Stairs
@@ -228,7 +222,7 @@ STAIR:random,up
 # Non diggable walls
 NON_DIGGABLE:(00,00,75,19)
 # Objects
-OBJECT:')',"quarterstaff",(23,10),blessed,0,"The Sceptre of Might"
+OBJECT:')',"mace",(23,10),blessed,0,"The Sceptre of Might"
 OBJECT:random,random,random
 OBJECT:random,random,random
 OBJECT:random,random,random
@@ -244,7 +238,10 @@ OBJECT:random,random,random
 OBJECT:random,random,random
 OBJECT:random,random,random
 # monsters.
-MONSTER:'D',"Chromatic Dragon",(23,10),hostile
+MONSTER:'D',"Chromatic Dragon",(23,10),asleep
+MONSTER:'F',"shrieker",(26,13)
+MONSTER:'F',"shrieker",(25,8)
+MONSTER:'F',"shrieker",(45,11)
 WALLIFY
 
 #
@@ -259,8 +256,6 @@ WALLIFY
 MAZE: "C-filla" , ' '
 INIT_MAP: '.' , ' ' , true , true , random , true
 NOMAP
-# Random Monsters
-RANDOM_MONSTERS: 'h', 'H'
 #
 STAIR: random, up
 STAIR: random, down
@@ -289,8 +284,6 @@ MONSTER: 'H', "hill giant", random, hostile
 MAZE: "C-fillb" , ' '
 INIT_MAP: '.' , ' ' , true , true , random , true
 NOMAP
-# Random Monsters
-RANDOM_MONSTERS: 'h', 'H'
 #
 STAIR: random, up
 STAIR: random, down

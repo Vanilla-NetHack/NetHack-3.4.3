@@ -1,19 +1,142 @@
-/*    SCCS Id: @(#)winfuncs.c    3.1    93/04/02 */
-/* Copyright (c) Gregg Wonderly, Naperville, Illinois,  1991,1992,1993. */
+/*    SCCS Id: @(#)winfuncs.c    3.1    96/02/16 */
+/* Copyright (c) Gregg Wonderly, Naperville, Illinois,  1991,1992,1993,1996. */
 /* NetHack may be freely redistributed.  See license for details. */
 
-#include "amiga:windefs.h"
-#include "amiga:winext.h"
-#include "amiga:winproto.h"
-#include "incl:patchlevel.h"
+#include "NH:sys/amiga/windefs.h"
+#include "NH:sys/amiga/winext.h"
+#include "NH:sys/amiga/winproto.h"
+#include "patchlevel.h"
 
-int topl_addspace=1;
 extern struct TagItem scrntags[];
+
+static BitMapHeader amii_bmhd;
+static void cursor_common(struct RastPort *, int, int);
+
+#ifdef	CLIPPING
+int CO, LI;
+
+/* Changing clipping region, skip clear of screen in overview window. */
+int reclip;
+
+/* Must be set to at least two or you will get stuck! */
+int xclipbord = 4, yclipbord = 2;
+#endif
+
+int mxsize, mysize;
+struct Rectangle amii_oldover;
+struct Rectangle amii_oldmsg;
+
+int amii_msgAPen;
+int amii_msgBPen;
+int amii_statAPen;
+int amii_statBPen;
+int amii_menuAPen;
+int amii_menuBPen;
+int amii_textAPen;
+int amii_textBPen;
+int amii_otherAPen;
+int amii_otherBPen;
+long amii_libvers = LIBRARY_FONT_VERSION;
+
+void
+ami_wininit_data( void )
+{
+    extern unsigned short amii_init_map[ AMII_MAXCOLORS ];
+    extern unsigned short amiv_init_map[ AMII_MAXCOLORS ];
+    if( !WINVERS_AMIV )
+    {
+# ifdef	TEXTCOLOR
+	amii_numcolors = 8;
+# else
+	amii_numcolors = 4;
+# endif
+	amii_defpens[ 0 ] = C_BLACK;	/* DETAILPEN        */
+	amii_defpens[ 1 ] = C_BLUE; 	/* BLOCKPEN         */
+	amii_defpens[ 2 ] = C_BROWN;	/* TEXTPEN          */
+	amii_defpens[ 3 ] = C_WHITE;	/* SHINEPEN         */
+	amii_defpens[ 4 ] = C_BLUE;	/* SHADOWPEN        */
+	amii_defpens[ 5 ] = C_CYAN;	/* FILLPEN          */
+	amii_defpens[ 6 ] = C_WHITE;	/* FILLTEXTPEN      */
+	amii_defpens[ 7 ] = C_CYAN;	/* BACKGROUNDPEN    */
+	amii_defpens[ 8 ] = C_RED;	/* HIGHLIGHTTEXTPEN */
+	amii_defpens[ 9 ] = C_WHITE;	/* BARDETAILPEN     */
+	amii_defpens[ 10 ] = C_CYAN;	/* BARBLOCKPEN      */
+	amii_defpens[ 11 ] = C_BLUE;	/* BARTRIMPEN       */
+	amii_defpens[ 12 ] = (unsigned short) ~0;
+
+	amii_msgAPen = C_WHITE;
+	amii_msgBPen = C_BLACK;
+	amii_statAPen = C_WHITE;
+	amii_statBPen = C_BLACK;
+	amii_menuAPen = C_WHITE;
+	amii_menuBPen = C_BLACK;
+	amii_textAPen = C_WHITE;
+	amii_textBPen = C_BLACK;
+	amii_otherAPen = C_RED;
+	amii_otherBPen = C_BLACK;
+
+	mxsize = 8;
+	mysize = 8;
+
+	amii_libvers = LIBRARY_FONT_VERSION;
+	memcpy( amii_initmap, amii_init_map, sizeof( amii_initmap ) );
+    }
+    else
+    {
+	mxsize = 16;
+	mysize = 16;
+
+	amii_numcolors = 16;
+
+	amii_defpens[ 0 ] = C_BLACK;	/* DETAILPEN        */
+	amii_defpens[ 1 ] = C_WHITE;	/* BLOCKPEN         */
+	amii_defpens[ 2 ] = C_BLACK;	/* TEXTPEN          */
+	amii_defpens[ 3 ] = C_CYAN;	/* SHINEPEN         */
+	amii_defpens[ 4 ] = C_BLUE;	/* SHADOWPEN        */
+	amii_defpens[ 5 ] = C_GREY;	/* FILLPEN          */
+	amii_defpens[ 6 ] = C_RED;	/* FILLTEXTPEN      */
+	amii_defpens[ 7 ] = C_GREY;	/* BACKGROUNDPEN    */
+	amii_defpens[ 8 ] = C_RED;	/* HIGHLIGHTTEXTPEN */
+	amii_defpens[ 9 ] = C_WHITE;	/* BARDETAILPEN     */
+	amii_defpens[ 10 ] = C_GREY;	/* BARBLOCKPEN      */
+	amii_defpens[ 11 ] = C_BLUE;	/* BARTRIMPEN       */
+	amii_defpens[ 12 ] = ~0;
+
+	amii_msgAPen = C_WHITE;
+	amii_msgBPen = C_GREY;
+	amii_statAPen = C_WHITE;
+	amii_statBPen = C_GREY;
+	amii_menuAPen = C_BLACK;
+	amii_menuBPen = C_LTGREY;
+	amii_textAPen = C_BLACK;
+	amii_textBPen = C_LTGREY;
+	amii_otherAPen = C_WHITE;
+	amii_otherBPen = C_GREY;
+	amii_libvers = LIBRARY_TILE_VERSION;
+
+	memcpy( amii_initmap, amiv_init_map, sizeof( amii_initmap ) );
+    }
+#ifdef OPT_DISPMAP
+    dispmap_sanity();
+#endif
+    memcpy(flags.amii_dripens,amii_defpens,sizeof(flags.amii_dripens));
+}
+
+# ifdef	INTUI_NEW_LOOK
+struct Hook fillhook;
+struct TagItem wintags[] =
+{
+	{ WA_BackFill, (ULONG)&fillhook },
+	{ TAG_END, 0 },
+};
+# endif
 
 void
 amii_destroy_nhwindow(win)      /* just hide */
     register winid win;
 {
+    int i;
+    int type;
     register struct amii_WinDesc *cw;
 
     if( win == WIN_ERR || ( cw = amii_wins[win] ) == NULL )
@@ -21,40 +144,140 @@ amii_destroy_nhwindow(win)      /* just hide */
 	panic(winpanicstr,win,"destroy_nhwindow");
     }
 
-#ifdef	VIEWWINDOW
-    if( cw->type == NHW_MAP )
+    if( WINVERS_AMIV )
     {
-	amii_destroy_nhwindow( WIN_VIEW );
-	amii_destroy_nhwindow( WIN_VIEWBOX );
-
-	/* If inventory is up, close it now, it will be freed later */
-	if( alwaysinvent && WIN_INVEN != WIN_ERR &&
-			    amii_wins[ WIN_INVEN ] &&
-			    amii_wins[ WIN_INVEN ]->win )
+	if( cw->type == NHW_MAP )
 	{
-	    dismiss_nhwindow( WIN_INVEN );
+	    /* If inventory is up, close it now, it will be freed later */
+	    if( alwaysinvent && WIN_INVEN != WIN_ERR &&
+				amii_wins[ WIN_INVEN ] &&
+				amii_wins[ WIN_INVEN ]->win )
+	    {
+		dismiss_nhwindow( WIN_INVEN );
+	    }
+
+	    /* Tear down overview window if it is up */
+	    if( WIN_OVER != WIN_ERR )
+	    {
+		amii_destroy_nhwindow( WIN_OVER );
+		WIN_OVER = WIN_ERR;
+	    }
+	}
+	else if( cw->type == NHW_OVER )
+	{
+	    struct Window *w = amii_wins[ WIN_OVER ]->win;
+	    amii_oldover.MinX = w->LeftEdge;
+	    amii_oldover.MinY = w->TopEdge;
+	    amii_oldover.MaxX = w->Width;
+	    amii_oldover.MaxY = w->Height;
+
+	    if( WIN_MESSAGE != WIN_ERR && amii_wins[ WIN_MESSAGE ] )
+	    {
+		w = amii_wins[ WIN_MESSAGE ]->win;
+		amii_oldmsg.MinX = w->LeftEdge;
+		amii_oldmsg.MinY = w->TopEdge;
+		amii_oldmsg.MaxX = w->Width;
+		amii_oldmsg.MaxY = w->Height;
+		SizeWindow( amii_wins[ WIN_MESSAGE ]->win,
+			(amiIDisplay->xpix -
+			amii_wins[ WIN_MESSAGE ]->win->LeftEdge) -
+			amii_wins[ WIN_MESSAGE ]->win->Width,
+			0 );
+	    }
 	}
     }
-#endif
 
     /* Tear down the Intuition stuff */
     dismiss_nhwindow(win);
+    type = cw->type;
 
-    if( cw->resp )
-	free( cw->resp );
-    cw->resp = NULL;
+    if( cw->resp )    free( cw->resp );
+    if( cw->canresp ) free( cw->canresp );
+    if( cw->morestr ) free( cw->morestr );
+    if( cw->hook ) free( cw->hook );
+    cw->hook = NULL;
 
-    if( cw->canresp )
-	free( cw->canresp );
-    cw->canresp = NULL;
-
-    if( cw->morestr )
-	free( cw->morestr );
-    cw->morestr = NULL;
+    if( cw->data && ( cw->type == NHW_MESSAGE ||
+			    cw->type == NHW_MENU || cw->type == NHW_TEXT ) )
+    {
+	for( i = 0; i < cw->maxrow; ++i )
+	{
+	    if( cw->data[ i ] )
+		free( cw->data[ i ] );
+	}
+	free( cw->data );
+    }
 
     free( cw );
     amii_wins[win] = NULL;
+
+    /* Set globals to WIN_ERR for known one-of-a-kind windows. */
+    if( win == WIN_MAP) WIN_MAP = WIN_ERR;
+    else if( win == WIN_STATUS) WIN_STATUS = WIN_ERR;
+    else if( win == WIN_MESSAGE) WIN_MESSAGE = WIN_ERR;
+    else if( win == WIN_INVEN) WIN_INVEN = WIN_ERR;
+
 }
+
+#ifdef INTUI_NEW_LOOK
+struct FillParams
+{
+	struct Layer *layer;
+	struct Rectangle bounds;
+	WORD offsetx;
+	WORD offsety;
+};
+
+void
+#ifndef _DCC
+__interrupt
+#endif
+__saveds __asm
+LayerFillHook(
+    register __a0 struct Hook *hk,
+    register __a2 struct RastPort *rp,
+    register __a1 struct FillParams *fp )
+{
+    register long x, y, xmax, ymax;
+    register int apen;
+
+    switch( (int)hk->h_Data )
+    {
+    case NHW_STATUS:
+	apen = amii_statBPen;
+	break;
+    case NHW_MESSAGE:
+	apen = amii_msgBPen;
+	break;
+    case NHW_TEXT:
+	apen = amii_textBPen;
+	break;
+    case NHW_MENU:
+	apen = amii_menuBPen;
+	break;
+    case -2:
+	apen = amii_otherBPen;
+	break;
+    case NHW_BASE:
+    case NHW_MAP:
+    case NHW_OVER:
+    default:
+	apen = C_BLACK;
+	break;
+    }
+
+    x = fp->bounds.MinX;
+    y = fp->bounds.MinY;
+    xmax = fp->bounds.MaxX;
+    ymax = fp->bounds.MaxY;
+
+    SetAPen( rp, apen );
+    SetBPen( rp, apen );
+    SetDrMd( rp, JAM2 );
+    RectFill( rp, x, y, xmax, ymax );
+}
+#endif
+
 
 amii_create_nhwindow(type)
     register int type;
@@ -66,8 +289,8 @@ amii_create_nhwindow(type)
     register int newid;
     int maph;
 
-    maph = ( 22 * MAPFTHEIGHT ) + HackScreen->WBorTop +
-			HackScreen->WBorBottom + MAPFTHEIGHT + 1 + 1;
+    maph = ( 22 * mxsize ) + HackScreen->WBorTop +
+			HackScreen->WBorBottom + TextsFont->tf_YSize + 1 + 1;
     if( WIN_STATUS != WIN_ERR && amii_wins[ WIN_STATUS ] )
 	stwin = amii_wins[ WIN_STATUS ]->win;
 
@@ -90,18 +313,22 @@ amii_create_nhwindow(type)
     nw->Width = amiIDisplay->xpix;
     nw->Screen = HackScreen;
 
-    nw->DetailPen = C_BLACK;
-    nw->BlockPen = C_WHITE;
+    if( WINVERS_AMIV )
+    {
+	nw->DetailPen = C_GREYBLUE;
+	nw->BlockPen = C_WHITE;
+    }
+    else
+    {
+	nw->DetailPen = C_WHITE;
+	nw->BlockPen = C_BLACK;
+    }
 
-    if( type == NHW_MAP || type == NHW_BASE )
+    if( ( !WINVERS_AMIV && type == NHW_MAP ) || type == NHW_BASE )
     {
 	nw->LeftEdge = 0;
 
-	if(
-#ifndef	VIEWWINDOW
-		bigscreen &&
-#endif
-		type == NHW_MAP )
+	if( !WINVERS_AMIV && ( bigscreen && type == NHW_MAP ) )
 	{
 	    nw->Height = maph;
 	    if( msgwin && stwin )
@@ -114,14 +341,7 @@ amii_create_nhwindow(type)
 	    {
 		panic( "msgwin and stwin must open before map" );
 	    }
-#ifdef	VIEWWINDOW
-	    if( !bigscreen )
-		nw->Flags &= ~(BORDERLESS);
-	    nw->Width = (MAPFTWIDTH * 80) + HackScreen->WBorLeft +
-						HackScreen->WBorRight;
-#else
 	    nw->Width = HackScreen->Width;
-#endif
 	}
 	else
 	{
@@ -129,78 +349,38 @@ amii_create_nhwindow(type)
 	    nw->Height = amiIDisplay->ypix - nw->TopEdge;
 	}
     }
-#ifdef	VIEWWINDOW
-    else if( type == NHW_VIEWBOX )
+    else if( type == NHW_MAP && WINVERS_AMIV )
     {
-	struct Window *w = amii_wins[ NHW_MAP ]->win;
+	struct Window *w;
 
-	nw->LeftEdge = w->Width;
-	nw->TopEdge = w->TopEdge;
+	w = amii_wins[ WIN_MESSAGE ]->win;
+
+	nw->LeftEdge = 0;
+	nw->TopEdge = w->TopEdge + w->Height;
 	nw->Width = amiIDisplay->xpix - nw->LeftEdge;
-	if( msgwin && stwin )
-	{
-	    nw->Height = stwin->TopEdge - nw->TopEdge;
-	}
-	else
-	{
-	    nw->Height = 10 * VIEWCHARHEIGHT +
-		    w->BorderTop + w->BorderBottom;
-	}
-	nw->MaxHeight = VIEWCHARHEIGHT*24;
-	nw->MaxWidth = VIEWCHARWIDTH*80;
+	w = amii_wins[ WIN_STATUS ]->win;
+	nw->Height = w->TopEdge - nw->TopEdge;
+	nw->MaxHeight = 0xffff;
+	nw->MaxWidth = 0xffff;
 	if( nw->TopEdge + nw->Height > amiIDisplay->ypix - 1 )
 	    nw->Height = amiIDisplay->ypix - nw->TopEdge - 1;
-	if( !bigscreen )
-	    nw->Flags &= ~(WINDOWSIZING|WINDOWDRAG|WINDOWDEPTH|WINDOWCLOSE);
     }
-    else if( type == NHW_VIEW )
-    {
-	struct Window *vw = amii_wins[ WIN_VIEWBOX ]->win;
-	int i;
-
-	nw->LeftEdge = vw->LeftEdge + vw->BorderLeft;
-	nw->TopEdge = vw->TopEdge + vw->BorderTop;
-	nw->Width = amiIDisplay->xpix - nw->LeftEdge - 1 - vw->BorderRight;
-	nw->Height = vw->Height - vw->BorderTop - vw->BorderBottom;
-	nw->MaxHeight = VIEWCHARHEIGHT*24;
-	nw->MaxWidth = VIEWCHARWIDTH*80;
-	if( nw->TopEdge + nw->Height > amiIDisplay->ypix - 1 )
-	    nw->Height = amiIDisplay->ypix - nw->TopEdge - 1;
-	InitBitMap( &amii_vbm, DEPTH, VIEWCHARWIDTH * 88, VIEWCHARHEIGHT * 30 );
-	for( i = 0; i < DEPTH; ++i )
-	{
-	    if( ( amii_vbm.Planes[i] = AllocRaster( VIEWCHARWIDTH * 88,
-							VIEWCHARHEIGHT * 30 ) ) == 0 )
-	    {
-		panic( "can't allocate bitmap for view window" );
-	    }
-	    memset( amii_vbm.Planes[i], 0,
-	    			RASSIZE( VIEWCHARWIDTH * 88, VIEWCHARHEIGHT * 30 ) );
-	}
-	nw->Flags |= SUPER_BITMAP;
-	nw->BitMap = &amii_vbm;
-    }
-#endif
     else if( type == NHW_STATUS )
     {
-#ifndef	VIEWWINDOW
-	if( WIN_MAP != WIN_ERR && amii_wins[ WIN_MAP ] )
+	if( !WINVERS_AMIV && ( WIN_MAP != WIN_ERR && amii_wins[ WIN_MAP ] ) )
 	    w = amii_wins[ WIN_MAP ]->win;
 	else
-#endif
 	if( WIN_BASE != WIN_ERR && amii_wins[ WIN_BASE ] )
 	    w = amii_wins[ WIN_BASE ]->win;
 	else
 	    panic( "No window to base STATUS location from" );
 
-	/* Status window is relative to bottom of WIN_BASE/WIN_MAP */
-
 	/* Expand the height of window by borders */
 	nw->Height = (txheight * 2) + 4;
-	if( bigscreen )
-	{
-	    nw->Height += txheight + w->WScreen->WBorTop + 1 + w->WScreen->WBorBottom;
-	}
+	if( WINVERS_AMIV || bigscreen )
+	    nw->Height += w->WScreen->WBorTop + w->WScreen->WBorBottom + txheight + 1;
+	else
+	    nw->Title = 0;
 
 	nw->TopEdge = amiIDisplay->ypix - nw->Height - 1;
 	nw->LeftEdge = w->LeftEdge;
@@ -209,40 +389,79 @@ amii_create_nhwindow(type)
 	if( nw->Width >= amiIDisplay->xpix - nw->LeftEdge )
 	    nw->Width = amiIDisplay->xpix - nw->LeftEdge;
     }
+    else if( WINVERS_AMIV && type == NHW_OVER )
+    {
+	nw->Flags |= WINDOWSIZING|WINDOWDRAG|WINDOWCLOSE;
+	nw->IDCMPFlags |= CLOSEWINDOW;
+	/* Bring up window as half the width of the message window, and make
+	 * the message window change to one half the width...
+	 */
+	if( amii_oldover.MaxX != 0 )
+	{
+	    nw->LeftEdge = amii_oldover.MinX;
+	    nw->TopEdge = amii_oldover.MinY;
+	    nw->Width = amii_oldover.MaxX;
+	    nw->Height = amii_oldover.MaxY;
+	    ChangeWindowBox( amii_wins[ WIN_MESSAGE ]->win,
+			amii_oldmsg.MinX, amii_oldmsg.MinY,
+			amii_oldmsg.MaxX, amii_oldmsg.MaxY );
+	}
+	else
+	{
+	    nw->LeftEdge = (amii_wins[ WIN_MESSAGE ]->win->Width*4)/9;
+	    nw->TopEdge = amii_wins[ WIN_MESSAGE ]->win->TopEdge;
+	    nw->Width = amiIDisplay->xpix - nw->LeftEdge;
+	    nw->Height = amii_wins[ WIN_MESSAGE ]->win->Height;
+	    SizeWindow( amii_wins[ WIN_MESSAGE ]->win,
+		    nw->LeftEdge - amii_wins[ WIN_MESSAGE ]->win->Width, 0 );
+	}
+    }
     else if( type == NHW_MESSAGE )
     {
-#ifndef	VIEWWINDOW
-	if( WIN_MAP != WIN_ERR && amii_wins[ WIN_MAP ] )
+	if( !WINVERS_AMIV && ( WIN_MAP != WIN_ERR && amii_wins[ WIN_MAP ] ) )
 	    w = amii_wins[ WIN_MAP ]->win;
-	else
-#endif
-	if( WIN_BASE != WIN_ERR && amii_wins[ WIN_BASE ] )
+	else if( WIN_BASE != WIN_ERR && amii_wins[ WIN_BASE ] )
 	    w = amii_wins[ WIN_BASE ]->win;
 	else
 	    panic( "No window to base STATUS location from" );
 
 	nw->TopEdge = 1;
-	nw->Height = HackScreen->WBorTop + 1 +
-		((txheight+1)*(1+(scrollmsg != 0))) + 1 + HackScreen->WBorBottom;
-	if( ( HackScreen->Height - 1 -
+	if( !WINVERS_AMIV && ( ( HackScreen->Height - 1 -
 		( ( TextsFont->tf_YSize +
 		    HackScreen->WBorTop + 1 + HackScreen->WBorBottom ) * 2 ) -
 		( ( TextsFont->tf_YSize + 1 ) * 2 ) - 2 ) - maph <
-		    TextsFont->tf_YSize + 3 )
+		    TextsFont->tf_YSize + 3 ) )
 	{
 	    scrollmsg = 0;
 	}
 	if( scrollmsg )
 	{
 	    nw->FirstGadget = &MsgScroll;
-	    nw->Height = HackScreen->Height - 1 -
-		/* Size of all borders for bigscreen */
-		( ( TextsFont->tf_YSize + HackScreen->WBorTop + 1 +
-					HackScreen->WBorBottom ) * 2 ) -
-		/* Text space in status window */
-		( ( TextsFont->tf_YSize + 1 ) * 2 ) - 2 -
-		maph;
+	    if( WINVERS_AMIV )
+	    {
+		nw->Height = TextsFont->tf_YSize + HackScreen->WBorTop + 3 +
+				HackScreen->WBorBottom;
+		if( bigscreen )
+		    nw->Height += ( TextsFont->tf_YSize * 10 );
+		else
+		    nw->Height += ( TextsFont->tf_YSize * 3 );
+	    }
+	    else
+	    {
+		nw->Height = HackScreen->Height - 1 -
+		    /* Size of all borders for bigscreen */
+		    ( ( TextsFont->tf_YSize + HackScreen->WBorTop + 1 +
+					    HackScreen->WBorBottom ) * 2 ) -
+		    /* Text space in status window */
+		    ( ( TextsFont->tf_YSize + 1 ) * 2 ) - 2 -
+		    maph;
+	    }
 	    nw->Flags |= WINDOWSIZING|WINDOWDRAG;
+	}
+	else
+	{
+	    nw->Height = HackScreen->WBorTop + 1 +
+		((txheight+1)*(1+(scrollmsg != 0))) + 1 + HackScreen->WBorBottom;
 	}
 #ifdef  INTUI_NEW_LOOK
 	if( IntuitionBase->LibNode.lib_Version >= 37 )
@@ -250,43 +469,77 @@ amii_create_nhwindow(type)
 	    MsgPropScroll.Flags |= PROPNEWLOOK;
 	}
 #endif
-	/* Just allow height adjustments */
-	nw->MinWidth = w->Width;
-	nw->MinHeight = HackScreen->WBorTop +
-		HackScreen->WBorBottom + ((TextsFont->tf_YSize+1)*2) + 3;
     }
 
     nw->IDCMPFlags |= MENUPICK;
 
     /* Check if there is "Room" for all this stuff... */
-    if( bigscreen && type != NHW_BASE && type != NHW_VIEW )
+    if( ( WINVERS_AMIV || bigscreen ) &&
+	type != NHW_BASE )
     {
 	nw->Flags &= ~( BORDERLESS | BACKDROP );
-#ifdef	VIEWWINDOW
-	nw->Flags |= ( WINDOWDRAG | WINDOWDEPTH | SIZEBRIGHT );
-#else
-	if( HackScreen->Width < 657 )
+
+	if( WINVERS_AMIV )
 	{
-	    nw->Flags |= ( WINDOWDRAG | WINDOWDEPTH );
+	    if( type == NHW_STATUS )
+	    {
+		nw->Flags &= ~( WINDOWDRAG | WINDOWDEPTH | SIZEBRIGHT | WINDOWSIZING );
+		nw->IDCMPFlags &= ~NEWSIZE;
+	    }
+	    else
+	    {
+		nw->Flags |= ( WINDOWDRAG | WINDOWDEPTH | SIZEBRIGHT | WINDOWSIZING );
+		nw->IDCMPFlags |= NEWSIZE;
+	    }
 	}
 	else
 	{
-	    nw->Flags |= ( WINDOWDRAG | WINDOWDEPTH | SIZEBRIGHT );
-	    if( type == NHW_MAP )
-		nw->Flags |= WINDOWSIZING;
+	    if( HackScreen->Width < 657 )
+	    {
+		nw->Flags |= ( WINDOWDRAG | WINDOWDEPTH );
+	    }
+	    else
+	    {
+		nw->Flags |= ( WINDOWDRAG | WINDOWDEPTH | SIZEBRIGHT );
+		if( type == NHW_MAP )
+		    nw->Flags |= WINDOWSIZING;
+	    }
 	}
-#endif
-
-/*#endif*/
-#ifdef	VIEWWINDOW
-	if( type == NHW_VIEWBOX )
-	    nw->Flags |= WINDOWSIZING;
-#endif
     }
 
     /* No titles on a hires only screen */
     if( !bigscreen )
 	nw->Title = 0;
+
+    wd = (struct amii_WinDesc *)alloc(sizeof(struct amii_WinDesc));
+    memset( wd, 0, sizeof( struct amii_WinDesc ) );
+
+    if( WINVERS_AMIV )
+    {
+	/* Special backfill for these types of layers */
+	switch( type )
+	{
+	case NHW_MESSAGE:
+	case NHW_STATUS:
+	case NHW_TEXT:
+	case NHW_MENU:
+	case NHW_BASE:
+	case NHW_OVER:
+	case NHW_MAP:
+	    if( wd )
+	    {
+		fillhook.h_Entry = (ULONG(*)())LayerFillHook;
+		fillhook.h_Data = (void *)type;
+		fillhook.h_SubEntry = 0;
+		wd->hook = alloc( sizeof( fillhook ) );
+		memcpy( wd->hook, &fillhook, sizeof( fillhook ) );
+		memcpy( wd->wintags, wintags, sizeof( wd->wintags) );
+		wd->wintags[0].ti_Data = (long)wd->hook;
+		nw->Extension = (void *)wd->wintags;
+	    }
+	    break;
+	}
+    }
 
     /* Don't open MENU or TEXT windows yet */
 
@@ -299,7 +552,7 @@ amii_create_nhwindow(type)
     {
 	char buf[ 100 ];
 
-	sprintf( buf, "nw(%d) is l: %d, t: %d, w: %d, h: %d",
+	sprintf( buf, "nw type (%d) dims l: %d, t: %d, w: %d, h: %d",
 		type,
 		nw->LeftEdge, nw->TopEdge,
 		nw->Width, nw->Height );
@@ -325,8 +578,6 @@ amii_create_nhwindow(type)
 
     /* Do common initialization */
 
-    wd = (struct amii_WinDesc *)alloc(sizeof(struct amii_WinDesc));
-    memset( wd, 0, sizeof( struct amii_WinDesc ) );
     amii_wins[newid] = wd;
 
     wd->newwin = NULL;
@@ -349,11 +600,20 @@ amii_create_nhwindow(type)
 	    txbaseline = w->RPort->TxBaseline;
 	    if( type == NHW_MESSAGE )
 	    {
-		if( scrollmsg )
+		if (scrollmsg )
 		{
-		    WindowLimits( w, w->Width, w->BorderTop +
+		    if( WINVERS_AMIV )
+		    {
+			WindowLimits( w, 100, w->BorderTop +
 				w->BorderBottom +
-				((txheight+1)*3) + 1, 0, 0 );
+				((txheight+1)*2) + 1, 0, 0 );
+		    }
+		    else
+		    {
+			WindowLimits( w, w->Width, w->BorderTop +
+				w->BorderBottom +
+				((txheight+1)*2) + 1, 0, 0 );
+		    }
 		}
 		else
 		{
@@ -367,10 +627,15 @@ amii_create_nhwindow(type)
 	else if( HackFont )
 	    SetFont(w->RPort, HackFont);
 #endif
+    }
+
+    /* Text and menu windows are not opened yet */
+    if( w )
+    {
 	wd->rows = ( w->Height - w->BorderTop -
-		w->BorderBottom - 2 ) / w->RPort->TxHeight;
+	    w->BorderBottom - 2 ) / w->RPort->TxHeight;
 	wd->cols = ( w->Width - w->BorderLeft -
-		w->BorderRight - 2 ) / w->RPort->TxWidth;
+	    w->BorderRight - 2 ) / w->RPort->TxWidth;
     }
 
     /* Okay, now do the individual type initialization */
@@ -384,11 +649,11 @@ amii_create_nhwindow(type)
 	 */
 	case NHW_MESSAGE:
 	    SetMenuStrip(w, HackMenu);
-#ifdef	VIEWWINDOW
-	    if(flags.msg_history<20)flags.msg_history=20;
-#else
-	    if(flags.msg_history<40)flags.msg_history=40;
-#endif
+	    if( WINVERS_AMIV )
+		if(flags.msg_history<20)flags.msg_history=20;
+	    else
+		if(flags.msg_history<40)flags.msg_history=40;
+
 	    if(flags.msg_history>400)flags.msg_history=400;
 	    flags.window_inited=TRUE;
 	    wd->data = (char **)alloc( flags.msg_history*sizeof( char * ) );
@@ -445,20 +710,34 @@ amii_create_nhwindow(type)
 	    wd->data[2] = NULL;
 	    break;
 
+	    /* NHW_OVER does not use wd->data[] or the other text
+	     * manipulating members of the amii_WinDesc structure.
+	     */
+	case NHW_OVER:
+	    SetMenuStrip(w, HackMenu);
+	    break;
+
 	    /* NHW_MAP does not use wd->data[] or the other text
 	     * manipulating members of the amii_WinDesc structure.
 	     */
 	case NHW_MAP:
 	    SetMenuStrip(w, HackMenu);
-#ifdef	VIEWWINDOW
-	    WIN_VIEWBOX = amii_create_nhwindow( NHW_VIEWBOX );
-	    WIN_VIEW = amii_create_nhwindow( NHW_VIEW );
-	    if( HackFont4 )
-		SetFont( w->RPort, HackFont4 );
-#else
-	    if( HackFont )
-		SetFont( w->RPort, HackFont );
-#endif
+	    if( WINVERS_AMIV )
+	    {
+		extern struct TextFont *RogueFont;
+		CO = (w->Width-w->BorderLeft-w->BorderRight)/mxsize;
+		LI = (w->Height-w->BorderTop-w->BorderBottom)/mysize;
+		amii_setclipped();
+		SetFont( w->RPort, RogueFont);
+		SetAPen( w->RPort, C_WHITE);	/* XXX not sufficient */
+		SetBPen( w->RPort, C_BLACK);
+		SetDrMd( w->RPort, JAM2);
+	    }
+	    else
+	    {
+		if( HackFont )
+		    SetFont( w->RPort, HackFont );
+	    }
 	    break;
 
 	    /* The base window must exist until CleanUp() deletes it. */
@@ -498,21 +777,6 @@ amii_create_nhwindow(type)
 	    txbaseline = w->RPort->TxBaseline;
 	    break;
 
-#ifdef	VIEWWINDOW
-	case NHW_VIEWBOX:
-	    /* Position BitMap at zero, zero */
-	    ScrollLayer( 0, w->RPort->Layer,
-				-w->RPort->Layer->Scroll_X,
-				  -w->RPort->Layer->Scroll_Y );
-	case NHW_VIEW:
-	    if( HackFont16 )
-		SetFont( w->RPort, HackFont16 );
-	    wd->curx = -1;
-	    wd->cury = -1;
-	    SetMenuStrip(w, HackMenu);
-	    break;
-#endif
-
 	default:
 	    panic("bad create_nhwindow( %d )\n",type);
 	    return WIN_ERR;
@@ -524,47 +788,85 @@ amii_create_nhwindow(type)
 /* Initialize the windowing environment */
 
 void
-amii_init_nhwindows()
+amii_init_nhwindows(argcp,argv)
+    int *argcp;
+    char **argv;
 {
+    int i;
+    struct Screen *wbscr;
     int forcenobig = 0;
 
-    if (HackScreen)
-	panic( "init_nhwindow() called twice", 0 );
+    if( HackScreen )
+	panic( "init_nhwindows() called twice", 0 );
+
+	/* run args & set bigscreen from -L(1)/-l(-1) */
+    {
+	int lclargc = *argcp;
+	int t;
+	char **argv_in = argv;
+	char **argv_out = argv;
+
+	for(t=1;t<=lclargc;t++){
+	    if(!strcmp("-L",*argv_in) || !strcmp("-l",*argv_in)){
+		bigscreen = (*argv_in[1]=='l') ? -1 : 1;
+		/* and eat the flag */
+		(*argcp)--;
+	    } else {
+		*argv_out = *argv_in;	/* keep the flag */
+		argv_out++;
+	    }
+	    argv_in++;
+	}
+	*argv_out = 0;
+    }
 
     WIN_MESSAGE = WIN_ERR;
     WIN_MAP = WIN_ERR;
     WIN_STATUS = WIN_ERR;
     WIN_INVEN = WIN_ERR;
     WIN_BASE = WIN_ERR;
+    WIN_OVER = WIN_ERR;
 
-#ifndef	SHAREDLIB
     if ( (IntuitionBase = (struct IntuitionBase *)
-	  OpenLibrary("intuition.library", INTUITION_VERSION)) == NULL)
+	  OpenLibrary("intuition.library", amii_libvers )) == NULL)
     {
 	Abort(AG_OpenLib | AO_Intuition);
     }
 
     if ( (GfxBase = (struct GfxBase *)
-	      OpenLibrary("graphics.library", GRAPHICS_VERSION)) == NULL)
+	      OpenLibrary("graphics.library", amii_libvers )) == NULL)
     {
 	Abort(AG_OpenLib | AO_GraphicsLib);
     }
 
-#ifdef	VIEWWINDOW
-    if ( (LayersBase = (struct Library *)
-		OpenLibrary("layers.library", 0)) == NULL)
+    if( WINVERS_AMIV && (LayersBase = (struct Library *)
+		OpenLibrary("layers.library", amii_libvers )) == NULL)
     {
 	Abort(AG_OpenLib | AO_LayersLib);
     }
-#endif
-#endif
+
     amiIDisplay=(struct amii_DisplayDesc *)alloc(sizeof(struct amii_DisplayDesc));
     memset( amiIDisplay, 0, sizeof( struct amii_DisplayDesc ) );
 
     /* Use Intuition sizes for overscan screens... */
 
-    amiIDisplay->ypix = GfxBase->NormalDisplayRows;
-    amiIDisplay->xpix = GfxBase->NormalDisplayColumns;
+    amiIDisplay->xpix = 0;
+#ifdef	INTUI_NEW_LOOK
+    if( IntuitionBase->LibNode.lib_Version >= 37 )
+    {
+	if( wbscr = LockPubScreen( "Workbench" ) )
+	{
+	    amiIDisplay->xpix = wbscr->Width;
+	    amiIDisplay->ypix = wbscr->Height;
+	    UnlockPubScreen( NULL, wbscr );
+	}
+    }
+#endif
+    if( amiIDisplay->xpix == 0 )
+    {
+	amiIDisplay->ypix = GfxBase->NormalDisplayRows;
+	amiIDisplay->xpix = GfxBase->NormalDisplayColumns;
+    }
 
     amiIDisplay->cols = amiIDisplay->xpix / FONTWIDTH;
 
@@ -580,7 +882,7 @@ amii_init_nhwindows()
 	    NewHackScreen.ViewModes |= LACE;
 	    bigscreen = 1;
 	}
-	else if( GfxBase->NormalDisplayRows >= 270 )
+	else if( GfxBase->NormalDisplayRows >= 300 )
 	{
 	    bigscreen = 1;
 	}
@@ -595,7 +897,7 @@ amii_init_nhwindows()
 	/* If bigscreen requested and we don't have enough rows in
 	 * noninterlaced mode, switch to interlaced...
 	 */
-	if( GfxBase->NormalDisplayRows < 270 )
+	if( GfxBase->NormalDisplayRows < 300 )
 	{
 	    amiIDisplay->ypix *= 2;
 	    NewHackScreen.ViewModes |= LACE;
@@ -615,21 +917,12 @@ amii_init_nhwindows()
      */
 
     if( DiskfontBase =
-		OpenLibrary( "diskfont.library", DISKFONT_VERSION ) )
+		OpenLibrary( "diskfont.library", amii_libvers  ) )
     {
 	Hack80.ta_Name -= SIZEOF_DISKNAME;
 	HackFont = OpenDiskFont( &Hack80 );
 	Hack80.ta_Name += SIZEOF_DISKNAME;
 
-#ifdef	VIEWWINDOW
-	Hack40.ta_Name -= SIZEOF_DISKNAME;
-	HackFont4 = OpenDiskFont( &Hack40 );
-	Hack40.ta_Name += SIZEOF_DISKNAME;
-
-	Hack160.ta_Name -= SIZEOF_DISKNAME;
-	HackFont16 = OpenDiskFont( &Hack160 );
-	Hack160.ta_Name += SIZEOF_DISKNAME;
-#endif
 	/* Textsfont13 is filled in with "FONT=" settings. The default is
 	 * courier/13.
 	 */
@@ -647,9 +940,11 @@ amii_init_nhwindows()
 
 	/* If no fonts, make everything topaz 8 for non-view windows.
 	 */
+	Hack80.ta_Name = "topaz.font";
+	RogueFont = OpenFont( &Hack80 );
+	if(!RogueFont) panic("Can't get topaz:8");
 	if( !HackFont || !TextsFont )
 	{
-	    Hack80.ta_Name = "topaz.font";
 	    if( !HackFont )
 	    {
 		HackFont = OpenFont( &Hack80 );
@@ -664,16 +959,6 @@ amii_init_nhwindows()
 		    panic( "Can't open text font" );
 	    }
 	}
-#ifdef	VIEWWINDOW
-	/*
-	 * These other fonts are required for the view windows, so
-	 * we have to "panic".
-	 */
-	if( !HackFont4 || !HackFont16 )
-	{
-	    panic( "Can't open all hack/4 or hack/16 font" );
-	}
-#endif
 	CloseLibrary(DiskfontBase);
 	DiskfontBase = NULL;
     }
@@ -684,23 +969,19 @@ amii_init_nhwindows()
     NewHackScreen.Width = max( WIDTH, amiIDisplay->xpix );
     NewHackScreen.Height = max( SCREENHEIGHT, amiIDisplay->ypix );
     {
-    static char fname[18];
-    sprintf(fname,"NetHack %d.%d.%d", VERSION_MAJOR, VERSION_MINOR, PATCHLEVEL);
-    NewHackScreen.DefaultTitle=fname;
+	static char fname[18];
+	sprintf(fname,"NetHack %d.%d.%d", VERSION_MAJOR, VERSION_MINOR, PATCHLEVEL);
+	NewHackScreen.DefaultTitle=fname;
     }
-    NewHackScreen.BlockPen = C_CYAN;
+    NewHackScreen.BlockPen = C_BLACK;
 #ifdef	INTUI_NEW_LOOK
     if( IntuitionBase->LibNode.lib_Version >= 37 )
     {
     	int i;
-    	long modeid;
-	struct Screen *wbscr;
-
-	for( i = 0; scrntags[i].ti_Tag != SA_DisplayID &&
-		    scrntags[i].ti_Tag != TAG_DONE; ++i )
-	{
-	    continue;
-	}
+	struct DimensionInfo dims;
+	DisplayInfoHandle handle;
+	struct DisplayInfo disp;
+	ULONG modeid = DEFAULT_MONITOR_ID|HIRES_KEY;
 
 	NewHackScreen.Width = STDSCREENWIDTH;
 	NewHackScreen.Height = STDSCREENHEIGHT;
@@ -708,32 +989,137 @@ amii_init_nhwindows()
 	if( forcenobig == 0 )
 	{
 	    wbscr = LockPubScreen( "Workbench" );
-	    if( wbscr )
-		modeid = GetVPModeID( &wbscr->ViewPort ); 
-
-	    if( ( wbscr != NULL ) && ( modeid != INVALID_ID ) )
+	    if( ( wbscr = LockPubScreen( "Workbench" ) ) != NULL ||
+		( wbscr = LockPubScreen( NULL ) ) != NULL )
 	    {
-		if( wbscr->ViewPort.Modes & LACE )
-		    NewHackScreen.ViewModes |= LACE;
-		UnlockPubScreen( NULL, wbscr );
-		if( scrntags[i].ti_Tag == SA_DisplayID )
+		/* Get the default pub screen's size */
+		modeid = GetVPModeID( &wbscr->ViewPort );
+		if( modeid == INVALID_ID ||
+		    ModeNotAvailable( modeid ) ||
+		    ( handle = FindDisplayInfo( modeid ) ) == NULL ||
+		    GetDisplayInfoData( handle, (char *)&dims, sizeof( dims ),
+			DTAG_DIMS, modeid ) <= 0 ||
+		    GetDisplayInfoData( handle, (char *)&disp, sizeof( disp ),
+			DTAG_DISP, modeid ) <= 0 )
 		{
-		    scrntags[i].ti_Data = (ULONG)modeid;
+		    modeid = DEFAULT_MONITOR_ID|HIRES_KEY;
+		    /* If the display database seems to not work, use the screen
+		     * dimensions
+		     */
+		    NewHackScreen.Height = wbscr->Height;
+		    NewHackScreen.Width = wbscr->Width;
+		
+		    /*
+		     * Request LACE if it looks laced.  For 2.1/3.0, we will get
+		     * promoted to the users choice of modes (if promotion is allowed)
+		     * If the user is using a dragable screen, things will get hosed
+		     * but that is life...
+		     */
+		    if( wbscr->ViewPort.Modes & LACE )
+			NewHackScreen.ViewModes |= LACE;
+		    modeid = -1;
 		}
+		else
+		{
+		    /* Use the display database to get the correct information */
+		    if( disp.PropertyFlags & DIPF_IS_LACE )
+			NewHackScreen.ViewModes |= LACE;
+		    NewHackScreen.Height = dims.StdOScan.MaxY;
+		    NewHackScreen.Width = dims.StdOScan.MaxX;
+		}
+		NewHackScreen.TopEdge = 0;
+		NewHackScreen.LeftEdge = 0;
+
+		UnlockPubScreen( NULL, wbscr );
 	    }
 	}
-	else
+
+	for( i = 0; scrntags[i].ti_Tag != TAG_DONE; ++i )
 	{
-	    if( scrntags[i].ti_Tag == SA_DisplayID )
+	    switch( scrntags[i].ti_Tag )
 	    {
-		scrntags[i].ti_Tag = TAG_IGNORE;
+		case SA_DisplayID:
+		    if( !amii_scrnmode || ModeNotAvailable( amii_scrnmode ) )
+		    {
+			if( ModeNotAvailable( modeid ) )
+			{
+			    scrntags[i].ti_Tag = TAG_IGNORE;
+			    break;
+			}
+			else
+			    scrntags[i].ti_Data = (long)modeid;
+		    }
+		    else
+			modeid = scrntags[i].ti_Data = (long)amii_scrnmode;
+		    if( ( handle = FindDisplayInfo( modeid ) ) != NULL &&
+			GetDisplayInfoData( handle, (char *)&dims, sizeof( dims ),
+			    DTAG_DIMS, modeid ) > 0 &&
+			GetDisplayInfoData( handle, (char *)&disp, sizeof( disp ),
+			    DTAG_DISP, modeid ) > 0 )
+		    {
+			if( disp.PropertyFlags & DIPF_IS_LACE )
+			    NewHackScreen.ViewModes |= LACE;
+			NewHackScreen.Height = dims.StdOScan.MaxY;
+			NewHackScreen.Width = dims.StdOScan.MaxX;
+		    }
+		    break;
+
+		case SA_Pens:
+		    scrntags[i].ti_Data = (long)flags.amii_dripens;
+		    break;
 	    }
 	}
     }
 #endif
 
-    if( ( HackScreen = OpenScreen( (void *)&NewHackScreen ) ) == NULL )
-	Abort( AN_OpenScreen & ~AT_DeadEnd );
+    if( WINVERS_AMIV )
+    {
+		/* swap the menu colors around */
+	struct Menu *mp = HackMenu;
+	while(mp){
+		struct MenuItem *mip = mp->FirstItem;
+		while(mip){
+			((struct IntuiText *)mip->ItemFill)->FrontPen = C_BLACK;
+			((struct IntuiText *)mip->ItemFill)->BackPen = C_WHITE;
+			mip = mip->NextItem;
+		}
+		mp = mp->NextMenu;
+	}
+
+	amii_bmhd = ReadTileImageFiles( );
+	memcpy(flags.amii_curmap,amii_initmap,sizeof(flags.amii_curmap));
+    }
+    else
+    {
+	memcpy( amii_initmap, amii_init_map, sizeof( amii_initmap ) );
+	memcpy(flags.amii_curmap,amii_initmap,sizeof(flags.amii_curmap));
+    }
+
+    /* Find out how deep the screen needs to be, 32 planes is enough! */
+    for( i = 0; i < 32; ++i )
+    {
+	if( ( 1L << i ) >= amii_numcolors )
+	    break;
+    }
+
+    NewHackScreen.Depth = i;
+
+    /* While openscreen fails try fewer colors to see if that is the problem. */
+    while( ( HackScreen = OpenScreen( (void *)&NewHackScreen ) ) == NULL )
+    {
+#ifdef	TEXTCOLOR
+	if( --NewHackScreen.Depth < 3 )
+#else
+	if( --NewHackScreen.Depth < 2 )
+#endif
+	    Abort( AN_OpenScreen & ~AT_DeadEnd );
+    }
+    amii_numcolors = 1L << NewHackScreen.Depth;
+    if( HackScreen->Height > 300 && forcenobig == 0 )
+	bigscreen = 1;
+    else
+	bigscreen = 0;
+
 #ifdef  INTUI_NEW_LOOK
     if( IntuitionBase->LibNode.lib_Version >= 37 )
 	PubScreenStatus( HackScreen, 0 );
@@ -742,9 +1128,7 @@ amii_init_nhwindows()
     amiIDisplay->ypix = HackScreen->Height;
     amiIDisplay->xpix = HackScreen->Width;
 
-#ifdef TEXTCOLOR
-    LoadRGB4(&HackScreen->ViewPort, flags.amii_curmap, 1L << DEPTH );
-#endif
+    LoadRGB4(&HackScreen->ViewPort, flags.amii_curmap, amii_numcolors );
 
     /* Display the copyright etc... */
 
@@ -754,14 +1138,112 @@ amii_init_nhwindows()
     amii_putstr( WIN_BASE, 0, "" );
     amii_putstr( WIN_BASE, 0, "" );
     amii_putstr( WIN_BASE, 0, "" );
-    amii_putstr( WIN_BASE, 0,
-      "NetHack, Copyright 1985, 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993.");
-    amii_putstr( WIN_BASE, 0,
-	"         By Stichting Mathematisch Centrum and M. Stephenson.");
-    amii_putstr( WIN_BASE, 0, "         See license for details.");
+    amii_putstr( WIN_BASE, 0, COPYRIGHT_BANNER_A);
+    amii_putstr( WIN_BASE, 0, COPYRIGHT_BANNER_B);
+    amii_putstr( WIN_BASE, 0, COPYRIGHT_BANNER_C);
     amii_putstr( WIN_BASE, 0, "");
 
     Initialized = 1;
+}
+
+void
+amii_sethipens( struct Window *w, int type, int attr )
+{
+    switch( type )
+    {
+	default:
+	    SetAPen( w->RPort, attr ? C_RED : amii_otherAPen );
+	    SetBPen( w->RPort, C_BLACK );
+	    break;
+	case NHW_STATUS:
+	    SetAPen( w->RPort, attr ? C_WHITE : amii_statAPen );
+	    SetBPen( w->RPort, amii_statBPen );
+	    break;
+	case NHW_MESSAGE:
+	    SetAPen( w->RPort, attr ? C_WHITE : amii_msgAPen );
+	    SetBPen( w->RPort, amii_msgBPen );
+	    break;
+	case NHW_MENU:
+	    SetAPen( w->RPort, attr ? C_BLACK : amii_menuAPen );
+	    SetBPen( w->RPort, amii_menuBPen );
+	    break;
+	case NHW_TEXT:
+	    SetAPen( w->RPort, attr ? C_BLACK : amii_textAPen );
+	    SetBPen( w->RPort, amii_textBPen );
+	case -2:
+	    SetBPen( w->RPort, amii_otherBPen );
+	    SetAPen( w->RPort, attr ? C_RED : amii_otherAPen );
+	    break;
+    }
+}
+
+void
+amii_setfillpens( struct Window *w, int type )
+{
+    switch( type )
+    {
+    case NHW_MESSAGE:
+	SetAPen( w->RPort, amii_msgBPen );
+	SetBPen( w->RPort, amii_msgBPen );
+	break;
+    case NHW_STATUS:
+	SetAPen( w->RPort, amii_statBPen );
+	SetBPen( w->RPort, amii_statBPen );
+	break;
+    case NHW_MENU:
+	SetAPen( w->RPort, amii_menuBPen );
+	SetBPen( w->RPort, amii_menuBPen );
+	break;
+    case NHW_TEXT:
+	SetAPen( w->RPort, amii_textBPen );
+	SetBPen( w->RPort, amii_textBPen );
+	break;
+    case NHW_MAP:
+    case NHW_BASE:
+    case NHW_OVER:
+    default:
+	SetAPen( w->RPort, C_BLACK );
+	SetBPen( w->RPort, C_BLACK );
+	break;
+    case -2:
+	SetAPen( w->RPort, amii_otherBPen );
+	SetBPen( w->RPort, amii_otherBPen );
+	break;
+    }
+}
+
+void
+amii_setdrawpens( struct Window *w, int type )
+{
+    switch( type )
+    {
+    case NHW_MESSAGE:
+	SetAPen( w->RPort, amii_msgAPen );
+	SetBPen( w->RPort, amii_msgBPen );
+	break;
+    case NHW_STATUS:
+	SetAPen( w->RPort, amii_statAPen );
+	SetBPen( w->RPort, amii_statBPen );
+	break;
+    case NHW_MENU:
+	SetAPen( w->RPort, amii_menuAPen );
+	SetBPen( w->RPort, amii_menuBPen );
+	break;
+    case NHW_TEXT:
+	SetAPen( w->RPort, amii_textAPen );
+	SetBPen( w->RPort, amii_textBPen );
+	break;
+    case NHW_MAP:
+    case NHW_BASE:
+    case NHW_OVER:
+	SetAPen( w->RPort, C_WHITE );
+	SetBPen( w->RPort, C_BLACK );
+	break;
+    default:
+	SetAPen( w->RPort, amii_otherAPen );
+	SetBPen( w->RPort, amii_otherBPen );
+	break;
+    }
 }
 
 /* Clear the indicated window */
@@ -773,31 +1255,40 @@ amii_clear_nhwindow(win)
     register struct amii_WinDesc *cw;
     register struct Window *w;
 
+    if( reclip == 2 ) return;
+
     if( win == WIN_ERR || ( cw = amii_wins[win] ) == NULL )
 	panic( winpanicstr, win, "clear_nhwindow" );
 
+    /* Clear the overview window too if it is displayed */
+    if( WINVERS_AMIV && ( cw->type == WIN_MAP && WIN_OVER != WIN_ERR && reclip == 0 ) )
+    {
+	amii_clear_nhwindow( WIN_OVER );
+    }
+
     if( w = cw->win )
 	SetDrMd( w->RPort, JAM2);
+    else
+        return;
 
-    cursor_off( win );
+    if( (cw->wflags & FLMAP_CURSUP ) )
+    {
+	if( cw->type != NHW_MAP )
+	    cursor_off( win );
+	else
+	    cw->wflags &= ~FLMAP_CURSUP;
+    }
 
-    /* should be: clear the rastport, reset x,y etc */
+    amii_setfillpens( w, cw->type );
+    SetDrMd( w->RPort, JAM2 );
 
     if( cw->type == NHW_MENU || cw->type == NHW_TEXT )
     {
-	/* Window might not be opened yet */
-
-	if( w )
-	{
-	    SetAPen( w->RPort, 0 );
-	    SetBPen( w->RPort, 0 );
-	    RectFill( w->RPort, w->BorderLeft, w->BorderTop,
-	      w->Width - w->BorderRight-1,
-	      w->Height - w->BorderBottom-1 );
-	    SetAPen( w->RPort, 1 );
-	}
+	RectFill( w->RPort, w->BorderLeft, w->BorderTop,
+	  w->Width - w->BorderRight-1,
+	  w->Height - w->BorderBottom-1 );
     }
-    else if( w )
+    else
     {
 	if( cw->type == NHW_MESSAGE )
 	{
@@ -807,16 +1298,9 @@ amii_clear_nhwindow(win)
 	}
 	else
 	{
-	    SetAPen( w->RPort, 0 );
-	    SetBPen( w->RPort, 0 );
 	    RectFill( w->RPort, w->BorderLeft, w->BorderTop,
 	      w->Width - w->BorderRight-1,
 	      w->Height - w->BorderBottom-1 );
-	    SetAPen( w->RPort, 1 );
-#ifdef	VIEWWINDOW
-	    if( win == WIN_MAP )
-		amii_clear_nhwindow( WIN_VIEW );
-#endif
 	}
     }
 
@@ -831,7 +1315,6 @@ void
 dismiss_nhwindow(win)
     register winid win;
 {
-    int i;
     register struct Window *w;
     register struct amii_WinDesc *cw;
 
@@ -845,12 +1328,11 @@ dismiss_nhwindow(win)
     if( w )
     {
 	/* All windows have this stuff attached to them. */
-	if( win == WIN_MAP || win == WIN_BASE ||
-		win == WIN_MESSAGE || win == WIN_STATUS
-#ifdef	VIEWWINDOW
-		|| win == WIN_VIEW || win == WIN_VIEWBOX
-#endif
-		)
+	if(	cw->type == NHW_MAP ||
+		cw->type == NHW_OVER ||
+		cw->type == NHW_BASE ||
+		cw->type == NHW_MESSAGE ||
+		cw->type == NHW_STATUS )
 	{
 	    ClearMenuStrip( w );
 	}
@@ -868,43 +1350,11 @@ dismiss_nhwindow(win)
 	CloseShWindow( w );
 	cw->win = NULL;
 
-#ifdef	VIEWWINDOW
-	if( cw->type == NHW_VIEW )
-	{
-	    for( i = 0; i < DEPTH; ++i )
-	    {
-		FreeRaster( amii_vbm.Planes[i],
-			VIEWCHARWIDTH*88, VIEWCHARHEIGHT*30 );
-	    }
-	}
-#endif
-
 	/* Free copy of NewWindow structure for TEXT/MENU windows. */
 	if( cw->newwin )
 	    FreeNewWindow( (void *)cw->newwin );
 	cw->newwin = NULL;
     }
-
-    if( cw->canresp )
-	free( cw->canresp );
-    cw->canresp = NULL;
-
-    if( cw->morestr )
-	free( cw->morestr );
-    cw->morestr = NULL;
-
-    if( cw->data && ( cw->type == NHW_MESSAGE ||
-			    cw->type == NHW_MENU || cw->type == NHW_TEXT ) )
-    {
-	for( i = 0; i < cw->maxrow; ++i )
-	{
-	    if( cw->data[ i ] )
-		free( cw->data[ i ] );
-	}
-	free( cw->data );
-	cw->data = NULL;
-    }
-    cw->maxrow = cw->maxcol = 0;
 }
 
 void
@@ -915,9 +1365,12 @@ amii_exit_nhwindows(str)
      * left behind...
      */
     kill_nhwindows( 0 );
+    if( WINVERS_AMIV )
+	FreeTileImageFiles( );
+
     if( str )
     {
-	raw_print( "\n");	/* be sure we're not under the top margin */
+	raw_print( "" );	/* be sure we're not under the top margin */
 	raw_print( str );
     }
 }
@@ -927,9 +1380,9 @@ amii_display_nhwindow(win,blocking)
     winid win;
     boolean blocking;
 {
-    int i;
+    menu_item *mip;
+    int cnt;
     static int lastwin = -1;
-    struct Window *w;
     struct amii_WinDesc *cw;
 
     if( !Initialized )
@@ -942,9 +1395,6 @@ amii_display_nhwindow(win,blocking)
     if( cw->type == NHW_MESSAGE )
 	cw->wflags &= ~FLMAP_SKIP;
 
-    if( w = cw->win )
-	WindowToFront( w );
-
     if( cw->type == NHW_MESSAGE || cw->type == NHW_STATUS )
 	return;
 
@@ -955,48 +1405,17 @@ amii_display_nhwindow(win,blocking)
 
     if( cw->type == NHW_MENU || cw->type == NHW_TEXT )
     {
-	DoMenuScroll( win, blocking );
+	cnt = DoMenuScroll( win, blocking, PICK_ONE, &mip );
     }
     else if( cw->type==NHW_MAP )
     {
-#ifdef	VIEWWINDOW
-	if( IntuitionBase->LibNode.lib_Version >= 37 )
-	{
-	    MoveWindowInFrontOf( amii_wins[ WIN_VIEW ]->win,
-						amii_wins[ WIN_VIEWBOX ]->win );
-	}
-	else
-	{
-	    WindowToFront( amii_wins[ WIN_VIEW ]->win );
-	}
-	amii_end_glyphout( WIN_VIEW );
-#endif
 	amii_end_glyphout( win );
-	for( i = 0; i < MAXWIN; ++i )
-	{
-	    if( ( cw = amii_wins[i] ) != NULL &&
-		( cw->type == NHW_STATUS || cw->type == NHW_MESSAGE ) &&
-		( cw->win ) )
-	    {
-		WindowToFront(cw->win);
-	    }
-	}
-
 	/* Do more if it is time... */
 	if( blocking == TRUE && amii_wins[ WIN_MESSAGE ]->curx )
 	{
 	    outmore( amii_wins[ WIN_MESSAGE ] );
 	}
     }
-
-#ifdef	VIEWWINDOW
-    /* Pop the inventory window to the top if it is always displayed. */
-    if( alwaysinvent && WIN_INVEN != WIN_ERR &&
-		    (cw = amii_wins[ WIN_INVEN ] ) && cw->win )
-    {
-	WindowToFront( cw->win );
-    }
-#endif
 }
 
 void
@@ -1028,6 +1447,7 @@ register int x, y;  /* not xchar: perhaps xchar is unsigned and
 
     cw->curx = x;
     cw->cury = y;
+
 #ifdef DEBUG
     if( x<0 || y<0 || y >= cw->rows || x >= cw->cols )
     {
@@ -1039,6 +1459,8 @@ register int x, y;  /* not xchar: perhaps xchar is unsigned and
 	    case NHW_MAP: s = "[map window]"; break;
 	    case NHW_MENU: s = "[menu window]"; break;
 	    case NHW_TEXT: s = "[text window]"; break;
+	    case NHW_BASE: s = "[base window]"; break;
+	    case NHW_OVER: s = "[overview window]"; break;
 	}
 	impossible("bad curs positioning win %d %s (%d,%d)", window, s, x, y);
 	return;
@@ -1046,7 +1468,7 @@ register int x, y;  /* not xchar: perhaps xchar is unsigned and
 #endif
 
 #ifdef CLIPPING
-    if(clipping && window == WIN_MAP)
+    if(clipping && cw->type == NHW_MAP)
     {
 	x -= clipx;
 	y -= clipy;
@@ -1058,27 +1480,42 @@ register int x, y;  /* not xchar: perhaps xchar is unsigned and
     if( cw->type == NHW_MAP )
     {
 	flush_glyph_buffer( w );
-#ifdef	VIEWWINDOW
-	flush_glyph_buffer( amii_wins[ WIN_VIEW ]->win );
-#endif
     }
 
     /* Actually do it */
 
     rp = w->RPort;
-    if( cw->type == NHW_MENU || cw->type == NHW_TEXT )
+    if( cw->type == NHW_MENU )
+    {
+	if( WINVERS_AMIV )
+	{
+	    if( window == WIN_INVEN )
+	    {
+		Move( rp, (x * rp->TxWidth) + w->BorderLeft + 1 + pictdata.xsize + 4,
+		    (y * max(rp->TxHeight,pictdata.ysize + 3) ) +
+		     rp->TxBaseline + pictdata.ysize - rp->TxHeight + w->BorderTop + 4 );
+	    }
+	    else
+	    {
+		Move( rp, (x * rp->TxWidth) + w->BorderLeft + 1,
+		    (y * rp->TxHeight) + rp->TxBaseline + w->BorderTop + 1 );
+	    }
+	}
+	else
+	{
+	    Move( rp, (x * rp->TxWidth) + w->BorderLeft + 1,
+		(y*rp->TxHeight ) + rp->TxBaseline + w->BorderTop + 1 );
+	}
+    }
+    else if( cw->type == NHW_TEXT )
     {
 	Move( rp, (x * rp->TxWidth) + w->BorderLeft + 1,
 	    (y*rp->TxHeight ) + rp->TxBaseline + w->BorderTop + 1 );
     }
-    else if( cw->type == NHW_MAP || cw->type == NHW_BASE
-#ifdef	VIEWWINDOW
-	|| cw->type == NHW_VIEW
-#endif
-	)
+    else if( cw->type == NHW_MAP || cw->type == NHW_BASE )
     {
 	/* These coordinate calculations must be synced with those
-	 * in flush_glyph_buffer() in amiwind.c.  curs_on_u() will
+	 * in flush_glyph_buffer() in winchar.c.  curs_on_u() will
 	 * use this code, all other drawing occurs through the glyph
 	 * code.  In order for the cursor to appear on top of the hero,
 	 * the code must compute X,Y in the same manner relative to
@@ -1089,9 +1526,42 @@ register int x, y;  /* not xchar: perhaps xchar is unsigned and
 	 * x = g_nodes[i].x * rp->TxWidth + w->BorderLeft;
 	 */
 
-	Move( rp, (x * w->RPort->TxWidth) + w->BorderLeft,
+	if( WINVERS_AMIV )
+	{
+	    if( cw->type == NHW_MAP )
+	    {
+	      if(Is_rogue_level(&u.uz)){
+#if 0
+int qqx= (x * w->RPort->TxWidth) + w->BorderLeft;
+int qqy= w->BorderTop + ( (y+1) * w->RPort->TxHeight ) + 1;
+printf("pos: (%d,%d)->(%d,%d)\n",x,y,qqx,qqy);
+#endif
+		SetAPen(w->RPort,C_WHITE); /* XXX should be elsewhere (was 4)*/
+		Move( rp, (x * w->RPort->TxWidth) + w->BorderLeft,
+			w->BorderTop + ( (y+1) * w->RPort->TxHeight ) + 1 );
+	      } else {
+		Move( rp, (x * mxsize) + w->BorderLeft,
+				w->BorderTop + ( (y+1) * mysize ) + 1 );
+	      }
+	    }
+	    else
+	    {
+		Move( rp, (x * w->RPort->TxWidth) + w->BorderLeft,
+			    w->BorderTop + ( (y + 1) * w->RPort->TxHeight ) +
+			    w->RPort->TxBaseline + 1 );
+	    }
+	}
+	else
+	{
+	    Move( rp, (x * w->RPort->TxWidth) + w->BorderLeft,
 			w->BorderTop + ( (y + 1) * w->RPort->TxHeight ) +
 			w->RPort->TxBaseline + 1 );
+	}
+    }
+    else if( WINVERS_AMIV && cw->type == NHW_OVER )
+    {
+	Move( rp, (x * w->RPort->TxWidth) + w->BorderLeft + 2,
+			w->BorderTop + w->RPort->TxBaseline + 3 );
     }
     else if( cw->type == NHW_MESSAGE && !scrollmsg )
     {
@@ -1135,7 +1605,7 @@ amii_set_text_font( name, size )
     /* Look for windows to set, and change them */
 
     if( DiskfontBase =
-		OpenLibrary( "diskfont.library", DISKFONT_VERSION ) )
+		OpenLibrary( "diskfont.library", amii_libvers  ) )
     {
 	TextsFont = OpenDiskFont( &TextsFont13 );
 	for( i = 0; TextsFont && i < MAXWIN; ++i )
@@ -1152,6 +1622,7 @@ amii_set_text_font( name, size )
 	    	case NHW_MESSAGE:
 	    	case NHW_MAP:
 	    	case NHW_BASE:
+	    	case NHW_OVER:
 		    SetFont( cw->win->RPort, TextsFont );
 		    break;
 	    	}
@@ -1181,9 +1652,9 @@ kill_nhwindows( all )
 }
 
 void
-amii_cl_end( cw, i )
+amii_cl_end( cw, curs_pos )
     register struct amii_WinDesc *cw;
-    register int i;
+    register int curs_pos;
 {
     register struct Window *w = cw->win;
     register int oy, ox;
@@ -1194,7 +1665,7 @@ amii_cl_end( cw, i )
     oy = w->RPort->cp_y;
     ox = w->RPort->cp_x;
 
-    TextSpaces( w->RPort, cw->cols - i );
+    TextSpaces( w->RPort, cw->cols - curs_pos );
 
     Move( w->RPort, ox, oy );
 }
@@ -1207,6 +1678,7 @@ cursor_off( window )
     register struct Window *w;
     register struct RastPort *rp;
     int curx, cury;
+    int x, y;
     long dmode;
     short apen, bpen;
     unsigned char ch;
@@ -1219,6 +1691,7 @@ cursor_off( window )
 
     if( !(cw->wflags & FLMAP_CURSUP ) )
 	return;
+
     w = cw->win;
 
     if( !w )
@@ -1230,56 +1703,44 @@ cursor_off( window )
     /* Save the current information */
     curx = rp->cp_x;
     cury = rp->cp_y;
+    x = cw->cursx;
+    y = cw->cursy;
     dmode = rp->DrawMode;
     apen = rp->FgPen;
     bpen = rp->BgPen;
     SetAPen( rp, cw->curs_apen );
     SetBPen( rp, cw->curs_bpen );
     SetDrMd( rp, COMPLEMENT );
+/*printf("CURSOR OFF: %d %d\n",x,y);*/
 
-    ch = CURSOR_CHAR;
-    Move( rp, cw->cursx, cw->cursy );
-    Text( rp, &ch, 1 );
-
-#ifdef	VIEWWINDOW
-    /* Remove view window outline from map */
-    if( window == WIN_MAP )
+    if( WINVERS_AMIV && cw->type == NHW_MAP)
     {
-	SetAPen( rp, C_RED );
-	SetBPen( rp, C_BLACK );
-	SetDrMd( rp, COMPLEMENT );
-    	Move( rp, cw->vwx, cw->vwy );
-    	Draw( rp, cw->vcx, cw->vwy );
-    	Draw( rp, cw->vcx, cw->vcy );
-    	Draw( rp, cw->vwx, cw->vcy );
-    	Draw( rp, cw->vwx, cw->vwy );
+	cursor_common(rp, x, y);
+	if(Is_rogue_level(&u.uz))
+	    Move(rp,curx,cury);
     }
-#endif
+    else
+    {
+	ch = CURSOR_CHAR;
+	Move( rp, x, y );
+	Text( rp, &ch, 1 );
 
-    /* Put back the other stuff */
+	/* Put back the other stuff */
 
-    Move( rp, curx, cury );
+	Move( rp, curx, cury );
+    }
     SetDrMd( rp, dmode );
     SetAPen( rp, apen );
     SetBPen( rp, bpen );
-
-#ifdef	VIEWWINDOW
-    if( window == WIN_MAP )
-	cursor_off( WIN_VIEW );
-#endif
 }
 
 void
 cursor_on( window )
     winid window;
 {
+    int x, y;
     register struct amii_WinDesc *cw;
     register struct Window *w;
-#ifdef	VIEWWINDOW
-    int deltax, deltay, modx, mody;
-    register struct amii_WinDesc *vcw;
-    register struct Window *vw;
-#endif
     register struct RastPort *rp;
     unsigned char ch;
     long dmode;
@@ -1292,6 +1753,7 @@ cursor_on( window )
 	panic(winpanicstr,window, "cursor_on");
     }
 
+/*printf("CURSOR ON: %d %d\n",cw->win->RPort->cp_x, cw->win->RPort->cp_y);*/
     if( (cw->wflags & FLMAP_CURSUP ) )
 	cursor_off( window );
 
@@ -1305,130 +1767,63 @@ cursor_on( window )
 
     /* Save the current information */
 
-    cw->cursx = rp->cp_x;
-    cw->cursy = rp->cp_y;
+#ifdef	DISPMAP
+    if( WINVERS_AMIV && cw->type == NHW_MAP && !Is_rogue_level(&u.uz))
+	x = cw->cursx = (rp->cp_x & -8) + 8;
+    else
+#endif
+	x = cw->cursx = rp->cp_x;
+    y = cw->cursy = rp->cp_y;
     apen = rp->FgPen;
     bpen = rp->BgPen;
     dmode = rp->DrawMode;
-    ch = CURSOR_CHAR;
 
     /* Draw in complement mode. The cursor body will be C_WHITE */
 
-    cw->curs_apen = C_WHITE;
-    cw->curs_bpen = C_WHITE;
+    cw->curs_apen = C_RED;
+    cw->curs_bpen = C_RED;
     SetAPen( rp, cw->curs_apen );
     SetBPen( rp, cw->curs_bpen );
     SetDrMd( rp, COMPLEMENT );
-    Move( rp, cw->cursx, cw->cursy );
-    Text( rp, &ch, 1 );
-    Move( rp, cw->cursx, cw->cursy );
-
-#ifdef	VIEWWINDOW
-    if( window == WIN_MAP )
+    if( WINVERS_AMIV && cw->type == NHW_MAP)
     {
-    	int x, y, cx, cy;
-
-	if( WIN_VIEW == WIN_ERR || ( vcw = amii_wins[ WIN_VIEW ] ) == NULL )
-	{
-	    flags.window_inited=0;
-	    panic(winpanicstr,WIN_VIEW, "cursor_on");
-	}
-
-	if( (vcw->wflags & FLMAP_CURSUP ) )
-	    cursor_off( WIN_VIEW );
-
-	vw = vcw->win;
-
-    	x = cw->cursx - (vw->Width/8);
-	if( x <= w->BorderLeft )
-	    x = w->BorderLeft + 1;
-
-    	y = cw->cursy - (vw->Height/8);
-	if( y <= w->BorderTop )
-	    y = w->BorderTop + 1;
-
-	cx = x + (vw->Width/4);
-	if( cx >= w->Width - w->BorderRight )
-	{
-	    cx = w->Width - w->BorderRight-1;
-	    x = cx - (vw->Width/4);
-	}
-
-	cy = y + (vw->Height/4);
-	if( cy >= w->Height - w->BorderBottom )
-	{
-	    cy = w->Height - w->BorderBottom-1;
-	    y = cy - (vw->Height/4);
-	}
-	cw->vwx = x;
-	cw->vwy = y;
-	cw->vcx = cx;
-	cw->vcy = cy;
-	SetAPen( rp, C_RED );
-	SetBPen( rp, C_BLACK );
-	SetDrMd( rp, COMPLEMENT );
-    	Move( rp, cw->vwx, cw->vwy );
-    	Draw( rp, cw->vcx, cw->vwy );
-    	Draw( rp, cw->vcx, cw->vcy );
-    	Draw( rp, cw->vwx, cw->vcy );
-    	Draw( rp, cw->vwx, cw->vwy );
-
-	/* Position VIEW at same location as cursor in MAP */
-	vcw->curx  = ( cw->cursx * 4 ) - (vw->Width/2) - vw->RPort->Layer->Scroll_X;
-	vcw->cury  = ( cw->cursy * 4 ) - ((2*vw->Height)/3) - vw->RPort->Layer->Scroll_Y;
-
-	if( vcw->curx + vw->RPort->Layer->Scroll_X < 0 )
-	    vcw->curx = -vw->RPort->Layer->Scroll_X;
-	else if( vcw->curx + vw->RPort->Layer->Scroll_X > vw->RPort->Layer->bounds.MaxX )
-	    vcw->curx = vw->RPort->Layer->bounds.MaxX - vw->RPort->Layer->Scroll_X;
-
-	if( vcw->cury + vw->RPort->Layer->Scroll_Y < 0 )
-	    vcw->cury = -vw->RPort->Layer->Scroll_Y;
-	else if( vcw->cury + vw->RPort->Layer->Scroll_Y > vw->RPort->Layer->bounds.MaxY )
-	    vcw->cury = vw->RPort->Layer->bounds.MaxY - vw->RPort->Layer->Scroll_Y;
-
-	{
-		char buf[ 100 ];
-		sprintf( buf, "bounds: %d,%d,%d,%d",
-			vw->RPort->Layer->bounds.MinX,
-			vw->RPort->Layer->bounds.MinY,
-			vw->RPort->Layer->bounds.MaxX,
-			vw->RPort->Layer->bounds.MaxY );
-		putstr( WIN_MESSAGE, 1, buf );
-		sprintf( buf, "loc - old: %d,%d,  new: %d,%d",
-			vw->RPort->Layer->Scroll_X,
-			vw->RPort->Layer->Scroll_Y,
-			vcw->curx + vw->RPort->Layer->Scroll_X,
-			vw->RPort->Layer->Scroll_Y + vcw->cury );
-		putstr( WIN_MESSAGE, 1, buf );
-	}
-
-	/* Figure out the scroll values to move in no more than 3 scrolls */
-	deltax     = vcw->curx / 3;
-	deltay     = vcw->cury / 3;
-	modx       = vcw->curx % 3;
-	mody       = vcw->cury % 3;
-	vcw->curx -= modx;
-	vcw->cury -= mody;
-
-	while( vcw->curx != 0 || vcw->cury != 0 )
-	{
-	    ScrollLayer( 0, vw->RPort->Layer, deltax, deltay );
-	    vcw->curx -= deltax;
-	    vcw->cury -= deltay;
-	}
-	if( modx || mody )
-	    ScrollLayer( 0, vw->RPort->Layer, modx, mody );
+	cursor_common(rp, x, y);
     }
-#endif
+    else
+    {
+	Move( rp, x, y );
+	ch = CURSOR_CHAR;
+	Text( rp, &ch, 1 );
+	Move( rp, x, y );
+    }
 
     SetDrMd( rp, dmode );
     SetAPen( rp, apen );
     SetBPen( rp, bpen );
 }
 
+static void
+cursor_common(rp, x, y)
+	struct RastPort *rp;
+	int x,y;
+{
+    int x1,x2,y1,y2;
+
+    if(Is_rogue_level(&u.uz)){
+	x1 = x-2;		y1 = y-rp->TxHeight;
+	x2 = x+rp->TxWidth+1;	y2 = y+3;
+/*printf("COMM: (%d %d) (%d %d)  (%d %d) (%d %d)\n",x1,y1,x2,y2,x1+2,y1+2,x2-2,y2-2);*/
+    } else {
+	x1 = x;			y1 = y-mysize-1;
+	x2 = x+mxsize-1;	y2 = y-2;
+	RectFill(rp, x1, y1, x2, y2);
+    }
+
+    RectFill(rp, x1+2, y1+2, x2-2, y2-2);
+}
+
 void amii_suspend_nhwindows( str )
-    char *str;
+    const char *str;
 {
     if( HackScreen )
 	ScreenToBack( HackScreen );
@@ -1456,7 +1851,7 @@ removetopl(cnt)
     if(cw->curx < cnt)cw->curx=0;
     else cw->curx -= cnt;
 
-    amii_curs(WIN_MESSAGE, cw->curx+1, 0);
+    amii_curs(WIN_MESSAGE, cw->curx+1, cw->cury);
     amii_cl_end(cw, cw->curx);
 }
 /*#endif /* AMIGA_INTUITION */
@@ -1489,89 +1884,119 @@ amii_print_glyph(win,x,y,glyph)
     register int offset;
 #ifdef TEXTCOLOR
     int     color;
-#ifndef	SHAREDLIB
-    extern int zapcolors[];
 #endif
+    extern int zapcolors[];
+
+    /* In order for the overview window to work, we can not clip here */
+    if( !WINVERS_AMIV )
+    {
+#ifdef	CLIPPING
+	/* If point not in visible part of window just skip it */
+	if( clipping )
+	{
+	    if( x <= clipx || y < clipy || x >= clipxmax || y >= clipymax )
+		return;
+	}
+#endif
+    }
 
     if( win == WIN_ERR || (cw=amii_wins[win]) == NULL || cw->type != NHW_MAP)
-	panic(winpanicstr,win,"print_glyph");
+    {
+	panic(winpanicstr,win,"amii_print_glyph");
+    }
 
+#if 0
+{
+static int x=-1;
+if(u.uz.dlevel != x){
+ fprintf(stderr,"lvlchg: %d (%d)\n",u.uz.dlevel,Is_rogue_level(&u.uz));
+ x = u.uz.dlevel;
+}
+}
+#endif
+    if(
+	WINVERS_AMIV
+#ifdef REINCARNATION
+	&& !Is_rogue_level(&u.uz)
+#endif
+    )
+    {
+	amii_curs(win,x,y);
+	amiga_print_glyph(win,0,glyph);
+    }
+    else		/* AMII, or Rogue level in either version */
+    {
+#ifdef TEXTCOLOR
 #define zap_color(n)  color = flags.use_color ? zapcolors[n] : NO_COLOR
 #define cmap_color(n) color = flags.use_color ? defsyms[n].color : NO_COLOR
-#define trap_color(n) color = flags.use_color ? \
-		(((n) == WEB) ? defsyms[S_web ].color  : \
-			    defsyms[S_trap].color) : \
-			NO_COLOR
 #define obj_color(n)  color = flags.use_color ? objects[n].oc_color : NO_COLOR
 #define mon_color(n)  color = flags.use_color ? mons[n].mcolor : NO_COLOR
 #define pet_color(n)  color = flags.use_color ? mons[n].mcolor :          \
 		/* If no color, try to hilite pets; black  */ \
 		/* should be HI                */ \
-		    ((flags.hilite_pet) ? BLACK : NO_COLOR)
+		    ((flags.hilite_pet) ? CLR_BLACK : NO_COLOR)
 
 # else /* no text color */
 
 #define zap_color(n)
 #define cmap_color(n)
-#define trap_color(n)
 #define obj_color(n)
 #define mon_color(n)
 #define pet_color(n)
 
 #endif
 
-    /*
-     *  Map the glyph back to a character.
-     *
-     *  Warning:  For speed, this makes an assumption on the order of
-     *        offsets.  The order is set in display.h.
-     */
-    if ((offset = (glyph - GLYPH_SWALLOW_OFF)) >= 0) {  /* swallow */
-	/* see swallow_to_glyph()in display.c */
-	ch = (uchar) showsyms[S_sw_tl + (offset & 0x7)];
-	mon_color(offset >> 3);
-    } else if ((offset = (glyph - GLYPH_ZAP_OFF)) >= 0) {       /* zap beam */
-	ch = showsyms[S_vbeam + (offset & 0x3)];
-	zap_color((offset >> 2));
-    } else if( ( offset = (glyph - GLYPH_CMAP_OFF) ) >= 0 ) {   /* cmap */
-	ch = showsyms[offset];
-	cmap_color(offset);
-    } else if ( ( offset = (glyph - GLYPH_TRAP_OFF) ) >= 0 ) {  /* trap */
-	ch = (offset == WEB) ? showsyms[S_web] : showsyms[S_trap];
-	trap_color(offset);
-    } else if( ( offset = (glyph - GLYPH_OBJ_OFF) ) >= 0 ) {    /* object */
-	ch = oc_syms[objects[offset].oc_class];
-	obj_color(offset);
-    } else if ((offset = (glyph - GLYPH_BODY_OFF)) >= 0) {  /* a corpse */
-	ch = oc_syms[objects[CORPSE].oc_class];
-	mon_color(offset);
-    } else if ((offset = (glyph - GLYPH_PET_OFF)) >= 0) {   /* a pet */
-	ch = (uchar) monsyms[mons[offset].mlet];
-	pet_color(offset);
-    } else /*if( glyph_is_monster(glyph) )*/ {      /* a monster */
-	ch = (uchar) monsyms[mons[glyph].mlet];
-	mon_color(glyph);
-    }
-
-    /* Move the cursor. */
-#ifdef CLIPPING
-    if (!win_curs(x, y)) return;
-#else
-    amii_curs(win,x,y+2);
-#endif
+	/*
+	 *  Map the glyph back to a character.
+	 *
+	 *  Warning:  For speed, this makes an assumption on the order of
+	 *        offsets.  The order is set in display.h.
+	 */
+	if ((offset = (glyph - GLYPH_SWALLOW_OFF)) >= 0) {  /* swallow */
+	    /* see swallow_to_glyph()in display.c */
+	    ch = (uchar) showsyms[S_sw_tl + (offset & 0x7)];
+	    mon_color(offset >> 3);
+	} else if ((offset = (glyph - GLYPH_ZAP_OFF)) >= 0) {       /* zap beam */
+	    ch = showsyms[S_vbeam + (offset & 0x3)];
+	    zap_color((offset >> 2));
+	} else if( ( offset = (glyph - GLYPH_CMAP_OFF) ) >= 0 ) {   /* cmap */
+	    ch = showsyms[offset];
+	    cmap_color(offset);
+	} else if( ( offset = (glyph - GLYPH_OBJ_OFF) ) >= 0 ) {    /* object */
+	    ch = oc_syms[objects[offset].oc_class];
+	    obj_color(offset);
+	} else if ((offset = (glyph - GLYPH_BODY_OFF)) >= 0) {  /* a corpse */
+	    ch = oc_syms[objects[CORPSE].oc_class];
+	    mon_color(offset);
+	} else if ((offset = (glyph - GLYPH_PET_OFF)) >= 0) {   /* a pet */
+	    ch = (uchar) monsyms[mons[offset].mlet];
+	    pet_color(offset);
+	} else /*if( glyph_is_monster(glyph) )*/ {      /* a monster */
+	    ch = (uchar) monsyms[mons[glyph].mlet];
+	    mon_color(glyph);
+	}
+				/* XXX next if should be ifdef REINCARNATION */
+	if( WINVERS_AMIV ){			/* implies Rogue level here */
+	    amii_curs(win,x,y);
+	    amiga_print_glyph(win,NO_COLOR,ch + 10000);
+	} else {
+		/* Move the cursor. */
+	    amii_curs(win,x,y+2);
 
 #ifdef TEXTCOLOR
-    /* Turn off color if rogue level. */
+		/* Turn off color if rogue level. */
 # ifdef REINCARNATION
-    if (Is_rogue_level(&u.uz))
-	color = NO_COLOR;
+	    if (Is_rogue_level(&u.uz))
+		color = NO_COLOR;
 #  endif
 
-    amiga_print_glyph(win,color,ch);
+	    amiga_print_glyph(win,color,ch);
 #else
-    g_putch(ch);    /* print the character */
+	    g_putch(ch);    /* print the character */
 #endif
-    cw->curx++;     /* one character over */
+	    cw->curx++;     /* one character over */
+	}
+    }
 }
 
 /* Make sure the user sees a text string when no windowing is available */
@@ -1580,13 +2005,15 @@ void
 amii_raw_print(s)
     register const char *s;
 {
+    int argc = 0;
+
     if( !s )
 	return;
     if(amiIDisplay)
 	amiIDisplay->rawprint++;
 
     if( Initialized == 0 && WIN_BASE == WIN_ERR )
-	    init_nhwindows();
+	    init_nhwindows(&argc, (char **)0);
 
     if( amii_rawprwin != WIN_ERR )
 	amii_putstr( amii_rawprwin, 0, s );
@@ -1609,6 +2036,8 @@ void
 amii_raw_print_bold(s)
     register const char *s;
 {
+    int argc = 0;
+
     if( !s )
 	return;
 
@@ -1616,7 +2045,7 @@ amii_raw_print_bold(s)
 	amiIDisplay->rawprint++;
 
     if( Initialized == 0 && WIN_BASE == WIN_ERR )
-	    init_nhwindows();
+	    init_nhwindows(&argc, (char **)0);
 
     if( amii_rawprwin != WIN_ERR )
 	amii_putstr( amii_rawprwin, 1, s );
@@ -1667,25 +2096,221 @@ amii_wait_synch()
     }
     else
     {
-	display_nhwindow(WIN_MAP,TRUE);
-	flush_glyph_buffer( amii_wins[ WIN_MAP ]->win );
+	if( WIN_MAP != WIN_ERR )
+	{
+	    display_nhwindow(WIN_MAP,TRUE);
+	    flush_glyph_buffer( amii_wins[ WIN_MAP ]->win );
+	}
     }
 }
 
 void
 amii_setclipped()
 {
+#ifdef	CLIPPING
     clipping = TRUE;
     clipx=clipy=0;
-    clipxmax=CO;        /* WRONG */
-    clipymax=LI-5;      /* WRONG */
+    clipxmax=CO;
+    clipymax=LI;
+/* some of this is now redundant with top of amii_cliparound XXX */
+#endif
 }
 
+/* XXX still to do: suppress scrolling if we violate the boundary but the
+ * edge of the map is already displayed
+ */
 void
 amii_cliparound(x,y)
     register int x,y;
 {
-/* pull this from wintty.c - LATER */
+    extern boolean restoring;
+#ifdef	CLIPPING
+    int oldx = clipx, oldy = clipy;
+    int oldxmax = clipxmax, oldymax = clipymax;
+    int COx, LIx;
+#define	SCROLLCNT	3	/* Get there in 3 moves... */
+    int scrollcnt = SCROLLCNT;	/* ...or 1 if we changed level */
+    if (!clipping)
+	return;
+
+    if(Is_rogue_level(&u.uz)){
+	struct Window *w = amii_wins[WIN_MAP]->win;
+	struct RastPort *rp = w->RPort;
+
+	COx = (w->Width-w->BorderLeft-w->BorderRight)/rp->TxWidth;
+	LIx = (w->Height-w->BorderTop-w->BorderBottom)/rp->TxHeight;
+    }else{
+	COx = CO;
+	LIx = LI;
+    }
+		/*
+		 * On a level change, move the clipping region so that for a
+		 * reasonablely large window extra motion is avoided; for
+		 * the rogue level hopefully this means no motion at all.
+		 */
+    {
+	static d_level saved_level = {127,127};		/* XXX */
+
+	if(!on_level(&u.uz, &saved_level)){
+	    scrollcnt = 1;	/* jump with blanking */
+	    clipx=clipy=0;
+	    clipxmax = COx; clipymax = LIx;
+	    saved_level = u.uz;		/* save as new current level */
+	}
+    }
+
+    if (x <= clipx + xclipbord ) {
+	clipx = max(0, x - (clipxmax - clipx)/2 );
+	clipxmax = clipx + COx;
+    }
+    else if (x > clipxmax - xclipbord ) {
+	clipxmax = min(COLNO, clipxmax + (clipxmax - clipx)/2 );
+	clipx = clipxmax - COx;
+    }
+
+    if (y <= clipy + yclipbord ) {
+	clipy = max(0, y - (clipymax - clipy) / 2);
+	clipymax = clipy + LIx;
+    }
+    else if (y > clipymax - yclipbord ) {
+	clipymax = min(ROWNO, clipymax + (clipymax - clipy) / 2);
+	clipy = clipymax - LIx;
+    }
+
+    reclip = 1;
+    if (clipx != oldx || clipy != oldy || clipxmax != oldxmax || clipymax != oldymax )
+    {
+#ifndef NOSCROLLRASTER
+    	struct Window *w = amii_wins[ WIN_MAP ]->win;
+    	struct RastPort *rp = w->RPort;
+    	int xdelta, ydelta, xmod, ymod, i;
+    	int incx, incy, mincx, mincy;
+    	int savex, savey, savexmax, saveymax;
+	int scrx, scry;
+
+	if(Is_rogue_level(&u.uz)){
+	    scrx = rp->TxWidth;
+	    scry = rp->TxHeight;
+	} else {
+	    scrx = mxsize;
+	    scry = mysize;
+	}
+
+	/* Ask that the glyph routines not draw the overview window */
+	reclip = 2;
+	cursor_off( WIN_MAP );
+
+	/* Compute how far we are moving in terms of tiles */
+	mincx = clipx - oldx ;
+	mincy = clipy - oldy ;
+
+	/* How many tiles to get there in SCROLLCNT moves */
+	incx = ( clipx - oldx )/scrollcnt;
+	incy = ( clipy - oldy )/scrollcnt;
+
+	/* If less than SCROLLCNT tiles, then move by 1 tile if moving at all */
+	if( incx == 0 ) incx = (mincx != 0);
+	if( incy == 0 ) incy = (mincy != 0);
+
+	/* Get count of pixels to move each iteration and final pixel count */
+    	xdelta = ((clipx-oldx )*scrx) / scrollcnt;
+    	xmod = ((clipx-oldx )*scrx) % scrollcnt;
+    	ydelta = ((clipy-oldy )*scry) / scrollcnt;
+    	ymod = ((clipy-oldy )*scry) % scrollcnt;
+
+	/* Preserve the final move location */
+    	savex = clipx;
+     	savey = clipy;
+	saveymax = clipymax;
+	savexmax = clipxmax;
+
+	/*
+	 * Set clipping rectangle to be just the region that will be exposed so
+	 * that drawing will be faster
+	 */
+	if( xdelta < 0 )
+	{
+	    clipx = oldx;
+	    clipxmax = clipx + incx;
+	}
+	else if( xdelta > 0 )
+	{
+	    clipxmax = oldxmax;
+	    clipx = clipxmax - incx;
+	}
+	else
+	{
+	    clipx = oldx;
+	    clipxmax = oldxmax;
+	}
+
+	if( ydelta < 0 )
+	{
+	    clipy = oldy;
+	    clipymax = clipy + incy;
+	}
+	else if( ydelta > 0 )
+	{
+	    clipymax = oldymax;
+	    clipy = clipymax - incy;
+	}
+	else
+	{
+	    clipy = oldy;
+	    clipymax = oldymax;
+	}
+
+	/* Now, in scrollcnt moves, move the picture toward the final view */
+    	for( i = 0; i < scrollcnt; ++i )
+    	{
+#ifdef	DISPMAP
+	    if( i == scrollcnt - 1 && (xmod != 0 || ymod != 0) &&
+			(xdelta != 0 || ydelta != 0) )
+	    {
+		incx += (clipx - oldx)%scrollcnt;
+		incy += (clipy - oldy)%scrollcnt;
+		xdelta += xmod;
+		ydelta += ymod;
+	    }
+#endif
+	    /* Scroll the raster if we are scrolling */
+	    if( xdelta != 0 || ydelta != 0 )
+	    {
+		ScrollRaster( rp, xdelta, ydelta,
+			    w->BorderLeft, w->BorderTop,
+			    w->Width - w->BorderRight - 1,
+			    w->Height - w->BorderBottom - 1 );
+
+		if( mincx == 0 ) incx = 0;
+		else mincx -= incx;
+
+		clipx += incx;
+		clipxmax += incx;
+
+		if( mincy == 0 ) incy = 0;
+		else mincy -= incy;
+
+		clipy += incy;
+		clipymax += incy;
+
+		/* Draw the exposed portion */
+		if (on_level(&u.uz0, &u.uz) && !restoring)
+		    (void) doredraw();
+		flush_glyph_buffer( amii_wins[ WIN_MAP ]->win );
+	    }
+    	}
+
+    	clipx = savex;
+     	clipy = savey;
+	clipymax = saveymax;
+	clipxmax = savexmax;
+#endif
+	if (on_level(&u.uz0, &u.uz) && !restoring && moves > 1)
+	    (void) doredraw();
+	flush_glyph_buffer( amii_wins[ WIN_MAP ]->win );
+    }
+    reclip = 0;
+#endif
 }
 
 void

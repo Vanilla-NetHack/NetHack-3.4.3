@@ -10,10 +10,12 @@ IBMgraphics    use IBM extended characters for the dungeon        [FALSE]
 ignintr        ignore interrupt signal, including breaks          [FALSE]
 legacy         print introductory message                         [TRUE]
 lit_corridor   show a dark corridor as lit if in sight            [FALSE]
+mail           enable the mail daemon                             [TRUE]
 null           allow nulls to be sent to your terminal            [TRUE]
                try turning this option off (forcing NetHack to use its own
                delay code) if moving objects seem to teleport across rooms
 number_pad     use the number keys to move instead of yuhjklbn    [FALSE]
+perm_invent    keep inventory in a permanent window               [FALSE]
 rest_on_space  count the space bar as a rest character            [FALSE]
 safe_pet       prevent you from (knowingly) attacking your pet(s) [TRUE]
 silent         don't use your terminal's bell sound               [TRUE]
@@ -21,11 +23,12 @@ sortpack       group similar kinds of objects in inventory        [TRUE]
 standout       use standout mode for --More-- on messages         [FALSE]
 time           display elapsed game time, in moves                [FALSE]
 tombstone      print tombstone when you die                       [TRUE]
+toptenwin      print topten in a window rather than stdout        [FALSE]
 verbose        print more commentary during the game              [TRUE]
 
 
 There are further boolean options that exist in some versions of NetHack
-3.1.  (You can learn which options exist in your version by checking your
+3.2.  (You can learn which options exist in your version by checking your
 current option setting, which is reached via the 'O' cmd.)
 
 Boolean option if INSURANCE was set at compile time:
@@ -47,7 +50,13 @@ showscore  display your approximate accumulated score             [FALSE]
 
 Boolean options if TEXTCOLOR was set at compile time:
 color      use different colors for objects on screen   [TRUE for micros]
-hilite_pet if color is FALSE, display pets in a highlighted way   [FALSE]
+hilite_pet display pets in a highlighted manner                   [FALSE]
+
+Boolean option if TIMED_DELAY was set at compile time (tty interface only):
+timed_delay    on unix and VMS, use a timer instead of sending
+               extra screen output when attempting to pause for
+               display effect.  on MSDOS without the termcap
+               lib, whether or not to pause for visual effect.    [TRUE]
 
 Any Boolean option can be negated by prefixing it with a '!' or 'no'.
 
@@ -60,6 +69,13 @@ disclose      the types of information you want offered at the end of the
               game  [all]
 fruit         the name of a fruit you enjoy eating  [slime mold]
               (basically a whimsy which NetHack uses from time to time).
+menustyle     user interface for selection of multiple objects:
+              Traditional -- one object at a time prompting;
+              Combination -- prompt for classes of interest, then menu;
+              Partial     -- skip class prompt, use menu of all objects;
+              Full        -- menu for classes of interest, then object menu;
+              only the first letter ('T','C','P','F') matters; 'N' (None)
+              is a synonym for 'T', as is boolean style negation  [Full]
 packorder     a list of default symbols for kinds of objects that gives the
               order in which your pack will be displayed  [")[%?+!=/(*`0_]
               (If you specify only some kinds of items, the others from the
@@ -74,7 +90,7 @@ Compound options which may be set only on startup are:
 
 catname    the name of your first cat  [NONE]
 dogname    the name of your first dog  [NONE]
-graphics   a list of symbols to be used in place of the default ones for
+dungeon    a list of symbols to be used in place of the default ones for
            drawing the dungeon.
            The symbols are subjected to a fair amount of processing, so
            that you can use C-style escapes such as \n or \081 as well as
@@ -88,10 +104,12 @@ graphics   a list of symbols to be used in place of the default ones for
            nodoor vodoor hodoor      (no, vertical, horizontal open door)
            vcdoor hcdoor               (vertical, horizontal closed door)
            room darkcorr litcorr upstair dnstair upladder dnladder
-           trap web altar throne sink fountain pool ice lava
+           altar throne sink fountain pool ice lava
            vodbridge hodbridge     (vertical, horizontal open drawbridge)
            vcdbridge hcdbridge   (vertical, horizontal closed drawbridge)
            air cloud water
+           default:  \ |--------||.-|++.##<><>_\\#{}.}..##\ #}
+effects    like dungeon, but for special effects symbols
            vbeam hbeam lslant rslant                  (generic zap beams)
            digbeam flashbeam      (special beams for digging and cameras)
            boomleft boomright                                (boomerangs)
@@ -102,20 +120,28 @@ graphics   a list of symbols to be used in place of the default ones for
            extl extm extr                      (explosion matrix top row)
            exml exmm exmr                   (explosion matrix middle row)
            exbl exbm exbr                   (explosion matrix bottom row)
-monsters   like graphics, but for monster symbols
+           default:  |-\\/*!)(0#@*/-\\||\\-//-\\|\ |\\-/
+monsters   like dungeon, but for monster symbols
            default:  abcdefghijklmnopqrstuvwxyz
                      ABCDEFGHIJKLMNOPQRSTUVWXYZ@\ \\&;:~]
 msghistory number of top line messages to save [20]
 name       the name of your character  [obtained by asking the system or
            the player]
-objects    like graphics, but for object symbols
+objects    like dungeon, but for object symbols
            default:  ])[="(%!?+/$*`0_.
 pettype    your preferred type of pet (cat or dog), if your character
            class uses both types  [RANDOM]
+traps      like dungeon, but for trap symbols
+           arrow_trap dart_trap falling_rock_trap squeaky_board
+           bear_trap land_mine rolling_boulder_trap sleeping_gas_trap
+           rust_trap fire_trap pit spiked_pit hole trap_door
+           teleportation_trap level_teleporter magic_portal web statue_trap
+           magic_trap anti_magic_trap polymorph_trap
+           default:  ^^^^^^^^^^^^^^^^^"^^^^
 windowtype windowing system to be used  [depends on operating system]
 
 
 Some sample options lists are:
 !autopickup,!tombstone,name:Gandalf,scores:own/3 top/2 around
-female,nonews,dogname:Rover,graphics: |--------|||-\\/+.#.<><>\^\"_\\#{}
-rest_on_space,!verbose
+female,nonews,dogname:Rover,dungeon: |--------||.-|++.##<><>_\\#{}.}..## #}
+rest_on_space,!verbose,menustyle:traditional

@@ -23,6 +23,7 @@
 
 /******** Application Defines ********/
 #include "hack.h"
+#include "macwin.h"
 #include "patchlevel.h"
 
 /******** Toolbox Defines ********/
@@ -263,15 +264,7 @@ static	short		kAdjustWizardMenu = 1;
 static	void alignAD(Rect *, short);
 static	void mustGetMenuAlerts(void);
 static	void menuError(short);
-
-extern	void AddToKeyQueue ( int ch , Boolean force ) ;
-pascal	void drawANUserItem(WindowPtr, short);
-		void DialogAskName(asknameRec *);
-		void InitMenuRes(void);
-		void AdjustMenus(short);
-		void DoMenuEvt(long);
-extern	void WindowGoAway(EventRecord *, WindowPtr);
-
+static	pascal void drawANUserItem(WindowPtr, short);
 static	void aboutNetHack(void);
 static	void openMap(void);
 static	void closeFrontWindow(void);
@@ -321,12 +314,12 @@ menuError(short menuErr)
 		SysBeep(3);
 
 	ParamText(menuErrStr[menuErr], "\p", "\p", "\p");
-	(void) Alert(alrtMenuNote, (ModalFilterProcPtr) 0L);
+	(void) Alert(alrtMenuNote, (ModalFilterUPP) 0L);
 
 	ExitToShell();
 }
 
-pascal void
+static pascal void
 drawANUserItem(WindowPtr wPtr, short uItm)
 {
 	asknameRec	*pANR;
@@ -396,6 +389,7 @@ DialogAskName(asknameRec *pANR)
 	short			mbarHgt = GetMBarHeight();
 	short			ndxItem, menuEntry;
 	Point			pt;
+	UserItemUPP		myUserItemProc = NewUserItemProc(drawANUserItem);
 
 	if (! (dTHnd = (DialogTHndl) GetResource('DLOG', dlogAskName)))
 		menuError(errGetANDlogTemplate);
@@ -435,7 +429,7 @@ DialogAskName(asknameRec *pANR)
 	for (i = uitmANOutlineDefault; i <= uitmANMode; i++)
 	{
 		GetDItem((DialogPtr)&dRec, i, &iTyp, &iHnd, &iRct);
-		SetDItem((DialogPtr)&dRec, i, iTyp, (Handle) drawANUserItem, &iRct);
+		SetDItem((DialogPtr)&dRec, i, iTyp, (Handle) myUserItemProc, &iRct);
 	}
 	{
 	short kind ; Handle item ; Rect area ;
@@ -447,7 +441,7 @@ DialogAskName(asknameRec *pANR)
 		} else {
 			Handle h ;
 			h = GetResource ( 'STR ' , -16096 ) ;
-			if ( ( (Handle) NULL != h ) && ( GetHandleSize ( h ) > 0 ) ) {
+			if ( ( (Handle) 0 != h ) && ( GetHandleSize ( h ) > 0 ) ) {
 				DetachResource ( h ) ;
 				HLock ( h ) ;
 				if ( * * h > 31 ) {
@@ -492,9 +486,6 @@ DialogAskName(asknameRec *pANR)
 #ifndef WIZARD
 				DisableItem(mhndAskName[menuANMode], (asknDebug + 1));
 #endif
-#ifndef EXPLORE_MODE
-				DisableItem(mhndAskName[menuANMode], (asknExplore + 1));
-#endif
 			}
 
 			/* check role 1st, valkyrie forces female */
@@ -528,7 +519,7 @@ DialogAskName(asknameRec *pANR)
 			}
 		}
 
-		ModalDialog((ModalFilterProcPtr) 0L, &iHit);
+		ModalDialog((ModalFilterUPP) 0L, &iHit);
 
 		switch (iHit)
 		{
@@ -622,6 +613,7 @@ DialogAskName(asknameRec *pANR)
 	ReleaseResource(dIHnd);
 	ReleaseResource((Handle) dTHnd);
 	SetPort(pOldPort);
+	DisposeRoutineDescriptor(myUserItemProc);
 }
 
 void
@@ -714,7 +706,6 @@ short		i;
 	}
 #endif
 
-#ifdef EXPLORE_MODE
 	else if (discover)
 	{
 		newMenubar = mbarSpecial;
@@ -729,7 +720,6 @@ short		i;
 				DelMenuItem(MHND_WIZ, i);
 		}
 	}
-#endif
 
 	/* adjust the menubar, if there's a state change */
 	if (theMenubar != newMenubar)
@@ -900,7 +890,7 @@ aboutNetHack() {
 		aboutStr[++aboutStr[0]] = '0' + (PATCHLEVEL % 10);
 
 		ParamText(aboutStr, "\p\rnethack-bugs@linc.cis.upenn.edu", "\p", "\p");
-		(void) Alert(alrtMenuNote, (ModalFilterProcPtr) 0L);
+		(void) Alert(alrtMenuNote, (ModalFilterUPP) 0L);
 		ResetAlrtStage();
 	}
 }
@@ -939,7 +929,7 @@ static void
 optionEditor()
 {
 	ParamText("\pSorry, not yet implemented!  Use Options on the Help menu.", "\p", "\p", "\p");
-	(void) Alert(alrtMenuNote, (ModalFilterProcPtr) 0L);
+	(void) Alert(alrtMenuNote, (ModalFilterUPP) 0L);
 	ResetAlrtStage();
 }
 
@@ -952,7 +942,7 @@ Boolean doYes = 0 ;
 	short	itemHit;
 
 		ParamText("\pReally Save?", "\p", "\p", "\p");
-		itemHit = Alert(alrtMenu_NY, (ModalFilterProcPtr) 0L);
+		itemHit = Alert(alrtMenu_NY, (ModalFilterUPP) 0L);
 		ResetAlrtStage();
 
 		if (itemHit != bttnMenuAlertYes) {
@@ -978,7 +968,7 @@ Boolean doYes = 0 ;
 	short	itemHit;
 
 		ParamText("\pReally Quit?", "\p", "\p", "\p");
-		itemHit = Alert(alrtMenu_NY, (ModalFilterProcPtr) 0L);
+		itemHit = Alert(alrtMenu_NY, (ModalFilterUPP) 0L);
 		ResetAlrtStage();
 
 		if (itemHit != bttnMenuAlertYes) {

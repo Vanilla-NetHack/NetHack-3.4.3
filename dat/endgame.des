@@ -1,4 +1,4 @@
-#	SCCS Id: @(#)endgame.des	3.1	93/01/13
+#	SCCS Id: @(#)endgame.des	3.2	95/10/11
 #	Copyright (c) 1989 by Jean-Christophe Collet
 #	Copyright (c) 1992,1993 by Izchak Miller, David Cohrs,
 #                      and Timo Hakulinen
@@ -17,9 +17,9 @@ MESSAGE: "Prove thyself worthy or perish!"
 
 GEOMETRY:center,center
 # The player lands, upon arrival, in the
-# lower-right cavern.  The location of the 
+# lower-right cavern.  The location of the
 # portal to the next level is randomly chosen.
-# This map has no visible outer boundary, and 
+# This map has no visible outer boundary, and
 # is mostly diggable "rock".
 MAP
                                                                             
@@ -99,7 +99,7 @@ MONSTER:'E',"earth elemental",(21,02),hostile
 MONSTER:'E',"earth elemental",(21,03),hostile
 MONSTER:'H',"minotaur",(21,04)
 MONSTER:'E',"earth elemental",(21,05),hostile
-MONSTER:'T',"rock troll",(22,06)
+MONSTER:'T',"rock troll",(22,05)
 MONSTER:'E',"earth elemental",(22,06),hostile
 MONSTER:'E',"earth elemental",(23,06),hostile
 #
@@ -121,6 +121,8 @@ MONSTER:'T',"rock troll",(02,17)
 MONSTER:'E',"earth elemental",(04,17),hostile
 MONSTER:'E',"earth elemental",(04,18),hostile
 
+OBJECT:'`',"boulder",random
+
 
 MAZE:"air",' '
 FLAGS: noteleport,hardfloor,shortsighted
@@ -130,9 +132,9 @@ MESSAGE: "What a strange feeling!"
 MESSAGE: "You notice that there is no gravity here."
 GEOMETRY:center,center
 # The player lands, upon arrival, in the
-# lower-left area.  The location of the 
+# lower-left area.  The location of the
 # portal to the next level is randomly chosen.
-# This map has no visible outer boundary, and 
+# This map has no visible outer boundary, and
 # is all "air".
 MAP
 AAAAAAAAAAAAAAAAAAAAAAAACCCCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
@@ -222,9 +224,9 @@ MAZE:"fire",' '
 FLAGS: noteleport,hardfloor,shortsighted
 GEOMETRY:center,center
 # The player lands, upon arrival, in the
-# lower-right.  The location of the 
+# lower-right.  The location of the
 # portal to the next level is randomly chosen.
-# This map has no visible outer boundary, and 
+# This map has no visible outer boundary, and
 # is mostly open area, with lava lakes and bunches of fire traps.
 MAP
 ............................................................................
@@ -336,13 +338,13 @@ MONSTER:'&',"pit fiend",random
 MONSTER:'E',"fire elemental",random,hostile
 MONSTER:'S',"pit viper",random
 #
-MONSTER:'E',"fire elemental",random,hostile
-MONSTER:'E',"fire elemental",random,hostile
+MONSTER:':',"salamander",random,hostile
+MONSTER:':',"salamander",random,hostile
 MONSTER:'H',"minotaur",random
-MONSTER:'E',"fire elemental",random,hostile
-MONSTER:'v',"fire vortex",random
-MONSTER:'E',"fire elemental",random,hostile
-MONSTER:'E',"fire elemental",random,hostile
+MONSTER:':',"salamander",random,hostile
+MONSTER:'v',"steam vortex",random
+MONSTER:':',"salamander",random,hostile
+MONSTER:':',"salamander",random,hostile
 #
 MONSTER:'H',"fire giant",random
 MONSTER:'&',"barbed devil",random
@@ -357,10 +359,16 @@ MONSTER:'E',"fire elemental",random,hostile
 MONSTER:'E',"fire elemental",random,hostile
 #
 MONSTER:'&',"barbed devil",random
-MONSTER:'E',"fire elemental",random,hostile
-MONSTER:'v',"fire vortex",random
-MONSTER:'E',"fire elemental",random,hostile
-MONSTER:'E',"fire elemental",random,hostile
+MONSTER:':',"salamander",random,hostile
+MONSTER:'v',"steam vortex",random
+MONSTER:':',"salamander",random,hostile
+MONSTER:':',"salamander",random,hostile
+
+OBJECT:'`',"boulder",random
+OBJECT:'`',"boulder",random
+OBJECT:'`',"boulder",random
+OBJECT:'`',"boulder",random
+OBJECT:'`',"boulder",random
 
 
 MAZE:"water",' '
@@ -481,6 +489,8 @@ MAP
                              |...............|                             
                              -----------------                             
 ENDMAP
+# Rider locations
+RANDOM_PLACES:(23,9),(37,14),(51,9)
 # Where the player will land on arrival
 TELEPORT_REGION:(29,15,45,15),(30,15,44,15)
 # Lit courts
@@ -516,7 +526,7 @@ MONSTER:'@',"aligned priest",(19,09),noalign,hostile
 MONSTER:'@',"aligned priest",(19,10),noalign,hostile
 MONSTER:'A',"Angel",(20,09),noalign,hostile
 MONSTER:'A',"Angel",(20,10),noalign,hostile
-MONSTER:'&',"Pestilence",(23,09),hostile
+MONSTER:'&',"Pestilence",place[0],hostile
 # South-central round room
 MONSTER:'@',"aligned priest",(36,12),noalign,hostile
 MONSTER:'@',"aligned priest",(37,12),noalign,hostile
@@ -524,7 +534,7 @@ MONSTER:'@',"aligned priest",(38,12),noalign,hostile
 MONSTER:'@',"aligned priest",(36,13),noalign,hostile
 MONSTER:'A',"Angel",(38,13),noalign,hostile
 MONSTER:'A',"Angel",(37,13),noalign,hostile
-MONSTER:'&',"Death",(37,14),hostile
+MONSTER:'&',"Death",place[1],hostile
 # East round room
 MONSTER:'@',"aligned priest",(56,09),noalign,hostile
 MONSTER:'@',"aligned priest",(55,08),noalign,hostile
@@ -532,10 +542,10 @@ MONSTER:'@',"aligned priest",(55,09),noalign,hostile
 MONSTER:'@',"aligned priest",(55,10),noalign,hostile
 MONSTER:'A',"Angel",(54,09),noalign,hostile
 MONSTER:'A',"Angel",(54,10),noalign,hostile
-MONSTER:'&',"Famine",(51,09),hostile
+MONSTER:'&',"Famine",place[2],hostile
 #
 # The aligned horde
-# 
+#
 # We do not know in advance the alignment of the
 # player.  The mpeaceful bit will need resetting
 # when the level is created.  The setting here is

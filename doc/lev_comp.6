@@ -1,4 +1,4 @@
-.TH LEV_COMP 6 "29 Dec 1992"
+.TH LEV_COMP 6 "13 Dec 1995"
 .UC 4
 .SH NAME
 lev_comp \- NetHack special levels compiler
@@ -15,7 +15,7 @@ If no arguments are given, it reads standard input.
 .SH DESCRIPTION
 .PP
 .I Lev_comp
-is a special level compiler for NetHack version 3.1 and higher.  It
+is a special level compiler for NetHack version 3.2 and higher.  It
 takes description files as arguments and produces level files that can
 be loaded by NetHack at runtime.
 .PP
@@ -39,97 +39,115 @@ these warnings are sometimes superfluous, so they are not normally displayed.
 
 file		: /* nothing */
 		| levels
+		;
 
 levels		: level
 		| level levels
+		;
 
 level		: maze_level
-    		| room_level
+		| room_level
+		;
 
 maze_level	: maze_def flags lev_init messages regions
+		;
 
-room_level	: level_def flags lev_init messages
-		  rreg_init rooms corridors_def
+room_level	: level_def flags lev_init messages rreg_init rooms corridors_def
+		;
 
-level_def	: "LEVEL" ':' string
+level_def	: LEVEL_ID ':' string
+		;
 
 lev_init	: /* nothing */
-		| "INIT_MAP" ':' fgtyp ',' bgtyp ',' smooth ','
-		  joined ',' light_state ',' walled
+		| LEV_INIT_ID ':' CHAR ',' CHAR ',' BOOLEAN ',' BOOLEAN ',' light_state ',' walled
+		;
 
-fgtyp		: CHAR /* a MAP map_contents character */
-
-bgtyp		: CHAR /* a MAP map_contents character */
-
-smooth		: boolean
-
-joined		: boolean
-
-walled		: boolean | "random"
+walled		: BOOLEAN
+		| RANDOM_TYPE
+		;
 
 flags		: /* nothing */
-		| "FLAGS" ':' flag_list
+		| FLAGS_ID ':' flag_list
+		;
 
-flag_list	: flag_type
-		| flag_type ',' flag_list
-
-flag_type	: "noteleport" | "hardfloor" | "nommap"  | "shortsighted"
+flag_list	: FLAG_TYPE ',' flag_list
+		| FLAG_TYPE
+		;
 
 messages	: /* nothing */
 		| message messages
+		;
 
-message		: "MESSAGE" ':' STRING
+message		: MESSAGE_ID ':' STRING
+		;
 
 rreg_init	: /* nothing */
 		| rreg_init init_rreg
+		;
 
-init_rreg	: "RANDOM_OBJECTS" ':' object_list
-		| "RANDOM_MONSTERS" ':' monster_list
+init_rreg	: RANDOM_OBJECTS_ID ':' object_list
+		| RANDOM_MONSTERS_ID ':' monster_list
+		;
 
-rooms		: /* nothing */
+rooms		: /* Nothing  -  dummy room for use with INIT_MAP */
 		| roomlist
+		;
 
 roomlist	: aroom
-		| aroom rooms
+		| aroom roomlist
+		;
 
 corridors_def	: random_corridors
 		| corridors
+		;
 
-random_corridors: "RANDOM_CORRIDOR"
+random_corridors: RAND_CORRIDOR_ID
+		;
 
 corridors	: /* nothing */
 		| corridors corridor
+		;
 
-corridor	: "CORRIDOR" ':' corr_spec ',' corr_spec
-		| "CORRIDOR" ':' corr_spec ',' INTEGER
+corridor	: CORRIDOR_ID ':' corr_spec ',' corr_spec
+		| CORRIDOR_ID ':' corr_spec ',' INTEGER
+		;
 
-corr_spec	: '(' INTEGER ',' direction ',' door_pos ')'
-
-direction	: "north" | "south" | "east" | "west"
+corr_spec	: '(' INTEGER ',' DIRECTION ',' door_pos ')'
+		;
 
 aroom		: room_def room_details
 		| subroom_def room_details
+		;
 
-subroom_def	: "SUBROOM" ':' room_type ',' light_state ','
-		  subroom_pos ',' room_size ',' string
+subroom_def	: SUBROOM_ID ':' room_type ',' light_state ',' subroom_pos ',' room_size ',' string roomfill
+		;
 
-room_def	: "ROOM" ':' room_type ',' light_state ','
-		  room_pos ',' room_align ',' room_size
+room_def	: ROOM_ID ':' room_type ',' light_state ',' room_pos ',' room_align ',' room_size roomfill
+		;
+
+roomfill	: /* nothing */
+		| ',' BOOLEAN
+		;
 
 room_pos	: '(' INTEGER ',' INTEGER ')'
-		| "random"
+		| RANDOM_TYPE
+		;
 
 subroom_pos	: '(' INTEGER ',' INTEGER ')'
-		| "random"
+		| RANDOM_TYPE
+		;
 
 room_align	: '(' h_justif ',' v_justif ')'
-		| "random"
+		| RANDOM_TYPE
+		;
 
 room_size	: '(' INTEGER ',' INTEGER ')'
-		| "random"
+		| RANDOM_TYPE
+		;
 
 room_details	: /* nothing */
 		| room_details room_detail
+		;
 
 room_detail	: room_name
 		| room_chance
@@ -144,65 +162,82 @@ room_detail	: room_name
 		| gold_detail
 		| engraving_detail
 		| stair_detail
+		;
 
-room_name	: "NAME" ':' string
+room_name	: NAME_ID ':' string
+		;
 
-room_chance	: "CHANCE" ':' INTEGER
+room_chance	: CHANCE_ID ':' INTEGER
+		;
 
-room_door	: "DOOR" ':' secret ',' door_state ','
-		  door_wall ',' door_pos
+room_door	: DOOR_ID ':' secret ',' door_state ',' door_wall ',' door_pos
+		;
 
-secret		: boolean
-		| "random"
+secret		: BOOLEAN
+		| RANDOM_TYPE
+		;
 
-door_wall	: direction
-		| "random"
+door_wall	: DIRECTION
+		| RANDOM_TYPE
+		;
 
 door_pos	: INTEGER
-		| "random"
+		| RANDOM_TYPE
+		;
 
-boolean		: "true" | "false"
-
-maze_def	: "MAZE" ':' string ',' filling
+maze_def	: MAZE_ID ':' string ',' filling
+		;
 
 filling		: CHAR
-		| "random"
-regions 	: aregion
+		| RANDOM_TYPE
+		;
+
+regions		: aregion
 		| aregion regions
+		;
 
-aregion 	: map_definition reg_init map_details
+aregion		: map_definition reg_init map_details
+		;
 
-map_definition	: "NOMAP"
-		| map_geometry "MAP" map_contents "ENDMAP"
+map_definition	: NOMAP_ID
+		| map_geometry MAP_ID
+		;
 
-map_geometry	: "GEOMETRY" ':' h_justif ',' v_justif
+map_geometry	: GEOMETRY_ID ':' h_justif ',' v_justif
+		;
 
-map_contents	: /* see discussion below */
+h_justif	: LEFT_OR_RIGHT
+		| CENTER
+		;
 
-h_justif	: "left" | "half-left" | "right" | "half-right"
-		| "center"
-
-v_justif	: "top" | "bottom"
-		| "center"
+v_justif	: TOP_OR_BOT
+		| CENTER
+		;
 
 reg_init	: /* nothing */
 		| reg_init init_reg
+		;
 
-init_reg	: "RANDOM_OBJECTS" ':' object_list
-		| "RANDOM_PLACES" ':' place_list
-		| "RANDOM_MONSTERS" ':' monster_list
+init_reg	: RANDOM_OBJECTS_ID ':' object_list
+		| RANDOM_PLACES_ID ':' place_list
+		| RANDOM_MONSTERS_ID ':' monster_list
+		;
 
 object_list	: object
 		| object ',' object_list
+		;
 
 monster_list	: monster
 		| monster ',' monster_list
+		;
 
 place_list	: place
 		| place ',' place_list
+		;
 
 map_details	: /* nothing */
 		| map_details map_detail
+		;
 
 map_detail	: monster_detail
 		| object_detail
@@ -217,171 +252,225 @@ map_detail	: monster_detail
 		| altar_detail
 		| fountain_detail
 		| mazewalk_detail
-                | wallify_detail
+		| wallify_detail
 		| ladder_detail
 		| stair_detail
 		| gold_detail
 		| engraving_detail
 		| diggable_detail
 		| passwall_detail
+		;
 
-monster_detail	: "MONSTER" ':' monster_c ',' m_name ',' coordinate
-		  monster_infos
+monster_detail	: MONSTER_ID ':' monster_c ',' m_name ',' coordinate
+		 monster_infos
+		;
 
 monster_infos	: /* nothing */
 		| monster_infos monster_info
+		;
 
 monster_info	: ',' string
-		| ',' mon_attitude
-		| ',' mon_alertness
+		| ',' MON_ATTITUDE
+		| ',' MON_ALERTNESS
 		| ',' alignment
-		| ',' "m_feature" string
-		| ',' "m_monster" string
-		| ',' "m_object" string
+		| ',' MON_APPEARANCE string
+		;
 
-mon_attitude	: "peaceful" | "hostile"
+object_detail	: OBJECT_ID ':' object_desc
+		| COBJECT_ID ':' object_desc
+		;
 
-mon_alertness	: "asleep" | "awake"
+object_desc	: object_c ',' o_name ',' object_where object_infos
+		;
 
-object_detail	: "OBJECT" ':' object_c ',' o_name ',' coordinate
-		  object_infos
+object_where	: coordinate
+		| CONTAINED
+		;
 
 object_infos	: /* nothing */
-		| ',' STRING ',' enchantment
-    		| ',' curse_state ',' enchantment ',' art_name
+		| ',' curse_state ',' monster_id ',' enchantment optional_name
+		| ',' curse_state ',' enchantment optional_name
+		| ',' monster_id ',' enchantment optional_name
+		;
 
-curse_state	: "random"
-		| "blessed" | "uncursed" | "cursed"
+curse_state	: RANDOM_TYPE
+		| CURSE_TYPE
+		;
 
-enchantment	: INTEGER
-		| "random"
+monster_id	: STRING
+		;
 
-door_detail	: "DOOR" ':' door_state ',' coordinate
+enchantment	: RANDOM_TYPE
+		| INTEGER
+		;
 
-trap_detail	: "TRAP" ':' trap_name ',' coordinate
+optional_name	: /* nothing */
+		| ',' NONE
+		| ',' STRING
+		;
 
-drawbridge_detail: "DRAWBRIDGE" ':' coordinate ','
-		  direction ',' door_state
+door_detail	: DOOR_ID ':' door_state ',' coordinate
+		;
 
-mazewalk_detail	: "MAZEWALK" ':' coordinate ',' direction
+trap_detail	: TRAP_ID ':' trap_name ',' coordinate
+		| TRAP_ID ':' trap_name ',' coordinate ',' trap_chance
+		;
 
-wallify_detail	: "WALLIFY"
+drawbridge_detail: DRAWBRIDGE_ID ':' coordinate ',' DIRECTION ',' door_state
+		;
 
-ladder_detail	: "LADDER" ':' coordinate ',' up_or_down
+mazewalk_detail : MAZEWALK_ID ':' coordinate ',' DIRECTION
+		;
 
-stair_detail	: "STAIR" ':' coordinate ',' up_or_down
+wallify_detail	: WALLIFY_ID
+		;
 
-stair_region	: "STAIR" ':' lev_region ',' lev_region ',' up_or_down
+ladder_detail	: LADDER_ID ':' coordinate ',' UP_OR_DOWN
+		;
 
-up_or_down:	: "up" | "down"
+stair_detail	: STAIR_ID ':' coordinate ',' UP_OR_DOWN
+		;
 
-portal_region	: "PORTAL" ':' lev_region ',' lev_region ',' string
+stair_region	: STAIR_ID ':' lev_region ',' lev_region ',' UP_OR_DOWN
+		;
 
-teleprt_region	: "TELEPORT_REGION" ':' lev_region
-		  ',' lev_region teleprt_detail
+portal_region	: PORTAL_ID ':' lev_region ',' lev_region ',' string
+		;
 
-branch_region	: "BRANCH" ':' lev_region ',' lev_region
+teleprt_region	: TELEPRT_ID ':' lev_region ',' lev_region teleprt_detail
+		;
+
+branch_region	: BRANCH_ID ':' lev_region ',' lev_region
+		;
 
 teleprt_detail	: /* empty */
-		| ',' up_or_down
+		| ',' UP_OR_DOWN
+		;
 
 lev_region	: region
-		| "levregion"
-		  '(' INTEGER ',' INTEGER ',' INTEGER ',' INTEGER ')'
+		| LEV '(' INTEGER ',' INTEGER ',' INTEGER ',' INTEGER ')'
+		;
 
-fountain_detail	: "FOUNTAIN" ':' coordinate
+fountain_detail : FOUNTAIN_ID ':' coordinate
+		;
 
-sink_detail	: "SINK" ':' coordinate
+sink_detail : SINK_ID ':' coordinate
+		;
 
-pool_detail	: "POOL" ':' coordinate
+pool_detail : POOL_ID ':' coordinate
+		;
 
-diggable_detail	: "NON_DIGGABLE" ':' region
+diggable_detail : NON_DIGGABLE_ID ':' region
+		;
 
-passwall_detail	: "NON_PASSWALL" ':' region
+passwall_detail : NON_PASSWALL_ID ':' region
+		;
 
-region_detail	: "REGION" ':' region ',' light_state ','
-		  room_type prefilled
+region_detail	: REGION_ID ':' region ',' light_state ',' room_type prefilled
+		;
 
-altar_detail	: "ALTAR" ':' coordinate ',' alignment ',' altar_type
+altar_detail	: ALTAR_ID ':' coordinate ',' alignment ',' altar_type
+		;
 
-gold_detail	: "GOLD" ':' amount ',' coordinate
+gold_detail	: GOLD_ID ':' amount ',' coordinate
+		;
 
-engraving_detail: "ENGRAVING" ':' coordinate ','
-		  engraving_type ',' string
+engraving_detail: ENGRAVING_ID ':' coordinate ',' engraving_type ',' string
+		;
 
 monster_c	: monster
-		| "random"
+		| RANDOM_TYPE
 		| m_register
+		;
 
 object_c	: object
-		| "random"
+		| RANDOM_TYPE
 		| o_register
+		;
 
 m_name		: string
-		| "random"
+		| RANDOM_TYPE
+		;
 
 o_name		: string
-		| "random"
+		| RANDOM_TYPE
+		;
 
 trap_name	: string
-		| "random"
+		| RANDOM_TYPE
+		;
+
+trap_chance	: CHANCE_ID ':' INTEGER
+		;
 
 room_type	: string
-		| "random"
+		| RANDOM_TYPE
+		;
 
 prefilled	: /* empty */
-		| ',' filling
-		| ',' filling ',' irregular
-
-filling		: "filled" | "unfilled"
-
-irregular	: boolean /* irregular shaped room around region */
+		| ',' FILLING
+		| ',' FILLING ',' BOOLEAN
+		;
 
 coordinate	: coord
 		| p_register
-		| "random"
+		| RANDOM_TYPE
+		;
 
-door_state	: "open" | "closed" | "locked" | "nodoor" | "broken"
-		| "random"
+door_state	: DOOR_STATE
+		| RANDOM_TYPE
+		;
 
-light_state	: "lit" | "unlit"
-		| "random"
+light_state	: LIGHT_STATE
+		| RANDOM_TYPE
+		;
 
-alignment	: "noalign" | "law" | "neutral" | "chaos"
+alignment	: ALIGNMENT
 		| a_register
-		| "random"
+		| RANDOM_TYPE
+		;
 
-altar_type	: "sanctum" | "shrine" | "altar"
-		| "random"
+altar_type	: ALTAR_TYPE
+		| RANDOM_TYPE
+		;
 
-p_register	: "place" '[' INTEGER ']'
+p_register	: P_REGISTER '[' INTEGER ']'
+		;
 
-o_register	: "object" '[' INTEGER ']'
+o_register	: O_REGISTER '[' INTEGER ']'
+		;
 
-m_register	: "monster" '[' INTEGER ']'
+m_register	: M_REGISTER '[' INTEGER ']'
+		;
 
-a_register	: "align" '[' INTEGER ']'
+a_register	: A_REGISTER '[' INTEGER ']'
+		;
 
 place		: coord
+		;
 
-monster 	: CHAR
+monster		: CHAR
+		;
 
 object		: CHAR
+		;
 
 string		: STRING
-
-art_name	: STRING
-		| "none"
+		;
 
 amount		: INTEGER
-		| "random"
+		| RANDOM_TYPE
+		;
 
-engraving_type	: "dust" | "engrave" | "burn" | "mark"
-		| "random"
+engraving_type	: ENGRAVING_TYPE
+		| RANDOM_TYPE
+		;
 
 coord		: '(' INTEGER ',' INTEGER ')'
+		;
 
 region		: '(' INTEGER ',' INTEGER ',' INTEGER ',' INTEGER ')'
+		;
 .fi
 .PP
 .I NOTE:
@@ -413,6 +502,7 @@ The maximum size of a map is normally 76 columns by 21 rows.
 \&'}'	a part of a moat or other deep water
 \&'P'	a pool
 \&'L'	lava
+\&'W'	water (yes, different from a pool)
 \&'#'	a corridor
 \&'.'	a normal room location (unlit unless lit in a REGION declaration)
 \&' '	stone
@@ -443,6 +533,10 @@ RANDOM_PLACES: (4,3), (4,5), (3,4), (5,4)
 MONSTER: 'd', "hell hound", place[0]
 # a chest on another random side
 OBJECT: '(', "chest", place[1]
+# a sack on a random side, with a diamond and ruby in it
+CONTAINER: '(', "sack", place[2]
+OBJECT: '*', "diamond", contained
+OBJECT: '*', "ruby", contained
 # a random dragon somewhere
 MONSTER: 'D', random, random
 # a random trap in the EAST end
@@ -451,7 +545,7 @@ TRAP: random, (6,4)
 MONSTER: ';', "electric eel", (4,8)
 # make the walls non-diggable
 NON_DIGGABLE: (0,0,8,8)
-TELEPORT_REGION: lev_region(0,0,79,20), (0,0,8,8)
+TELEPORT_REGION: levregion(0,0,79,20), (0,0,8,8)
 .fi
 .PP
 This example will produce a file named "fortress" that can be integrated into
@@ -460,9 +554,9 @@ one of the numerous mazes of the game.
 Note especially the final, TELEPORT_REGION specification.  This says
 that level teleports or other non-stairway arrivals on this level can
 land anywhere on the level except the area of the map.  This shows the
-use of the ``lev_region'' prefix allowed in certain region specifications.
+use of the ``levregion'' prefix allowed in certain region specifications.
 Normally, regions apply only to the most recent MAP specification, but
-when prefixed with ``lev_region'', one can refer to any area of the
+when prefixed with ``levregion'', one can refer to any area of the
 level, regardless of the placement of the current MAP in the level.
 .SH AUTHOR
 .PP

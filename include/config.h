@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)config.h	3.1	92/08/29	*/
+/*	SCCS Id: @(#)config.h	3.2	96/01/15	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -20,14 +20,20 @@
  * MS DOS - compilers
  *
  * Microsoft C auto-defines MSDOS,
- * Borland C   auto-defines __TURBOC__,
+ * Borland C   auto-defines __MSDOS__,
  * DJGPP       auto-defines MSDOS.
  */
 
 /* #define MSDOS	/* use if not defined by compiler or cases below */
 
-#ifdef __TURBOC__
+#ifdef __MSDOS__	/* for Borland C */
+# ifndef MSDOS
 # define MSDOS
+# endif
+#endif
+
+#ifdef __TURBOC__
+# define __MSC		/* increase Borland C compatibility in libraries */
 #endif
 
 #ifdef MSDOS
@@ -37,24 +43,29 @@
 /*
  * Mac Stuff.
  */
-
-#ifdef applec		/*	MPW auto-defined symbol			*/
+#ifdef applec		/*	MPW auto-defined symbol */
 # define MAC
-# undef UNIX		/*	Just in case				*/
+# undef UNIX
 #endif
 
-#ifdef THINK_C
+#ifdef THINK_C		/* Think C auto-defined symbol */
 # define MAC
 # define NEED_VARARGS
-# undef UNIX		/*	Just in case				*/
+# undef UNIX
 #endif
 
-/* #define MAC		/*	We're on some mac-ish platform	*/
+#ifdef __MWERKS__	/* defined by Metrowerks compiler */
+# define MAC
+# define NEED_VARARGS
+# define USE_STDARGS
+# undef UNIX
+#endif
+
 
 /*
  * Amiga setup.
  */
-#ifdef AZTEC_C 	/* Manx auto-defines this */
+#ifdef AZTEC_C	/* Manx auto-defines this */
 # ifdef MCH_AMIGA	/* Manx auto-defines this for AMIGA */
 #  ifndef AMIGA
 #define AMIGA		/* define for Commodore-Amiga */
@@ -65,12 +76,18 @@
 #ifdef __SASC_60
 # define NEARDATA __near /* put some data close */
 #else
+# ifdef _DCC
+# define NEARDATA __near /* put some data close */
+# else
 # define NEARDATA
+# endif
 #endif
 #ifdef AMIGA
-# ifdef UNIX
-	"Please re-read the compilation documentation.  Thank you."
-# endif
+# define NEED_VARARGS
+# undef	UNIX
+# define DLB
+# define HACKDIR "NetHack:"
+# define NO_MACRO_CPATH
 #endif
 
 /*
@@ -91,10 +108,9 @@
  * Windows NT Autodetection
  */
 
-#ifdef WIN32CON
+#ifdef WIN32
 # undef UNIX
 # undef MSDOS
-# define WIN32              /* need for ALL NT environs */
 #endif
 
 /*
@@ -121,15 +137,18 @@
 			/* Hint: if you're not developing code, don't define
 			   ULTRIX_PROTO. */
 
-#ifdef AMIGA
-# define NEED_VARARGS
-#endif
-
 #ifdef VMS	/* really old compilers need special handling, detected here */
 # undef UNIX
-# ifdef __DECC		/* buggy early versions want widened prototypes	*/
-#  define NOTSTDC	/* except when typedefs are involved		*/
-#  define USE_VARARGS
+# ifdef __DECC
+#  ifndef __DECC_VER	/* buggy early versions want widened prototypes	*/
+#   define NOTSTDC	/* except when typedefs are involved		*/
+#   define USE_VARARGS
+#  else
+#   define NHSTDC
+#   define USE_STDARG
+#   define POSIX_TYPES
+#   define _DECC_V4_SOURCE	/* avoid some incompatible V5.x changes */
+#  endif
 #  undef __HIDE_FORBIDDEN_NAMES	/* need non-ANSI library support functions */
 # else
 #  ifdef VAXC	/* must use CC/DEFINE=ANCIENT_VAXC for vaxc v2.2 or older */
@@ -139,7 +158,7 @@
 #   else		/* vaxc v2.3,2.4,or 3.x, or decc in vaxc mode */
 #     if defined(USE_PROTOTYPES) /* this breaks 2.2 (*forces* use of ANCIENT)*/
 #      define __STDC__ 0 /* vaxc is not yet ANSI compliant, but close enough */
-#      define signed	 /* well, almost close enough */
+#      define signed	/* well, almost close enough */
 #include <stddef.h>
 #      define UNWIDENED_PROTOTYPES
 #     endif
@@ -195,14 +214,12 @@
  * Define the default window system.  This should be one that is compiled
  * into your system (see defines above).  Known window systems are:
  *
- *	tty, X11, mac, amii
+ *	tty, X11, mac, amii, win32
  */
 
 /* MAC also means MAC windows */
 #ifdef MAC
 # ifndef	AUX
-/* #  undef TTY_GRAPHICS /* Macs now handle TTY graphics */
-#  undef X11_GRAPHICS
 #  define DEFAULT_WINDOW_SYS "mac"
 # endif
 #endif
@@ -210,22 +227,32 @@
 /* Amiga supports AMII_GRAPHICS and/or TTY_GRAPHICS */
 #ifdef AMIGA
 # define AMII_GRAPHICS			/* (optional) */
-# ifdef SHAREDLIB
-#  define DEFAULT_WINDOW_SYS "amii"	/* "amii" or "tty" */
-# else
-#  ifdef VIEWWINDOW
-#   define DEFAULT_WINDOW_SYS "amiv"	/* "amii" or "tty" */
-#  else
-#   define DEFAULT_WINDOW_SYS "amii"	/* "amii" or "tty" */
-#  endif
-# endif
+# define DEFAULT_WINDOW_SYS "amii"	/* "amii", "amitile" or "tty" */
+#endif
+
+/* Windows NT supports TTY_GRAPHICS */
+#ifdef WIN32
+#  define DEFAULT_WINDOW_SYS "tty"
 #endif
 
 #ifndef DEFAULT_WINDOW_SYS
 # define DEFAULT_WINDOW_SYS "tty"
 #endif
 
-
+#ifdef X11_GRAPHICS
+/*
+ * There are two ways that X11 tiles may be defined.  (1) using a custom
+ * format loaded by NetHack code, or (2) using the XPM format loaded by
+ * the free XPM library.  The second option allows you to then use other
+ * programs to generate tiles files.  For example, the PBMPlus tools
+ * would allow:
+ *  xpmtoppm <x11tiles.xpm | pnmscale 1.25 | ppmquant 90 >x11tiles_big.xpm
+ */
+/* # define USE_XPM		/* Disable if you do not have the XPM library */
+# ifdef USE_XPM
+#  define GRAPHIC_TOMBSTONE	/* Use graphical tombstone (rip.xpm) */
+# endif
+#endif
 
 /*
  * Section 2:	Some global parameters and filenames.
@@ -273,6 +300,13 @@
 #endif
 
 /*
+ *	Data librarian.  Defining DLB places most of the support files into
+ *	a tar-like file, thus making a neater installation.  See *conf.h
+ *	for detailed configuration.
+ */
+/* #define DLB		/* not supported on all platforms */
+
+/*
  *	Defining INSURANCE slows down level changes, but allows games that
  *	died due to program or system crashes to be resumed from the point
  *	of the last level change, after running a utility program.
@@ -288,7 +322,9 @@
  * If you define HACKDIR, then this will be the default playground;
  * otherwise it will be the current directory.
  */
-#define HACKDIR "/usr/games/lib/nethackdir" 	/* nethack directory */
+# ifndef HACKDIR
+#  define HACKDIR "/usr/games/lib/nethackdir"	/* nethack directory */
+# endif
 
 /*
  * Some system administrators are stupid enough to make Hack suid root
@@ -355,7 +391,9 @@ typedef signed char	schar;
  *
  *	typedef unsigned short int uchar;
  */
+#ifndef _AIX32		/* identical typedef in system file causes trouble */
 typedef unsigned char	uchar;
+#endif
 
 /*
  * Various structures have the option of using bitfields to save space.
@@ -376,23 +414,16 @@ typedef unsigned char	uchar;
  * particular cannot tolerate the increase in data size; other systems can
  * flip a coin weighted to local conditions.)
  *
- * If VISION_TABLES is defined, two-dimensional tables will be generated.
- * Some compilers need braces around the rows of such arrays; some need
- * them not to be there.  Known preferences:
- *	Braces:		Sun, DEC vaxen (Ultrix), DEC Mips
- *			Bull DPX/2 K&R (Green Hills)
- *	No Braces:	gcc, hc (IBM High C compiler), AT&T 3B, MSC 5.1
- *			Bull DPX/2 Ansi (Green Hills/-Xa option), MPW C
  * If VISION_TABLES is not defined, things will be faster if you can use
  * MACRO_CPATH.  Some cpps, however, cannot deal with the size of the
  * functions that have been macroized.
  */
 
 /*#define VISION_TABLES	/* use vision tables generated at compile time */
-#ifdef VISION_TABLES
-# define BRACES		/* put braces around rows of 2d arrays */
-#else
-# define MACRO_CPATH	/* use clear_path macros instead of functions */
+#ifndef VISION_TABLES
+# ifndef NO_MACRO_CPATH
+#  define MACRO_CPATH	/* use clear_path macros instead of functions */
+# endif
 #endif
 
 
@@ -403,35 +434,23 @@ typedef unsigned char	uchar;
  * Conditional compilation of special options are controlled here.
  * If you define the following flags, you will add not only to the
  * complexity of the game but also to the size of the load module.
- *
- * Note:  Commenting MULDGN will yield a game similar to 3.0, without
- * Quest dungeons and tasks, and without some other special dungeons. 
  */
 
-/* game features */
-#define POLYSELF	/* Polymorph self code by Ken Arromdee */
-#define SOUNDS		/* Add more life to the dungeon */
 /* dungeon features */
+#define WEAPON_SKILLS	/* Weapon skills - Stephen White */
 #define SINKS		/* Kitchen sinks - Janet Walz */
 /* dungeon levels */
 #define WALLIFIED_MAZE	/* Fancy mazes - Jean-Christophe Collet */
 #define REINCARNATION	/* Special Rogue-like levels */
 /* monsters & objects */
 #define KOPS		/* Keystone Kops by Scott R. Turner */
-#define ARMY		/* Soldiers, barracks by Steve Creps */
 #define SEDUCE		/* Succubi/incubi seduction, by KAA, suggested by IM */
-#define WALKIES		/* Leash code by M. Stephenson */
 #define TOURIST		/* Tourist players with cameras and Hawaiian shirts */
-#define TUTTI_FRUTTI	/* fruit option as in Rogue, but which works, by KAA */
-#define MUSE		/* Let monsters use more things - KAA */
-#define MULDGN		/* Multi-branch dungeons MRS & IM */
 /* difficulty */
 #define ELBERETH	/* Engraving the E-word repels monsters */
-#define EXPLORE_MODE	/* Allow non-scoring play with additional powers */
 /* I/O */
 #define REDO		/* support for redoing last command - DGK */
-#define COM_COMPL	/* Command line completion by John S. Bien */
-#if !defined(AMIGA) && !defined(MAC)
+#if !defined(MAC)
 # define CLIPPING	/* allow smaller screens -- ERS */
 #endif
 

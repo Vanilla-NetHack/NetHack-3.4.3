@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)minion.c	3.1	92/11/01	*/
+/*	SCCS Id: @(#)minion.c	3.2	95/12/20	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -10,46 +10,41 @@ void
 msummon(ptr)		/* ptr summons a monster */
 register struct permonst *ptr;
 {
-	register int dtype = 0, cnt = 0, atyp = sgn(ptr->maligntyp);
+	register int dtype = 0, cnt = 0;
+	aligntyp atyp = sgn(ptr->maligntyp);
 
 	if (is_dprince(ptr) || (ptr == &mons[PM_WIZARD_OF_YENDOR])) {
-
 	    dtype = (!rn2(20)) ? dprince(atyp) :
 				 (!rn2(4)) ? dlord(atyp) : ndemon(atyp);
-	    cnt = (!rn2(4) && !is_dprince(&mons[dtype])) ? 2 : 1;
-
+	    cnt = (!rn2(4) && !is_ndemon(&mons[dtype])) ? 2 : 1;
 	} else if (is_dlord(ptr)) {
-
 	    dtype = (!rn2(50)) ? dprince(atyp) :
 				 (!rn2(20)) ? dlord(atyp) : ndemon(atyp);
 	    cnt = (!rn2(4) && is_ndemon(&mons[dtype])) ? 2 : 1;
-
 	} else if (is_ndemon(ptr)) {
-
 	    dtype = (!rn2(20)) ? dlord(atyp) :
 				 (!rn2(6)) ? ndemon(atyp) : monsndx(ptr);
 	    cnt = 1;
 	} else if (is_lminion(ptr)) {
-
 	    dtype = (is_lord(ptr) && !rn2(20)) ? llord() :
 		     (is_lord(ptr) || !rn2(6)) ? lminion() : monsndx(ptr);
 	    cnt = (!rn2(4) && !is_lord(&mons[dtype])) ? 2 : 1;
-
 	}
 
 	if (!dtype) return;
 
+	/* sanity checks */
+	if (cnt > 1 && (mons[dtype].geno & G_UNIQ)) cnt = 1;
 	/*
 	 * If this daemon is unique and being re-summoned (the only way we
 	 * could get this far with an extinct dtype), try another.
 	 */
-	if (mons[dtype].geno & (G_EXTINCT | G_GENOD)) {
+	if (mvitals[dtype].mvflags & G_GONE) {
 	    dtype = ndemon(atyp);
 	    if (!dtype) return;
 	}
 
 	while (cnt > 0) {
-
 	    (void)makemon(&mons[dtype], u.ux, u.uy);
 	    cnt--;
 	}
@@ -99,7 +94,7 @@ boolean talk;
 	mon = makemon(&mons[mnum], u.ux, u.uy);
     if (mon) {
 	if (talk) {
-	    pline("The voice of %s booms:", align_gname(alignment));
+	    pline_The("voice of %s booms:", align_gname(alignment));
 	    verbalize("Thou shalt pay for thy indiscretion!");
 	    if (!Blind)
 		pline("%s appears before you.", Amonnam(mon));
@@ -109,7 +104,7 @@ boolean talk;
     }
 }
 
-#define	Athome	(Inhell && !mtmp->cham)
+#define Athome	(Inhell && !mtmp->cham)
 
 int
 demon_talk(mtmp)		/* returns 1 if it won't attack. */
@@ -126,12 +121,11 @@ register struct monst *mtmp;
 
 	/* Slight advantage given. */
 	if (is_dprince(mtmp->data) && mtmp->minvis) {
-	    mtmp->minvis = 0;
+	    mtmp->minvis = mtmp->perminvis = 0;
 	    if (!Blind) pline("%s appears before you.", Amonnam(mtmp));
 	    newsym(mtmp->mx,mtmp->my);
 	}
 	if (u.usym == S_DEMON) {	/* Won't blackmail their own. */
-
 	    pline("%s says, \"Good hunting, %s.\" and vanishes.",
 		  Amonnam(mtmp), flags.female ? "Sister" : "Brother");
 	    rloc(mtmp);
@@ -139,7 +133,7 @@ register struct monst *mtmp;
 	}
 	demand = (u.ugold * (rnd(80) + 20 * Athome)) /
 		 100 * (1 + (sgn(u.ualign.type) == sgn(mtmp->data->maligntyp)));
-	if (!demand)  		/* you have no gold */
+	if (!demand)		/* you have no gold */
 	    return mtmp->mpeaceful = 0;
 	else {
 	    pline("%s demands %ld zorkmid%s for safe passage.",
@@ -166,7 +160,7 @@ long
 bribe(mtmp)
 struct monst *mtmp;
 {
-	char buf[80];
+	char buf[BUFSZ];
 	long offer;
 
 	getlin("How much will you offer?", buf);
@@ -174,13 +168,13 @@ struct monst *mtmp;
 
 	/*Michael Paddon -- fix for negative offer to monster*/
 	/*JAR880815 - */
- 	if (offer < 0L) {
- 		You("try to shortchange %s, but fumble.",
- 			mon_nam(mtmp));
- 		offer = 0L;
- 	} else if (offer == 0L) {
+	if (offer < 0L) {
+		You("try to shortchange %s, but fumble.",
+			mon_nam(mtmp));
+		offer = 0L;
+	} else if (offer == 0L) {
 		You("refuse.");
- 	} else if (offer >= u.ugold) {
+	} else if (offer >= u.ugold) {
 		You("give %s all your gold.", mon_nam(mtmp));
 		offer = u.ugold;
 	} else You("give %s %ld zorkmid%s.", mon_nam(mtmp), offer,
@@ -200,7 +194,7 @@ aligntyp atyp;
 
 	for (tryct = 0; tryct < 20; tryct++) {
 	    pm = rn1(PM_DEMOGORGON + 1 - PM_ORCUS, PM_ORCUS);
-	    if (!(mons[pm].geno & (G_GENOD | G_EXTINCT)) &&
+	    if (!(mvitals[pm].mvflags & G_GONE) &&
 		    (atyp == A_NONE || sgn(mons[pm].maligntyp) == sgn(atyp)))
 		return(pm);
 	}
@@ -215,7 +209,7 @@ aligntyp atyp;
 
 	for (tryct = 0; tryct < 20; tryct++) {
 	    pm = rn1(PM_YEENOGHU + 1 - PM_JUIBLEX, PM_JUIBLEX);
-	    if (!(mons[pm].geno & (G_GENOD | G_EXTINCT)) &&
+	    if (!(mvitals[pm].mvflags & G_GONE) &&
 		    (atyp == A_NONE || sgn(mons[pm].maligntyp) == sgn(atyp)))
 		return(pm);
 	}
@@ -226,7 +220,7 @@ aligntyp atyp;
 int
 llord()
 {
-	if (!(mons[PM_ARCHON].geno & (G_GENOD | G_EXTINCT)))
+	if (!(mvitals[PM_ARCHON].mvflags & G_GONE))
 		return(PM_ARCHON);
 
 	return(lminion());	/* approximate */

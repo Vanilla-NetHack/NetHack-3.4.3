@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)ball.c	3.1	93/05/15	*/
+/*	SCCS Id: @(#)ball.c	3.2	95/05/31	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -25,7 +25,7 @@ ballfall()
 	}
 	if(gets_hit){
 		int dmg = rn1(7,25);
-		pline("The iron ball falls on your %s.",
+		pline_The("iron ball falls on your %s.",
 			body_part(HEAD));
 		if (uarmh)
 		    if(is_metallic(uarmh)) {
@@ -99,17 +99,12 @@ placebc()
     }
 
     (void) flooreffects(uchain, u.ux, u.uy, "");	/* chain might rust */
-    uchain->nobj = fobj;		/* put chain on object list */
-    fobj = uchain;
 
     if (carried(uball))		/* the ball is carried */
 	u.bc_order = BCPOS_DIFFER;
     else {
 	/* ball might rust -- already checked when carried */
 	(void) flooreffects(uball, u.ux, u.uy, "");
-	uball->nobj = fobj;		/* put ball on object list */
-	fobj = uball;
-
 	place_object(uball, u.ux, u.uy);
 	u.bc_order = BCPOS_CHAIN;
     }
@@ -127,13 +122,13 @@ unplacebc()
     if (u.uswallow) return;	/* ball&chain not placed while swallowed */
 
     if (!carried(uball)) {
-	freeobj(uball);
+	obj_extract_self(uball);
 	if (Blind && (u.bc_felt & BC_BALL))		/* drop glyph */
 	    levl[uball->ox][uball->oy].glyph = u.bglyph;
 
 	newsym(uball->ox,uball->oy);
     }
-    freeobj(uchain);
+    obj_extract_self(uchain);
     if (Blind && (u.bc_felt & BC_CHAIN))		/* drop glyph */
 	levl[uchain->ox][uchain->oy].glyph = u.cglyph;
 
@@ -348,10 +343,11 @@ xchar ballx, bally, chainx, chainy;	/* only matter !before */
  *  Should not be called while swallowed.
  */
 boolean
-drag_ball(x, y, bc_control, ballx, bally, chainx, chainy)
+drag_ball(x, y, bc_control, ballx, bally, chainx, chainy, cause_delay)
 xchar x, y;
 int *bc_control;
 xchar *ballx, *bally, *chainx, *chainy;
+boolean *cause_delay;
 {
 	struct trap *t = (struct trap *)0;
 
@@ -360,6 +356,7 @@ xchar *ballx, *bally, *chainx, *chainy;
 	*chainx = uchain->ox;
 	*chainy = uchain->oy;
 	*bc_control = 0;
+	*cause_delay = FALSE;
 
 	if (dist2(x, y, uchain->ox, uchain->oy) <= 2) {	/* nothing moved */
 	    move_bc(1, *bc_control, *ballx, *bally, *chainx, *chainy);
@@ -368,10 +365,25 @@ xchar *ballx, *bally, *chainx, *chainy;
 
 	if (carried(uball) || dist2(x, y, uball->ox, uball->oy) < 3 ||
 		(uball->ox == uchain->ox && uball->oy == uchain->oy)) {
+	    /*
+	     * Case where the ball doesn't move but the chain can't just move
+	     * to the player's position:
+	     *   @                                             _
+	     *    _    moving southwest becomes  @_  and not  @
+	     *   0                                0            0
+	     */
 	    *bc_control = BC_CHAIN;
 	    move_bc(1, *bc_control, *ballx, *bally, *chainx, *chainy);
-	    *chainx = u.ux;
-	    *chainy = u.uy;
+	    if (dist2(x, y, uball->ox, uball->oy) == 2 &&
+		    dist2(x, y, uchain->ox, uchain->oy) == 4) {
+		if (uchain->oy == y)
+		    *chainx = uball->ox;
+		else
+		    *chainy = uball->oy;
+	    } else {
+		*chainx = u.ux;
+		*chainy = u.uy;
+	    }
 	    return TRUE;
 	}
 
@@ -390,10 +402,11 @@ xchar *ballx, *bally, *chainx, *chainy;
 	    || ((t = t_at(uchain->ox, uchain->oy)) &&
 			(t->ttyp == PIT ||
 			 t->ttyp == SPIKED_PIT ||
+			 t->ttyp == HOLE ||
 			 t->ttyp == TRAPDOOR)) ) {
 
 	    if (Levitation) {
-		You("feel a tug from the iron ball.");
+		You_feel("a tug from the iron ball.");
 		if (t) t->tseen = 1;
 	    } else {
 		struct monst *victim;
@@ -416,11 +429,11 @@ xchar *ballx, *bally, *chainx, *chainy;
 			}
 		    }
 		    if (tmp >= rnd(20))
-			(void) hmon(victim,uball,1); 
-		    else 
+			(void) hmon(victim,uball,1);
+		    else
 			miss(xname(uball), victim);
 
-		} 		/* now check again in case mon died */
+		}		/* now check again in case mon died */
 		if (!m_at(uchain->ox, uchain->oy)) {
 		    u.ux = uchain->ox;
 		    u.uy = uchain->oy;
@@ -435,18 +448,17 @@ xchar *ballx, *bally, *chainx, *chainy;
 		move_bc(0, *bc_control, *ballx, *bally, *chainx, *chainy);
 		spoteffects();
 		return FALSE;
-	    } 
+	    }
 	}
 
 	*bc_control = BC_BALL|BC_CHAIN;;
-	nomul(-2);
-	nomovemsg = "";
 
 	move_bc(1, *bc_control, *ballx, *bally, *chainx, *chainy);
 	*ballx  = uchain->ox;
 	*bally  = uchain->oy;
 	*chainx = u.ux;
 	*chainy = u.uy;
+	*cause_delay = TRUE;
 	return TRUE;
 }
 
@@ -480,7 +492,7 @@ xchar x, y;
 		break;
 	    case TT_WEB:
 		pline(pullmsg, "web");
-		pline("The web is destroyed!");
+		pline_The("web is destroyed!");
 		deltrap(t_at(u.ux,u.uy));
 		break;
 	    case TT_LAVA:
@@ -508,7 +520,7 @@ xchar x, y;
 			    (is_pool(x, y) ||
 			     ((t = t_at(x, y)) &&
 			      (t->ttyp == PIT || t->ttyp == SPIKED_PIT ||
-			       t->ttyp == TRAPDOOR)))) {
+			       t->ttyp == TRAPDOOR || t->ttyp == HOLE)))) {
 	    u.ux = x;
 	    u.uy = y;
 	} else {
@@ -530,7 +542,8 @@ xchar x, y;
 	    u.bc_order = bc_order();
 	}
 	newsym(u.ux0,u.uy0);		/* clean up old position */
-	spoteffects();
+	if (u.ux0 != u.ux || u.uy0 != u.uy)
+	    spoteffects();
     }
 }
 
@@ -543,7 +556,7 @@ litter()
 
 	while (otmp) {
 		nextobj = otmp->nobj;
-		if ((otmp != uball) && (rnd(capacity) <= otmp->owt)) {
+		if ((otmp != uball) && (rnd(capacity) <= (int)otmp->owt)) {
 			if (otmp == uwep)
 				setuwep((struct obj *)0);
 			if ((otmp != uwep) && (canletgo(otmp, ""))) {
@@ -562,36 +575,36 @@ drag_down()
 	boolean forward;
 	uchar dragchance = 3;
 
-	/* 
+	/*
 	 *	Assume that the ball falls forward if:
 	 *
 	 *	a) the character is wielding it, or
-	 *	b) the character has both hands available to hold it (i.e. is 
-	 *	   not wielding any weapon), or 
+	 *	b) the character has both hands available to hold it (i.e. is
+	 *	   not wielding any weapon), or
 	 *	c) (perhaps) it falls forward out of his non-weapon hand
 	 */
 
 	forward = carried(uball) && (uwep == uball || !uwep || !rn2(3));
 
-	if (carried(uball)) 
+	if (carried(uball))
 		You("lose your grip on the iron ball.");
 
 	if (forward) {
 		if(rn2(6)) {
-			pline("The iron ball drags you downstairs!");
+			pline_The("iron ball drags you downstairs!");
 			losehp(rnd(6), "dragged downstairs by an iron ball",
 				NO_KILLER_PREFIX);
 			litter();
 		}
 	} else {
 		if(rn2(2)) {
-			pline("The iron ball smacks into you!");
+			pline_The("iron ball smacks into you!");
 			losehp(rnd(20), "iron ball collision", KILLED_BY_AN);
 			exercise(A_STR, FALSE);
 			dragchance -= 2;
-		} 
+		}
 		if( (int) dragchance >= rnd(6)) {
-			pline("The iron ball drags you downstairs!");
+			pline_The("iron ball drags you downstairs!");
 			losehp(rnd(3), "dragged downstairs by an iron ball",
 				NO_KILLER_PREFIX);
 			exercise(A_STR, FALSE);

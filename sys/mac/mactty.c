@@ -12,12 +12,15 @@
 
 #include "mttypriv.h"
 
+/* these declarations are here becaues I can't include macwin.h without including the world */
+extern void dprintf(char * , ...);								/* dprintf.c */
+extern pascal short tty_environment_changed(WindowPtr window);	/* local */
+
 #if PRINTF_TTY
 # include <stdio.h>
 # include <stdarg.h>
 #endif
 
-extern void dprintf ( char * , ... ) ;
 static void select_onscreen_window ( tty_record * record ) ;
 static void select_offscreen_port ( tty_record * record ) ;
 
@@ -41,7 +44,7 @@ static void select_offscreen_port ( tty_record * record ) ;
 #define RECORD(record) \
 tty_record * record ; \
 	if ( ! window ) { \
-		dprintf ( "*** NULL Window ***" ) ; \
+		dprintf ( "*** null Window ***" ) ; \
 		return general_failure ; \
 	} \
 	record = ( tty_record * ) GetWRefCon ( window ) ; \
@@ -173,7 +176,7 @@ pascal short ( * func ) ( WindowPtr window , void * ptr ) =
 	record -> attribute [ TTY_FREE_MEMORY_FUNCTION ] ;
 
 	if ( ! ptr ) {
-		return noErr ; /* Silently accept disposing NULLs */
+		return noErr ; /* Silently accept disposing nulls */
 	}
 	if ( func ) {
 		s_err = ( * func ) ( record -> its_window , ptr ) ;
@@ -209,7 +212,7 @@ pascal short ( * func ) ( WindowPtr window , void * * ptr , long ) =
  */
 static short
 allocate_offscreen_world ( tty_record * record ) {
-GWorldPtr gw = NULL ;
+GWorldPtr gw = (GWorldPtr)0 ;
 GWorldFlags world_flags = 0 ;
 long mem_here , mem_there , other , required_mem ;
 Point p = { 0 , 0 } ;
@@ -239,7 +242,7 @@ GDHandle gdh ;
 		}
 		world_flags |= useTempMem ;
 	}
-	s_err = NewGWorld ( & gw , 0 , & r_screen , NULL , NULL , world_flags ) ;
+	s_err = NewGWorld ( & gw , 0 , & r_screen , (CTabHandle) 0 , (GDHandle) 0 , world_flags ) ;
 	if ( ! s_err ) {
 		record -> offscreen_world = gw ;
 		select_offscreen_port ( record ) ;
@@ -258,7 +261,7 @@ static short
 deallocate_gworld ( tty_record * record ) {
 	if ( record -> offscreen_world ) {
 		DisposeGWorld ( record -> offscreen_world ) ;
-		record -> offscreen_world = NULL ;
+		record -> offscreen_world = (GWorldPtr) 0 ;
 	}
 	return noErr ;
 }
@@ -291,7 +294,7 @@ use_port ( tty_record * record , void * port ) {
 	if ( record -> uses_gworld ) {
 	PixMapHandle pix_map ;
 
-		SetGWorld ( ( GWorldPtr ) port , NULL ) ;
+		SetGWorld ( ( GWorldPtr ) port , (GDHandle) 0 ) ;
 		if ( port == record -> offscreen_world ) {
 			pix_map = GetGWorldPixMap ( record -> offscreen_world ) ;
 			if ( pix_map ) {
@@ -391,14 +394,14 @@ free_bits ( tty_record * record ) {
 			ClosePort ( record -> offscreen_port ) ;
 			s_err = dispose_ptr ( record , record -> offscreen_port ) ;
 			if ( ! s_err ) {
-				record -> offscreen_port = NULL ;
+				record -> offscreen_port = (GrafPtr) 0 ;
 			} else {
 				return s_err ;
 			}
 		}
 		s_err = dispose_ptr ( record , record -> its_bits . baseAddr ) ;
 		if ( ! s_err ) {
-			record -> its_bits . baseAddr = NULL ;
+			record -> its_bits . baseAddr = (char *)0 ;
 		}
 	}
 	return s_err ;
@@ -435,15 +438,15 @@ Boolean was_allocated = !! * window ;
 	record -> its_window = * window ;
 	SetWRefCon ( * window , ( long ) record ) ;
 	record -> was_allocated = was_allocated ;
-	record -> its_bits . baseAddr = NULL ;
+	record -> its_bits . baseAddr = (char *)0 ;
 #if TTY_INPUT
-	record -> input_buffer = NULL ;
+	record -> input_buffer = (char *)0 ;
 #endif
 
 /*
- * Wee need to keep the window world around if we switch worlds
+ * We need to keep the window world around if we switch worlds
  */
-	record -> offscreen_world = NULL ;
+	record -> offscreen_world = (GWorldPtr) 0 ;
 	record -> uses_gworld = in_color ;
 	if ( in_color ) {
 	GDHandle gh ;
@@ -451,7 +454,7 @@ Boolean was_allocated = !! * window ;
 		SetPort ( * window ) ;
 		GetGWorld ( & ( record -> its_window_world ) , & gh ) ;
 	} else {
-		record -> its_window_world = NULL ;
+		record -> its_window_world = (GWorldPtr)0 ;
 	}
 
 #if CLIP_RECT_ONLY
@@ -496,7 +499,7 @@ RECORD ( record ) ;
 	record -> x_size = x_size ;
 	record -> y_size = y_size ;
 
-	record -> offscreen_port = NULL ;
+	record -> offscreen_port = (GrafPtr) 0 ;
 	record -> attribute [ TTY_ATTRIB_BACKGROUND ] = 0xffffff ; /* White */
 
 #if TTY_INPUT
@@ -526,7 +529,7 @@ RECORD ( record ) ;
 	if ( ! s_err ) {
 		s_err = dispose_ptr ( record -> input_buffer ) ;
 		if ( ! s_err ) {
-			record -> input_buffer = NULL ;
+			record -> input_buffer = (char *)0 ;
 		}
 	}
 #endif
@@ -678,7 +681,7 @@ RECORD ( record ) ;
  * Catastrophe! We could not allocate memory for the bitmap! Things may go very
  * much downhill from here!
  */
- 		dprintf ( "alloc_bits returned NULL in force_tty_coordinate_system_recalc!" ) ;
+ 		dprintf ( "alloc_bits returned null in force_tty_coordinate_system_recalc!" ) ;
 		return s_err ;
 	}
 
@@ -702,7 +705,7 @@ RECORD ( record ) ;
 		LocalToGlobal ( & p )  ;
 		OffsetRect ( & r_screen , p . h , p . v ) ;
 		UpdateGWorld ( & ( record -> offscreen_world ) , 0 , & r_screen ,
-			NULL , NULL , stretchPix ) ;
+			(CTabHandle) 0 , (GDHandle) 0 , stretchPix ) ;
 		select_offscreen_port ( record ) ;
 		SetOrigin ( 0 , 0 ) ;
 		select_onscreen_window ( record ) ;
@@ -723,8 +726,8 @@ RECORD ( record ) ;
 /*
  * First, test that we actually have something to draw to...
  */
-	if ( ( ( NULL == record -> its_bits . baseAddr ) && ! record -> uses_gworld ) ||
-		( ( NULL == record -> offscreen_world ) && record -> uses_gworld ) ) {
+	if ( ( ( (char *)0 == record -> its_bits . baseAddr ) && ! record -> uses_gworld ) ||
+		( ( (GWorldPtr)0 == record -> offscreen_world ) && record -> uses_gworld ) ) {
 		return general_failure ;
 	}
 
@@ -858,10 +861,10 @@ RECORD ( record ) ;
 #endif
 	select_onscreen_window ( record ) ;
 #if CLIP_RECT_ONLY
-	copy_bits ( record , & r , srcCopy , NULL ) ;
+	copy_bits ( record , & r , srcCopy , (RgnHandle) 0 ) ;
 	empty_rect ( & ( record -> invalid_rect ) ) ;
 #else
-	copy_bits ( record , & r , srcCopy , NULL ) ;
+	copy_bits ( record , & r , srcCopy , (RgnHandle) 0 ) ;
 	SetEmptyRgn ( record -> invalid_part ) ;
 #endif
 	if ( record -> curs_state ) {
@@ -919,7 +922,7 @@ register int x_pos , count = len ;
 		record -> x_curs + len - 1 , record -> y_curs ) ;
 	if ( DRAW_DIRECT ) {
 		select_onscreen_window ( record ) ;
-		copy_bits ( record , & r , srcCopy , NULL ) ;
+		copy_bits ( record , & r , srcCopy , (RgnHandle)0 ) ;
 	} else {
 		accumulate_rect ( record , & r ) ;
 		select_onscreen_window ( record ) ;
@@ -1343,7 +1346,7 @@ Rect r ;
 RECORD ( record ) ;
 
 	select_onscreen_window ( record ) ;
-	copy_bits ( record , & ( record -> its_bits . bounds ) , srcCopy , NULL ) ;
+	copy_bits ( record , & ( record -> its_bits . bounds ) , srcCopy , (RgnHandle) 0 ) ;
 	if ( record -> curs_state ) {
 
 		pos_rect ( record , & r , record -> x_curs , record -> y_curs ,
@@ -1368,7 +1371,7 @@ RECORD ( record ) ;
 		while ( ! record -> input_buffer_len ) {
 		EventRecord er ;
 
-			WaitNextEvent ( -1 , & er , GetCaretTime ( ) , NULL ) ;
+			WaitNextEvent ( -1 , & er , GetCaretTime ( ) , (char *)0 ) ;
 			if ( handle_tty_event ( window , & er ) ) {
 				switch ( er . what ) {
 				default :

@@ -1,13 +1,19 @@
-/*	SCCS Id: @(#)vmsmail.c	3.1	93/06/22	*/
+/*	SCCS Id: @(#)vmsmail.c	3.2	95/06/01	*/
 /* Copyright (c) Robert Patrick Rankin, 1991.			  */
 /* NetHack may be freely redistributed.  See license for details. */
 
-#define EXTERN_H	/* don't need all those prototypes */
 #include "config.h"
+#include "mail.h"
+
+/* lint supression due to lack of extern.h */
+unsigned long NDECL(init_broadcast_trapping);
+unsigned long NDECL(enable_broadcast_trapping);
+unsigned long NDECL(disable_broadcast_trapping);
+struct mail_info *NDECL(parse_next_broadcast);
 
 #ifdef MAIL
+#include "wintype.h"
 #include "winprocs.h"
-#include "mail.h"
 #include <ctype.h>
 #include <descrip.h>
 #include <errno.h>
@@ -25,16 +31,19 @@ static struct mail_info *FDECL(parse_brdcst, (char *));
 static void FDECL(filter_brdcst, (char *));
 static void NDECL(flush_broadcasts);
 static void FDECL(broadcast_ast, (int));
-extern char *strcpy(), *strcat(), *strrchr(), *strstri(), *eos();
-extern int strspn(), strncmpi();
+extern char *FDECL(eos, (char *));
+extern char *FDECL(strstri, (const char *,const char *));
+extern int FDECL(strncmpi, (const char *,const char *,int));
+
+extern size_t FDECL(strspn, (const char *,const char *));
 #ifndef __DECC
 extern int VDECL(sscanf, (const char *,const char *,...));
 #endif
 extern unsigned long
-	SMG$CREATE_PASTEBOARD(),
-	SMG$GET_BROADCAST_MESSAGE(),
-	SMG$SET_BROADCAST_TRAPPING(),
-	SMG$DISABLE_BROADCAST_TRAPPING();
+	smg$create_pasteboard(),
+	smg$get_broadcast_message(),
+	smg$set_broadcast_trapping(),
+	smg$disable_broadcast_trapping();
 
 extern volatile int broadcasts;		/* defining declaration in mail.c */
 
@@ -210,7 +219,7 @@ Connection request by BAR@SPAM\n
 		if (*p == ':') p++;
 		if (*p == ' ') p++;
 		cmd = strcpy(cmd_buf, p);	/* "TALK[/OLD] bar@spam" */
-		p = eos(cmd);
+		p = eos(cmd_buf);
 		if (*--p == ']') *p = '\0';
 	    }
 	} else
@@ -294,20 +303,22 @@ register char *buf;		/* in: original text; out: filtered text */
     return;
 }
 
+static char empty_string[] = "";
+
 /* fetch the text of a captured broadcast, then mangle and decipher it
 */
 struct mail_info *
 parse_next_broadcast()		/* called by ckmailstatus(mail.c) */
 {
     short length, msg_type;
-    $DESCRIPTOR(message, "");	/* string descriptor for buf[] */
+    $DESCRIPTOR(message, empty_string);	/* string descriptor for buf[] */
     struct mail_info *result = 0;
     /* messages could actually be longer; let long ones be truncated */
     char buf[255+1];
 
     message.dsc$a_pointer = buf,  message.dsc$w_length = sizeof buf - 1;
     msg_type = length = 0;
-    SMG$GET_BROADCAST_MESSAGE(&pasteboard_id, &message, &length, &msg_type);
+    smg$get_broadcast_message(&pasteboard_id, &message, &length, &msg_type);
     if (msg_type == MSG$_TRMBRDCST) {
 	buf[length] = '\0';
 	filter_brdcst(buf);		/* mask non-printable characters */
@@ -325,14 +336,14 @@ flush_broadcasts()	/* called from disable_broadcast_trapping() */
 {
     if (broadcasts > 0) {
 	short len, typ;
-	$DESCRIPTOR(msg_dsc, "");
+	$DESCRIPTOR(msg_dsc, empty_string);
 	char buf[512+1];
 
 	msg_dsc.dsc$a_pointer = buf,  msg_dsc.dsc$w_length = sizeof buf - 1;
 	raw_print("");		/* print at least one line for wait_synch() */
 	do {
 	    typ = len = 0;
-	    SMG$GET_BROADCAST_MESSAGE(&pasteboard_id, &msg_dsc, &len, &typ);
+	    smg$get_broadcast_message(&pasteboard_id, &msg_dsc, &len, &typ);
 	    if (typ == MSG$_TRMBRDCST) buf[len] = '\0',  raw_print(buf);
 	} while (--broadcasts);
 	wait_synch();		/* prompt with "Hit return to continue: " */
@@ -341,6 +352,7 @@ flush_broadcasts()	/* called from disable_broadcast_trapping() */
 
 /* AST routine called when the terminal's associated mailbox receives a message
 */
+/*ARGSUSED*/
 static void
 broadcast_ast(dummy)		/* called asynchronously by terminal driver */
 int dummy;	/* not used */
@@ -355,7 +367,7 @@ unsigned long init_broadcast_trapping()   /* called by setftty() [once only] */
     unsigned long sts, preserve_screen_flag = 1;
 
     /* we need a pasteboard to pass to the broadcast setup/teardown routines */
-    sts = SMG$CREATE_PASTEBOARD(&pasteboard_id, 0, 0, 0, &preserve_screen_flag);
+    sts = smg$create_pasteboard(&pasteboard_id, 0, 0, 0, &preserve_screen_flag);
     if (!vms_ok(sts)) {
 	errno = EVMSERR,  vaxc$errno = sts;
 	raw_print("");
@@ -376,7 +388,7 @@ unsigned long enable_broadcast_trapping()	/* called by setftty() */
 	/* register callback routine to be triggered when broadcasts arrive */
 	/* Note side effect:  also intercepts hangup notification. */
 	/* Another note:  TMPMBX privilege is required. */
-	sts = SMG$SET_BROADCAST_TRAPPING(&pasteboard_id, broadcast_ast, 0);
+	sts = smg$set_broadcast_trapping(&pasteboard_id, broadcast_ast, 0);
 	if (!vms_ok(sts)) {
 	    errno = EVMSERR,  vaxc$errno = sts;
 	    raw_print("");
@@ -395,7 +407,7 @@ unsigned long disable_broadcast_trapping()	/* called by settty() */
 
     if (broadcasts >= 0) {
 	/* disable trapping; releases associated MBX so that SPAWN can work */
-	sts = SMG$DISABLE_BROADCAST_TRAPPING(&pasteboard_id);
+	sts = smg$disable_broadcast_trapping(&pasteboard_id);
 	if (!vms_ok(sts)) errno = EVMSERR,  vaxc$errno = sts;
 	flush_broadcasts();	/* don't hold on to any buffered ones */
     }
@@ -406,6 +418,7 @@ unsigned long disable_broadcast_trapping()	/* called by settty() */
 unsigned long init_broadcast_trapping() { return 1; }
 unsigned long enable_broadcast_trapping() { return 1; }
 unsigned long disable_broadcast_trapping() { return 1; }
+struct mail_info *parse_next_broadcast() { return 0; }
 #endif	/* MAIL */
 
 /*----------------------------------------------------------------------*/
@@ -461,7 +474,7 @@ int main()
     return 1;
 }
 
-void panic(s) char *s; { raw_print(s); exit(1); }
+void panic(s) char *s; { raw_print(s); exit(EXIT_FAILURE); }
 
 void raw_print(s) char *s; { puts(s); fflush(stdout); }
 

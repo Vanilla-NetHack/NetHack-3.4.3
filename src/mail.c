@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mail.c	3.1	93/05/15	*/
+/*	SCCS Id: @(#)mail.c	3.2	95/07/19	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -26,6 +26,8 @@
  *
  * Note by Olaf Seibert: On the Amiga, we usually don't get mail.  So we go
  *			 through most of the effects at 'random' moments.
+ * Note by Paul Winner:  The MSDOS port also 'fakes' the mail daemon at
+ *			 random intervals.
  */
 
 static boolean FDECL(md_start,(coord *));
@@ -45,19 +47,21 @@ int mustgetmail = -1;
 #ifdef OVLB
 
 # ifdef UNIX
-#  include <sys/stat.h>
-#  include <pwd.h>
+#include <sys/stat.h>
+#include <pwd.h>
 /* DON'T trust all Unices to declare getpwuid() in <pwd.h> */
-#  if !defined(_BULL_SOURCE) && !defined(sgi) && !defined(_M_UNIX)
+#  if !defined(_BULL_SOURCE) && !defined(__sgi) && !defined(_M_UNIX)
+#   if !defined(SUNOS4) && !(defined(ULTRIX) && defined(__GNUC__))
 /* DO trust all SVR4 to typedef uid_t in <sys/types.h> (probably to a long) */
-#   if defined(POSIX_TYPES) || defined(SVR4) || defined(HPUX)
+#    if defined(POSIX_TYPES) || defined(SVR4) || defined(HPUX)
 extern struct passwd *FDECL(getpwuid,(uid_t));
-#   else 
+#    else
 extern struct passwd *FDECL(getpwuid,(int));
+#    endif
 #   endif
 #  endif
 static struct stat omstat,nmstat;
-static char *mailbox = NULL;
+static char *mailbox = (char *)0;
 static long laststattime;
 
 # ifdef AMS				/* Just a placeholder for AMS */
@@ -105,6 +109,9 @@ getmailstatus()
 	}
 }
 # endif /* UNIX */
+
+#endif /* OVLB */
+#ifdef OVL0
 
 /*
  * Pick coordinates for a starting position for the mail daemon.  Called
@@ -166,7 +173,7 @@ retry:
 		    max_distance = dd;
 		    startp->y = row;
 		    startp->x = viz_rmin[row];
-		    
+		
 		} else if (enexto(&testcc, (xchar)viz_rmin[row], row,
 						(struct permonst *) 0) &&
 			   !cansee(testcc.x, testcc.y) &&
@@ -181,7 +188,7 @@ retry:
 		    max_distance = dd;
 		    startp->y = row;
 		    startp->x = viz_rmax[row];
-		    
+		
 		} else if (enexto(&testcc, (xchar)viz_rmax[row], row,
 						(struct permonst *) 0) &&
 			   !cansee(testcc.x,testcc.y) &&
@@ -263,7 +270,7 @@ md_rush(md,tx,ty)
     struct monst *mon;			/* displaced monster */
     register int dx, dy;		/* direction counters */
     int fx = md->mx, fy = md->my;	/* current location */
-    int nfx = fx, nfy = fy,		/* new location */ 
+    int nfx = fx, nfy = fy,		/* new location */
 	d1, d2;				/* shortest distances */
 
     /*
@@ -283,7 +290,7 @@ md_rush(md,tx,ty)
 	/* Find a good location next to (fx,fy) closest to (tx,ty). */
 	d1 = dist2(fx,fy,tx,ty);
 	for (dx = -1; dx <= 1; dx++) for(dy = -1; dy <= 1; dy++)
-	    if ((dx || dy) && isok(fx+dx,fy+dy) && 
+	    if ((dx || dy) && isok(fx+dx,fy+dy) &&
 				       !IS_STWALL(levl[fx+dx][fy+dy].typ)) {
 		d2 = dist2(fx+dx,fy+dy,tx,ty);
 		if (d2 < d1) {
@@ -367,23 +374,15 @@ struct mail_info *info;
     if (!md_rush(md, stop.x, stop.y)) goto go_back;
 
     message_seen = TRUE;
-# ifdef NO_MAILREADER
-    if (info->message_typ) {
-	verbalize("Hello, %s!  You have some mail in the outside world.", plname);
-	goto go_back;
-    }    
-# endif /* NO_MAILREADER */
-
     verbalize("Hello, %s!  %s.", plname, info->display_txt);
 
-# ifndef NO_MAILREADER
     if (info->message_typ) {
 	struct obj *obj = mksobj(SCR_MAIL, FALSE, FALSE);
 	if (distu(md->mx,md->my) > 2)
 	    verbalize("Catch!");
 	display_nhwindow(WIN_MESSAGE, FALSE);
 	if (info->object_nam) {
-	    obj = oname(obj, info->object_nam, FALSE);
+	    obj = oname(obj, info->object_nam);
 	    if (info->response_cmd) {	/*(hide extension of the obj name)*/
 		int namelth = info->response_cmd - info->object_nam - 1;
 		if ( namelth <= 0 || namelth >= (int) obj->onamelth )
@@ -396,7 +395,6 @@ struct mail_info *info;
 	obj = hold_another_object(obj, "Oops!",
 				  (const char *)0, (const char *)0);
     }
-# endif /* NO_MAILREADER */
 
     /* zip back to starting location */
 go_back:
@@ -408,18 +406,14 @@ give_up:
 	pline("Hark!  \"%s.\"", info->display_txt);
 }
 
-#endif /* OVLB */
-
 # if !defined(UNIX) && !defined(VMS)
-
-#ifdef OVL0
 
 void
 ckmailstatus()
 {
-	if (u.uswallow) return;
+	if (u.uswallow || !flags.biff) return;
 	if (mustgetmail < 0) {
-#ifdef AMIGA
+#if defined(AMIGA) || defined(MSDOS)
 	    mustgetmail=(moves<2000)?(100+rn2(2000)):(2000+rn2(3000));
 #endif
 	    return;
@@ -432,9 +426,6 @@ ckmailstatus()
 	}
 }
 
-#endif /* OVL0 */
-#ifdef OVLB
-
 /*ARGSUSED*/
 void
 readmail(otmp)
@@ -442,7 +433,7 @@ struct obj *otmp;
 {
 	char *junk[]={
 	"Please disregard previous letter.",
-	"Welcome to NetHack 3.1!",
+	"Welcome to NetHack 3.2!",
 #ifdef AMIGA
 	"Only Amiga makes it possible.",
 	"CATS have all the answers.",
@@ -453,18 +444,14 @@ struct obj *otmp;
 	pline("It reads:  \"%s\"", junk[rn2(SIZE(junk))]);
 }
 
-#endif /* OVLB */
-
 # endif /* !UNIX && !VMS */
 
 # ifdef UNIX
 
-#ifdef OVL0
-
 void
 ckmailstatus()
 {
-	if(!mailbox || u.uswallow
+	if(!mailbox || u.uswallow || !flags.biff
 #  ifdef MAILCKFREQ
 		    || moves < laststattime + MAILCKFREQ
 #  endif
@@ -480,18 +467,21 @@ ckmailstatus()
 		nmstat.st_mtime = 0;
 #  endif
 	} else if(nmstat.st_mtime > omstat.st_mtime) {
-		if(nmstat.st_size) {
-			static struct mail_info
-			    deliver = {MSG_MAIL,"I have some mail for you",0,0};
-			newmail(&deliver);
+		if (nmstat.st_size) {
+		    static struct mail_info deliver = {
+#  ifndef NO_MAILREADER
+			MSG_MAIL, "I have some mail for you",
+#  else
+			/* suppress creation and delivery of scroll of mail */
+			MSG_OTHER, "You have some mail in the outside world",
+#  endif
+			0, 0
+		    };
+		    newmail(&deliver);
 		}
 		getmailstatus();	/* might be too late ... */
 	}
 }
-
-#endif /* OVL0 */
-
-#ifdef OVLB
 
 /*ARGSUSED*/
 void
@@ -506,11 +496,11 @@ struct obj *otmp;
 		mr = DEF_MAILREADER;
 
 	if(child(1)){
-		(void) execl(mr, mr, NULL);
-		terminate(1);
+		(void) execl(mr, mr, (char *)0);
+		terminate(EXIT_FAILURE);
 	}
 #  else
-#   ifndef AMS  			/* AMS mailboxes are directories */
+#   ifndef AMS				/* AMS mailboxes are directories */
 	display_file(mailbox, TRUE);
 #   endif /* AMS */
 #  endif /* DEF_MAILREADER */
@@ -520,13 +510,9 @@ struct obj *otmp;
 	getmailstatus();
 }
 
-#endif /* OVLB */
-
 # endif /* UNIX */
 
 # ifdef VMS
-
-#ifdef OVL0
 
 volatile int broadcasts = 0;
 
@@ -535,7 +521,7 @@ ckmailstatus()
 {
     struct mail_info *brdcst, *parse_next_broadcast();
 
-    if(u.uswallow) return;
+    if(u.uswallow || !flags.biff) return;
 
     while (broadcasts > 0) {	/* process all trapped broadcasts [until] */
 	broadcasts--;
@@ -545,10 +531,6 @@ ckmailstatus()
 	}
     }
 }
-
-#endif /* OVL0 */
-
-#ifdef OVLB
 
 void
 readmail(otmp)
@@ -580,9 +562,9 @@ struct obj *otmp;
 #  endif /* SHELL */
 }
 
-#endif /* OVLB */
-
 # endif /* VMS */
+
+#endif /* OVL0 */
 
 #endif /* MAIL */
 

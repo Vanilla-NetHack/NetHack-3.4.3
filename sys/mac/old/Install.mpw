@@ -51,10 +51,9 @@ scratch doesn't take more than a lunch break.
 	your tastes.  However, using MPW, this file will self-configure for
 	the default Mac distribution.
 
-	NOTE: The make file defines VISION_TABLES, and macconf.h sets
-	the option BRACES to match, so you should not concern yourself
-	with that option in config.h. However, compiling with the option
-	VISION_TABLES will generate a faster binary, at the expense of
+	NOTE: The make file defines VISION_TABLES, so you should not concern
+	yourself with that option in config.h. However, compiling with the
+	option VISION_TABLES will generate a faster binary, at the expense of
 	the size of the application, and compilation time.
 
 	Your MPW shell will need at least 7000K REAL MEMORY (TempMem

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)unixconf.h	3.1	90/22/02	*/
+/*	SCCS Id: @(#)unixconf.h	3.2	95/03/12	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -19,7 +19,7 @@
  */
 
 /* define exactly one of the following four choices */
-#define BSD		/* define for 4.n BSD  */
+#define BSD	1	/* define for 4.n BSD  */
 			/* also for relatives like SunOS, Linux and DG/UX */
 /* #define ULTRIX	/* define for Ultrix v3.0 or higher (but not lower) */
 			/* Use BSD for < v3.0 */
@@ -31,26 +31,32 @@
 
 /* define any of the following that are appropriate */
 /* #define SVR4		/* use in addition to SYSV for System V Release 4 */
-#define NETWORK	/* if running on a networked system */
+#define NETWORK		/* if running on a networked system */
 			/* e.g. Suns sharing a playground through NFS */
 #define SUNOS4	/* SunOS 4.x */
-/* #define LINUX  /* Another Unix clone running on Intel processors */
+/* #define LINUX	/* Another Unix clone */
 /* #define GENIX	/* Yet Another Unix Clone */
 /* #define HISX		/* Bull Unix for XPS Machines */
 /* #define BOS		/* Bull Open Software - Unix for DPX/2 Machines */
 /* #define UNIXPC	/* use in addition to SYSV for AT&T 7300/3B1 */
 /* #define AIX_31	/* In AIX 3.1 (IBM RS/6000) use BSD ioctl's to gain
-			   job control (note that AIX is SYSV otherwise) */
+			 * job control (note that AIX is SYSV otherwise)
+			 * Also define this for AIX 3.2 */
 /* #define TEXTCOLOR	/* Use System V r3.2 terminfo color support */
-			/* or ANSI color support on termcap systems */
-			/* or X11 color	*/
-/* #define POSIX_JOB_CONTROL	/* use System V POSIX job control */
+			/* and/or ANSI color support on termcap systems */
+			/* and/or X11 color */
+/* #define POSIX_JOB_CONTROL	/* use System V / POSIX job control
+			 * (e.g., VSUSP) */
 /* #define POSIX_TYPES	/* use POSIX types for system calls and termios */
-                        /* define for platforms using the GNU libraries */
-                        /* linux, etc .. */
+			/* define for many recent OS releases, including
+			 * those with specific defines (since types are
+			 * changing toward the standard from earlier chaos).
+			 * for example, platforms using the GNU libraries
+			 */
 
 /* #define OPENWINBUG	/* avoid a problem using OpenWindows 3.0 for X11
-			   on SunOS 4.1.x, x>= 2 */
+			   on SunOS 4.1.x, x>= 2.  Do not define for other
+			   X11 implementations. */
 /* #define PYRAMID_BUG	/* avoid a bug on the Pyramid */
 /* #define BSD_43_BUG	/* for real 4.3BSD cc's without schain botch fix */
 /* #define MICROPORT_BUG /* problems with large arrays in structs */
@@ -93,11 +99,23 @@
 
 /*
  * Define PORT_HELP to be the name of the port-specfic help file.
- * This file is found in HACKDIR. 
+ * This file is found in HACKDIR.
  * Normally, you shouldn't need to change this.
  * There is currently no port-specific help for Unix systems.
  */
 /* #define PORT_HELP "Unixhelp" */
+
+#ifdef TTY_GRAPHICS
+/*
+ * To enable the `timed_delay' option for using a timer rather than extra
+ * screen output when pausing for display effect.  Requires that `msleep'
+ * function be available (with time argument specified in milliseconds).
+ * Various output devices can produce wildly varying delays when the
+ * "extra output" method is used, but not all systems provide access to
+ * a fine-grained timer.
+ */
+/* #define TIMED_DELAY		/* usleep() */
+#endif
 
 /*
  * If you define MAIL, then the player will be notified of new mail
@@ -142,7 +160,11 @@
 #  ifdef M_XENIX
 #define DEF_MAILREADER	"/usr/bin/mail"
 #  else
+#   ifdef __sgi
+#define DEF_MAILREADER	"/usr/sbin/Mail"
+#   else
 #define DEF_MAILREADER	"/usr/bin/mailx"
+#   endif
 #  endif
 # else
 #define DEF_MAILREADER	"/bin/mail"
@@ -179,6 +201,15 @@
 # endif
 #endif /* _AUX_SOURCE */
 
+#if defined(LINUX) || defined(bsdi)
+# ifndef POSIX_TYPES
+#  define POSIX_TYPES
+# endif
+# ifndef POSIX_JOB_CONTROL
+#  define POSIX_JOB_CONTROL
+# endif
+#endif
+
 /*
  * BSD/ULTRIX systems are normally the only ones that can suspend processes.
  * Suspending NetHack processes cleanly should be easy to add to other systems
@@ -205,9 +236,9 @@
 
 
 #if defined(BSD) || defined(ULTRIX)
-#include	<sys/time.h>
+#include <sys/time.h>
 #else
-#include	<time.h>
+#include <time.h>
 #endif
 
 #define HLOCK	"perm"	/* an empty file used for locking purposes */
@@ -221,10 +252,22 @@
 
 #include "system.h"
 
+#if defined(POSIX_TYPES) || defined(__GNUC__)
+#include <stdlib.h>
+#include <unistd.h>
+#endif
+
+#if defined(POSIX_TYPES) || defined(__GNUC__) || defined(BSD) || defined(ULTRIX)
+#include <sys/wait.h>
+#endif
+
 #if defined(BSD) || defined(ULTRIX)
 # if !defined(DGUX) && !defined(SUNOS4)
 #define memcpy(d, s, n)		bcopy(s, d, n)
 #define memcmp(s1, s2, n)	bcmp(s2, s1, n)
+# endif
+# ifdef SUNOS4
+#include <memory.h>
 # endif
 #else	/* therefore SYSV */
 # ifndef index	/* some systems seem to do this for you */
@@ -235,18 +278,20 @@
 # endif
 #endif
 
-/* A safety check for BOS and AUX */
-#if (defined(BOS) || defined(AUX)) && defined(NHSTDC)
-# if defined(VISION_TABLES) && defined(BRACES)
-#  undef BRACES
-# endif
-#endif
-
 /* Use the high quality random number routines. */
 #if defined(BSD) || defined(ULTRIX) || defined(RANDOM)
 #define Rand()	random()
 #else
 #define Rand()	lrand48()
+#endif
+
+#ifdef TIMED_DELAY
+# ifdef SUNOS4
+# define msleep(k) usleep((k)*1000)
+# endif
+# ifdef ULTRIX
+# define msleep(k) napms(k)
+# endif
 #endif
 
 #ifdef hc	/* older versions of the MetaWare High-C compiler define this */

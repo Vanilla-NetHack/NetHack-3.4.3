@@ -1,12 +1,13 @@
-/*	SCCS Id: @(#)winmenu.c	3.1	93/02/04	*/
+/*	SCCS Id: @(#)winmenu.c	3.2	96/01/15	*/
 /* Copyright (c) Dean Luick, 1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
 /*
  * File for creating menus.
- * 
- * 	+ Global functions: start_menu, add_menu, end_menu, select_menu
+ *
+ *	+ Global functions: start_menu, add_menu, end_menu, select_menu
  */
+/*#define USE_FWF		/* use FWF's list widget */
 
 #ifndef SYSV
 #define PRESERVE_NO_SYSV	/* X11 include files may define SYSV */
@@ -15,10 +16,17 @@
 #include <X11/Intrinsic.h>
 #include <X11/StringDefs.h>
 #include <X11/Shell.h>
-#include <X11/Xaw/List.h>
+#include <X11/Xatom.h>
+#include <X11/Xaw/Label.h>
+#include <X11/Xaw/Command.h>
 #include <X11/Xaw/Viewport.h>
 #include <X11/Xaw/Cardinals.h>
-#include <X11/Xatom.h>
+#include <X11/Xaw/Box.h>
+#ifdef USE_FWF
+#include <X11/Xfwf/MultiList.h>
+#else
+#include <X11/Xaw/List.h>
+#endif
 
 #ifdef PRESERVE_NO_SYSV
 # ifdef SYSV
@@ -31,14 +39,36 @@
 #include "winX.h"
 
 
-static void FDECL(menu_select, (Widget,XtPointer,XtPointer));
+static void FDECL(menu_select, (Widget, XtPointer, XtPointer));
+static void FDECL(menu_ok, (Widget, XtPointer, XtPointer));
+static void FDECL(menu_cancel, (Widget, XtPointer, XtPointer));
+static void FDECL(menu_all, (Widget, XtPointer, XtPointer));
+static void FDECL(menu_none, (Widget, XtPointer, XtPointer));
+static void FDECL(menu_invert, (Widget, XtPointer, XtPointer));
+static void FDECL(menu_search, (Widget, XtPointer, XtPointer));
+static void FDECL(select_all, (struct xwindow *));
+static void FDECL(select_none, (struct xwindow *));
+static void FDECL(select_match, (struct xwindow *, char*));
+static void FDECL(invert_all, (struct xwindow *));
+static void FDECL(invert_match, (struct xwindow *, char*));
+static void FDECL(menu_popdown, (struct xwindow *));
+#ifdef USE_FWF
+static void FDECL(sync_selected, (struct menu_info_t *, int, int *));
+#endif
+
+static void FDECL(move_menu, (struct menu *, struct menu *));
+static void FDECL(free_menu, (struct menu *));
+static void FDECL(reset_menu_to_default, (struct menu *));
 static void FDECL(clear_old_menu, (struct xwindow *));
 static char *FDECL(copy_of, (const char *));
 
 
-static char menu_selected;	/* selected menu item */
 static const char menu_translations[] =
     "#override\n\
+     <Key>Left: scroll(4)\n\
+     <Key>Right: scroll(6)\n\
+     <Key>Up: scroll(8)\n\
+     <Key>Down: scroll(2)\n\
      <Key>: menu_key()";
 
 /*
@@ -50,30 +80,54 @@ menu_select(w, client_data, call_data)
     Widget w;
     XtPointer client_data, call_data;
 {
+    struct xwindow *wp;
+    struct menu_info_t *menu_info;
+#ifdef USE_FWF
+    XfwfMultiListReturnStruct *lrs = (XfwfMultiListReturnStruct *) call_data;
+#else
     XawListReturnStruct *lrs = (XawListReturnStruct *) call_data;
     int i;
-    struct menu_info_t *menu_info;
-    struct menu_item *curr;
-    struct xwindow *wp;
+    x11_menu_item *curr;
+#endif
 
     wp = find_widget(w);
     menu_info  = wp->menu_information;
 
-    for (i = 0, curr = menu_info->base; i < lrs->list_index; i++) {
+#ifdef USE_FWF
+    /* if we've reached here, we've found our selected item */
+    switch (lrs->action) {
+	case XfwfMultiListActionNothing:
+		pline("menu_select: nothing action?");
+		break;
+	case XfwfMultiListActionStatus:
+		pline("menu_select: status action?");
+		break;
+	case XfwfMultiListActionHighlight:
+	case XfwfMultiListActionUnhighlight:
+		sync_selected(menu_info,lrs->num_selected,lrs->selected_items);
+		break;
+    }
+#else
+    for (i = 0, curr = menu_info->curr_menu.base; i < lrs->list_index; i++) {
 	if (!curr) panic("menu_select: out of menu items!");
 	curr = curr->next;
     }
+    XawListUnhighlight(w);	/* unhilight item */
 
-    /* If we don't have a selector, try again. */
-    if (!curr->selector) {
-	XawListUnhighlight(w);	/* unhilight non-menu item */
+    /* if the menu is not active or don't have an identifier, try again */
+    if (!menu_info->is_active || curr->identifier.a_void == 0) {
 	X11_nhbell();
 	return;
     }
-    menu_selected = curr->selector;
 
-    nh_XtPopdown(wp->popup);	/* this removes the event grab */
-    exit_x_event = TRUE;	/* exit our event handler */
+    /* if we've reached here, we've found our selected item */
+    curr->selected = !curr->selected;
+    curr->str[2] = curr->selected ? '+' : '-';
+    XawListChange(wp->w, menu_info->curr_menu.list_pointer, 0, 0, True);
+#endif
+
+    if (menu_info->how == PICK_ONE)
+	menu_popdown(wp);
 }
 
 /*
@@ -87,9 +141,7 @@ menu_delete(w, event, params, num_params)
     String *params;
     Cardinal *num_params;
 {
-    menu_selected = '\033';
-    nh_XtPopdown(w);		/* this removes the event grab */
-    exit_x_event = TRUE;	/* exit our event handler */
+    menu_cancel((Widget)None, (XtPointer) find_widget(w), (XtPointer) 0);
 }
 
 /*
@@ -104,13 +156,13 @@ menu_key(w, event, params, num_params)
     Cardinal *num_params;
 {
     struct menu_info_t *menu_info;
-    struct menu_item *curr;
+    x11_menu_item *curr;
     struct xwindow *wp;
     char ch;
     int count;
 
     wp = find_widget(w);
-    menu_info  = wp->menu_information;
+    menu_info = wp->menu_information;
 
     ch = key_event_to_char((XKeyEvent *) event);
 
@@ -119,22 +171,327 @@ menu_key(w, event, params, num_params)
 	return;
     }
 
-    for (count = 0, curr = menu_info->base; curr; curr = curr->next, count++)
-	if (curr->selector == ch) break;
+    if (menu_info->is_active) {		/* waiting for input */
+	if (ch == '\033') {		/* quit */
+	    select_none(wp);
 
-    if (curr) {
-	XawListHighlight(w, count);	/* highlit item */
-	menu_selected = ch;
-    } else if (menu_info->other_valid && index(menu_info->other_valid, ch)) {
-	menu_selected = menu_info->other_response;
-    } else {
-	X11_nhbell();		/* no match */
-	return;
+	} else if (ch == '\n' || ch == '\r') {
+	    ;	/* accept */
+
+	} else if (ch == '/') {		/* search */
+	    if (menu_info->how == PICK_ANY || menu_info->how == PICK_ONE) {
+		char buf[BUFSZ];
+		X11_getlin("Search for:", buf);
+		if (!*buf || *buf == '\033') return;
+		if (menu_info->how == PICK_ANY) {
+		    invert_match(wp, buf);
+		    return;
+		} else {
+		    select_match(wp, buf);
+		}
+	    } else {
+		X11_nhbell();
+		return;
+	    }
+	} else if (ch == '*') {		/* select all */
+	    if (menu_info->how == PICK_ANY)
+		select_all(wp);
+	    else
+		X11_nhbell();
+	    return;
+	} else if (ch == '%') {		/* deselect all */
+	    if (menu_info->how == PICK_ANY)
+		select_none(wp);
+	    else
+		X11_nhbell();
+	    return;
+	} else if (ch == '@') {		/* invert all */
+	    if (menu_info->how == PICK_ANY)
+		invert_all(wp);
+	    else
+		X11_nhbell();
+	    return;
+	} else {
+	    boolean selected_something = FALSE;
+	    for (count = 0, curr = menu_info->curr_menu.base; curr;
+						    curr = curr->next, count++)
+		if (curr->identifier.a_void != 0 && curr->selector == ch) break;
+
+	    if (curr) {
+		curr->selected = !curr->selected;
+		if (curr->selected) {
+#ifdef USE_FWF
+		    XfwfMultiListHighlightItem((XfwfMultiListWidget)wp->w, count);
+#else
+		    curr->str[2] = '+';
+		    XawListChange(wp->w,
+				menu_info->curr_menu.list_pointer, 0, 0, True);
+#endif
+		    selected_something = TRUE;
+		} else {
+#ifdef USE_FWF
+		    XfwfMultiListUnhighlightItem((XfwfMultiListWidget)wp->w, count);
+#else
+		    curr->str[2] = '-';
+		    XawListChange(wp->w,
+				menu_info->curr_menu.list_pointer, 0, 0, True);
+#endif
+		}
+	    } else {
+		X11_nhbell();		/* no match */
+	    }
+	    if (!(selected_something && menu_info->how == PICK_ONE))
+		return;		/* keep going */
+	}
+	/* pop down */
+    } else {			/* permanent inventory window */
+	if (ch != '\033') {
+	    X11_nhbell();
+	    return;
+	}
+	/* pop down on ESC */
     }
 
-    nh_XtPopdown(wp->popup);	/* this removes the event grab */
-    exit_x_event = TRUE;	/* exit our event handler */
+    menu_popdown(wp);
 }
+
+/* ARGSUSED */
+static void
+menu_ok(w, client_data, call_data)
+    Widget w;
+    XtPointer client_data, call_data;
+{
+    struct xwindow *wp = (struct xwindow *) client_data;
+    menu_popdown(wp);
+}
+
+/* ARGSUSED */
+static void
+menu_cancel(w, client_data, call_data)
+    Widget w;				/* don't use - may be None */
+    XtPointer client_data, call_data;
+{
+    struct xwindow *wp = (struct xwindow *) client_data;
+
+    if (wp->menu_information->is_active)
+	select_none(wp);
+    menu_popdown(wp);
+}
+
+/* ARGSUSED */
+static void
+menu_all(w, client_data, call_data)
+    Widget w;
+    XtPointer client_data, call_data;
+{
+    select_all((struct xwindow *) client_data);
+}
+
+/* ARGSUSED */
+static void
+menu_none(w, client_data, call_data)
+    Widget w;
+    XtPointer client_data, call_data;
+{
+    select_none((struct xwindow *) client_data);
+}
+
+/* ARGSUSED */
+static void
+menu_invert(w, client_data, call_data)
+    Widget w;
+    XtPointer client_data, call_data;
+{
+    invert_all((struct xwindow *) client_data);
+}
+
+/* ARGSUSED */
+static void
+menu_search(w, client_data, call_data)
+    Widget w;
+    XtPointer client_data, call_data;
+{
+    struct xwindow *wp = (struct xwindow *) client_data;
+    struct menu_info_t *menu_info = wp->menu_information;
+
+    char buf[BUFSZ];
+    X11_getlin("Search for:", buf);
+    if (!*buf || *buf == '\033') return;
+
+    if (menu_info->how == PICK_ANY)
+	invert_match(wp, buf);
+    else
+	select_match(wp, buf);
+
+    if (menu_info->how == PICK_ONE)
+	menu_popdown(wp);
+}
+
+static void
+select_all(wp)
+    struct xwindow *wp;
+{
+    x11_menu_item *curr;
+    int count;
+
+    for (count = 0, curr = wp->menu_information->curr_menu.base; curr;
+					curr = curr->next, count++)
+	if (curr->identifier.a_void != 0 && !curr->selected) {
+	    curr->selected = TRUE;
+#ifdef USE_FWF
+	    XfwfMultiListHighlightItem((XfwfMultiListWidget) wp->w, count);
+#else
+	    curr->str[2] = '+';
+#endif
+	}
+#ifndef USE_FWF
+	XawListChange(wp->w, wp->menu_information->curr_menu.list_pointer, 0, 0, True);
+#endif
+}
+
+static void
+select_none(wp)
+    struct xwindow *wp;
+{
+    x11_menu_item *curr;
+    int count;
+
+    for (count = 0, curr = wp->menu_information->curr_menu.base; curr;
+					curr = curr->next, count++)
+	if (curr->identifier.a_void != 0 && curr->selected) {
+	    curr->selected = FALSE;
+#ifdef USE_FWF
+	    XfwfMultiListUnhighlightItem((XfwfMultiListWidget) wp->w, count);
+#else
+	    curr->str[2] = '-';
+#endif
+	}
+#ifndef USE_FWF
+	XawListChange(wp->w, wp->menu_information->curr_menu.list_pointer, 0, 0, True);
+#endif
+}
+
+static void
+invert_all(wp)
+    struct xwindow *wp;
+{
+    x11_menu_item *curr;
+    int count;
+
+    for (count = 0, curr = wp->menu_information->curr_menu.base; curr;
+					curr = curr->next, count++)
+	if (curr->identifier.a_void != 0) {
+	    curr->selected = !curr->selected;
+#ifdef USE_FWF
+	    if (curr->selected)
+		XfwfMultiListHighlightItem((XfwfMultiListWidget) wp->w, count);
+	    else
+		XfwfMultiListUnhighlightItem((XfwfMultiListWidget)wp->w, count);
+#else
+	    curr->str[2] = curr->selected ? '+' : '-';
+#endif
+	}
+#ifndef USE_FWF
+	XawListChange(wp->w, wp->menu_information->curr_menu.list_pointer, 0, 0, True);
+#endif
+}
+
+static void
+invert_match(wp, match)
+    struct xwindow *wp;
+    char *match;
+{
+    x11_menu_item *curr;
+    int count;
+
+    for (count = 0, curr = wp->menu_information->curr_menu.base; curr;
+					curr = curr->next, count++)
+	if (curr->identifier.a_void != 0 && strstri(curr->str, match)) {
+	    curr->selected = !curr->selected;
+#ifdef USE_FWF
+	    if (curr->selected)
+		XfwfMultiListHighlightItem((XfwfMultiListWidget) wp->w, count);
+	    else
+		XfwfMultiListUnhighlightItem((XfwfMultiListWidget)wp->w, count);
+#else
+	    curr->str[2] = curr->selected ? '+' : '-';
+#endif
+	}
+#ifndef USE_FWF
+	XawListChange(wp->w, wp->menu_information->curr_menu.list_pointer, 0, 0, True);
+#endif
+}
+
+static void
+select_match(wp, match)
+    struct xwindow *wp;
+    char *match;
+{
+    x11_menu_item *curr;
+    int count;
+
+    for (count = 0, curr = wp->menu_information->curr_menu.base; curr;
+						curr = curr->next, count++)
+	if (curr->identifier.a_void != 0 && strstri(curr->str, match)) {
+	    curr->selected = TRUE;
+#ifdef USE_FWF
+	    XfwfMultiListHighlightItem((XfwfMultiListWidget) wp->w, count);
+	    XawListChange(wp->w, wp->menu_information->curr_menu.list_pointer, 0, 0, True);
+#else
+	    curr->str[2] = '+';
+#endif
+	    return;
+	}
+
+    /* no match */
+    X11_nhbell();
+}
+
+static void
+menu_popdown(wp)
+    struct xwindow *wp;
+{
+    nh_XtPopdown(wp->popup);			/* remove the event grab */
+    if (wp->menu_information->is_active)
+	exit_x_event = TRUE;			/* exit our event handler */
+    wp->menu_information->is_up = FALSE;	/* menu is down */
+}
+
+#ifdef USE_FWF
+/*
+ * Make sure our idea of selected matches the FWF Multilist's idea of what
+ * is currently selected.  The MultiList's selected list can change without
+ * notifying us if one or more items are selected and then another is
+ * selected (not toggled).  Then the items that were selected are deselected
+ * but we are not notified.
+ */
+static void
+sync_selected(menu_info, num_selected, items)
+    struct menu_info_t *menu_info;
+    int num_selected;
+    int *items;
+{
+    int i, j, *ip;
+    x11_menu_item *curr;
+    Boolean found;
+
+    for (i=0, curr = menu_info->curr_menu.base; curr; i++, curr = curr->next) {
+	found = False;
+	for (j = 0, ip = items; j < num_selected; j++, ip++)
+	    if (*ip == i) {
+		found = True;
+		break;
+	    }
+#if 0
+	if (curr->selected && !found)
+	    printf("sync: deselecting %s\n", curr->str);
+	else if (!curr->selected && found)
+	    printf("sync: selecting %s\n", curr->str);
+#endif
+	curr->selected = found ? TRUE : FALSE;
+    }
+}
+#endif /* USE_FWF */
 
 
 /* Global functions ======================================================== */
@@ -149,21 +506,25 @@ X11_start_menu(window)
     wp = &window_list[window];
 
     if (wp->menu_information->is_menu) {
-	/* clear old menu and widgets (if any) */
-	clear_old_menu(wp);
+	/* make sure we'ere starting with a clean slate */
+	free_menu(&wp->menu_information->new_menu);
     } else {
 	wp->menu_information->is_menu = TRUE;
     }
 }
 
+/*ARGSUSED*/
 void
-X11_add_menu(window, ch, attr, str)
+X11_add_menu(window, glyph, identifier, ch, attr, str, preselected)
     winid window;
+    int glyph;			/* unused (for now) */
+    const anything *identifier;
     char ch;
     int attr;
     const char *str;
+    boolean preselected;
 {
-    struct menu_item *item;
+    x11_menu_item *item;
     struct menu_info_t *menu_info;
 
     check_winid(window);
@@ -173,27 +534,51 @@ X11_add_menu(window, ch, attr, str)
 	return;
     }
 
-    item = (struct menu_item *) alloc((unsigned)sizeof(struct menu_item));
-    item->next = (struct menu_item *) 0;
-    item->selector = ch;
+    item = (x11_menu_item *) alloc((unsigned)sizeof(x11_menu_item));
+    item->next = (x11_menu_item *) 0;
+    item->identifier = *identifier;
     item->attr = attr;
-    item->str = copy_of(str);
+/*    item->selected = preselected; */
+    item->selected = FALSE;
+    
+    if (identifier->a_void) {
+	char buf[QBUFSZ];
 
-    if (menu_info->last) {
-	menu_info->last->next = item;
+	if (!ch) {
+	    /* Supply a keyboard accelerator.  Only the first 52 get one. */
+
+	    if (menu_info->new_menu.curr_selector) {
+		ch = menu_info->new_menu.curr_selector++;
+		if (ch == 'z')
+		    menu_info->new_menu.curr_selector = 'A';
+		else if (ch == 'Z')
+		    menu_info->new_menu.curr_selector = 0;	/* out */
+	    }
+	}
+
+	Sprintf(buf, "%c - %s", ch ? ch : ' ', str);
+	item->str = copy_of(buf);
     } else {
-	menu_info->base = item;
+	/* no keyboard accelerator */
+	item->str = copy_of(str);
+	ch = 0;
     }
-    menu_info->last = item;
-    menu_info->count++;
+
+    item->selector = ch;
+
+    if (menu_info->new_menu.last) {
+	menu_info->new_menu.last->next = item;
+    } else {
+	menu_info->new_menu.base = item;
+    }
+    menu_info->new_menu.last = item;
+    menu_info->new_menu.count++;
 }
 
 void
-X11_end_menu(window, cancel_ch, cancel_str, morestr)
+X11_end_menu(window, query)
     winid window;
-    char cancel_ch;
-    const char *cancel_str;
-    const char *morestr;
+    const char *query;
 {
     struct menu_info_t *menu_info;
     check_winid(window);
@@ -202,158 +587,397 @@ X11_end_menu(window, cancel_ch, cancel_str, morestr)
 	impossible("end_menu:  called before start_menu");
 	return;
     }
-
-    if(morestr && strlen(morestr))
-	X11_add_menu(window, 0, 0, morestr);
-    menu_info->other_valid = cancel_str;
-    menu_info->other_response = cancel_ch;
-    menu_info->query = morestr;
+    menu_info->new_menu.query = copy_of(query);
 }
 
-char
-X11_select_menu(window)
+int
+X11_select_menu(window, how, menu_list)
     winid window;
+    int how;
+    menu_item **menu_list;
 {
-    struct menu_item *curr;
+    x11_menu_item *curr;
     struct xwindow *wp;
     struct menu_info_t *menu_info;
-    Arg args[8];
+    Arg args[10];
     Cardinal num_args;
     String *ptr;
-    int i;
-    Widget viewport_widget;
-    Dimension pixel_height, top_margin, spacing;
-    XFontStruct *fs;
+    int retval;
+    Dimension v_pixel_width, v_pixel_height;
+    boolean labeled;
+    Widget viewport_widget, form, label, ok, cancel, all, none, invert, search;
+    Boolean sens;
+#ifdef USE_FWF
+    Boolean *boolp;
+#endif
 
+    *menu_list = (menu_item *) 0;
     check_winid(window);
     wp = &window_list[window];
     menu_info = wp->menu_information;
     if (!menu_info->is_menu) {
 	impossible("select_menu:  called before start_menu");
-	return '\0';
+	return 0;
     }
 
-#ifdef VERBOSE
-    /* ********** */
-    if (menu_info->other_valid) {
-	char *cp;
-	printf("select_menu: other_valid = \"");
-	for (cp = menu_info->other_valid; *cp; cp++) {
-	    if (*cp < 32) {
-		printf("^%c", '@' + *cp);
-	    } else
-		printf("%c", *cp);
-	}
-	printf("\"\n");
-    } else {
-	printf("select_menu: other_valid = NULL\n");
-    }
-    if (menu_info->other_response < 32) {
-	printf("select_menu: other_response = '^%c'\n",
-				    '@' + menu_info->other_response);
-    } else {
-	printf("select_menu: other_response = '%c'\n",
-						menu_info->other_response);
-    }
-    if (menu_info->query) {
-	printf("select_menu: query = \"%s\"\n", menu_info->query);
-    } else {
-	printf("select_menu: query = NULL\n");
-    }
-    /* ********** */
-#endif
-
-    num_args = 0;
-    XtSetArg(args[num_args], XtNallowShellResize, True); num_args++;
-
-    wp->popup = XtCreatePopupShell("menu", transientShellWidgetClass,
-				   toplevel, args, num_args);
-    XtOverrideTranslations(wp->popup,
-	XtParseTranslationTable("<Message>WM_PROTOCOLS: menu_delete()"));
-
-    menu_info->list_pointer =
-	(String *) alloc((unsigned) (sizeof(String) * (menu_info->count+1)));
-    for (i = 0, ptr = menu_info->list_pointer, curr = menu_info->base;
-			i < menu_info->count; i++, ptr++, curr = curr->next) {
+    menu_info->how = (short) how;
+    /*
+     * Create a string and sensitive list for the new menu.
+     */
+    menu_info->new_menu.list_pointer = ptr = (String *)
+	    alloc((unsigned) (sizeof(String) * (menu_info->new_menu.count+1)));
+    for (curr = menu_info->new_menu.base; curr; ptr++, curr = curr->next)
 	*ptr = (String) curr->str;
+    *ptr = 0;		/* terminate list with null */
+
+#ifdef USE_FWF
+    menu_info->new_menu.sensitive = boolp = (Boolean *)
+	    alloc((unsigned) (sizeof(Boolean) * (menu_info->new_menu.count)));
+    for (curr = menu_info->new_menu.base; curr; boolp++, curr = curr->next)
+	*boolp = (curr->identifier.a_void != 0);
+#else
+    menu_info->new_menu.sensitive = (Boolean *) 0;
+#endif
+    labeled = (menu_info->new_menu.query && *(menu_info->new_menu.query))
+	? TRUE : FALSE;
+
+    /* Menus don't appear to size components correctly, except
+     * when first created.  For 3.2.0 release, just recreate
+     * each time.
+     */
+    if (menu_info->valid_widgets
+    && (window != WIN_INVEN || !flags.perm_invent))
+    {
+	XtDestroyWidget(wp->popup);
+	menu_info->valid_widgets=FALSE;
     }
-    *ptr = (String) 0;
 
-    num_args = 0;
-    XtSetArg(args[num_args], XtNallowVert,      True);	       num_args++;
-
-    viewport_widget = XtCreateManagedWidget(
-		"menu_viewport",	/* name */
-		viewportWidgetClass,
-		wp->popup,		/* parent widget */
-		args, num_args);	/* values, and number of values */
-
-    num_args = 0;
-    XtSetArg(args[num_args], XtNforceColumns, True);		num_args++;
-    XtSetArg(args[num_args], XtNdefaultColumns, 1);		num_args++;
-    XtSetArg(args[num_args], XtNlist, menu_info->list_pointer);	num_args++;
-    XtSetArg(args[num_args], XtNtranslations,
-		XtParseTranslationTable(menu_translations));	num_args++;
-
-    wp->w = XtCreateManagedWidget(
-		"menu_list",		/* name */
-		listWidgetClass,
-		viewport_widget,	/* parent widget */
-		args,			/* set some values */
-		num_args);		/* number of values to set */
-
-    XtAddCallback(wp->w, XtNcallback, menu_select, (XtPointer) 0);
-
-    menu_info->valid_widgets = TRUE;
-
-    /* Get the font and margin information. */
-    num_args = 0;
-    XtSetArg(args[num_args], XtNfont,	      &fs);	 	num_args++;
-    XtSetArg(args[num_args], XtNinternalHeight, &top_margin);	num_args++;
-    XtSetArg(args[num_args], XtNrowSpacing,     &spacing);	num_args++;
-    XtGetValues(wp->w, args, num_args);
-
-    /* font height is ascent + descent */
-    pixel_height = top_margin +
-	((menu_info->count + 4) *
-	 (fs->max_bounds.ascent + fs->max_bounds.descent + spacing));
-
-    /* if viewport will be bigger than the screen, limit its height */
-    if ((Dimension) XtScreen(wp->w)->height <= pixel_height) {
-	pixel_height = XtScreen(wp->w)->height / 2;
+    if (!menu_info->valid_widgets) {
+	Dimension row_spacing;
 
 	num_args = 0;
-	XtSetArg(args[num_args], XtNheight, pixel_height); num_args++;
-	XtSetValues(viewport_widget, args, num_args);
+	XtSetArg(args[num_args], XtNallowShellResize, True); num_args++;
+	wp->popup = XtCreatePopupShell(
+			window == WIN_INVEN ? "inventory" : "menu",
+			how == PICK_NONE ? topLevelShellWidgetClass:
+					transientShellWidgetClass,
+			toplevel, args, num_args);
+	XtOverrideTranslations(wp->popup,
+	    XtParseTranslationTable("<Message>WM_PROTOCOLS: menu_delete()"));
+
+
+	num_args = 0;
+	XtSetArg(args[num_args], XtNtranslations,
+		XtParseTranslationTable(menu_translations));	num_args++;
+	form = XtCreateManagedWidget("mform",
+				    formWidgetClass,
+				    wp->popup,
+				    args, num_args);
+
+	num_args = 0;
+	XtSetArg(args[num_args], XtNborderWidth, 0);		num_args++;
+	XtSetArg(args[num_args], XtNtop, XtChainTop);		num_args++;
+	XtSetArg(args[num_args], XtNbottom, XtChainTop);	num_args++;
+	XtSetArg(args[num_args], XtNleft, XtChainLeft);		num_args++;
+	XtSetArg(args[num_args], XtNright, XtChainLeft);	num_args++;
+
+	if (labeled)
+	    label = XtCreateManagedWidget(menu_info->new_menu.query,
+				    labelWidgetClass,
+				    form,
+				    args, num_args);
+	else label = NULL;
+
+	/*
+	 * Create ok, cancel, all, none, invert, and search buttons..
+	 */
+	num_args = 0;
+	XtSetArg(args[num_args], XtNfromVert, label);		num_args++;
+	XtSetArg(args[num_args], XtNtop, XtChainTop);		num_args++;
+	XtSetArg(args[num_args], XtNbottom, XtChainTop);	num_args++;
+	XtSetArg(args[num_args], XtNleft, XtChainLeft);		num_args++;
+	XtSetArg(args[num_args], XtNright, XtChainLeft);	num_args++;
+	ok = XtCreateManagedWidget("OK",
+			commandWidgetClass,
+			form,
+			args, num_args);
+	XtAddCallback(ok, XtNcallback, menu_ok, (XtPointer) wp);
+
+	num_args = 0;
+	XtSetArg(args[num_args], XtNfromVert, label);		num_args++;
+	XtSetArg(args[num_args], XtNfromHoriz, ok);		num_args++;
+	XtSetArg(args[num_args], XtNsensitive, how!=PICK_NONE);	num_args++;
+	XtSetArg(args[num_args], XtNtop, XtChainTop);		num_args++;
+	XtSetArg(args[num_args], XtNbottom, XtChainTop);	num_args++;
+	XtSetArg(args[num_args], XtNleft, XtChainLeft);		num_args++;
+	XtSetArg(args[num_args], XtNright, XtChainLeft);	num_args++;
+	cancel = XtCreateManagedWidget("cancel",
+			commandWidgetClass,
+			form,
+			args, num_args);
+	XtAddCallback(cancel, XtNcallback, menu_cancel, (XtPointer) wp);
+
+	sens = (how == PICK_ANY);
+	num_args = 0;
+	XtSetArg(args[num_args], XtNfromVert, label);		num_args++;
+	XtSetArg(args[num_args], XtNfromHoriz, cancel);		num_args++;
+	XtSetArg(args[num_args], XtNsensitive, sens);		num_args++;
+	XtSetArg(args[num_args], XtNtop, XtChainTop);		num_args++;
+	XtSetArg(args[num_args], XtNbottom, XtChainTop);	num_args++;
+	XtSetArg(args[num_args], XtNleft, XtChainLeft);		num_args++;
+	XtSetArg(args[num_args], XtNright, XtChainLeft);	num_args++;
+	all = XtCreateManagedWidget("all",
+			commandWidgetClass,
+			form,
+			args, num_args);
+	XtAddCallback(all, XtNcallback, menu_all, (XtPointer) wp);
+
+	num_args = 0;
+	XtSetArg(args[num_args], XtNfromVert, label);		num_args++;
+	XtSetArg(args[num_args], XtNfromHoriz, all);		num_args++;
+	XtSetArg(args[num_args], XtNsensitive, sens);		num_args++;
+	XtSetArg(args[num_args], XtNtop, XtChainTop);		num_args++;
+	XtSetArg(args[num_args], XtNbottom, XtChainTop);	num_args++;
+	XtSetArg(args[num_args], XtNleft, XtChainLeft);		num_args++;
+	XtSetArg(args[num_args], XtNright, XtChainLeft);	num_args++;
+	none = XtCreateManagedWidget("none",
+			commandWidgetClass,
+			form,
+			args, num_args);
+	XtAddCallback(none, XtNcallback, menu_none, (XtPointer) wp);
+
+	num_args = 0;
+	XtSetArg(args[num_args], XtNfromVert, label);		num_args++;
+	XtSetArg(args[num_args], XtNfromHoriz, none);		num_args++;
+	XtSetArg(args[num_args], XtNsensitive, sens);		num_args++;
+	XtSetArg(args[num_args], XtNtop, XtChainTop);		num_args++;
+	XtSetArg(args[num_args], XtNbottom, XtChainTop);	num_args++;
+	XtSetArg(args[num_args], XtNleft, XtChainLeft);		num_args++;
+	XtSetArg(args[num_args], XtNright, XtChainLeft);	num_args++;
+	invert = XtCreateManagedWidget("invert",
+			commandWidgetClass,
+			form,
+			args, num_args);
+	XtAddCallback(invert, XtNcallback, menu_invert, (XtPointer) wp);
+
+	num_args = 0;
+	XtSetArg(args[num_args], XtNfromVert, label);		num_args++;
+	XtSetArg(args[num_args], XtNfromHoriz, invert);		num_args++;
+	XtSetArg(args[num_args], XtNsensitive, how!=PICK_NONE);	num_args++;
+	XtSetArg(args[num_args], XtNtop, XtChainTop);		num_args++;
+	XtSetArg(args[num_args], XtNbottom, XtChainTop);	num_args++;
+	XtSetArg(args[num_args], XtNleft, XtChainLeft);		num_args++;
+	XtSetArg(args[num_args], XtNright, XtChainLeft);	num_args++;
+	search = XtCreateManagedWidget("search",
+			commandWidgetClass,
+			form,
+			args, num_args);
+	XtAddCallback(search, XtNcallback, menu_search, (XtPointer) wp);
+
+	num_args = 0;
+	XtSetArg(args[num_args], XtNallowVert,  True);		num_args++;
+	XtSetArg(args[num_args], XtNallowHoriz, False);		num_args++;
+	XtSetArg(args[num_args], XtNuseBottom, True);		num_args++;
+	XtSetArg(args[num_args], XtNuseRight, True);		num_args++;
+/*
+	XtSetArg(args[num_args], XtNforceBars, True);		num_args++;
+*/
+	XtSetArg(args[num_args], XtNfromVert, all);		num_args++;
+	XtSetArg(args[num_args], XtNtop, XtChainTop);		num_args++;
+	XtSetArg(args[num_args], XtNbottom, XtChainBottom);	num_args++;
+	XtSetArg(args[num_args], XtNleft, XtChainLeft);		num_args++;
+	XtSetArg(args[num_args], XtNright, XtChainRight);	num_args++;
+	viewport_widget = XtCreateManagedWidget(
+		    "menu_viewport",	/* name */
+		    viewportWidgetClass,
+		    form,		/* parent widget */
+		    args, num_args);	/* values, and number of values */
+
+	/* make new menu the current menu */
+	move_menu(&menu_info->new_menu, &menu_info->curr_menu);
+
+	num_args = 0;
+	XtSetArg(args[num_args], XtNforceColumns, True);	num_args++;
+	XtSetArg(args[num_args], XtNcolumnSpacing, 0);		num_args++;
+	XtSetArg(args[num_args], XtNdefaultColumns, 1);		num_args++;
+	XtSetArg(args[num_args], XtNlist,
+			menu_info->curr_menu.list_pointer);	num_args++;
+#ifdef USE_FWF
+	XtSetArg(args[num_args], XtNsensitiveArray,
+			menu_info->curr_menu.sensitive);	num_args++;
+	XtSetArg(args[num_args], XtNmaxSelectable,
+			menu_info->curr_menu.count);		num_args++;
+#endif
+	wp->w = XtCreateManagedWidget(
+		    "menu_list",		/* name */
+#ifdef USE_FWF
+		    xfwfMultiListWidgetClass,
+#else
+		    listWidgetClass,
+#endif
+		    viewport_widget,		/* parent widget */
+		    args,			/* set some values */
+		    num_args);			/* number of values to set */
+
+	XtAddCallback(wp->w, XtNcallback, menu_select, (XtPointer) 0);
+
+	/* Get the font and margin information. */
+	num_args = 0;
+	XtSetArg(args[num_args], XtNfont, &menu_info->fs);	num_args++;
+	XtSetArg(args[num_args], XtNinternalHeight,
+				&menu_info->internal_height);	num_args++;
+	XtSetArg(args[num_args], XtNinternalWidth,
+				&menu_info->internal_width);	num_args++;
+	XtSetArg(args[num_args], XtNrowSpacing, &row_spacing);	num_args++;
+	XtGetValues(wp->w, args, num_args);
+
+	/* font height is ascent + descent */
+	menu_info->line_height =
+		menu_info->fs->max_bounds.ascent +
+		menu_info->fs->max_bounds.descent + row_spacing;
+
+	menu_info->valid_widgets = TRUE;
+
+	num_args = 0;
+	XtSetArg(args[num_args], XtNwidth, &v_pixel_width);	num_args++;
+	XtSetArg(args[num_args], XtNheight, &v_pixel_height);	num_args++;
+	XtGetValues(wp->w, args, num_args);
+    } else {
+	Dimension len;
+
+	viewport_widget = XtParent(wp->w);
+
+	/* get the longest string on new menu */
+	v_pixel_width = 0;
+	for (ptr = menu_info->new_menu.list_pointer; *ptr; ptr++) {
+	    len = XTextWidth(menu_info->fs, *ptr, strlen(*ptr));
+	    if (len > v_pixel_width) v_pixel_width = len;
+	}
+
+	/* add viewport internal border */
+	v_pixel_width += 2 * menu_info->internal_width;
+	v_pixel_height = (2 * menu_info->internal_height) +
+	    (menu_info->new_menu.count * menu_info->line_height);
+
+	/* make new menu the current menu */
+	move_menu(&menu_info->new_menu, &menu_info->curr_menu);
+#ifdef USE_FWF
+	XfwfMultiListSetNewData((XfwfMultiListWidget)wp->w,
+		menu_info->curr_menu.list_pointer, 0, 0, TRUE,
+		menu_info->curr_menu.sensitive);
+#else
+	XawListChange(wp->w, menu_info->curr_menu.list_pointer, 0, 0, TRUE);
+#endif
     }
 
+    /* if viewport will be bigger than the screen, limit its height */
+    num_args = 0;
+    XtSetArg(args[num_args], XtNwidth, &v_pixel_width);	num_args++;
+    XtSetArg(args[num_args], XtNheight, &v_pixel_height);	num_args++;
+    XtGetValues(wp->w, args, num_args);
+    if ((Dimension) XtScreen(wp->w)->height * 5 / 6 < v_pixel_height) {
+	/* scrollbar is 14 pixels wide.  Widen the form to accommodate it. */
+	v_pixel_width += 14;
+
+	/* shrink to fit vertically */
+	v_pixel_height = XtScreen(wp->w)->height * 5 / 6;
+
+	num_args = 0;
+	XtSetArg(args[num_args], XtNwidth, v_pixel_width); num_args++;
+	XtSetArg(args[num_args], XtNheight, v_pixel_height); num_args++;
+	XtSetValues(wp->w, args, num_args);
+    }
     XtRealizeWidget(wp->popup);	/* need to realize before we position */
-    positionpopup(wp->popup, FALSE);
 
-    menu_selected = '\0';
+    /* if menu is not up, position it */
+    if (!menu_info->is_up) positionpopup(wp->popup, FALSE);
 
-    nh_XtPopup(wp->popup, (int)XtGrabExclusive, wp->w);
-    (void) x_event(EXIT_ON_EXIT);
+    menu_info->is_up = TRUE;
+    if (window == WIN_INVEN && how == PICK_NONE) {
+	/* cant use nh_XtPopup() because it may try to grab the focus */
+	XtPopup(wp->popup, (int)XtGrabNone);
+	if (!updated_inventory)
+	    XMapRaised(XtDisplay(wp->popup), XtWindow(wp->popup));
+	XSetWMProtocols(XtDisplay(wp->popup), XtWindow(wp->popup),
+							&wm_delete_window, 1);
+	retval = 0;
+    } else {
+	menu_info->is_active = TRUE;	/* waiting for user response */
+	nh_XtPopup(wp->popup, (int)XtGrabExclusive, wp->w);
+	(void) x_event(EXIT_ON_EXIT);
+	menu_info->is_active = FALSE;
 
-    return menu_selected;
+	retval = 0;
+	for (curr = menu_info->curr_menu.base; curr; curr = curr->next)
+	    if (curr->selected) retval++;
+
+	if (retval) {
+	    menu_item *mi;
+
+	    *menu_list = mi = (menu_item *) alloc(retval * sizeof(menu_item));
+	    for (curr = menu_info->curr_menu.base; curr; curr = curr->next)
+		if (curr->selected) {
+		    mi->item = curr->identifier;
+		    mi->count = -1L;	/* no counts (yet) */
+		    mi++;
+		}
+	}
+    }
+
+    return retval;
 }
 
 /* End global functions ==================================================== */
 
+/*
+ * Allocate a copy of the given string.  If null, return a string of
+ * zero length.
+ *
+ * This is an exact duplicate of copy_of() in tty/wintty.c.
+ */
 static char *
 copy_of(s)
     const char *s;
 {
-    char *copy;
-    if (s) {
-	copy = (char *) alloc((unsigned) (strlen(s)+1));
-	Strcpy(copy,s);
-    } else {
-	copy = (char *) alloc((unsigned) 1);
-	*copy = '\0';
-    }
+    if (!s) s = "";
+    return strcpy((char *) alloc((unsigned) (strlen(s) + 1)), s);
+}
 
-    return copy;
+
+static void
+move_menu(src_menu, dest_menu)
+    struct menu *src_menu, *dest_menu;
+{
+    free_menu(dest_menu);	/* toss old menu */
+    *dest_menu = *src_menu;	/* make new menu current */
+				/* leave no dangling ptrs */
+    reset_menu_to_default(src_menu);
+}
+
+
+static void
+free_menu(mp)
+    struct menu *mp;
+{
+    while (mp->base) {
+	mp->last = mp->base;
+	mp->base = mp->base->next;
+
+	free(mp->last->str);
+	free((genericptr_t)mp->last);
+    }
+    if (mp->query) free((genericptr_t) mp->query);
+    if (mp->list_pointer) free((genericptr_t) mp->list_pointer);
+    if (mp->sensitive) free((genericptr_t) mp->sensitive);
+    reset_menu_to_default(mp);
+}
+
+static void
+reset_menu_to_default(mp)
+    struct menu *mp;
+{
+    (void) memset((genericptr_t) mp, '\0', sizeof(struct menu));
+    mp->curr_selector = 'a';	/* first accelerator */
 }
 
 static void
@@ -362,24 +986,15 @@ clear_old_menu(wp)
 {
     struct menu_info_t *menu_info = wp->menu_information;
 
-    while (menu_info->base) {
-	menu_info->last = menu_info->base;
-	menu_info->base = menu_info->base->next;
-
-	free(menu_info->last->str);
-	free((char *)menu_info->last);
-    }
-    menu_info->last = (struct menu_item *) 0;
-    menu_info->other_valid = (char *) 0;
-    menu_info->other_response = '\0';
-    menu_info->query = (char *) 0;
-    menu_info->count = 0;
+    free_menu(&menu_info->curr_menu);
+    free_menu(&menu_info->new_menu);
 
     if (menu_info->valid_widgets) {
 	nh_XtPopdown(wp->popup);
+	menu_info->is_up = FALSE;
 	XtDestroyWidget(wp->popup);
 	menu_info->valid_widgets = FALSE;
-	free((char *) menu_info->list_pointer);
+	wp->w = wp->popup = (Widget) 0;
     }
 }
 
@@ -387,35 +1002,22 @@ void
 create_menu_window(wp)
     struct xwindow *wp;
 {
-    struct menu_info_t *menu_info;
-
     wp->type = NHW_MENU;
-
-    wp->menu_information = menu_info = 
-		    (struct menu_info_t *) alloc(sizeof(struct menu_info_t));
-
-    menu_info->base	      = (struct menu_item *) 0;
-    menu_info->last	      = (struct menu_item *) 0;
-    menu_info->query	      = (char *) 0;
-    menu_info->other_valid    = (char *) 0;
-    menu_info->other_response = '\0';
-    menu_info->count	      = 0;
-    menu_info->list_pointer   = (String *) 0;
-    menu_info->valid_widgets  = FALSE;
+    wp->menu_information =
+		(struct menu_info_t *) alloc(sizeof(struct menu_info_t));
+    (void) memset((genericptr_t) wp->menu_information, '\0',
+						sizeof(struct menu_info_t));
+    reset_menu_to_default(&wp->menu_information->curr_menu);
+    reset_menu_to_default(&wp->menu_information->new_menu);
     wp->w = wp->popup = (Widget) 0;
-    menu_info->is_menu	      = FALSE;
 }
 
 void
 destroy_menu_window(wp)
     struct xwindow *wp;
 {
-    /* printf("destroy_menu_window\n"); */
-
     clear_old_menu(wp);		/* this will also destroy the widgets */
-    free((char *) wp->menu_information);
-
+    free((genericptr_t) wp->menu_information);
+    wp->menu_information = (struct menu_info_t *) 0;
     wp->type = NHW_NONE;	/* allow re-use */
 }
-
-

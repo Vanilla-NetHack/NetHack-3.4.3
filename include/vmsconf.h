@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)vmsconf.h	3.1	93/05/29	*/
+/*	SCCS Id: @(#)vmsconf.h	3.2	96/03/02	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -16,7 +16,7 @@
  *   extra room for patching longer values into an existing executable.
  */
 #define Local_WIZARD	"NHWIZARD\0\0\0\0"
-#define Local_HACKDIR	"DISK$USERS:[GAMES.NETHACK.3-1-3.PLAY]\0\0\0\0\0\0\0\0"
+#define Local_HACKDIR	"DISK$USERS:[GAMES.NETHACK.3-2-0.PLAY]\0\0\0\0\0\0\0\0"
 
 /*
  * This section cleans up the stuff done in config.h so that it
@@ -60,18 +60,6 @@
 # define INTERNAL_COMP
 #endif
 
-/* vision algorithm */
-#ifdef VISION_TABLES
-# if defined(VAXC) && defined(BRACES)
-#  undef BRACES
-# endif
-# if defined(__GNUC__) && !defined(BRACES)
-#  define BRACES		/* put braces around rows of 2d arrays */
-# endif
-#else	/* not VISION_TABLES */
-# define MACRO_CPATH	/* use clear_path macro instead of function */
-#endif
-
 /*
  * If nethack.exe will be installed with privilege so that the playground
  * won't need to be left unprotected, define SECURE to suppress a couple
@@ -79,6 +67,12 @@
  * save files).
  */
 /* #define SECURE /**/
+
+/*
+ * Put the readonly data files into a single container rather than into
+ * separate files in the playground directory.
+ */
+#define DLB	/* use data librarian code */
 
 /*
  * You may define TEXTCOLOR if your system has any terminals that recognize
@@ -104,6 +98,12 @@
  * then use a VTxxx function key or two <escape>s to give an ESC response.
  */
 #define USE_QIO_INPUT	/* use SYS$QIOW instead of SMG$READ_KEYSTROKE */
+
+/*
+ * Allow the user to decide whether to pause via timer or excess screen
+ * output for various display effects like explosions and moving objects.
+ */
+#define TIMED_DELAY	/* enable the `timed_delay' run-time option */
 
 /*
  * If you define MAIL, then NetHack will capture incoming broadcast
@@ -138,6 +138,17 @@
  * The remainder of the file should not need to be changed.
  */
 
+/* data librarian defs */
+#ifdef DLB
+# define DLBFILE	"nh-data.dlb"
+	/*
+	 * Since we can do without case insensitive filename comparison,
+	 * avoid enabling it because that requires compiling and linking
+	 * src/hacklib into util/dlb_main.
+	 */
+/* # define FILENAME_CMP	strcmpi	/* case insensitive */
+#endif
+
 #if defined(VAXC) && !defined(ANCIENT_VAXC)
 # ifdef volatile
 #  undef volatile
@@ -163,6 +174,23 @@
 # endif
 #endif
 
+#ifdef _DECC_V4_SOURCE
+/* <types.h> excludes some necessary typedefs when _DECC_V4_SOURCE is defined */
+#include <types.h>
+# ifndef __PID_T
+# define __PID_T
+typedef __pid_t pid_t;
+# endif
+# ifndef __UID_T
+# define __UID_T
+typedef __uid_t uid_t;
+# endif
+# ifndef __GID_T
+# define __GID_T
+typedef __gid_t gid_t;
+# endif
+#endif	/* _DECC_V4_SOURCE */
+
 #include <time.h>
 #if 0	/* <file.h> is missing for old gcc versions; skip it to save time */
 #include <file.h>
@@ -171,6 +199,7 @@
 # define O_WRONLY 1
 # define O_RDWR   2
 # define O_CREAT 0x200
+# define O_TRUNC 0x400
 #endif
 
 #ifndef REDO
@@ -186,6 +215,12 @@
 /* Use the high quality random number routines. */
 #if defined(RANDOM)
 #define Rand()	random()
+/* VMS V7 adds these entry points to DECC$SHR; stick with the nethack-supplied
+   code to avoid having to deal with version-specific conditionalized builds */
+#define random		nh_random
+#define srandom		nh_srandom
+#define initstate	nh_initstate
+#define setstate	nh_setstate
 #else
 #define Rand()	rand()
 #endif
@@ -205,17 +240,19 @@
 #else
 #define unlink(f0)	remove(f0)		/* vaxcrtl, decc$shr */
 #endif
-#define C$$TRANSLATE(n)	c__translate(n)	/* vmsfiles.c */
+#define C$$TRANSLATE(n)	c__translate(n)		/* vmsfiles.c */
 
 /* VMS global names are case insensitive... */
 #define An vms_an
 #define The vms_the
+#define Shk_Your vms_shk_your
 
 /* avoid global symbol in Alpha/VMS V1.5 STARLET library (link trouble) */
 #define ospeed vms_ospeed
 
 /* used in several files which don't #include "extern.h" */
 extern void FDECL(vms_exit, (int));
+extern int FDECL(vms_open, (const char *,int,unsigned));
 
 #endif	/* VMSCONF_H */
 #endif	/* VMS */

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)artilist.h	3.1	93/06/27	*/
+/*	SCCS Id: @(#)artilist.h	3.2	95/06/23	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -135,7 +135,6 @@ A("Sunsword",			LONG_SWORD,
 	(SPFX_RESTR|SPFX_DFLAG2), 0, M2_UNDEAD,
 	PHYS(5,0),	NO_DFNS,	NO_CARY,	0, A_LAWFUL,	 0  ),
 
-#ifdef MULDGN
 /*
  *	The artifacts for the quest dungeon, all self-willed.
  */
@@ -145,14 +144,14 @@ A("The Orb of Detection",	CRYSTAL_BALL,
 	NO_ATTK,	NO_DFNS,	CARY(AD_MAGM),
 	INVIS,		A_LAWFUL,	'A' ),
 
-A("The Heart of Ahriman", LUCKSTONE,
+A("The Heart of Ahriman",	LUCKSTONE,
 	(SPFX_NOGEN|SPFX_RESTR|SPFX_INTEL), SPFX_STLTH, 0,
 	NO_ATTK,	NO_DFNS,	NO_CARY,
 	LEVITATION,	A_NEUTRAL,	'B' ),
 
-A("The Sceptre of Might",	QUARTERSTAFF,
+A("The Sceptre of Might",	MACE,
 	(SPFX_NOGEN|SPFX_RESTR|SPFX_INTEL|SPFX_DALIGN), 0, 0,
-	PHYS(0,0),	NO_DFNS,	CARY(AD_MAGM),
+	PHYS(5,0),	NO_DFNS,	CARY(AD_MAGM),
 	CONFLICT,	A_LAWFUL,	'C' ),
 
 A("The Palantir of Westernesse",	CRYSTAL_BALL,
@@ -163,16 +162,16 @@ A("The Palantir of Westernesse",	CRYSTAL_BALL,
 
 A("The Staff of Aesculapius",	QUARTERSTAFF,
 	(SPFX_NOGEN|SPFX_RESTR|SPFX_ATTK|SPFX_INTEL|SPFX_DRLI|SPFX_REGEN), 0,0,
-	DRLI(0,0),	NO_DFNS,	NO_CARY,
+	DRLI(0,0),	DRLI(0,0),	NO_CARY,
 	HEALING,	A_NEUTRAL,	'H' ),
 
 A("The Magic Mirror of Merlin",	MIRROR,
-	(SPFX_NOGEN|SPFX_RESTR|SPFX_SPEEK), SPFX_ESP, 0,
+	(SPFX_NOGEN|SPFX_RESTR|SPFX_INTEL|SPFX_SPEEK), SPFX_ESP, 0,
 	NO_ATTK,	NO_DFNS,	CARY(AD_MAGM),
 	0,		A_LAWFUL,	'K' ),
 
 A("The Mitre of Holiness",	HELM_OF_BRILLIANCE,
-	(SPFX_NOGEN|SPFX_RESTR|SPFX_DCLAS|SPFX_INTEL), 0, M2_UNDEAD,
+	(SPFX_NOGEN|SPFX_RESTR|SPFX_DFLAG2|SPFX_INTEL), 0, M2_UNDEAD,
 	NO_ATTK,	NO_DFNS,	CARY(AD_FIRE),
 	ENERGY_BOOST,	A_LAWFUL,	'P' ),
 
@@ -184,16 +183,16 @@ A("The Master Key of Thievery", SKELETON_KEY,
 
 A("The Tsurugi of Muramasa",	TSURUGI,
 	(SPFX_NOGEN|SPFX_RESTR|SPFX_INTEL|SPFX_BEHEAD|SPFX_LUCK), 0, 0,
-	NO_ATTK,	NO_DFNS,	NO_CARY,
+	PHYS(0,8),	NO_DFNS,	NO_CARY,
 	0,		A_LAWFUL,	'S' ),
 
-# ifdef TOURIST
+#ifdef TOURIST
 A("The Platinum Yendorian Express Card", CREDIT_CARD,
 	(SPFX_NOGEN|SPFX_RESTR|SPFX_INTEL|SPFX_DEFN),
 		(SPFX_ESP|SPFX_HSPDAM), 0,
 	NO_ATTK,	NO_DFNS,	CARY(AD_MAGM),
 	CHARGE_OBJ,	A_NEUTRAL,	'T' ),
-# endif
+#endif
 
 A("The Orb of Fate",		CRYSTAL_BALL,
 	(SPFX_NOGEN|SPFX_RESTR|SPFX_INTEL|SPFX_LUCK),
@@ -205,7 +204,7 @@ A("The Eye of the Aethiopica",	AMULET_OF_ESP,
 	(SPFX_NOGEN|SPFX_RESTR|SPFX_INTEL), (SPFX_EREGEN|SPFX_HSPDAM), 0,
 	NO_ATTK,	NO_DFNS,	CARY(AD_MAGM),
 	CREATE_PORTAL,	A_NEUTRAL,	'W' ),
-#endif	/* MULDGN */
+
 /*
  *  terminator; otyp must be zero
  */

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)sp_lev.c	3.1	93/06/29	*/
+/*	SCCS Id: @(#)sp_lev.c	3.2	96/03/13	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -10,7 +10,8 @@
  */
 
 #include "hack.h"
-/*#define DEBUG 	/* uncomment to enable code debugging */
+#include "dlb.h"
+/* #define DEBUG	/* uncomment to enable code debugging */
 
 #ifdef DEBUG
 # ifdef WIZARD
@@ -30,6 +31,7 @@ static void FDECL(get_free_room_loc, (schar *, schar *, struct mkroom *));
 static void FDECL(create_trap, (trap *, struct mkroom *));
 static void FDECL(create_monster, (monster *, struct mkroom *));
 static void FDECL(create_object, (object *, struct mkroom *));
+static void FDECL(create_engraving, (engraving *,struct mkroom *));
 static void FDECL(create_stairs, (stair *, struct mkroom *));
 static void FDECL(create_altar, (altar *, struct mkroom *));
 static void FDECL(create_gold, (gold *, struct mkroom *));
@@ -41,12 +43,6 @@ static void FDECL(create_corridor, (corridor *));
 
 static boolean FDECL(create_subroom, (struct mkroom *, XCHAR_P, XCHAR_P,
 					XCHAR_P, XCHAR_P, XCHAR_P, XCHAR_P));
-
-#if (defined(MICRO) && !defined(AMIGA)) || defined(THINK_C)
-# define RDMODE "rb"
-#else
-# define RDMODE "r"
-#endif
 
 #define LEFT	1
 #define H_LEFT	2
@@ -62,9 +58,10 @@ static boolean FDECL(create_subroom, (struct mkroom *, XCHAR_P, XCHAR_P,
 #define XLIM	4
 #define YLIM	3
 
-#define Fread	(void)fread
+#define Fread	(void)dlb_fread
+#define Fgetc	(schar)dlb_fgetc
 #define New(type)		(type *) alloc(sizeof(type))
-#define NewTab(type, size)	(type **) alloc(sizeof(type *) * size)
+#define NewTab(type, size)	(type **) alloc(sizeof(type *) * (unsigned)size)
 #define Free(ptr)		if(ptr) free((genericptr_t) (ptr))
 
 static NEARDATA walk walklist[50];
@@ -82,10 +79,13 @@ static int NDECL(rndtrap);
 static void FDECL(get_location, (schar *,schar *,int));
 static void FDECL(sp_lev_shuffle, (char *,char *,int));
 static void FDECL(light_region, (region *));
-static void FDECL(load_common_data, (FILE *,int));
-static boolean FDECL(load_rooms, (FILE *));
-static void FDECL(maze1xy, (coord *));
-static boolean FDECL(load_maze, (FILE *));
+static void FDECL(load_common_data, (dlb *,int));
+static void FDECL(load_one_monster, (dlb *,monster *));
+static void FDECL(load_one_object, (dlb *,object *));
+static void FDECL(load_one_engraving, (dlb *,engraving *));
+static boolean FDECL(load_rooms, (dlb *));
+static void FDECL(maze1xy, (coord *,int));
+static boolean FDECL(load_maze, (dlb *));
 static void FDECL(create_door, (room_door *, struct mkroom *));
 static void FDECL(free_rooms,(room **, int));
 static void FDECL(build_room, (room *, room*));
@@ -109,38 +109,48 @@ int prop;
 	for(y = y1; y <= y2; y++)
 	    for(x = x1; x <= x2; x++)
 		if(IS_STWALL(levl[x][y].typ))
-		    levl[x][y].diggable |= prop;
+		    levl[x][y].wall_info |= prop;
 }
 
 /*
  * Choose randomly the state (nodoor, open, closed or locked) for a door
  */
-
 static int
 rnddoor()
 {
-	int i;
-	
-	i = 1 << rn2(5);
+	int i = 1 << rn2(5);
 	i >>= 1;
 	return i;
 }
 
-/* 
+/*
  * Select a random trap
  */
-
 static int
 rndtrap()
 {
-	int	rtrap, no_tdoor = !Can_dig_down(&u.uz);
+	int rtrap;
+
 	do {
 	    rtrap = rnd(TRAPNUM-1);
-	} while (rtrap == MAGIC_PORTAL || (no_tdoor && rtrap == TRAPDOOR));
-	return(rtrap);
+	    switch (rtrap) {
+	     case HOLE:		/* no random holes on special levels */
+	     case MAGIC_PORTAL:	rtrap = NO_TRAP;
+				break;
+	     case TRAPDOOR:	if (!Can_dig_down(&u.uz)) rtrap = NO_TRAP;
+				break;
+	     case LEVEL_TELEP:
+	     case TELEP_TRAP:	if (level.flags.noteleport) rtrap = NO_TRAP;
+				break;
+	     case ROLLING_BOULDER_TRAP:
+	     case ROCKTRAP:	if (In_endgame(&u.uz)) rtrap = NO_TRAP;
+				break;
+	    }
+	} while (rtrap == NO_TRAP);
+	return rtrap;
 }
 
-/* 
+/*
  * Coordinates in special level files are handled specially:
  *
  *	if x or y is -11, we generate a random coordinate.
@@ -201,18 +211,18 @@ register schar x, y;
 register int humidity;
 {
 	register int typ;
-	register boolean okplace = FALSE;
 
 	if (humidity & DRY) {
 	    typ = levl[x][y].typ;
-	    okplace = (typ == ROOM || typ == AIR ||
-			typ == CLOUD || typ == CORR);
+	    if (typ == ROOM || typ == AIR ||
+		    typ == CLOUD || typ == ICE || typ == CORR)
+		return TRUE;
 	}
 	if (humidity & WET) {
 	    if (is_pool(x,y) || is_lava(x,y))
-		okplace = TRUE;
+		return TRUE;
 	}
-	return okplace;
+	return FALSE;
 }
 
 /*
@@ -240,7 +250,7 @@ int n;
 	}
 }
 
-/* 
+/*
  * Get a relative position inside a room.
  * negative values for x or y means RANDOM!
  */
@@ -268,7 +278,7 @@ struct mkroom	*croom;
 	}
 }
 
-/* 
+/*
  * Get a relative position inside a room.
  * negative values for x or y means RANDOM!
  */
@@ -341,7 +351,7 @@ chk:
 	return TRUE;
 }
 
-/* 
+/*
  * Create a new room.
  * This is still very incomplete...
  */
@@ -421,7 +431,7 @@ xchar	rtype, rlit;
 			}
 			xabs = lx + (lx > 0 ? xlim : 3)
 			    + rn2(hx - (lx>0?lx : 3) - dx - xborder + 1);
-			yabs = ly + (ly > 0 ? ylim : 2) 
+			yabs = ly + (ly > 0 ? ylim : 2)
 			    + rn2(hy - (ly>0?ly : 2) - dy - yborder + 1);
 			if (ly == 0 && hy >= (ROWNO-1) &&
 			    (!nroom || !rn2(nroom)) && (yabs+dy > ROWNO/2)) {
@@ -478,7 +488,7 @@ xchar	rtype, rlit;
 				break;
 			}
 			
-			if (xabs + wtmp - 1 > COLNO - 2) 
+			if (xabs + wtmp - 1 > COLNO - 2)
 			    xabs = COLNO - wtmp - 3;
 			
 			if (xabs < 2)
@@ -513,7 +523,7 @@ xchar	rtype, rlit;
 	return TRUE;
 }
 
-/* 
+/*
  * Create a subroom in room proom at pos x,y with width w & height h.
  * x & y are relative to the parent room.
  */
@@ -556,13 +566,13 @@ xchar rtype, rlit;
 	    rtype = OROOM;
 	if (rlit == -1)
 	    rlit = (rnd(1+abs(depth(&u.uz))) < 11 && rn2(77)) ? TRUE : FALSE;
-	add_subroom(proom, proom->lx + x, proom->ly + y, 
+	add_subroom(proom, proom->lx + x, proom->ly + y,
 		    proom->lx + x + w - 1, proom->ly + y + h - 1,
 		    rlit, rtype, FALSE);
 	return TRUE;
 }
 
-/* 
+/*
  * Create a new door in a room.
  * It's placed on a wall (north, south, east or west).
  */
@@ -590,7 +600,7 @@ struct mkroom *broom;
 				    dd->mask = D_CLOSED;
 				if (dd->mask != D_ISOPEN && !rn2(25))
 				    dd->mask |= D_TRAPPED;
-			} else 
+			} else
 			    dd->mask = D_NODOOR;
 		} else {
 			if(!rn2(5))	dd->mask = D_LOCKED;
@@ -689,7 +699,7 @@ create_secret_door(croom, walls)
     impossible("couldn't create secret door on any walls 0x%x", walls);
 }
 
-/* 
+/*
  * Create a trap in a room.
  */
 
@@ -698,9 +708,10 @@ create_trap(t,croom)
 trap	*t;
 struct mkroom	*croom;
 {
-	schar		x,y;
-	coord tm;
+    schar	x,y;
+    coord	tm;
 
+    if (rn2(100) < t->chance) {
 	x = t->x;
 	y = t->y;
 	if (croom)
@@ -712,9 +723,10 @@ struct mkroom	*croom;
 	tm.y = y;
 
 	mktrap(t->type, 1, (struct mkroom*) 0, &tm);
+    }
 }
 
-/* 
+/*
  * Create a monster in a room.
  */
 
@@ -729,35 +741,34 @@ struct mkroom	*croom;
 	aligntyp	amask;
 	struct permonst *pm;
 
-	if (m->class >= 0) {
+	if (m->class >= 0)
 	    class = (char) def_char_to_monclass((char)m->class);
-	    if (class == MAXMCLASSES) goto bad_class;
-	} else if (m->class > -11) {
+	else if (m->class > -11)
 	    class = (char) def_char_to_monclass(rmonst[- m->class - 1]);
-	    if (class == MAXMCLASSES) {
-bad_class:
-		panic("create_monster: unknown monster class '%c'", m->class);
-	    }
-	} else
+	else
 	    class = 0;
+
+	if (class == MAXMCLASSES)
+	    panic("create_monster: unknown monster class '%c'", m->class);
 
 	amask = (m->align <= -11) ? induced_align(80) :
 	    (m->align < 0 ? ralign[-m->align-1] : m->align);
 
 	if (!class)
 	    pm = (struct permonst *) 0;
-	else if (m->id != -1) {
-#ifdef MULDGN
-	    if(pl_character[0] == 'E' && m->id == PM_EARENDIL)
-		m->id += flags.female;
-#endif
+	else if (m->id != NON_PM) {
+	    if (flags.female && Role_is('E') && m->id == PM_EARENDIL)
+		m->id = PM_ELWING;
 	    pm = &mons[m->id];
+	    if ((pm->geno & G_UNIQ) &&
+			(mvitals[monsndx(pm)].mvflags & G_EXTINCT))
+		goto m_done;
 	} else {
 	    pm = mkclass(class,G_NOGEN);
 	    /* if we can't get class for a specific monster type,
 	       it means, that it's extinct, genocided, or unique,
 	       and shouldn't be created. */
-	    if (!pm) return;
+	    if (!pm) goto m_done;	/* release memory before returning */
 	}
 
 	x = m->x;
@@ -782,30 +793,31 @@ bad_class:
 
 	if (mtmp) {
 	    /* handle specific attributes for some special monsters */
-	    if (m->name) mtmp = christen_monst(mtmp, m->name);
+	    if (m->name.str) mtmp = christen_monst(mtmp, m->name.str);
 
 	    /*
 	     * This is currently hardwired for mimics only.  It should
 	     * eventually be expanded.
 	     */
-	    if (m->appear_as && mtmp->data->mlet == S_MIMIC) {
+	    if (m->appear_as.str && mtmp->data->mlet == S_MIMIC) {
 		int i;
 
 		switch (m->appear) {
 		    case M_AP_NOTHING:
 			impossible(
 		"create_monster: mon has an appearance, \"%s\", but no type",
-				m->appear_as);
+				m->appear_as.str);
 			break;
 
 		    case M_AP_FURNITURE:
 			for (i = 0; i < MAXPCHARS; i++)
-			    if (!strcmp(defsyms[i].explanation, m->appear_as))
+			    if (!strcmp(defsyms[i].explanation,
+					m->appear_as.str))
 				break;
 			if (i == MAXPCHARS) {
 			    impossible(
 				"create_monster: can't find feature \"%s\"",
-		    		m->appear_as);
+				m->appear_as.str);
 			} else {
 			    mtmp->m_ap_type = M_AP_FURNITURE;
 			    mtmp->mappearance = i;
@@ -813,13 +825,14 @@ bad_class:
 			break;
 
 		    case M_AP_OBJECT:
-			for (i = 0; i < NROFOBJECTS; i++)
-			    if (!strcmp(OBJ_NAME(objects[i]), m->appear_as))
+			for (i = 0; i < NUM_OBJECTS; i++)
+			    if (!strcmp(OBJ_NAME(objects[i]),
+					m->appear_as.str))
 				break;
-			if (i == NROFOBJECTS) {
+			if (i == NUM_OBJECTS) {
 			    impossible(
 				"create_monster: can't find object \"%s\"",
-		    		m->appear_as);
+				m->appear_as.str);
 			} else {
 			    mtmp->m_ap_type = M_AP_OBJECT;
 			    mtmp->mappearance = i;
@@ -828,11 +841,11 @@ bad_class:
 
 		    case M_AP_MONSTER:
 			/* note: mimics don't appear as monsters! */
-			/* 	 (but chameleons can :-)	  */
+			/*	 (but chameleons can :-)	  */
 		    default:
 			impossible(
 		"create_monster: unimplemented mon appear type [%d,\"%s\"]",
-				m->appear, m->appear_as);
+				m->appear, m->appear_as.str);
 			break;
 		}
 		if (does_block(x, y, &levl[x][y]))
@@ -856,9 +869,13 @@ bad_class:
 #endif
 	    }
 	}
+
+ m_done:
+	Free(m->name.str);
+	Free(m->appear_as.str);
 }
 
-/* 
+/*
  * Create an object in a room.
  */
 
@@ -911,22 +928,71 @@ struct mkroom	*croom;
 				 * with what mkobj gave us! */
 	}
 
-	/* 	corpsenm is "empty" if -1, random if -2, otherwise specific */
-	if (o->corpsenm == -2) otmp->corpsenm = rndmonnum();
-	else if (o->corpsenm != -1) otmp->corpsenm = o->corpsenm;
+	/*	corpsenm is "empty" if -1, random if -2, otherwise specific */
+	if (o->corpsenm == NON_PM - 1) otmp->corpsenm = rndmonnum();
+	else if (o->corpsenm != NON_PM) otmp->corpsenm = o->corpsenm;
 
-	if (o->name) {		/* Give a name to that object */
-		/* Note: oname() is safe since otmp is first in chains */
-		otmp = oname(otmp, o->name, 0);
-		fobj = otmp;
-		level.objects[x][y] = otmp;
+	/* assume we wouldn't be given an egg corpsenm unless it was
+	   hatchable */
+	if (otmp->otyp == EGG && otmp->corpsenm != NON_PM)
+	    if (dead_species(otmp->otyp, TRUE))
+		kill_egg(otmp);	/* make sure nothing hatches */
+	    else
+		attach_egg_hatch_timeout(otmp);	/* attach new hatch timeout */
+
+	if (o->name.str) {	/* Give a name to that object */
+	    otmp = oname(otmp, o->name.str);
+	    free((genericptr_t) o->name.str);
+	}
+
+	switch(o->containment) {
+	    static struct obj *container = 0;
+
+	    /* contents */
+	    case 1:
+		if (!container) {
+		    impossible("create_object: no container");
+		    break;
+		}
+		remove_object(otmp);
+		add_to_container(container, otmp);
+		return;
+	    /* container */
+	    case 2:
+		delete_contents(otmp);
+		container = otmp;
+		return;
+	    /* nothing */
+	    case 0: break;
+
+	    default: impossible("containment type %d?", (int) o->containment);
 	}
 	stackobj(otmp);
 }
 
-/* 
+/*
+ * Randomly place a specific engraving, then release its memory.
+ */
+static void
+create_engraving(e, croom)
+engraving *e;
+struct mkroom *croom;
+{
+	xchar x, y;
+
+	x = e->x,  y = e->y;
+	if (croom)
+	    get_room_loc(&x, &y, croom);
+	else
+	    get_location(&x, &y, DRY);
+
+	make_engr_at(x, y, e->engr.str, 0L, e->etype);
+	free((genericptr_t) e->engr.str);
+}
+
+/*
  * Create stairs in a room.
- * 
+ *
  */
 
 static void
@@ -941,7 +1007,7 @@ struct mkroom	*croom;
 	mkstairs(x,y,(char)s->up, croom);
 }
 
-/* 
+/*
  * Create an altar in a room.
  */
 
@@ -996,7 +1062,7 @@ create_altar(a, croom)
 	}
 }
 
-/* 
+/*
  * Create a gold pile in a room.
  */
 
@@ -1018,7 +1084,7 @@ struct mkroom	*croom;
 	mkgold((long) g->amount, x, y);
 }
 
-/* 
+/*
  * Create a feature (e.g a fountain) in a room.
  */
 
@@ -1052,7 +1118,7 @@ int		typ;
 	    level.flags.nsinks++;
 }
 
-/* 
+/*
  * Search for a door in a room on a specified wall.
  */
 
@@ -1096,7 +1162,7 @@ int cnt;
 		if (IS_DOOR(levl[xx][yy].typ) || levl[xx][yy].typ == SDOOR) {
 			*x = xx;
 			*y = yy;
-			if (cnt-- <= 0) 
+			if (cnt-- <= 0)
 			    return TRUE;
 		}
 		xx += dx;
@@ -1105,13 +1171,13 @@ int cnt;
 	return FALSE;
 }
 
-/* 
+/*
  * Dig a corridor between two points.
  */
 
 boolean
 dig_corridor(org,dest,nxcor,ftyp,btyp)
-coord org, dest;
+coord *org, *dest;
 boolean nxcor;
 schar ftyp, btyp;
 {
@@ -1119,8 +1185,8 @@ schar ftyp, btyp;
 	register struct rm *crm;
 	register int tx, ty, xx, yy;
 
-	xx = org.x;  yy = org.y;
-	tx = dest.x; ty = dest.y;
+	xx = org->x;  yy = org->y;
+	tx = dest->x; ty = dest->y;
 	if (xx <= 0 || yy <= 0 || tx <= 0 || ty <= 0 ||
 	    xx > COLNO-1 || tx > COLNO-1 ||
 	    yy > ROWNO-1 || ty > ROWNO-1) {
@@ -1221,7 +1287,7 @@ static void
 fix_stair_rooms()
 {
     register i;
-    register struct mkroom 	*croom;
+    register struct mkroom *croom;
 
     if(xdnstair &&
        !((dnstairs_room->lx <= xdnstair && xdnstair <= dnstairs_room->hx) &&
@@ -1253,7 +1319,7 @@ fix_stair_rooms()
     }
 }
 
-/* 
+/*
  * Corridors always start from a door. But it can end anywhere...
  * Basically we search for door coordinates or for endpoints coordinates
  * (from a distance).
@@ -1292,18 +1358,18 @@ corridor	*c;
 		      case W_WEST:  dest.x--; break;
 		      case W_EAST:  dest.x++; break;
 		}
-		(void) dig_corridor(org, dest, FALSE, CORR, STONE);
+		(void) dig_corridor(&org, &dest, FALSE, CORR, STONE);
 	}
 }
 
 
-/* 
+/*
  * Fill a room (shop, zoo, etc...) with appropriate stuff.
  */
 
 void
 fill_room(croom, prefilled)
-struct mkroom 	*croom;
+struct mkroom *croom;
 boolean prefilled;
 {
 	if (!croom || croom->rtype == OROOM)
@@ -1350,11 +1416,9 @@ boolean prefilled;
 	    case BEEHIVE:
 		level.flags.has_beehive = TRUE;
 		break;
-#ifdef ARMY
 	    case BARRACKS:
 		level.flags.has_barracks = TRUE;
 		break;
-#endif
 	    case TEMPLE:
 		level.flags.has_temple = TRUE;
 		break;
@@ -1381,26 +1445,6 @@ int n;
 			    Free(r->doors[j]);
 			Free(r->doors);
 		}
-		if ((j = r->ntrap) != 0) {
-			while (j--)
-			    Free(r->traps[j]);
-			Free(r->traps);
-		}
-		if ((j = r->nmonster) != 0) {
-			while (j--) {
-				Free(r->monsters[j]->name);
-				Free(r->monsters[j]->appear_as);
-				Free(r->monsters[j]);
-			}
-			Free(r->monsters);
-		}
-		if ((j = r->nobject) != 0) {
-			while(j--) {
-				Free(r->objects[j]->name);
-				Free(r->objects[j]);
-			}
-			Free(r->objects);
-		}
 		if ((j = r->nstair) != 0) {
 			while(j--)
 			    Free(r->stairs[j]);
@@ -1410,18 +1454,6 @@ int n;
 			while (j--)
 			    Free(r->altars[j]);
 			Free(r->altars);
-		}
-		if ((j = r->ngold) != 0) {
-			while(j--)
-			    Free(r->golds[j]);
-			Free(r->golds);
-		}
-		if ((j = r->nengraving) != 0) {
-			while(j--) {
-				Free(r->engravings[j]->e.text);
-				Free(r->engravings[j]);
-			}
-			Free(r->engravings);
 		}
 		if ((j = r->nfountain) != 0) {
 			while(j--)
@@ -1438,8 +1470,34 @@ int n;
 			    Free(r->pools[j]);
 			Free(r->pools);
 		}
+		if ((j = r->ntrap) != 0) {
+			while (j--)
+			    Free(r->traps[j]);
+			Free(r->traps);
+		}
+		if ((j = r->nmonster) != 0) {
+			while (j--)
+				Free(r->monsters[j]);
+			Free(r->monsters);
+		}
+		if ((j = r->nobject) != 0) {
+			while (j--)
+				Free(r->objects[j]);
+			Free(r->objects);
+		}
+		if ((j = r->ngold) != 0) {
+			while(j--)
+			    Free(r->golds[j]);
+			Free(r->golds);
+		}
+		if ((j = r->nengraving) != 0) {
+			while (j--)
+				Free(r->engravings[j]);
+			Free(r->engravings);
+		}
 		Free(r);
 	}
+	Free(ro);
 }
 
 static void
@@ -1503,15 +1561,9 @@ room *r, *pr;
 		    create_gold(r->golds[i], aroom);
 
 		/* The engravings */
-		for(i = 0; i<r->nengraving; i++) {
-			schar xx, yy;
+		for (i = 0; i < r->nengraving; i++)
+		    create_engraving(r->engravings[i], aroom);
 
-			xx = r->engravings[i]->x;
-			yy = r->engravings[i]->y;
-			get_room_loc(&xx, &yy, aroom);
-			make_engr_at(xx, yy, r->engravings[i]->e.text,
-				     0L, r->engravings[i]->etype);
-		}
 #ifdef SPECIALIZATION
 		topologize(aroom,FALSE);		/* set roomno */
 #else
@@ -1557,7 +1609,7 @@ light_region(tmpregion)
 /* initialization common to all special levels */
 static void
 load_common_data(fd, typ)
-FILE *fd;
+dlb *fd;
 int typ;
 {
 	uchar	n;
@@ -1572,15 +1624,6 @@ int typ;
       }
 
 	level.flags.is_maze_lev = typ == SP_LEV_MAZE;
-
-	/* free up old level regions */
-	if(num_lregions) {
-		for(i=0; i<num_lregions; i++)
-			if(lregions[i].rname) Free(lregions[i].rname);
-		Free(lregions);
-		num_lregions = 0;
-	}
-	lregions = (lev_region *) 0;
 
 	/* Read the level initialization data */
 	Fread((genericptr_t) &init_lev, 1, sizeof(lev_init), fd);
@@ -1610,16 +1653,68 @@ int typ;
 	}
 }
 
+static void
+load_one_monster(fd, m)
+dlb *fd;
+monster *m;
+{
+	int size;
+
+	Fread((genericptr_t) m, 1, sizeof *m, fd);
+	if ((size = m->name.len) != 0) {
+	    m->name.str = (char *) alloc((unsigned)size + 1);
+	    Fread((genericptr_t) m->name.str, 1, size, fd);
+	    m->name.str[size] = '\0';
+	} else
+	    m->name.str = (char *) 0;
+	if ((size = m->appear_as.len) != 0) {
+	    m->appear_as.str = (char *) alloc((unsigned)size + 1);
+	    Fread((genericptr_t) m->appear_as.str, 1, size, fd);
+	    m->appear_as.str[size] = '\0';
+	} else
+	    m->appear_as.str = (char *) 0;
+}
+
+static void
+load_one_object(fd, o)
+dlb *fd;
+object *o;
+{
+	int size;
+
+	Fread((genericptr_t) o, 1, sizeof *o, fd);
+	if ((size = o->name.len) != 0) {
+	    o->name.str = (char *) alloc((unsigned)size + 1);
+	    Fread((genericptr_t) o->name.str, 1, size, fd);
+	    o->name.str[size] = '\0';
+	} else
+	    o->name.str = (char *) 0;
+}
+
+static void
+load_one_engraving(fd, e)
+dlb *fd;
+engraving *e;
+{
+	int size;
+
+	Fread((genericptr_t) e, 1, sizeof *e, fd);
+	size = e->engr.len;
+	e->engr.str = (char *) alloc((unsigned)size+1);
+	Fread((genericptr_t) e->engr.str, 1, size, fd);
+	e->engr.str[size] = '\0';
+}
+
 static boolean
 load_rooms(fd)
-FILE *fd;
+dlb *fd;
 {
-	xchar		nrooms;
+	xchar		nrooms, ncorr;
 	char		n;
 	short		size;
 	corridor	tmpcor;
 	room**		tmproom;
-	int		i, j, ncorr;
+	int		i, j;
 
 	load_common_data(fd, SP_LEV_ROOMS);
 
@@ -1646,7 +1741,7 @@ FILE *fd;
 		/* Let's see if this room has a name */
 		Fread((genericptr_t) &size, 1, sizeof(size), fd);
 		if (size > 0) {	/* Yup, it does! */
-			r->name = (char *) alloc(size + 1);
+			r->name = (char *) alloc((unsigned)size + 1);
 			Fread((genericptr_t) r->name, 1, size, fd);
 			r->name[size] = 0;
 		} else
@@ -1655,7 +1750,7 @@ FILE *fd;
 		/* Let's see if this room has a parent */
 		Fread((genericptr_t) &size, 1, sizeof(size), fd);
 		if (size > 0) {	/* Yup, it does! */
-			r->parent = (char *) alloc(size + 1);
+			r->parent = (char *) alloc((unsigned)size + 1);
 			Fread((genericptr_t) r->parent, 1, size, fd);
 			r->parent[size] = 0;
 		} else
@@ -1693,61 +1788,6 @@ FILE *fd;
 				sizeof(room_door), fd);
 		}
 
-		/* read the traps */
-		Fread((genericptr_t) &r->ntrap, 1, sizeof(r->ntrap), fd);
-		if ((n = r->ntrap) != 0)
-		    r->traps = NewTab(trap, n);
-		while(n--) {
-			r->traps[n] = New(trap);
-			Fread((genericptr_t) r->traps[n], 1, sizeof(trap), fd);
-		}
-
-		/* read the monsters */
-		Fread((genericptr_t) &r->nmonster, 1, sizeof(r->nmonster), fd);
-		if ((n = r->nmonster) != 0)
-		    r->monsters = NewTab(monster, n);
-		while(n--) {
-			r->monsters[n] = New(monster);
-			Fread((genericptr_t) r->monsters[n], 1,
-				sizeof(monster), fd);
-			Fread((genericptr_t) &size, sizeof(size), 1, fd);
-			if (size) {
-				r->monsters[n]->name= (char *) alloc(size + 1);
-				Fread((genericptr_t)r->monsters[n]->name,
-					1, size, fd);
-				r->monsters[n]->name[size] = 0;
-			} else
-				r->monsters[n]->name = (char *) 0;
-
-			Fread((genericptr_t) &size, sizeof(size), 1, fd);
-			if (size) {
-				r->monsters[n]->appear_as=
-						    (char *) alloc(size + 1);
-				Fread((genericptr_t)r->monsters[n]->appear_as,
-					1, size, fd);
-				r->monsters[n]->appear_as[size] = 0;
-			} else
-				r->monsters[n]->appear_as = (char *) 0;
-		 }
-
-		/* read the objects */
-		Fread((genericptr_t) &r->nobject, 1, sizeof(r->nobject), fd);
-		if ((n = r->nobject) != 0)
-		    r->objects = NewTab(object, n);
-		while (n--) {
-			r->objects[n] = New(object);
-			Fread((genericptr_t) r->objects[n], 1,
-				sizeof(object), fd);
-			Fread((genericptr_t) &size, 1, sizeof(size), fd);
-			if (size) {
-				r->objects[n]->name = (char *) alloc(size + 1);
-				Fread((genericptr_t)r->objects[n]->name,
-					1, size, fd);
-				r->objects[n]->name[size] = 0;
-			} else
-			    r->objects[n]->name = (char *) 0;
-		}
-
 		/* read the stairs */
 		Fread((genericptr_t) &r->nstair, 1, sizeof(r->nstair), fd);
 		if ((n = r->nstair) != 0)
@@ -1766,31 +1806,6 @@ FILE *fd;
 			r->altars[n] = New(altar);
 			Fread((genericptr_t) r->altars[n], 1,
 				sizeof(altar), fd);
-		}
-
-		/* read the gold piles */
-		Fread((genericptr_t) &r->ngold, 1, sizeof(r->ngold), fd);
-		if ((n = r->ngold) != 0)
-		    r->golds = NewTab(gold, n);
-		while (n--) {
-			r->golds[n] = New(gold);
-			Fread((genericptr_t) r->golds[n], 1, sizeof(gold), fd);
-		}
-
-		/* read the engravings */
-		Fread((genericptr_t) &r->nengraving, 1,
-			sizeof(r->nengraving), fd);
-		if ((n = r->nengraving) != 0)
-		    r->engravings = NewTab(engraving,n);
-		while(n--) {
-			r->engravings[n] = New(engraving);
-			Fread((genericptr_t) r->engravings[n],
-				1, sizeof *r->engravings[n], fd);
-			size = r->engravings[n]->e.length;
-			r->engravings[n]->e.text = (char *) alloc(size+1);
-			Fread((genericptr_t) r->engravings[n]->e.text,
-				1, size, fd);
-			r->engravings[n]->e.text[size] = '\0';
 		}
 
 		/* read the fountains */
@@ -1822,6 +1837,58 @@ FILE *fd;
 			Fread((genericptr_t) r->pools[n], 1, sizeof(pool), fd);
 		}
 
+		/* read the traps */
+		Fread((genericptr_t) &r->ntrap, 1, sizeof(r->ntrap), fd);
+		if ((n = r->ntrap) != 0)
+		    r->traps = NewTab(trap, n);
+		while(n--) {
+			r->traps[n] = New(trap);
+			Fread((genericptr_t) r->traps[n], 1, sizeof(trap), fd);
+		}
+
+		/* read the monsters */
+		Fread((genericptr_t) &r->nmonster, 1, sizeof(r->nmonster), fd);
+		if ((n = r->nmonster) != 0) {
+		    r->monsters = NewTab(monster, n);
+		    while(n--) {
+			r->monsters[n] = New(monster);
+			load_one_monster(fd, r->monsters[n]);
+		    }
+		} else
+		    r->monsters = 0;
+
+		/* read the objects */
+		Fread((genericptr_t) &r->nobject, 1, sizeof(r->nobject), fd);
+		if ((n = r->nobject) != 0) {
+		    r->objects = NewTab(object, n);
+		    while (n--) {
+			r->objects[n] = New(object);
+			load_one_object(fd, r->objects[n]);
+		    }
+		} else
+		    r->objects = 0;
+
+		/* read the gold piles */
+		Fread((genericptr_t) &r->ngold, 1, sizeof(r->ngold), fd);
+		if ((n = r->ngold) != 0)
+		    r->golds = NewTab(gold, n);
+		while (n--) {
+			r->golds[n] = New(gold);
+			Fread((genericptr_t) r->golds[n], 1, sizeof(gold), fd);
+		}
+
+		/* read the engravings */
+		Fread((genericptr_t) &r->nengraving, 1,
+			sizeof(r->nengraving), fd);
+		if ((n = r->nengraving) != 0) {
+		    r->engravings = NewTab(engraving,n);
+		    while (n--) {
+			r->engravings[n] = New(engraving);
+			load_one_engraving(fd, r->engravings[n]);
+		    }
+		} else
+		    r->engravings = 0;
+
 	}
 
 	/* Now that we have loaded all the rooms, search the
@@ -1840,7 +1907,7 @@ FILE *fd;
 			}
 	    }
 
-	/* 
+	/*
 	 * Create the rooms now...
 	 */
 
@@ -1869,16 +1936,26 @@ FILE *fd;
  */
 
 static void
-maze1xy(m)
+maze1xy(m, humidity)
 coord *m;
+int humidity;
 {
+	register int x, y, tryct = 2000;
+	/* tryct:  normally it won't take more than ten or so tries due
+	   to the circumstances under which we'll be called, but the
+	   `humidity' screening might drastically change the chances */
+
 	do {
-		m->x = rn1(x_maze_max - 3, 3);
-		m->y = rn1(y_maze_max - 3, 3);
-	} while (!(m->x % 2) || !(m->y % 2) || Map[m->x][m->y]);
+	    x = rn1(x_maze_max - 3, 3);
+	    y = rn1(y_maze_max - 3, 3);
+	    if (--tryct < 0) break;	/* give up */
+	} while (!(x % 2) || !(y % 2) || Map[x][y] ||
+		 !is_ok_location((schar)x, (schar)y, humidity));
+
+	m->x = (xchar)x,  m->y = (xchar)y;
 }
 
-/* 
+/*
  * The Big Thing: special maze loader
  *
  * Could be cleaner, but it works.
@@ -1886,17 +1963,17 @@ coord *m;
 
 static boolean
 load_maze(fd)
-FILE *fd;
+dlb *fd;
 {
     xchar   x, y, typ;
-    boolean prefilled;
+    boolean prefilled, room_not_needed;
 
     char    n, numpart = 0;
     xchar   nwalk = 0, nwalk_sav;
     short   filling;
     char    halign, valign;
 
-    int     xi, yi, dir;
+    int     xi, dir, size;
     coord   mm;
     int     mapcount, mapcountmax, mapfact;
 
@@ -1919,6 +1996,7 @@ FILE *fd;
     struct trap *badtrap;
     boolean has_bounds;
 
+    (void) memset((genericptr_t)&Map[0][0], 0, sizeof Map);
     load_common_data(fd, SP_LEV_MAZE);
 
     /* Initialize map */
@@ -1933,10 +2011,8 @@ FILE *fd;
 		    levl[x][y].typ =
 			(y < 2 || ((x % 2) && (y % 2))) ? STONE : HWALL;
 #endif
-		    Map[x][y] = 0;
 	    } else {
 		    levl[x][y].typ = filling;
-		    Map[x][y] = 0;
 	    }
 
     /* Start reading the file */
@@ -1955,14 +2031,14 @@ FILE *fd;
 	Fread((genericptr_t) &ysize, 1, sizeof(ysize), fd);
 					/* size in Y */
 	switch((int) halign) {
-	    case LEFT:	    xstart = 3; 				break;
+	    case LEFT:	    xstart = 3;					break;
 	    case H_LEFT:    xstart = 2+((x_maze_max-2-xsize)/4);	break;
 	    case CENTER:    xstart = 2+((x_maze_max-2-xsize)/2);	break;
 	    case H_RIGHT:   xstart = 2+((x_maze_max-2-xsize)*3/4);	break;
 	    case RIGHT:     xstart = x_maze_max-xsize-1;		break;
 	}
 	switch((int) valign) {
-	    case TOP:	    ystart = 3; 				break;
+	    case TOP:	    ystart = 3;					break;
 	    case CENTER:    ystart = 2+((y_maze_max-2-ysize)/2);	break;
 	    case BOTTOM:    ystart = y_maze_max-ysize-1;		break;
 	}
@@ -1973,7 +2049,7 @@ FILE *fd;
 	    ystart += (ystart > 0) ? -2 : 2;
 	    if(ysize == ROWNO) ystart = 0;
 	    if(ystart < 0 || ystart + ysize > ROWNO)
-		panic("reading special level with ysize to large");
+		panic("reading special level with ysize too large");
 	}
 
 	/*
@@ -1992,7 +2068,7 @@ FILE *fd;
 	    /* Load the map */
 	    for(y = ystart; y < ystart+ysize; y++)
 		for(x = xstart; x < xstart+xsize; x++) {
-		    levl[x][y].typ = (schar) fgetc(fd);
+		    levl[x][y].typ = Fgetc(fd);
 		    levl[x][y].lit = FALSE;
 		    /*
 		     * Note: Even though levl[x][y].typ is type schar,
@@ -2033,7 +2109,7 @@ FILE *fd;
 		/* realloc the lregion space to add the new ones */
 		/* don't really free it up until the whole level is done */
 		lev_region *newl = (lev_region *) alloc(sizeof(lev_region) *
-							(n+num_lregions));
+						(unsigned)(n+num_lregions));
 		(void) memcpy((genericptr_t)(newl+n), (genericptr_t)lregions,
 					sizeof(lev_region) * num_lregions);
 		Free(lregions);
@@ -2041,20 +2117,19 @@ FILE *fd;
 		lregions = newl;
 	    } else {
 		num_lregions = n;
-		lregions = (lev_region *) alloc(sizeof(lev_region) * n);
+		lregions = (lev_region *)
+				alloc(sizeof(lev_region) * (unsigned)n);
 	    }
 	}
 
 	while(n--) {
 	    Fread((genericptr_t) &tmplregion, sizeof(tmplregion), 1, fd);
-	    if(tmplregion.rname) {
-		char len;
-
-		Fread((genericptr_t) &len, sizeof(len), 1, fd);
-		tmplregion.rname = (char *) alloc(len + 1);
-		Fread((genericptr_t) tmplregion.rname, len, 1, fd);
-		tmplregion.rname[len] = 0;
-	    }
+	    if ((size = tmplregion.rname.len) != 0) {
+		tmplregion.rname.str = (char *) alloc((unsigned)size + 1);
+		Fread((genericptr_t) tmplregion.rname.str, size, 1, fd);
+		tmplregion.rname.str[size] = '\0';
+	    } else
+		tmplregion.rname.str = (char *) 0;
 	    if(!tmplregion.in_islev) {
 		get_location(&tmplregion.inarea.x1, &tmplregion.inarea.y1,
 								DRY|WET);
@@ -2092,11 +2167,9 @@ FILE *fd;
 		sp_lev_shuffle(rmonst, (char *)0, (int)n);
 	}
 
+	(void) memset((genericptr_t)mustfill, 0, sizeof(mustfill));
 	Fread((genericptr_t) &n, 1, sizeof(n), fd);
 						/* Number of subrooms */
-
-	(void) memset((genericptr_t)mustfill, 0, sizeof(mustfill));
-
 	while(n--) {
 		register struct mkroom *troom;
 
@@ -2115,9 +2188,13 @@ FILE *fd;
 		get_location(&tmpregion.x1, &tmpregion.y1, DRY|WET);
 		get_location(&tmpregion.x2, &tmpregion.y2, DRY|WET);
 
-		if (((tmpregion.rtype == OROOM) && !tmpregion.rirreg) ||
-		    (nroom >= MAXNROFROOMS)) {
-		    if(tmpregion.rtype != OROOM || tmpregion.rirreg)
+		/* for an ordinary room, `prefilled' is a flag to force
+		   an actual room to be created (such rooms are used to
+		   control placement of migrating monster arrivals) */
+		room_not_needed = (tmpregion.rtype == OROOM &&
+				   !tmpregion.rirreg && !prefilled);
+		if (room_not_needed || nroom >= MAXNROFROOMS) {
+		    if (!room_not_needed)
 			impossible("Too many rooms on new level!");
 		    light_region(&tmpregion);
 		    continue;
@@ -2192,63 +2269,6 @@ FILE *fd;
 		for(y = ystart; y < ystart+ysize; y++)
 		    if(levl[x][y].typ == CROSSWALL)
 			levl[x][y].typ = ROOM;
-	}
-
-	Fread((genericptr_t) &n, 1, sizeof(n), fd);
-						/* Number of traps */
-	while(n--) {
-		Fread((genericptr_t)&tmptrap, 1, sizeof(tmptrap), fd);
-
-		create_trap(&tmptrap, (struct mkroom *)0);
-	}
-
-	Fread((genericptr_t) &n, 1, sizeof(n), fd);
-						/* Number of monsters */
-	while(n--) {
-		short size;
-
-		Fread((genericptr_t) &tmpmons, 1, sizeof(tmpmons), fd);
-		Fread((genericptr_t) &size, 1, sizeof(size), fd);
-		if (size) {
-			tmpmons.name = (char *) alloc(size + 1);
-			Fread((genericptr_t) tmpmons.name, 1, size, fd);
-			tmpmons.name[size] = 0;
-		} else
-			tmpmons.name = (char *) 0;
-		Fread((genericptr_t) &size, 1, sizeof(size), fd);
-		if (size) {
-			tmpmons.appear_as = (char *) alloc(size + 1);
-			Fread((genericptr_t) tmpmons.appear_as, 1, size, fd);
-			tmpmons.appear_as[size] = 0;
-		} else
-			tmpmons.appear_as = (char *) 0;
-
-		create_monster(&tmpmons, (struct mkroom *)0);
-
-		if (tmpmons.name)
-			free((genericptr_t) tmpmons.name);
-		if (tmpmons.appear_as)
-			free((genericptr_t) tmpmons.appear_as);
-	}
-
-	Fread((genericptr_t) &n, 1, sizeof(n), fd);
-						/* Number of objects */
-	while(n--) {
-		short size;
-
-		Fread((genericptr_t) &tmpobj, 1, sizeof(object), fd);
-		Fread((genericptr_t) &size, 1, sizeof(size), fd);
-		if (size) {
-			tmpobj.name = (char *) alloc(size + 1);
-			Fread((genericptr_t) tmpobj.name, 1, size, fd);
-			tmpobj.name[size] = 0;
-		} else
-			tmpobj.name = (char *) 0;
-
-		create_object(&tmpobj, (struct mkroom *)0);
-
-		if (size)
-			free((genericptr_t) tmpobj.name);
 	}
 
 	Fread((genericptr_t) &n, 1, sizeof(n), fd);
@@ -2342,7 +2362,40 @@ FILE *fd;
 	}
 
 	Fread((genericptr_t) &n, 1, sizeof(n), fd);
-						/* Number of gold pile */
+						/* Number of fountains */
+	while (n--) {
+		Fread((genericptr_t)&tmpfountain, 1, sizeof(tmpfountain), fd);
+
+		create_feature(tmpfountain.x, tmpfountain.y,
+			       (struct mkroom *)0, FOUNTAIN);
+	}
+
+	Fread((genericptr_t) &n, 1, sizeof(n), fd);
+						/* Number of traps */
+	while(n--) {
+		Fread((genericptr_t)&tmptrap, 1, sizeof(tmptrap), fd);
+
+		create_trap(&tmptrap, (struct mkroom *)0);
+	}
+
+	Fread((genericptr_t) &n, 1, sizeof(n), fd);
+						/* Number of monsters */
+	while(n--) {
+		load_one_monster(fd, &tmpmons);
+
+		create_monster(&tmpmons, (struct mkroom *)0);
+	}
+
+	Fread((genericptr_t) &n, 1, sizeof(n), fd);
+						/* Number of objects */
+	while(n--) {
+		load_one_object(fd, &tmpobj);
+
+		create_object(&tmpobj, (struct mkroom *)0);
+	}
+
+	Fread((genericptr_t) &n, 1, sizeof(n), fd);
+						/* Number of gold piles */
 	while (n--) {
 		Fread((genericptr_t)&tmpgold, 1, sizeof(tmpgold), fd);
 
@@ -2352,39 +2405,27 @@ FILE *fd;
 	Fread((genericptr_t) &n, 1, sizeof(n), fd);
 						/* Number of engravings */
 	while(n--) {
-		int size;
-		Fread((genericptr_t) &tmpengraving, 1,
-			sizeof(tmpengraving), fd);
-		size = tmpengraving.e.length;
-		tmpengraving.e.text = (char *) alloc(size+1);
-		Fread((genericptr_t) tmpengraving.e.text, 1, size, fd);
-		tmpengraving.e.text[size] = '\0';
-		
-		x = tmpengraving.x; y = tmpengraving.y;
-		get_location(&x, &y, DRY);
-		make_engr_at(x, y, tmpengraving.e.text, 0L, tmpengraving.etype);
-		free((genericptr_t) tmpengraving.e.text);
+		load_one_engraving(fd, &tmpengraving);
+
+		create_engraving(&tmpengraving, (struct mkroom *)0);
 	}
 
-	Fread((genericptr_t) &n, 1, sizeof(n), fd);
-						/* Number of fountains */
-	while (n--) {
-		Fread((genericptr_t)&tmpfountain, 1, sizeof(tmpfountain), fd);
-
-		create_feature(tmpfountain.x, tmpfountain.y,
-			       (struct mkroom *)0, FOUNTAIN);
-	}
-    }
+    }		/* numpart loop */
 
     nwalk_sav = nwalk;
     while(nwalk--) {
-	    xi = walklist[nwalk].x;
-	    yi = walklist[nwalk].y;
+	    x = (xchar) walklist[nwalk].x;
+	    y = (xchar) walklist[nwalk].y;
 	    dir = walklist[nwalk].dir;
 
-	    move(&xi, &yi, dir);
-	    x = xi;
-	    y = yi;
+	    /* don't use move() - it doesn't use W_NORTH, etc. */
+	    switch (dir) {
+		case W_NORTH: --y; break;
+		case W_SOUTH: y++; break;
+		case W_EAST:  x++; break;
+		case W_WEST:  --x; break;
+		default: panic("load_maze: bad MAZEWALK direction");
+	    }
 
 	    if(!IS_DOOR(levl[x][y].typ)) {
 #ifndef WALLIFIED_MAZE
@@ -2441,32 +2482,35 @@ FILE *fd;
     if (nwalk_sav && (mapcount > (int) (mapcountmax / 10))) {
 	    mapfact = (int) ((mapcount * 100L) / mapcountmax);
 	    for(x = rnd((int) (20 * mapfact) / 100); x; x--) {
-		    maze1xy(&mm);
+		    maze1xy(&mm, DRY);
 		    (void) mkobj_at(rn2(2) ? GEM_CLASS : RANDOM_CLASS,
 							mm.x, mm.y, TRUE);
 	    }
 	    for(x = rnd((int) (12 * mapfact) / 100); x; x--) {
-		    maze1xy(&mm);
+		    maze1xy(&mm, DRY);
 		    (void) mksobj_at(BOULDER, mm.x, mm.y, TRUE);
 	    }
-	    maze1xy(&mm);
-	    (void) makemon(&mons[PM_MINOTAUR], mm.x, mm.y);
+	    for (x = rn2(2); x; x--) {
+		maze1xy(&mm, DRY);
+		(void) makemon(&mons[PM_MINOTAUR], mm.x, mm.y);
+	    }
 	    for(x = rnd((int) (12 * mapfact) / 100); x; x--) {
-		    maze1xy(&mm);
+		    maze1xy(&mm, WET|DRY);
 		    (void) makemon((struct permonst *) 0, mm.x, mm.y);
 	    }
 	    for(x = rn2((int) (15 * mapfact) / 100); x; x--) {
-		    maze1xy(&mm);
+		    maze1xy(&mm, DRY);
 		    mkgold(0L,mm.x,mm.y);
 	    }
 	    for(x = rn2((int) (15 * mapfact) / 100); x; x--) {
-		    int trytrap = rndtrap();
+		    int trytrap;
 
-		    maze1xy(&mm);
-		    if (is_pool(mm.x,mm.y)) continue;
+		    maze1xy(&mm, DRY);
+		    trytrap = rndtrap();
 		    if (sobj_at(BOULDER, mm.x, mm.y))
-			while ((trytrap == PIT) || (trytrap == SPIKED_PIT)) 
-				trytrap = rndtrap();
+			while (trytrap == PIT || trytrap == SPIKED_PIT ||
+				trytrap == TRAPDOOR || trytrap == HOLE)
+			    trytrap = rndtrap();
 		    (void) maketrap(mm.x, mm.y, trytrap);
 	    }
     }
@@ -2481,14 +2525,19 @@ boolean
 load_special(name)
 const char *name;
 {
-	FILE *fd;
-	boolean result;
+	dlb *fd;
+	boolean result = FALSE;
 	char c;
+	long vers_info[3];
 
-	fd = fopen_datafile(name, RDMODE);
+	fd = dlb_fopen(name, RDBMODE);
 	if (!fd) return FALSE;
 
-	Fread((genericptr_t) &c, 1, sizeof(c), fd); /* c Header */
+	Fread((genericptr_t) vers_info, sizeof vers_info, 1, fd);
+	if (!check_version(vers_info, name, TRUE))
+	    goto give_up;
+
+	Fread((genericptr_t) &c, sizeof c, 1, fd); /* c Header */
 
 	switch (c) {
 		case SP_LEV_ROOMS:
@@ -2500,7 +2549,8 @@ const char *name;
 		default:	/* ??? */
 		    result = FALSE;
 	}
-	(void)fclose(fd);
+ give_up:
+	(void)dlb_fclose(fd);
 	return result;
 }
 

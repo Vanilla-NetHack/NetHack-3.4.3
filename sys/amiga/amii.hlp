@@ -1,4 +1,4 @@
-            Amiga specific help file for NetHack 3.1.3
+            Amiga-specific help file for NetHack 3.2
 
 The Amiga port of NetHack supports a number of additional commands
 and facilities specific to the Amiga.  Listed below are the things
@@ -7,24 +7,24 @@ in other ports.
 
 While playing NetHack you can press:
 
-        ALT-HELP                To activate the palette editing
-                                requester.  Saved games include
-                                these settings of the pens to allow
-                                the game to be resumed with the
-                                same palette at a later date.
+        ALT-HELP                Color requestor.
+        CTL-HELP                Scale display (amitile only).
+        SHIFT-HELP              Overview window (amitile only).
 
 Separate Icon types for saved games:
                                 Each character class can have a
                                 separate icon.  The first letter
                                 of the character class is used
-                                for deriving the name.  e.g. a
+                                to derive the name.  e.g. a
                                 Wizard saved game would use
-                                Nethack:w.icon if it is present.
+                                NetHack:w.icon if it is present.
                                 The NetHack:default.icon is used
                                 if the associated character class
                                 icon is not present.
 
-Amiga-specific run-time option:
+Amiga-specific run-time options:
+        altmeta                 use the alt keys as meta keys
+        fast_map                fast screen update algorithm
         flush                   throw away keyboard type-ahead
 
 Recognized ToolTypes entries include the following:
@@ -38,6 +38,9 @@ Recognized ToolTypes entries include the following:
                                 "courier.font:13" is the default.
         PATH=                   PATH for locating files.
         OPTIONS=                Comma separated list of options.
+                windowtype=amii        Traditional NetHack display
+                windowtype=amitile     NetHack with graphics
+                windowtype=tty         TTY mode for BBS use
         HACKDIR=                Directory to play game in.
         LEVELS=                 Where to store/create per level
                                 data files.
@@ -51,7 +54,7 @@ Command line options recognized are
 
         -n                      No News at game startup.
         -X                      Play in discovery mode.
-        -W                      Play as wizard.
+        -D                      Play in debug mode.
         -L                      Interlaced screen.
         -l                      Never Interlaced screen.
         -u                      Play as player given as

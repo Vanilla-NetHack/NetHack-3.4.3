@@ -8,8 +8,9 @@ $ !	@[.sys.vms]install "disk$users:[games.nethack]" "games"
 $ ! or	@[.sys.vms]install "[-.play]" "[40,1]"
 $ !
 $	! default location is old playground, default owner is installer
-$	gamedir = f$trnlnm("HACKDIR")	!location of playground
-$	gameuic = f$user()		!owner of playground
+$	gamedir = f$trnlnm("NETHACKDIR")	!location of playground
+$	if gamedir.eqs."" then  gamedir = f$trnlnm("HACKDIR")
+$	gameuic = f$user()			!owner of playground
 $	! --- nothing below this line should need to be changed ---
 $	if p1.nes."" then  gamedir := 'p1'
 $	if p2.nes."" then  gameuic := 'p2'
@@ -22,10 +23,10 @@ $	data_files = "DATA.,RUMORS.,ORACLES.,OPTIONS.,QUEST.DAT"
 $	guidebook  = "[.doc]Guidebook.txt"
 $	invoc_proc = "[.sys.vms]nethack.com"
 $	trmcp_file = "[.sys.share]termcap"
-$	spec_files = "AIR.LEV,ASMODEUS.LEV,ASTRAL.LEV,BAALZ.LEV,BIGROOM.LEV," -
+$	spec_files = "AIR.LEV,ASMODEUS.LEV,ASTRAL.LEV,BAALZ.LEV,BIGRM-%.LEV," -
 		   + "CASTLE.LEV,EARTH.LEV,FAKEWIZ%.LEV,FIRE.LEV," -
 		   + "JUIBLEX.LEV,KNOX.LEV,MEDUSA-%.LEV,MINEFILL.LEV," -
-		   + "MINETOWN.LEV,MINE_END.LEV,ORACLE.LEV,ORCUS.LEV," -
+		   + "MINETN-%.LEV,MINEND-%.LEV,ORACLE.LEV,ORCUS.LEV," -
 		   + "SANCTUM.LEV,TOWER%.LEV,VALLEY.LEV,WATER.LEV,WIZARD%.LEV"
 $	spec_input = "bigroom.des castle.des endgame.des " -
 		   + "gehennom.des knox.des medusa.des mines.des " -
@@ -36,11 +37,16 @@ $	qstl_input = "Arch.des Barb.des Caveman.des Elf.des " -
 		   + "Samurai.des Tourist.des Wizard.des Valkyrie.des"
 $	dngn_files = "DUNGEON."
 $	dngn_input = "dungeon.pdf"
+$	dlb_files  = help_files + "," + data_files + "," -
+		   + spec_files + "," + qstl_files + "," + dngn_files
+$	data_libry = "nh-data.dlb"
+$	xtrn_files = "LICENSE.,HISTORY.,OPTIONS."
 $ makedefs := $sys$disk:[-.util]makedefs
 $ lev_comp := $sys$disk:[-.util]lev_comp
 $ dgn_comp := $sys$disk:[-.util]dgn_comp
+$ dlb	   := $sys$disk:[-.util]dlb
 $ milestone = "write sys$output f$fao("" !5%T "",0),"
-$ if p3.nes."" then  milestone = "!"
+$ if p3.nes."" .and. f$edit(p4,"UPCASE").nes."VERBOSE" then  milestone = "!"
 $!
 $! make sure we've got a playground location
 $ gamedir := 'gamedir'
@@ -55,6 +61,7 @@ $ if p3.nes."" then  goto make_'p3'
 $
 $	milestone "<installation...>"
 $!
+$make_data_plus_dlb:
 $make_data:
 $	! start from a known location -- [.sys.vms]
 $	set default 'f$parse(f$environment("PROCEDURE"),,,"DIRECTORY")'
@@ -77,6 +84,48 @@ $ lev_comp 'qstl_input' !quest levels
 $	milestone "(dungeon compile)"
 $ dgn_comp 'dngn_input' !dungeon database
 $	set default [-]		!move up
+$ if p3.nes."" .and. f$edit(p3,"UPCASE").nes."DATA_PLUS_DLB" then  exit
+$
+$make_dlb:
+$	! start from a known location -- [.sys.vms]
+$	set default 'f$parse(f$environment("PROCEDURE"),,,"DIRECTORY")'
+$! construct data library
+$	set default [-.-.dat]	!move to data directory
+$	milestone "(dlb setup)"
+$! since DLB doesn't support wildcard expansion and we don't have shell
+$! file globbing, start by making a file listing its intended contents
+$ create nhdat.lst
+$	if f$search("nhdat.lst;-1").nes."" then -
+		purge/noConfirm/noLog nhdat.lst
+$! an old data file might fool us later, so get rid of it
+$	if f$search(data_libry).nes."" then -
+		delete/noConfirm/noLog 'data_libry';*
+$	if f$trnlnm("PFILE$").nes."" then  close/noLog pfile$
+$ open/Append pfile$ nhdat.lst
+$ i = 0
+$dloop:
+$   g = f$element(i,",",dlb_files)
+$   if g.eqs."," then  goto ddone
+$   wild = f$locate("*",g).ne.f$locate("%",g)
+$floop:
+$	f = f$search(g)
+$	if f.eqs."" then  goto fdone
+$! strip device, directory, and version from name
+$	f = f$parse(f,,,"NAME") + f$parse(f,,,"TYPE")
+$! strip trailing dot, if present, and change case
+$	f = f$edit(f + "#" - ".#" - "#","LOWERCASE")
+$	if f$extract(1,1,f).eqs."-" then -
+		f = f$edit(f$extract(0,1,f),"UPCASE") + f$extract(1,255,f)
+$	write pfile$ f
+$	if wild then  goto floop
+$fdone:
+$   i = i + 1
+$   goto dloop
+$ddone:
+$ close pfile$
+$	milestone "(dlb create)"
+$ dlb "-cfI" 'data_libry' nhdat.lst
+$	set default [-]		!move up
 $ if p3.nes."" then  exit
 $
 $!
@@ -95,20 +144,26 @@ $	set default 'srctree'
 $ if p3.nes."" then  exit
 $!
 $! create empty writeable files -- logfile, scoreboard, multi-user access lock
-$	milestone "(writeable files)"
+$! [if old versions are already present, validate and retain them if possible]
 $make_writeable_files:
+$	milestone "(writeable files)"
 !-!$ create/owner='gameuic'/prot=(s:rwed,o:rwed,g:rwed,w:rwed) -
 !-!	'gamedir''play_files'
 $	i = 0
-$ploop: f = f$element(i,",",play_files)
+$ploop:	if f$trnlnm("PFILE$").nes."" then  close/nolog pfile$
+$	f = f$element(i,",",play_files)
 $	if f.eqs."," then  goto pdone
 $	i = i + 1
 $	f = gamedir + f
-$	if f$search(f).nes.""	!file already exists
-$	then	if f$file_attrib(f,"RFM").eqs."STMLF" then  goto ploop
-$		rename/new_vers 'f' *.old	!needs to be stream_lf
-$	endif
-$	create/fdl=sys$input:/owner='gameuic' 'f'/log
+$	if f$search(f).eqs."" then  goto pmake	!make it if not found
+$	if f$file_attrib(f,"RFM").nes."STMLF" then  goto prej !must be stream_lf
+$	open/read/error=prej pfile$ 'f'
+$	read/end=ploop pfile$ pline	!empty is ok
+$	close pfile$
+$	pfield = f$element(0," ",pline)	!1st field is version number
+$	if f$locate(".",pfield).lt.f$length(pfield) then  goto ploop	!keep
+$prej:	rename/new_vers 'f' *.old	!reject old version
+$pmake:	create/fdl=sys$input:/owner='gameuic' 'f'/log
 file
  organization sequential
  protection (system:rwd,owner:rwd,group:rw,world:rw)
@@ -119,19 +174,18 @@ $pdone:
 $ if p3.nes."" then  exit
 $!
 $! copy over the remaining game files, then make them readonly
-$	milestone "(readonly files)"
 $make_readonly_files:
-$ copy/prot=(s:rwed,o:rwed,g:re,w:re) -
-	[.dat]'help_files','data_files','spec_files','qstl_files','dngn_files' -
-	'gamedir'*.*
-$ set file/owner='gameuic'/prot=(s:re,o:re) -
-	'gamedir''help_files','data_files','spec_files','qstl_files','dngn_files'
+$	milestone "(readonly files)"
+$ if f$search("[.dat]''data_libry'").nes.""
+$ then	xtrn_files = data_libry + "," + xtrn_files
+$ else	xtrn_files = dlb_files				!everything
+$ endif
+$ call copyfiles 'xtrn_files' [.dat] "r"
 $ if p3.nes."" then  exit
 $!
-$	milestone "(nethack.exe)"
 $make_executable:
-$ copy/prot=(s:rwed,o:rwed,g:re,w:re) [.src]nethack.exe 'gamedir'*.*
-$ set file/owner='gameuic'/prot=(s:re,o:re) 'gamedir'nethack.exe
+$	milestone "(nethack.exe)"
+$ call copy_file [.src]nethack.exe 'gamedir'nethack.exe "re"
 $ if p3.nes."" then  exit
 $!
 $! provide invocation procedure (if available)
@@ -141,8 +195,7 @@ $ if f$search("''gamedir'nethack.com").nes."" then -
     if f$cvtime(f$file_attr("''gamedir'nethack.com","RDT")) -
       .ges. f$cvtime(f$file_attr(invoc_proc,"RDT")) then  goto skip_dcl
 $	milestone "(nethack.com)"
-$  copy/prot=(s:rwed,o:rwed,g:re,w:re) 'invoc_proc' 'gamedir'nethack.com
-$  set file/owner='gameuic'/prot=(s:re,o:re) 'gamedir'nethack.com
+$ call copy_file 'invoc_proc' 'gamedir'nethack.com "re"
 $skip_dcl:
 $ if p3.nes."" then  exit
 $!
@@ -150,8 +203,7 @@ $! provide plain-text Guidebook doc file (if available)
 $make_documentation:
 $ if f$search(guidebook).eqs."" then  goto skip_doc
 $	milestone "(Guidebook)"
-$  copy/prot=(s:rwed,o:rwed,g:re,w:re) 'guidebook' 'gamedir'Guidebook.doc
-$  set file/owner='gameuic'/prot=(s:re,o:re) 'gamedir'Guidebook.doc
+$ call copy_file 'guidebook' 'gamedir'Guidebook.doc "r"
 $skip_doc:
 $ if p3.nes."" then  exit
 $!
@@ -160,14 +212,46 @@ $make_termcap:
 $ if f$search(trmcp_file).eqs."" then  goto skip_termcap
 $ if f$search("''gamedir'termcap").nes."" then  goto skip_termcap
 $	milestone "(termcap)"
-$  copy/prot=(s:rwed,o:rwed,g:re,w:re) 'trmcp_file' 'gamedir'termcap
-$  set file/owner='gameuic'/prot=(s:re,o:re) 'gamedir'termcap
+$ call copy_file 'trmcp_file' 'gamedir'termcap "r"
 $skip_termcap:
 $ if p3.nes."" then  exit
 $!
 $! done
 $	milestone "<done>"
+$ define/nolog nethackdir 'gamedir'
 $ define/nolog hackdir 'gamedir'
 $ write sys$output -
     f$fao("!/ Nethack installation complete. !/ Playground is !AS !/",gamedir)
 $ exit
+$
+$!
+$! copy one file, resetting the protection on an earlier version first
+$copy_file: subroutine
+$ if f$search(p2).nes."" then  set file/Prot=(s:rwed,o:rwed) 'p2'
+$ copy/Prot=(s:'p3'wd,o:'p3'wd,g:'p3',w:'p3') 'p1' 'p2'
+$ set file/Owner='gameuic'/Prot=(s:'p3',o:'p3') 'p2'
+$endsubroutine !copy_file
+$
+$!
+$! copy a comma-separated list of wildcarded files, one file at a file
+$copyfiles: subroutine
+$ i = 0
+$lloop:
+$   g = f$element(i,",",p1)
+$   if g.eqs."," then  goto ldone
+$   g = p2 + g
+$   wild = f$locate("*",g).ne.f$locate("%",g)
+$eloop:
+$	f = f$search(g)
+$	if f.eqs."" then  goto edone
+$	f = f - f$parse(f,,,"VERSION")
+$	e = f$parse(f,,,"NAME") + f$parse(f,,,"TYPE")
+$	call copy_file 'f' 'gamedir''e' "''p3'"
+$	if wild then  goto eloop
+$edone:
+$   i = i + 1
+$   goto lloop
+$ldone:
+$endsubroutine !copyfiles
+$
+$!<eof>

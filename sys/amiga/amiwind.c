@@ -1,42 +1,38 @@
-/*    SCCS Id: @(#)amiwind.c     3.1    93/01/08
+/*    SCCS Id: @(#)amiwind.c     3.2    96/02/17
 /*    Copyright (c) Olaf Seibert (KosmoSoft), 1989, 1992	  */
-/*    Copyright (c) Kenneth Lorber, Bethesda, Maryland 1993	  */
+/*    Copyright (c) Kenneth Lorber, Bethesda, Maryland 1993,1996  */
 /* NetHack may be freely redistributed.  See license for details. */
 
-#include "amiga:windefs.h"
-#include "amiga:winext.h"
-#include "amiga:winproto.h"
+#include "NH:sys/amiga/windefs.h"
+#include "NH:sys/amiga/winext.h"
+#include "NH:sys/amiga/winproto.h"
 
 /* Have to undef CLOSE as display.h and intuition.h both use it */
 #undef CLOSE
 
 #ifdef AMII_GRAPHICS	/* too early in the file? too late? */
 
-#ifndef	SHAREDLIB
-struct Library *ConsoleDevice;
-#endif
-
-#include "Amiga:amimenu.c"
-
-static int BufferGetchar(void);
-static void ProcessMessage( register struct IntuiMessage *message );
-
 #ifdef AMIFLUSH
 static struct Message *FDECL(GetFMsg,(struct MsgPort *));
 #endif
 
-/*  Now our own variables */
+static int BufferGetchar(void);
+static void ProcessMessage( register struct IntuiMessage *message );
+
+#define BufferQueueChar(ch) (KbdBuffer[KbdBuffered++] = (ch))
+
+struct Library *ConsoleDevice;
+
+#include "NH:sys/amiga/amimenu.c"
+
+/* Now our own variables */
 
 struct IntuitionBase *IntuitionBase;
-#ifndef	SHAREDLIB
 struct Screen *HackScreen;
-#endif
 struct Window *pr_WindowPtr;
 struct MsgPort *HackPort;
 struct IOStdReq ConsoleIO;
-#ifndef	SHAREDLIB
 char Initialized = 0;
-#endif
 WEVENT lastevent;
 
 #ifdef HACKFONT
@@ -44,75 +40,18 @@ struct GfxBase *GfxBase;
 struct Library *DiskfontBase;
 #endif
 
-#ifndef	SHAREDLIB
 extern struct Library *ConsoleDevice;
-#endif
 
 #define KBDBUFFER   10
 static unsigned char KbdBuffer[KBDBUFFER];
 unsigned char KbdBuffered;
 
-#define BufferQueueChar(ch) (KbdBuffer[KbdBuffered++] = (ch))
-
-/*
- * Define some stuff for our special glyph drawing routines
- */
-static unsigned short glyph_node_index, glyph_buffer_index;
-#define NUMBER_GLYPH_NODES  80
-#define GLYPH_BUFFER_SIZE   512
-struct glyph_node {
-    short	x;
-    short	y;
-    short	len;
-    unsigned char   bg_color;
-    unsigned char   fg_color;
-    char	*buffer;
-};
-static struct glyph_node g_nodes[NUMBER_GLYPH_NODES];
-static char glyph_buffer[GLYPH_BUFFER_SIZE];
-
-#ifdef TEXTCOLOR
-/*
- * Map our amiga-specific colormap into the colormap specified in color.h.
- * See amiwind.c for the amiga specific colormap.
- */
-
-#ifdef	VIEWWINDOW
-int foreg[16] = { 8, 7, 4, 2, 6, 5, 3, 1, 1, 0, 0, 0, 0, 0, 0, 0 };
-int backg[16] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 4, 1, 6, 5, 3, 1 };
-#else
-int foreg[16] = { 0, 7, 4, 2, 6, 5, 3, 1, 1, 0, 0, 0, 0, 0, 0, 0 };
-int backg[16] = { 1, 0, 0, 0, 0, 0, 0, 0, 0, 7, 4, 1, 6, 5, 3, 1 };
-#endif
-#if 0
-	#define BLACK		0
-	#define RED		1
-	#define GREEN		2
-	#define BROWN		3	/* on IBM, low-intensity yellow is brown */
-	#define BLUE		4
-	#define MAGENTA 	5
-	#define CYAN		6
-	#define GRAY		7	/* low-intensity white */
-	#define NO_COLOR	8
-	#define ORANGE_COLORED	9	/* "orange" conflicts with the object */
-	#define BRIGHT_GREEN	10
-	#define YELLOW		11
-	#define BRIGHT_BLUE	12
-	#define BRIGHT_MAGENTA  13
-	#define BRIGHT_CYAN	14
-	#define WHITE		15
-	#define MAXCOLORS	16
-#endif
-#endif
-
 #ifdef HACKFONT
 
-struct TextFont *TextsFont;
-struct TextFont *HackFont;
-#ifdef	VIEWWINDOW
-struct TextFont *HackFont4;
-struct TextFont *HackFont16;
-#endif
+struct TextFont *TextsFont = NULL;
+struct TextFont *HackFont = NULL;
+struct TextFont *RogueFont = NULL;
+
 UBYTE FontName[] = "NetHack:hack.font";
     /* # chars in "NetHack:": */
 #define         SIZEOF_DISKNAME 8
@@ -129,32 +68,6 @@ struct TextAttr Hack80 = {
 	| FPF_ROMFONT
 };
 
-#ifdef	VIEWWINDOW
-struct TextAttr Hack40 = {
-#ifdef HACKFONT
-    &FontName[SIZEOF_DISKNAME],
-#else
-    (UBYTE *) "topaz.font",
-#endif
-    4, FS_NORMAL, FPF_DISKFONT | FPF_DESIGNED
-#ifndef	HACKFONT
-	| FPF_ROMFONT
-#endif
-};
-
-struct TextAttr Hack160 = {
-#ifdef HACKFONT
-    &FontName[SIZEOF_DISKNAME],
-#else
-    (UBYTE *) "topaz.font",
-#endif
-    16, FS_NORMAL, FPF_DISKFONT | FPF_DESIGNED
-#ifndef	HACKFONT
-	| FPF_ROMFONT
-#endif
-};
-#endif
-
 struct TextAttr TextsFont13 = {
     (UBYTE *) "courier.font",
     13, FS_NORMAL, FPF_DISKFONT | FPF_DESIGNED
@@ -162,6 +75,9 @@ struct TextAttr TextsFont13 = {
 	| FPF_ROMFONT
 #endif
 };
+
+/* Avoid doing a ReplyMsg through a window that no longer exists. */
+static enum {NoAction, CloseOver} delayed_key_action = NoAction;
 
 /*
  * Open a window that shares the HackPort IDCMP. Use CloseShWindow()
@@ -180,8 +96,12 @@ struct NewWindow *nw;
     idcmpflags = nw->IDCMPFlags;
     nw->IDCMPFlags = 0;
     if (!(win = OpenWindow((void *)nw)))
+    {
+	nw->IDCMPFlags = idcmpflags;
 	return (struct Window *) 0;
+    }
 
+    nw->IDCMPFlags = idcmpflags;
     win->UserPort = HackPort;
     ModifyIDCMP(win, idcmpflags);
     return win;
@@ -251,11 +171,14 @@ register struct IntuiMessage *message;
     static char  ctrl_numpad[] = "\x02\x0A\x0E\x08.\x0C\x19\x0B\x15";
     static char shift_numpad[] = "BJNH.LYKU";
 
-    unsigned char buffer[1];
+    unsigned char buffer[10];
+    struct Window *w = message->IDCMPWindow;
     register int length;
     register ULONG qualifier;
     char numeric_pad, shift, control, alt;
 
+    if( amii_wins[ WIN_MAP ] )
+	w = amii_wins[ WIN_MAP ]->win;
     qualifier = message->Qualifier;
 
     control = (qualifier &  IEQUALIFIER_CONTROL) != 0;
@@ -263,8 +186,9 @@ register struct IntuiMessage *message;
     alt     = (qualifier & (IEQUALIFIER_LALT   | IEQUALIFIER_RALT  )) != 0;
 
     /* Allow ALT to function as a META key ... */
-
-    qualifier &= ~(IEQUALIFIER_LALT | IEQUALIFIER_RALT);
+    /* But make it switchable - alt is needed for some non-US keymaps */
+    if(flags.altmeta)
+	qualifier &= ~(IEQUALIFIER_LALT | IEQUALIFIER_RALT);
     numeric_pad = (qualifier & IEQUALIFIER_NUMERICPAD) != 0;
 
     /*
@@ -280,6 +204,41 @@ register struct IntuiMessage *message;
 	    {
 		EditColor();
 		return( -1 );
+	    }
+#ifdef	CLIPPING
+	    else if( control )
+	    {
+		EditClipping();
+
+		CO = ( w->Width - w->BorderLeft - w->BorderRight  ) / mxsize;
+		LI = ( w->Height - w->BorderTop - w->BorderBottom ) / mysize;
+		clipxmax = CO + clipx;
+		clipymax = LI + clipy;
+		if( CO < COLNO || LI < ROWNO )
+		{
+		    amii_cliparound( u.ux, u.uy );
+		}
+		else
+		{
+		    clipping = FALSE;
+		    clipx = clipy = 0;
+		}
+		BufferQueueChar( 'R'-64 );
+		return(-1);
+	    }
+#endif
+	    else if( WINVERS_AMIV && shift )
+	    {
+		if( WIN_OVER == WIN_ERR )
+		{
+		    WIN_OVER = amii_create_nhwindow( NHW_OVER );
+		    BufferQueueChar( 'R'-64 );
+		}
+		else
+		{
+		    delayed_key_action = CloseOver;
+		}
+	    	return( -1 );
 	    }
 	    return( '?' );
 	    break;
@@ -328,12 +287,59 @@ arrow:
 		length = numpad[length];
 	    }
 	}
-	if (alt)
+	if (alt && flags.altmeta)
 	    length |= 0x80;
 	return(length);
     } /* else shift, ctrl, alt, amiga, F-key, shift-tab, etc */
-    else
-	return( -1 );
+    else if( length > 1 )
+    {
+	int i;
+
+	if( length == 3 && buffer[ 0 ] == 155 && buffer[ 2 ] == 126 )
+	{
+	    int got = 1;
+	    switch( buffer[ 1 ] )
+	    {
+		case 53: mxsize = mysize = 8; break;
+		case 54: mxsize = mysize = 16; break;
+		case 55: mxsize = mysize = 24; break;
+		case 56: mxsize = mysize = 32; break;
+		case 57: mxsize = mysize = 48; break;
+		default: got = 0; break;
+	    }
+#ifdef OPT_DISPMAP
+	    dispmap_sanity();
+#endif
+
+	    if( got )
+	    {
+		CO = (w->Width-w->BorderLeft-w->BorderRight)/mxsize;
+		LI = (w->Height-w->BorderTop-w->BorderBottom)/mysize;
+		clipxmax = CO + clipx;
+		clipymax = LI + clipy;
+		if( CO < COLNO || LI < ROWNO )
+		{
+		    amii_cliparound( u.ux, u.uy );
+		}
+		else
+		{
+			CO = COLNO;
+			LI = ROWNO;
+		}
+		reclip = 1;
+		doredraw();
+		flush_screen( 1 );
+		reclip = 0;
+		/*BufferQueueChar( 'R'-64 );*/
+		return( -1 );
+	    }
+	}
+	printf( "Unrecognized key: %d ", (int)buffer[0]);
+	for( i = 1; i < length; ++i )
+	    printf( "%d ", (int)buffer[i]);
+	printf( "\n" );
+    }
+    return( -1 );
 }
 
 /*
@@ -349,6 +355,8 @@ static void ProcessMessage(message)
 register struct IntuiMessage *message;
 {
     int c;
+    int cnt;
+    menu_item *mip;
     static int skip_mouse=0;    /* need to ignore next mouse event on
 				 * a window activation */
     struct Window *w = message->IDCMPWindow;
@@ -356,16 +364,14 @@ register struct IntuiMessage *message;
     switch(message->Class) {
     case ACTIVEWINDOW:
 	if( alwaysinvent && WIN_INVEN != WIN_ERR &&
-			    message->IDCMPWindow ==
-			    amii_wins[ WIN_INVEN ]->win )
+			    w == amii_wins[ WIN_INVEN ]->win )
 	{
-	    DoMenuScroll( WIN_INVEN, 0 );
+	    cnt = DoMenuScroll( WIN_INVEN, 0, PICK_NONE, &mip );
 	}
 	else if( scrollmsg && WIN_MESSAGE != WIN_ERR &&
-			    message->IDCMPWindow ==
-			    amii_wins[ WIN_MESSAGE ]->win )
+			    w == amii_wins[ WIN_MESSAGE ]->win )
 	{
-	    DoMenuScroll( WIN_MESSAGE, 0 );
+	    cnt = DoMenuScroll( WIN_MESSAGE, 0, PICK_NONE, &mip );
 	}
 	else
 	{
@@ -384,14 +390,7 @@ register struct IntuiMessage *message;
 	    if( !amii_wins[ WIN_MAP ] || w != amii_wins[ WIN_MAP ]->win )
 		break;
 
-	    if( message->Code == SELECTUP )
-	    {
-#ifdef	VIEWWINDOW
-		amii_putstr( WIN_MESSAGE, 0, "done..." );
-		w->Flags &= ~REPORTMOUSE;
-#endif
-	    }
-	    else if( message->Code == SELECTDOWN )
+	    if( message->Code == SELECTDOWN )
 	    {
 		lastevent.type = WEMOUSE;
 		lastevent.un.mouse.x = message->MouseX;
@@ -399,11 +398,6 @@ register struct IntuiMessage *message;
 		    /* With shift equals RUN */
 		lastevent.un.mouse.qual = (message->Qualifier &
 		  (IEQUALIFIER_LSHIFT|IEQUALIFIER_RSHIFT)) != 0;
-#ifdef	VIEWWINDOW
-		w->Flags |= REPORTMOUSE;
-		amii_putstr( WIN_MESSAGE, 0,
-			"drag mouse to see other areas of this level" );
-#endif
 	    }
 	}
 	break;
@@ -425,42 +419,26 @@ register struct IntuiMessage *message;
 	break;
 
     case REFRESHWINDOW:
-#ifdef	VIEWWINDOW
 	{
-	    struct Window *vw, *vbw;
-	    if( amii_wins[ WIN_VIEWBOX ] && amii_wins[ WIN_VIEW ] &&
-		    w == amii_wins[ WIN_VIEWBOX ]->win )
-	    {
-		vw = amii_wins[ WIN_VIEW ]->win;
-		vbw = amii_wins[ WIN_VIEWBOX ]->win;
-
-		if( vw->LeftEdge != (vbw->LeftEdge+vbw->BorderLeft) ||
-		    vw->TopEdge != ( vbw->TopEdge + vbw->BorderTop ) ||
-		    vw->Width != (vbw->Width -vbw->BorderLeft - vbw->BorderRight ) ||
-		    vw->Height != (vbw->Height - vbw->BorderTop - vbw->BorderBottom ) )
-		{
-		    MoveWindow( vw, (vbw->LeftEdge+vbw->BorderLeft) - vw->LeftEdge,
-			( vbw->TopEdge + vbw->BorderTop ) - vw->TopEdge );
-		    SizeWindow( vw,
-			( vbw->Width -vbw->BorderLeft -
-				vbw->BorderRight ) - vw->Width,
-			( vbw->Height - vbw->BorderTop -
-				vbw->BorderBottom - vw->Height ) );
-		}
-	    }
-	    else if( amii_wins[ WIN_MESSAGE ] && w == amii_wins[ WIN_MESSAGE ]->win )
-	    {
-		DoMenuScroll( WIN_MESSAGE, 0 );
+	    if( scrollmsg
+		&& amii_wins[ WIN_MESSAGE ]
+		&& w == amii_wins[ WIN_MESSAGE ]->win
+	    ){
+		cnt = DoMenuScroll( WIN_MESSAGE, 0, PICK_NONE, &mip );
 	    }
 	}
-#endif
 	break;
 
     case CLOSEWINDOW:
-	if( WIN_INVEN != WIN_ERR && message->IDCMPWindow ==
-				amii_wins[ WIN_INVEN ]->win )
+	if( WIN_INVEN != WIN_ERR && w == amii_wins[ WIN_INVEN ]->win )
 	{
 	    dismiss_nhwindow( WIN_INVEN );
+	}
+	if( WINVERS_AMIV
+	    && ( WIN_OVER != WIN_ERR && w == amii_wins[ WIN_OVER ]->win )
+	){
+	    destroy_nhwindow( WIN_OVER );
+	    WIN_OVER = WIN_ERR;
 	}
 	break;
 
@@ -474,81 +452,72 @@ register struct IntuiMessage *message;
         }
         break;
 
-    case MOUSEMOVE:
-#ifdef	VIEWWINDOW
-	if( w == amii_wins[ WIN_MAP ]->win )
-	{
-	    int posx, posy, dx, dy;
-	    register struct MsgPort *port = w->UserPort;
-	    struct amii_WinDesc *cw;
-
-	    posx = message->MouseX;
-	    posy = message->MouseY;
-	    cursor_on( WIN_MAP );
-	    cw = amii_wins[ WIN_MAP ];
-
-	    do {
-		if( message->Class == MOUSEBUTTONS ||
-					message->Class == INACTIVEWINDOW )
-		{
-		    w->Flags &= ~REPORTMOUSE;
-		    break;
-		}
-		else if( message->Class == MOUSEMOVE )
-		{
-		    if( posx != message->MouseX || posy != message->MouseY )
-		    {
-			dx = message->MouseX - posx;
-			dy = message->MouseY - posy;
-			dx /= MAPFTWIDTH;
-			dy /= MAPFTHEIGHT;
-			if( dx != 0 || dy != 0 )
-			{
-			    posx = message->MouseX;
-			    posy = message->MouseY;
-			    amii_curs( WIN_MAP,
-				(posx - w->BorderLeft)/MAPFTWIDTH+dx,
-				(posy - w->BorderTop)/MAPFTHEIGHT+dy );
-			    cursor_on( WIN_MAP );
-			}
-		    }
-		}
-		ReplyMsg( (struct Message *) message );
-		while( !(message = (struct IntuiMessage *)GetMsg( port ) ) )
-		    WaitPort( port );
-	    } while( message );
-	    amii_putstr( WIN_MESSAGE, 0, "done..." );
-	    break;
-	}
-#endif
-	/* FALL through for MESSAGE or INVEN windows */
     case GADGETDOWN:
-	if( WIN_MESSAGE != WIN_ERR && message->IDCMPWindow ==
-			amii_wins[ WIN_MESSAGE ]->win )
+	if( WIN_MESSAGE != WIN_ERR && w == amii_wins[ WIN_MESSAGE ]->win )
 	{
-	    DoMenuScroll( WIN_MESSAGE, 0 );
+	    cnt = DoMenuScroll( WIN_MESSAGE, 0, PICK_NONE, &mip );
 	}
-	else if( WIN_INVEN != WIN_ERR && message->IDCMPWindow ==
-			amii_wins[ WIN_INVEN ]->win )
+	else if( WIN_INVEN != WIN_ERR && w == amii_wins[ WIN_INVEN ]->win )
 	{
-	    DoMenuScroll( WIN_INVEN, 0 );
+	    cnt = DoMenuScroll( WIN_INVEN, 0, PICK_NONE, &mip );
 	}
 	break;
 
     case NEWSIZE:
-	if( WIN_MESSAGE != WIN_ERR && message->IDCMPWindow ==
-			amii_wins[ WIN_MESSAGE ]->win )
+	if( WIN_MESSAGE != WIN_ERR && w == amii_wins[ WIN_MESSAGE ]->win )
 	{
+	    if( WINVERS_AMIV )
+	    {
+		/* Make sure that new size is honored for good. */
+		SetAPen( w->RPort, amii_msgBPen );
+		SetBPen( w->RPort, amii_msgBPen );
+		SetDrMd( w->RPort, JAM2 );
+		RectFill( w->RPort, w->BorderLeft, w->BorderTop,
+		  w->Width - w->BorderRight-1,
+		  w->Height - w->BorderBottom-1 );
+	    }
 	    ReDisplayData( WIN_MESSAGE );
 	}
-	else if( WIN_INVEN != WIN_ERR && message->IDCMPWindow ==
-			amii_wins[ WIN_INVEN ]->win )
+	else if( WIN_INVEN != WIN_ERR && w == amii_wins[ WIN_INVEN ]->win )
 	{
 	    ReDisplayData( WIN_INVEN );
+	}
+	else if( WINVERS_AMIV
+		 && ( WIN_OVER != WIN_ERR && w == amii_wins[ WIN_OVER ]->win )
+	){
+	    BufferQueueChar( 'R'-64 );
+	}
+	else if( WIN_MAP != WIN_ERR && w == amii_wins[ WIN_MAP ]->win )
+	{
+#ifdef	CLIPPING
+	    CO = (w->Width-w->BorderLeft-w->BorderRight)/mxsize;
+	    LI = (w->Height-w->BorderTop-w->BorderBottom)/mysize;
+	    clipxmax = CO + clipx;
+	    clipymax = LI + clipy;
+	    if( CO < COLNO || LI < ROWNO )
+	    {
+		amii_cliparound( u.ux, u.uy );
+	    }
+	    else
+	    {
+	    	clipping = FALSE;
+	    	clipx = clipy = 0;
+	    }
+	    BufferQueueChar( 'R'-64 );
+#endif
 	}
 	break;
     }
     ReplyMsg((struct Message *) message);
+
+    switch(delayed_key_action){
+    case CloseOver:
+	amii_destroy_nhwindow( WIN_OVER );
+	WIN_OVER = WIN_ERR;
+	delayed_key_action = NoAction;
+    case NoAction:
+	;	/* null */
+    }
 }
 
 #endif /* AMII_GRAPHICS */
@@ -561,17 +530,19 @@ register struct IntuiMessage *message;
  */
 
 #if defined(TTY_GRAPHICS) && !defined(AMII_GRAPHICS)
-int kbhit(){return 0};
+int kbhit(){
+	return 0
+}
 #else
 int
 kbhit()
 {
     int c;
-#ifdef TTY_GRAPHICS
+# ifdef TTY_GRAPHICS
 		/* a kludge to defuse the mess in allmain.c */
 		/* I hope this is the right approach */
     if(windowprocs.win_init_nhwindows==amii_procs.win_init_nhwindows)return 0;
-#endif
+# endif
     c = amikbhit();
     if( c <= 0 )
     	return( 0 );
@@ -669,8 +640,8 @@ void amii_cleanup()
 	Permit();
     }
 
-    /* Close the screen, under v37 or greater it is a pub screen and there may be
-     * visitors, so check close status and wait till everyone is gone.
+    /* Close the screen, under v37 or greater it is a pub screen and there may
+     * be visitors, so check close status and wait till everyone is gone.
      */
     if( HackScreen )
     {
@@ -685,7 +656,7 @@ void amii_cleanup()
 		    0,
 		    "Nethack Problem",
 		    "Can't Close Screen, Close Visiting Windows",
-		    "Okay",
+		    "Okay"
 		};
 		EasyRequest( NULL, &easy, NULL, NULL );
 	    }
@@ -705,24 +676,16 @@ void amii_cleanup()
 	HackFont = NULL;
     }
 
-#ifdef	VIEWWINDOW
-    if (HackFont4)
-    {
-	CloseFont(HackFont4);
-	HackFont4 = NULL;
-    }
-
-    if (HackFont16)
-    {
-	CloseFont(HackFont16);
-	HackFont16 = NULL;
-    }
-#endif
-
     if( TextsFont )
     {
 	CloseFont( TextsFont );
 	TextsFont = NULL;
+    }
+
+    if( RogueFont )
+    {
+	CloseFont( RogueFont );
+	RogueFont = NULL;
     }
 
     if( DiskfontBase )
@@ -732,12 +695,11 @@ void amii_cleanup()
     }
 #endif
 
-#ifdef	VIEWWINDOW
-    if (LayersBase) {
+    if( WINVERS_AMIV && LayersBase)
+    {
 	CloseLibrary((struct Library *)LayersBase);
 	LayersBase = NULL;
     }
-#endif
 
     if (GfxBase) {
 	CloseLibrary((struct Library *)GfxBase);
@@ -761,6 +723,8 @@ void amii_cleanup()
     Initialized = 0;
 }
 
+#endif	/* AMII_GRAPHICS */
+
 #ifndef	SHAREDLIB
 void Abort(rc)
 long rc;
@@ -779,11 +743,10 @@ long rc;
     } else
 #endif
       printf("\n\nAbort with alert code %08lx...\n",rc);
-#if 0
-      Alert(rc);              /* this is too severe */
-#endif
+      /* Alert(rc);              this is too severe */
 #ifdef __SASC
-#ifdef	INTUI_NEW_LOOK
+# ifdef	INTUI_NEW_LOOK
+    if( IntuitionBase->LibNode.lib_Version >= 37 )
     {
     	struct EasyStruct es =
     	{
@@ -797,7 +760,7 @@ long rc;
     	if( fault == 2 )
     	    return;
     }
-#endif
+# endif
     if( fault == 1 )
     {
 /*  __emit(0x4afc);     /* illegal instruction */
@@ -856,248 +819,6 @@ GetFMsg(port)
     return((struct Message *)msg);
 }
 #endif
-
-/*
- * Begin Revamped Text display routines
- *
- * Up until version 3.1, the only method for displaying text on the playing
- * field was by using the console.device.  This was nice for a number of
- * reasons, the most signifigant of which was a lot of the nuts and bolts was
- * done for you via escape sequences interpreted by said device.  This did
- * not come without a price however.  And that price was speed. It has now
- * come to a point where the speed has now been deemed unacceptable.
- *
- * The following series of routines are designed to drop into the current
- * nethack display code, using hooks provided for such a measure. It works
- * on similar principals as the WindowPuts(), buffering I/O internally
- * until either an explicit flush or internal buffering is exceeded, thereby
- * forcing the flush.  The output (or glyphs) does not go to the
- * console.device, however.  It is driven directly to the rasterport of the
- * nethack window via the low-level Text() calls, increasing the speed by
- * a very signifigant factor.
- */
-/*
- * Routine to simply flush whatever is buffered
- */
-void
-flush_glyph_buffer( w )
-    struct Window *w;
-{
-    short i, x, y;
-#ifdef	VIEWWINDOW
-    struct Window *vw = amii_wins[ WIN_VIEW ]->win;
-    register struct RastPort *vrp = vw->RPort;
-#endif
-    register struct RastPort *rp = w->RPort;
-
-    /* If nothing is buffered, return before we do anything */
-    if(glyph_node_index == 0)
-	return;
-
-    cursor_off( WIN_MAP );
-    start_glyphout( WIN_MAP );
-#ifdef	VIEWWINDOW
-    cursor_off( WIN_VIEW );
-    start_glyphout( WIN_VIEW );
-#endif
-
-    /* Set up the drawing mode */
-    SetDrMd( rp, JAM2);
-#ifdef	VIEWWINDOW
-    SetDrMd( vrp, JAM2);
-#endif
-
-    /* Go ahead and start dumping the stuff */
-    for(i=0; i<glyph_node_index; ++i) {
-	/* These coordinate calculations must be synced with the
-	 * code in amii_curs() in winami.c.  curs_on_u() calls amii_curs()
-	 * to draw the cursor on top of the player
-	 */
-	y = w->BorderTop + (g_nodes[i].y-1) * rp->TxHeight +
-	    rp->TxBaseline + 1;
-	x = g_nodes[i].x * rp->TxWidth + w->BorderLeft;
-
-	/* Move pens to correct location */
-	Move( rp, (long)x, (long)y);
-
-	/* Setup the colors */
-	SetAPen( rp, (long)g_nodes[i].fg_color);
-	SetBPen( rp, (long)g_nodes[i].bg_color);
-
-	/* Do it */
-	Text( rp, g_nodes[i].buffer, g_nodes[i].len);
-
-#ifdef	VIEWWINDOW
-	y = vw->BorderTop + (g_nodes[i].y-1) * vrp->TxHeight + vrp->TxBaseline + 1;
-	x = g_nodes[i].x * vrp->TxWidth + vw->BorderLeft;
-
-	/* Move pens to correct location */
-	Move( vrp, (long)x, (long)y);
-
-	/* Setup the colors */
-	SetAPen( vrp, (long)g_nodes[i].fg_color);
-	SetBPen( vrp, (long)g_nodes[i].bg_color);
-
-	/* Do it */
-	Text( vrp, g_nodes[i].buffer, g_nodes[i].len);
-#endif
-    }
-
-    amii_end_glyphout( WIN_MAP );
-#ifdef	VIEWWINDOW
-    amii_end_glyphout( WIN_VIEW );
-#endif
-    /* Clean up */
-    glyph_node_index = glyph_buffer_index = 0;
-}
-
-/*
- * Glyph buffering routine.  Called instead of WindowPuts().
- */
-void
-amiga_print_glyph(window,color_index, glyph)
-    winid window;
-    int color_index, glyph;
-{
-    int fg_color, bg_color;
-    struct amii_WinDesc *cw;
-    struct Window *w;
-    int curx;
-    int cury;
-
-    if( ( cw=amii_wins[window] ) == (struct amii_WinDesc *)NULL )
-	panic("bad winid in amiga_print_glyph: %d", window );
-
-    w = cw->win;
-    curx=cw->curx;
-    cury=cw->cury;
-
-#ifdef TEXTCOLOR
-    fg_color = foreg[color_index];
-    bg_color = backg[color_index];
-#else
-    fg_color = 1;
-    bg_color = 0;
-#endif /* TEXTCOLOR */
-
-    /* See if we have enough character buffer space... */
-    if(glyph_buffer_index  >= GLYPH_BUFFER_SIZE)
-	flush_glyph_buffer( w );
-
-    /*
-     * See if we can append it to the current active node of glyph buffer. It
-     * must satisfy the following conditions:
-     *
-     *    * background colors are the same, AND
-     *    * foreground colors are the same, AND
-     *    * they are precisely side by side
-     */
-    if((glyph_buffer_index != 0) &&
-       (fg_color == g_nodes[glyph_node_index-1].fg_color) &&
-       (bg_color == g_nodes[glyph_node_index-1].bg_color) &&
-       (g_nodes[glyph_node_index-1].x+
-	g_nodes[glyph_node_index-1].len == curx) &&
-       (g_nodes[glyph_node_index-1].y == cury)) {
-	/*
-	 * Add it to the end of the buffer
-	 */
-	glyph_buffer[glyph_buffer_index++] = glyph;
-	g_nodes[glyph_node_index-1].len ++;
-     } else {
-	/* See if we're out of glyph nodes */
-	if(glyph_node_index >= NUMBER_GLYPH_NODES)
-	    flush_glyph_buffer( w );
-	g_nodes[glyph_node_index].len = 1;
-	g_nodes[glyph_node_index].x = curx;
-	g_nodes[glyph_node_index].y = cury;
-	g_nodes[glyph_node_index].fg_color = fg_color;
-	g_nodes[glyph_node_index].bg_color = bg_color;
-	g_nodes[glyph_node_index].buffer = &glyph_buffer[glyph_buffer_index];
-	glyph_buffer[glyph_buffer_index] = glyph;
-	++glyph_buffer_index;
-	++glyph_node_index;
-    }
-}
-
-/*
- * Define some variables which will be used to save context when toggling
- * back and forth between low level text and console I/O.
- */
-static long xsave, ysave, modesave, apensave, bpensave;
-static int usecolor;
-
-/*
- * The function is called before any glyphs are driven to the screen.  It
- * removes the cursor, saves internal state of the window, then returns.
- */
-
-void
-start_glyphout(window)
-    winid window;
-{
-    struct amii_WinDesc *cw;
-    struct Window *w;
-
-    if( ( cw=amii_wins[window] ) == (struct amii_WinDesc *)NULL )
-	panic( "bad winid %d in start_glyphout()", window );
-
-    if( cw->wflags & FLMAP_INGLYPH )
-	return;
-
-    if( !(w = cw->win ) )
-	panic( "bad winid %d, no window ptr set", window );
-
-    /*
-     * Save the context of the window
-     */
-    xsave = w->RPort->cp_x;
-    ysave = w->RPort->cp_y;
-    modesave = w->RPort->DrawMode;
-    apensave = w->RPort->FgPen;
-    bpensave = w->RPort->BgPen;
-
-    /*
-     * Set the mode, and be done with it
-     */
-    usecolor = flags.use_color;
-    flags.use_color = FALSE;
-    cw->wflags |= FLMAP_INGLYPH;
-}
-
-/*
- * General cleanup routine -- flushes and restores cursor
- */
-void
-amii_end_glyphout(window)
-    winid window;
-{
-    struct amii_WinDesc *cw;
-    struct Window *w;
-
-    if( ( cw = amii_wins[ window ] ) == (struct amii_WinDesc *)NULL )
-	panic("bad window id %d in amii_end_glyphout()", window );
-
-    if( ( cw->wflags & FLMAP_INGLYPH ) == 0 )
-	return;
-    cw->wflags &= ~(FLMAP_INGLYPH);
-
-    if( !(w = cw->win ) )
-	panic( "bad winid %d, no window ptr set", window );
-
-    /*
-     * Clean up whatever is left in the buffer
-     */
-    flags.use_color = usecolor;
-
-    /*
-     * Reset internal data structs
-     */
-    SetAPen(w->RPort, apensave);
-    SetBPen(w->RPort, bpensave);
-    SetDrMd(w->RPort, modesave);
-
-    Move(w->RPort, xsave, ysave);
-}
 
 struct NewWindow *
 DupNewWindow( win )

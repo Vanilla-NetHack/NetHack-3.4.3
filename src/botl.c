@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)botl.c	3.1	93/01/17	*/
+/*	SCCS Id: @(#)botl.c	3.2	95/05/31	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -25,11 +25,11 @@ static void NDECL(bot2);
  *
  * longest practical second status line at the moment is
  *	Astral Plane $:12345 HP:700(700) Pw:111(111) AC:-127 Xp:30/123456789
- *	T:123456 Satiated Conf Sick Blind Stun Hallu Overloaded
- * -- or somewhat over 120 characters
+ *	T:123456 Satiated Conf FoodPois Ill Blind Stun Hallu Overloaded
+ * -- or somewhat over 130 characters
  */
-#if COLNO <= 130
-#define MAXCO 150
+#if COLNO <= 140
+#define MAXCO 160
 #else
 #define MAXCO (COLNO+20)
 #endif
@@ -41,8 +41,13 @@ STATIC_OVL NEARDATA int mrank_sz = 0; /* loaded by max_rank_sz (from u_init) */
 #endif /* OVLB */
 
 struct rank_title {
+#ifdef _DCC
+    const char *m;		/* male title */
+    const char *f;		/* female title, or 0 if same as male */
+#else
     char const * const	m;	/* male title */
     char const * const	f;	/* female title, or 0 if same as male */
+#endif
 };
 struct class_ranks {
     char		plclass, fill_;
@@ -226,7 +231,7 @@ int rank;
 
 const char *
 rank_of(lev, pc, female)
-register unsigned lev;
+int lev;
 char pc;
 boolean female;
 {
@@ -241,7 +246,7 @@ boolean female;
 STATIC_OVL const char *
 rank()
 {
-	return(rank_of(u.ulevel, pl_character[0], flags.female));
+	return(rank_of(u.ulevel, u.role, flags.female));
 }
 
 int
@@ -267,7 +272,7 @@ int *rank_indx, *title_length;
 			   all_classes[i].mplayer_class;
 		}
 	    }
-	return -1;	/* not found */
+	return NON_PM;
 }
 
 #endif /* OVL1 */
@@ -277,7 +282,7 @@ void
 max_rank_sz()
 {
 	register int i, r, maxr = 0;
-	const struct rank_title *ranks = rank_array(pl_character[0]);
+	const struct rank_title *ranks = rank_array(u.role);
 
 	if (ranks) {
 	    for (i = 0; i < 9; i++) {
@@ -286,8 +291,8 @@ max_rank_sz()
 		    if ((r = strlen(ranks[i].f)) > maxr) maxr = r;
 	    }
 	    mrank_sz = maxr;
-	}
-	else mrank_sz = strlen(pl_character);
+	} else
+	    mrank_sz = strlen(pl_character);
 }
 
 #endif /* OVLB */
@@ -318,7 +323,7 @@ bot1()
 	if('a' <= newbot1[0] && newbot1[0] <= 'z') newbot1[0] += 'A'-'a';
 	newbot1[10] = 0;
 	Sprintf(nb = eos(newbot1)," the ");
-#ifdef POLYSELF
+
 	if (u.mtimedone) {
 		char mbot[BUFSZ];
 		int k = 0;
@@ -333,9 +338,7 @@ bot1()
 		Sprintf(nb = eos(nb), mbot);
 	} else
 		Sprintf(nb = eos(nb), rank());
-#else
-	Sprintf(nb = eos(nb), rank());
-#endif
+
 	Sprintf(nb = eos(nb),"  ");
 	i = mrank_sz + 15;
 	j = (nb + 2) - newbot1; /* aka strlen(newbot1) but less computation */
@@ -371,22 +374,16 @@ bot2()
 	int hp, hpmax;
 	int cap = near_capacity();
 
-#ifdef POLYSELF
 	hp = u.mtimedone ? u.mh : u.uhp;
 	hpmax = u.mtimedone ? u.mhmax : u.uhpmax;
-#else
-	hp = u.uhp;
-	hpmax = u.uhpmax;
-#endif
+
 	if(hp < 0) hp = 0;
 /* TODO:	Add in dungeon name */
-#ifdef MULDGN
-	if(Is_knox(&u.uz)) Sprintf(newbot2, "%s ", dungeons[u.uz.dnum].dname);
-	else
-	if(In_quest(&u.uz)) Sprintf(newbot2, "Home %d ", dunlev(&u.uz));
-	else
-#endif
-	if(In_endgame(&u.uz))
+	if (Is_knox(&u.uz))
+		Sprintf(newbot2, "%s ", dungeons[u.uz.dnum].dname);
+	else if (In_quest(&u.uz))
+		Sprintf(newbot2, "Home %d ", dunlev(&u.uz));
+	else if (In_endgame(&u.uz))
 		Sprintf(newbot2,
 			Is_astralevel(&u.uz) ? "Astral Plane " : "End Game ");
 	else
@@ -394,17 +391,16 @@ bot2()
 	Sprintf(nb = eos(newbot2),
 		"%c:%-2ld HP:%d(%d) Pw:%d(%d) AC:%-2d", oc_syms[GOLD_CLASS],
 		u.ugold, hp, hpmax, u.uen, u.uenmax, u.uac);
-#ifdef POLYSELF
+
 	if (u.mtimedone)
 		Sprintf(nb = eos(nb), " HD:%d", mons[u.umonnum].mlevel);
-	else
-#endif
 #ifdef EXP_ON_BOTL
-	if(flags.showexp)
+	else if(flags.showexp)
 		Sprintf(nb = eos(nb), " Xp:%u/%-1ld", u.ulevel,u.uexp);
-	else
 #endif
-	Sprintf(nb = eos(nb), " Exp:%u", u.ulevel);
+	else
+		Sprintf(nb = eos(nb), " Exp:%u", u.ulevel);
+
 	if(flags.time)
 	    Sprintf(nb = eos(nb), " T:%ld", moves);
 	if(strcmp(hu_stat[u.uhs], "        ")) {
@@ -412,7 +408,12 @@ bot2()
 		Strcat(newbot2, hu_stat[u.uhs]);
 	}
 	if(Confusion)	   Sprintf(nb = eos(nb), " Conf");
-	if(Sick)	   Sprintf(nb = eos(nb), " Sick");
+	if(Sick) {
+		if (u.usick_type & SICK_VOMITABLE)
+			   Sprintf(nb = eos(nb), " FoodPois");
+		if (u.usick_type & SICK_NONVOMITABLE)
+			   Sprintf(nb = eos(nb), " Ill");
+	}
 	if(Blind)	   Sprintf(nb = eos(nb), " Blind");
 	if(Stunned)	   Sprintf(nb = eos(nb), " Stun");
 	if(Hallucination)  Sprintf(nb = eos(nb), " Hallu");

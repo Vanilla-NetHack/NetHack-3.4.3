@@ -11,51 +11,54 @@
  * interface; not #defining it supports (along with wb.c) the WB interface.
  */
 
-/*#include "Incl:date.h"          /* this gives us the version string */
-#include "Incl:patchlevel.h"	/* and the individual bits */
+#include "NH:include/date.h"		/* this gives us the version string */
+#include "NH:include/patchlevel.h"	/* and the individual bits */
+
+const char amiga_version_string[] = AMIGA_VERSION_STRING;
 
 #ifdef AZTEC_C
 /* Aztec doesn't recognize __chip syntax */
 # define __chip
 #endif
 
-#include "Amiga:wbdefs.h"       /* Miscellany information */
+#include "NH:sys/amiga/wbdefs.h"       /* Miscellany information */
 #ifdef  INTUI_NEW_LOOK
 #define NewWindow   ExtNewWindow
 #define NewScreen   ExtNewScreen
 #endif
-#include "Amiga:wbstruct.h"
-#include "Amiga:wbprotos.h"
+#include "NH:sys/amiga/wbstruct.h"
+#include "NH:sys/amiga/wbprotos.h"
 
 #ifdef CLI
-#include "Amiga:wbdata.c"       /* All structures and global data */
+#include "NH:sys/amiga/wbdata.c"       /* All structures and global data */
 
 #undef NetHackCnf
 char NetHackCnf[50]="NetHack:NetHack.cnf";
 #endif  /* CLI */
+void error( register const char *str );
 
 #define C_GREY  0
 #define C_BLACK 1
 #define C_WHITE 2
 #define C_BLUE  3
 
-#ifndef __SASC_60
+#if !defined(__SASC_60) && !defined(_DCC)
 extern char *sys_errlist[];
 #endif
 extern int errno;
+extern char scrntitle[ 90 ];
 
 #define SPLIT           /* use splitter, if available */
 
 void diskobj_filter(struct DiskObject *);
 BPTR s_LoadSeg(char *);
 void s_UnLoadSeg(void);
+void append_slash(char *);
 
 #ifdef CLI
 char *cnfsavedir="NetHack:save";    /* unless overridden in cnf file */
 char argline[255];  /* no overflow - bigger than ADOS will pass */
-#ifdef for_later
 int amibbs=0;				/* BBS mode flag */
-#endif
 
 void WaitEOG(GPTR);
 char *eos(char *);
@@ -76,7 +79,7 @@ extern char *strdup(char *);
 /*
  * Aztec has a strnicmp, but it doesn't work properly.
  *
- * Note: this came out of NHS:hacklib.c
+ * Note: this came out of NH:src/hacklib.c
  */
 static char
 lowc(c)         /* force 'c' into lowercase */
@@ -111,43 +114,41 @@ strnicmp(s1, s2, n)
 #endif
 
 char *copyright_text[]={
-"NetHack, Copyright 1985, 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993.",
-"         By Stichting Mathematisch Centrum and M. Stephenson.",
-"         See license for details.",
-0
+	COPYRIGHT_BANNER_A,
+	COPYRIGHT_BANNER_B,
+	COPYRIGHT_BANNER_C,
+	0
 };
 
 #ifdef CLI
 
-main( argc, wbs )
+main( argc, argv )
     int argc;
-    struct WBStartup *wbs;
+    char **argv;
 {
     GPTR gptr;
     BPTR lc,lc2;
     struct FileInfoBlock finfo;
     char *name=0;
     char namebuf[50];
-    char **argv=(char **)wbs;
+    struct WBStartup *wbs = (struct WBStartup *)argv;
     char newcmdline[80]="";
     char forcenewcmd=0;
 
-    ZapOptions( curopts );
-    InitWB( argc, (struct WBStartup *)argv );
+    /*ZapOptions( );*/
+    InitWB( argc, wbs );
     errmsg( NO_FLASH, "Welcome to NetHack Version %d.%d.%d!\n",
       VERSION_MAJOR, VERSION_MINOR, PATCHLEVEL );
     CopyRight( );
 
     ReadConfig( );
 
-#ifdef for_later
     /* check for BBS mode */
     if (argc>1 && argv[1][0]==':'){
 	amibbs=1;
-	strcpy(newcmdline,":");
-	amibasename= &argv[1][1];
+	sprintf(newcmdline,":%08x %08x ;%s ",Input(),Output(),&argv[1][1]);
+	argv++;argc--;
     }
-#endif
 
 		/* check/re-assemble initial command line */
     {
@@ -192,14 +193,14 @@ main( argc, wbs )
 __builtin_printf("sending '%s'\n",argline);
 #else
 	strcpy(namebuf,cnfsavedir);
-	condaddslash(namebuf);
+	append_slash(namebuf);
 	if(!name)name="NewGame.info";
-	strcpy(eos(namebuf),name);
+	strcat(namebuf,name);
 	lc=Lock(namebuf,ACCESS_READ);
 	if(!lc){
 	    dirname="NetHack:";
 	    strcpy(namebuf,dirname);
-	    strcpy(eos(namebuf),"NewGame.info");
+	    strcat(namebuf,"NewGame.info");
 	    lc=Lock(namebuf,ACCESS_READ);
 	    if(!lc){
 		errmsg(NO_FLASH,"Can't find NewGame.info");
@@ -227,11 +228,9 @@ __builtin_printf("sending '%s'\n",argline);
 /* ask about another? */
 build_new_argline:
 	forcenewcmd=0;
-#ifdef for_later
 	if(amibbs) {
 	    quit = 1;		/* bbs mode aborts after one game */
 	} else
-#endif
 	{
 	char *x=argline;
 	while(isspace(*x))x++;
@@ -366,9 +365,7 @@ InitWB( argc, wbs )
 	    (void) printf("\n or");
 	    (void) printf("\n %s [-d dir] [-u name] [-[%s]]",
 		argv[0], classes);
-#if defined(WIZARD) || defined(EXPLORE_MODE)
 	    (void) printf(" [-[DX]]");
-#endif
 #ifdef NEWS
 	    (void) printf(" [-n]");
 #endif
@@ -535,8 +532,8 @@ freemem:
     gptr->wbs->sm_Segment = gptr->seglist;
     gptr->wbs->sm_NumArgs = 2;
     {
-    static char title[45];	/* some slack */
-    sprintf(title,"con:0/0/100/300/NetHack %d.%d.%d",
+    static char title[90];	/* some slack */
+    sprintf(title,"con:0/0/100/300/NetHack %d.%d.%d console",
       VERSION_MAJOR, VERSION_MINOR, PATCHLEVEL);
     gptr->wbs->sm_ToolWindow = title;
     }
@@ -548,9 +545,11 @@ freemem:
     gptr->wba[0].wa_Lock = Lock( dirname( GAMEIMAGE ), ACCESS_READ );
 
     gptr->wba[1].wa_Name = Strdup( gptr->name );
-    gptr->wba[1].wa_Lock = Lock( gptr->dname, ACCESS_READ );
+    gptr->wba[1].wa_Lock = Lock( "t:", ACCESS_READ );
 
-    /* Write the updated tools types entries */
+    /* Write the updated tools types entries into t: so that the icon is not
+     * mysteriously updated behind the users back.
+     */
 
     WriteDObj( gptr, gptr->wba[1].wa_Lock );
 
@@ -862,10 +861,10 @@ void FreeGITEM( gptr )
 
     if( gptr->talloc )
 	FreeTools( gptr );
+    gptr->talloc = 0;
 
     if( gptr->dobj )
 	FreeDObj( gptr->dobj );
-
     gptr->dobj = NULL;
 
     if( gptr->name )
@@ -975,7 +974,7 @@ int flash;
  */
 
 void error( str )
-    register char *str;
+    register const char *str;
 {
     char s[ 50 ];
     if( scrn ) ScreenToBack( scrn );
@@ -1354,8 +1353,8 @@ GPTR GetWBIcon( lock, dir, finfo )
 	    t = NULL;
     }
 
-    if( ( gptr->name = strdup( finfo->fib_FileName ) ) == NULL )
-	goto outofmem;
+    gptr->name = xmalloc(strlen(finfo->fib_FileName)+1+9);
+    sprintf(gptr->name,"%s_%08x",finfo->fib_FileName,FindTask(0));
 
     /* If removed .info, put it back */
 
@@ -1373,19 +1372,6 @@ GPTR GetWBIcon( lock, dir, finfo )
 	(void) CurrentDir( odir );
 outofmem:
 	FreeGITEM( gptr );
-
-	if( gptr->fname )
-	    free( gptr->fname );
-	gptr->fname = NULL;
-
-	if( gptr->name )
-	    free( gptr->name );
-	gptr->name = NULL;
-
-	if( gptr->dname )
-	    free( gptr->dname );
-	gptr->dname = NULL;
-
 noitems:
 	errmsg( FLASH, "Can't get Disk Object: %s", finfo->fib_FileName );
 	return( NULL );
@@ -1412,7 +1398,8 @@ noitems:
  * are rendered in the up position by default.
  */
 
-void SetBorder( gd, val )
+void
+SetBorder( gd, val )
     register struct Gadget *gd;
     int val;
 {
@@ -1425,8 +1412,12 @@ void SetBorder( gd, val )
      * image, plus vector arrays for the border lines.
      */
 
-    if( gd->GadgetType == STRGADGET )
+    if( val == 0 || val == 2 ||
+	gd->GadgetType == STRGADGET || ( gd->GadgetType == BOOLGADGET &&
+		( gd->Flags & GADGHIGHBITS ) == GADGHNONE ) )
+    {
 	borders = 12;
+    }
 
     if( ( bp = xmalloc( ( ( sizeof( struct Border ) * 2 ) +
 	    ( sizeof( short ) * borders ) ) * 2 ) ) == NULL )
@@ -1437,8 +1428,8 @@ void SetBorder( gd, val )
     /* Remove any special rendering flags to avoid confusing intuition
      */
 
-    gd->Flags &= ~(GADGHIGHBITS|GADGIMAGE|GRELWIDTH|
-		    GRELHEIGHT|GRELRIGHT|GRELBOTTOM);
+    gd->Flags &= ~(GADGHIGHBITS|GADGIMAGE);
+		/*|(GRELWIDTH|GRELHEIGHT|GRELRIGHT|GRELBOTTOM);*/
 
     sp = (short *)(bp + 4);
     if( val == 0 || val == 2 ||
@@ -1496,8 +1487,14 @@ void SetBorder( gd, val )
 	/* Same image for select image */
 	gd->SelectRender = (APTR) bp;
 
-	gd->LeftEdge++;
-	gd->TopEdge++;
+	if( gd->Flags & GRELRIGHT )
+	    gd->LeftEdge--;
+	else
+	    gd->LeftEdge++;
+	if( gd->Flags & GRELBOTTOM )
+	    gd->TopEdge--;
+	else
+	    gd->TopEdge++;
 	gd->Flags |= GADGHCOMP;
     }
     else
@@ -1587,186 +1584,24 @@ struct Gadget *FindGadget( window, newwindow, id )
 
 #endif  /* CLI */
 
-/*
- * Clear all previous values from passed options array
- */
-void ZapOptions( optr )
-    OPTR optr;
-{
-    int i;
-
-    for( i = 0; optr[ i ].name; ++i )
-    {
-	if( optr[i].optstr )
-	{
-	    if( *optr[i].optstr )
-	    {
-		free( optr[i].optstr );
-		optr[i].optstr = "";
-	    }
-	}
-	else
-	{
-	    optr[i].optval = optr[i].defval;
-	}
-    }
-}
-
 #ifndef CLI
 
 /*
  * Copy Options from GAMES OPTIONS= tooltypes element to the gadgets
  */
-void CopyOptions( optr, gptr )
-    OPTR optr;
+void CopyOptions( gptr )
     GPTR gptr;
 {
-    char *sp;
+    char **sp;
 
-    sp = ToolsEntry( gptr, "OPTIONS" );
-    ZapOptions( optr );
-    if( sp && *sp )
-	CopyOptionStr( optr, sp );
-}
-
-/* !CLI */
-
-void CopyOptionStr( optr, str )
-    OPTR optr;
-    char *str;
-{
-    char *s, *t, buf[ 100 ];
-    int i, sidx, state = 0;
-    int done = 0;
-
-    ZapOptions( optr );
-    s = buf;
-    *buf = 0;
-    sidx = -1;
-
-    /* Start past the 'options=' part */
-    for( t = str; *str && !done; ++t )
+    for( sp = gptr->dobj->do_ToolTypes; sp && *sp; ++sp )
     {
-	if( state == 0 && isspace( *t ) )
-	    continue;
-
-	/* If at end remember so... */
-	if( !*t )
-	    done = 1;
-
-	/* If looking for an option value */
-	if( state == 0 )
-	{
-	    /* If found string value... */
-	    if( *t == ':' )
-	    {
-		*s = 0;
-		state = 1;
-		sidx = -1;
-
-		/* Look for the particular named option */
-		for( i = 0; optr[i].name; ++i )
-		{
-		    if( stricmp( optr[i].name, buf ) == 0 )
-		    {
-			sidx = i;
-			break;
-		    }
-		}
-
-		/* Set buffer pointer */
-		*(s = buf) = 0;
-
-		if( sidx == -1 )
-		{
-		    errmsg( FLASH, "Invalid option name %s", buf );
-		    return;
-		}
-		if( !optr[i].optstr )
-		{
-		    errmsg( FLASH, "%s is not a string option", buf );
-		    return;
-		}
-		continue;
-	    }
-	}
-
-	/* If at end of string or comma and we have some text... */
-	if( ( !*t || *t == ',' ) && *buf )
-	{
-	    /* Mark end */
-	    *s = 0;
-
-	    /* If have collected string option value... */
-	    if( sidx != -1 )
-	    {
-		/* Free old string */
-		if( optr[sidx].optstr )
-		{
-		    if( *optr[sidx].optstr )
-			free( optr[sidx].optstr );
-		}
-
-		/* Store new string */
-		if( *buf )
-		    optr[sidx].optstr = strdup( buf );
-		else
-		    optr[sidx].optstr = "";
-		sidx = -1;
-	    }
-	    else
-	    {
-		/* Look for boolean option */
-		for( i = 0; optr[i].name; ++i )
-		{
-		    if( *buf == '!' )
-		    {
-			if( stricmp( optr[i].name, buf + 1 ) == 0 )
-			    break;
-		    }
-		    else
-		    {
-			if( stricmp( optr[i].name, buf ) == 0 )
-			    break;
-		    }
-		}
-
-		if( optr[i].name )
-		{
-		    optr[i].optval = *buf != '!';
-		}
-		else
-		{
-		    errmsg( FLASH, "Unrecognized option `%s'", buf );
-		    return;
-		}
-	    }
-	    *(s = buf) = 0;
-	    state = 0;
-	}
-	else
-	{
-	    if( *t == ',' )
-		*(s = buf) = 0;
-	    else
-		*s++ = *t;
-	}
+    	if( strnicmp( *sp, "OPTIONS=", 8 ) == 0 )
+	    ParseOptionStr( (*sp) + 8 );
     }
 }
 
 /* !CLI */
-
-/*
- *  Set the GAMES OPTIONS tooltypes to the data in the Options windows
- *  gadgetry.
- */
-void SetOptions( optr, gptr )
-    register OPTR optr;
-    register GPTR gptr;
-{
-    PutOptions( optr );
-    SetToolLine( gptr, "OPTIONS", options[ OPTIONS_IDX ] );
-}
 
 void
 UpdateGameIcon( gptr )
@@ -1869,6 +1704,59 @@ void FreeTools( gptr )
     gptr->talloc = 0;
 }
 
+void DelToolLines( gptr, name )
+    GPTR gptr;
+    char *name;
+{
+    char **sp;
+    int i, j, len;
+
+    sp = gptr->dobj->do_ToolTypes;
+    len = strlen( name );
+
+    /* Find any previous definitions and delete them */
+    for( i = 0; sp[i] && i < gptr->toolcnt - 1; )
+    {
+	if( strnicmp( name, sp[i], len ) == 0 && sp[i][len] == '=' )
+	{
+	    for( j = i; j < gptr->toolcnt && (sp[ j ] = sp[ j + 1 ]); ++j )
+	    	continue;
+	}
+	else
+	{
+	    ++i;
+	}
+    }
+}
+
+/* Add a tooltypes line that might be a duplicate of the existing ones. */
+void AddToolLine( gptr, name, value )
+    GPTR gptr;
+    char *name, *value;
+{
+    char **sp;
+    int i;
+
+    /* Realloc ToolTypes to be in memory we know how to manage */
+    ReallocTools( gptr, 1 );
+
+    sp = gptr->dobj->do_ToolTypes;
+    for( i = 0; sp[ i ] && i < gptr->toolcnt - 1; ++i )
+    	continue;
+
+    /* Allocate the space needed */
+    if( value == NULL )
+	sp[ i ] = xmalloc( strlen( name ) + 1 );
+    else
+	sp[ i ] = xmalloc( strlen (value) + strlen( name ) + 2 );
+
+    /* Set the string */
+    if( sp[ i ] != NULL )
+	sprintf( sp[ i ], value ? "%s=%s" : "%s", name, value );
+    else
+	errmsg( FLASH, "Could not allocate string for value" );
+}
+
 void SetToolLine( gptr, name, value )
     GPTR gptr;
     char *name, *value;
@@ -1877,7 +1765,6 @@ void SetToolLine( gptr, name, value )
     int i, len;
 
     /* Realloc ToolTypes to be in memory we know how to manage */
-
     ReallocTools( gptr, 0 );
 
     sp = gptr->dobj->do_ToolTypes;
@@ -1919,15 +1806,17 @@ void SetToolLine( gptr, name, value )
 	}
     }
 
-    /* Set the string */
-
-    if( sp[ i ] = xmalloc( strlen (value) + strlen( name ) + 2 ) )
-	sprintf( sp[i], "%s=%s", name, value );
+    /* Allocate the space needed */
+    if( value == NULL )
+	sp[i] = xmalloc( strlen( name ) + 1 );
     else
-    {
-	sp[ i ] = NULL;     /* redundant */
+	sp[ i ] = xmalloc( strlen (value) + strlen( name ) + 2 );
+
+    /* Set the string */
+    if( sp[ i ] != NULL )
+	sprintf( sp[i], value ? "%s=%s" : "%s", name, value );
+    else
 	errmsg( FLASH, "Could not allocate string for value" );
-    }
 }
 
 void WriteDObj( gptr, lock )
@@ -1975,26 +1864,26 @@ eos(s)
     return s;
 }
 
-/* CLI */
 
+/*
+ * Add a slash to any name not ending in / or :.  There must
+ * be room for the /.
+ * NB: Duplicated from amidos.c
+ */
 void
-condaddslash(s)
-    char *s;
+append_slash(name)
+char *name;
 {
-    s=eos(s);
-    switch(s[-1]){
-    case ':':
-    case '/':
-	break;
-    default:
-	s[0]='/';
-	s[1]='\0';
-	break;
-    }
-    return;
-}
+    char *ptr;
 
-/* CLI */
+    if (!*name)return;
+
+    ptr = eos(name) - 1;
+    if (*ptr != '/' && *ptr != ':') {
+	*++ptr = '/';
+	*++ptr = '\0';
+    }
+}
 
 #if 0
 /* for debug only */
@@ -2050,7 +1939,8 @@ void ClearDelGames()
 
 struct TagItem tags[] =
 {
-    TAG_DONE, 0l,
+    {WA_ScreenTitle, (ULONG) scrntitle},
+    {TAG_DONE, 0l },
 };
 
 struct Window *

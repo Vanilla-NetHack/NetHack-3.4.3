@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)tosconf.h	3.1	90/22/02	*/
+/*	SCCS Id: @(#)tosconf.h	3.2	90/02/22	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -22,7 +22,7 @@
 #endif
 
 #ifdef O_BINARY
-#define FCMASK 	O_BINARY
+#define FCMASK	O_BINARY
 #else
 #define FCMASK	0660
 #define O_BINARY 0
@@ -34,10 +34,10 @@
 
 /* configurable options */
 #define MFLOPPY			/* floppy support		*/
-#define RANDOM			/* improved random numbers 	*/
-#define SHELL			/* allow spawning of shell 	*/
+#define RANDOM			/* improved random numbers	*/
+#define SHELL			/* allow spawning of shell	*/
 #define TERMLIB			/* use termcap			*/
-#define TEXTCOLOR		/* allow color 			*/
+#define TEXTCOLOR		/* allow color			*/
 #ifdef MINT
 #define SUSPEND			/* allow suspending the game	*/
 #endif
@@ -46,7 +46,7 @@
 #define ANSI_DEFAULT		/* use vt52 by default		*/
 #endif
 
-#if defined(__GNUC__) || defined(__TURBOC__) || defined(__MINT__)
+#if defined(__GNUC__) || defined(__MINT__)
 /* actually, only more recent GNU C libraries have strcmpi
  * on the other hand, they're free -- if yours is out of
  * date, grab the most recent from atari.archive.umich.edu
@@ -61,7 +61,7 @@ extern int FDECL(strncmpi,(const char *, const char *, size_t));
 #include "micro.h"
 #endif
 #ifndef PCCONF_H
-#include "pcconf.h"	 	 /* remainder of stuff is same as the PC */
+#include "pcconf.h"		/* remainder of stuff is same as the PC */
 #endif
 
 #ifdef TEXTCOLOR

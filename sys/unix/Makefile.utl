@@ -1,5 +1,5 @@
 #	Makefile for NetHack's utility programs.
-#	SCCS Id: @(#)Makefile.utl	3.1	92/11/01
+#	SCCS Id: @(#)Makefile.utl	3.2	95/05/06
 
 # newer makes predefine $(MAKE) to 'make' and do smarter processing of
 # recursive make calls if $(MAKE) is used
@@ -51,15 +51,28 @@
 # (note that there is more info regarding the "-qchars=signed"
 # switch in file Install.unx note 8)
 # CFLAGS = -D_NO_PROTO -D_XOPEN_SOURCE -O -I../include -qchars=signed
+# and for AIX 3.2:
+# CFLAGS = -D_NO_PROTO -D_XOPEN_SOURCE -D_ALL_SOURCE -O -I../include -qchars=signed
 
 # flags for A/UX 2.01 using native cc or c89
 # gcc predefines AUX so that's not needed there
 # CFLAGS = -ZS -D_POSIX_SOURCE -O -I../include -DAUX
 
+# flags for IRIX 4.0.x using native cc
+# SGI cc 3.10 will fail to compile makedefs with -O
+# CFLAGS = -I../include -D__STDC__ -woff 100,293
+
+# flags for Linux
+#   compile normally
+# CFLAGS = -O2 -fomit-frame-pointer -I../include -I/usr/X11/include
+#   OR compile backwards compatible a.out format
+# CFLAGS = -O2 -b i486-linuxaout -fomit-frame-pointer -I../include -I/usr/X11/include
+# LFLAGS = -b i486-linuxaout -L/usr/X11/lib
+
 # flags for debugging:
 # CFLAGS = -g -I../include
 
-CFLAGS = -g -I../include
+CFLAGS = -O -I../include
 LFLAGS =
  
 
@@ -68,6 +81,7 @@ LFLAGS =
 YACC     = yacc
 LEX      = lex
 # YACC     = bison -y
+# YACC     = byacc
 # LEX      = flex
  
 # these are the names of the output files from YACC/LEX. Under MS-DOS
@@ -79,21 +93,26 @@ LEXYYC = lex.yy.c
 # YTABH = y_tab.h
 # LEXYYC = lexyy.c
 
+
 # Nothing below this line should have to be changed.
 
 # utility .c files
 MAKESRC = makedefs.c
 SPLEVSRC = lev_yacc.c lev_lex.c lev_main.c panic.c
 DGNCOMPSRC = dgn_yacc.c dgn_lex.c dgn_main.c
-UTILSRCS = $(MAKESRC) $(SPLEVSRC) $(DGNCOMPSRC)
+RECOVSRC = recover.c
+DLBSRC = dlb_main.c
+UTILSRCS = $(MAKESRC) $(SPLEVSRC) $(DGNCOMPSRC) $(RECOVSRC) $(DLBSRC)
 
 # object files for makedefs
 MAKEOBJS = makedefs.o ../src/monst.o ../src/objects.o
 
+# object files that provide access to NetHack's names
+NAMEOBJS = ../src/drawing.o ../src/decl.o ../src/monst.o ../src/objects.o
+
 # object files for special levels compiler
 SPLEVOBJS = lev_yacc.o lev_lex.o lev_main.o panic.o \
-	../src/alloc.o ../src/drawing.o ../src/decl.o \
-	../src/monst.o ../src/objects.o
+	../src/alloc.o $(NAMEOBJS)
 
 # object files for dungeon compiler
 DGNCOMPOBJS = dgn_yacc.o dgn_lex.o dgn_main.o panic.o ../src/alloc.o
@@ -105,7 +124,7 @@ RECOVOBJS = recover.o
 # a more portable flex skeleton, which is not included in the distribution.
 # hopefully keeping this out of the section to be edited will keep too
 # many people from being confused by it...
-# FLEXDIST = -L -S../sys/share/flexhack.skel
+# FLEXDIST = -L # -S../sys/share/flexhack.skel
 FLEXDIST =
 #
 # flags for creating distribution versions of sys/share/*_yacc.c, without
@@ -138,10 +157,10 @@ lintdefs:
 	@lint -axbh -I../include -DLINT $(MAKESRC) ../src/monst.c ../src/objects.c | sed '/_flsbuf/d'
 
 
-# the src Makefile is responsible for knowing when to call this, since
-# it knows all about the main src and include files
+# we defer this makedefs call to the src Makefile, since it knows all about
+# the main src and include files date.h is a timestamp for
 ../include/date.h::
-	./makedefs -v
+	@( cd ../src ; $(MAKE) ../include/date.h )
 
 
 #	dependencies for lev_comp
@@ -150,7 +169,8 @@ lev_comp:  $(SPLEVOBJS)
 	$(CC) $(LFLAGS) -o lev_comp $(SPLEVOBJS)
 
 lev_yacc.o:  ../include/hack.h ../include/sp_lev.h
-lev_main.o:  ../include/hack.h ../include/sp_lev.h ../include/termcap.h
+lev_main.o:  ../include/hack.h ../include/sp_lev.h ../include/termcap.h \
+		../include/date.h
 panic.o:     ../include/config.h
 
 # see lev_comp.l for WEIRD_LEX discussion
@@ -182,7 +202,7 @@ lintlev:
 dgn_comp:  $(DGNCOMPOBJS)
 	$(CC) $(LFLAGS) -o dgn_comp $(DGNCOMPOBJS)
 
-dgn_yacc.o:  ../include/config.h ../include/dgn_file.h
+dgn_yacc.o:  ../include/config.h ../include/dgn_file.h ../include/date.h
 dgn_main.o:  ../include/config.h
 
 # see dgn_comp.l for WEIRD_LEX discussion
@@ -216,6 +236,52 @@ recover: $(RECOVOBJS)
 recover.o: ../include/config.h
 
 
+#	dependencies for dlb
+#
+dlb:	dlb_main.o ../src/dlb.o ../src/alloc.o panic.o
+	$(CC) $(LFLAGS) -o dlb dlb_main.o ../src/dlb.o ../src/alloc.o panic.o
+
+dlb_main.o: dlb_main.c ../include/config.h ../include/dlb.h
+	$(CC) $(CFLAGS) -c dlb_main.c
+
+#	dependencies for tile utilities
+#
+TEXT_IO = tiletext.o tiletxt.o $(NAMEOBJS)
+GIFREADERS = gifread.o ../src/alloc.o panic.o
+PPMWRITERS = ppmwrite.o ../src/alloc.o panic.o
+
+tileutils: tilemap gif2txt txt2ppm tile2x11
+
+gif2txt: $(GIFREADERS) $(TEXT_IO)
+	$(CC) $(LFLAGS) -o gif2txt $(GIFREADERS) $(TEXT_IO)
+txt2ppm: $(PPMWRITERS) $(TEXT_IO)
+	$(CC) $(LFLAGS) -o txt2ppm $(PPMWRITERS) $(TEXT_IO)
+
+tile2x11: tile2x11.o $(TEXT_IO)
+	$(CC) $(LFLAGS) -o tile2x11 tile2x11.o $(TEXT_IO)
+
+tilemap: ../win/share/tilemap.c ../include/hack.h
+	$(CC) $(CFLAGS) $(LFLAGS) -o tilemap ../win/share/tilemap.c
+../src/tile.c: tilemap
+	./tilemap
+
+../include/tile.h: ../win/share/tile.h
+	cp ../win/share/tile.h ../include/tile.h
+tiletext.o: ../win/share/tiletext.c ../include/config.h ../include/tile.h
+	$(CC) $(CFLAGS) -c ../win/share/tiletext.c
+tiletxt.o: ../win/share/tilemap.c ../include/hack.h
+	$(CC) $(CFLAGS) -c -DTILETEXT ../win/share/tilemap.c
+	mv tilemap.o tiletxt.o
+
+gifread.o: ../win/share/gifread.c ../include/config.h ../include/tile.h
+	$(CC) $(CFLAGS) -c ../win/share/gifread.c
+ppmwrite.o: ../win/share/ppmwrite.c ../include/config.h ../include/tile.h
+	$(CC) $(CFLAGS) -c ../win/share/ppmwrite.c
+
+tile2x11.o: ../win/X11/tile2x11.c ../include/hack.h ../include/tile.h \
+						../include/tile2x11.h
+	$(CC) $(CFLAGS) -c ../win/X11/tile2x11.c
+
 
 # using dependencies like
 #	../src/foo::
@@ -240,6 +306,8 @@ recover.o: ../include/config.h
 	@( cd ../src ; $(MAKE) monst.o )
 ../src/objects.o: ../src/objects.c ../include/config.h
 	@( cd ../src ; $(MAKE) objects.o )
+../src/dlb.o:	../src/dlb.c ../include/hack.h ../include/dlb.h
+	@( cd ../src ; $(MAKE) dlb.o )
 
 # make sure hack.h dependencies get transitive information
 ../include/hack.h: ../include/config.h
@@ -249,9 +317,11 @@ tags: $(UTILSRCS)
 	@ctags -tw $(UTILSRCS)
 
 clean:
-	rm -f *.o
+	-rm -f *.o
 
 spotless: clean
-	rm -f lev_lex.c lev_yacc.c dgn_lex.c dgn_yacc.c
-	rm -f ../include/lev_comp.h ../include/dgn_comp.h
-	rm -f makedefs lev_comp dgn_comp recover
+	-rm -f lev_lex.c lev_yacc.c dgn_lex.c dgn_yacc.c
+	-rm -f ../include/lev_comp.h ../include/dgn_comp.h
+	-rm -f ../include/tile.h
+	-rm -f makedefs lev_comp dgn_comp recover dlb
+	-rm -f gif2txt txt2ppm tile2x11 tilemap

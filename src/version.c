@@ -1,26 +1,36 @@
-/*	SCCS Id: @(#)version.c	3.1	92/01/04	*/
+/*	SCCS Id: @(#)version.c	3.2	95/09/10	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
-#include	"hack.h"
-#include	"date.h"
-#ifndef BETA
-# ifdef SHORT_FILENAMES
-# include	"patchlev.h"
-# else
-# include	"patchlevel.h"
-# endif
+#include "hack.h"
+#include "date.h"
+#ifdef SHORT_FILENAMES
+#include "patchlev.h"
+#else
+#include "patchlevel.h"
 #endif
 
 int
 doversion()
 {
 #ifdef BETA
+# ifndef PORT_SUB_ID
 	pline("%s NetHack Beta Version %d.%d.%d-%d - last build %s.",
+# else
+	pline("%s NetHack %s Beta Version %d.%d.%d-%d - last build %s.",
+# endif
 #else
+# ifndef PORT_SUB_ID
 	pline("%s NetHack Version %d.%d.%d - last build %s.",
+# else
+	pline("%s NetHack %s Version %d.%d.%d - last build %s.",
+# endif
 #endif
+#ifndef PORT_SUB_ID
 		PORT_ID, VERSION_MAJOR, VERSION_MINOR, PATCHLEVEL,
+#else
+		PORT_ID, PORT_SUB_ID, VERSION_MAJOR, VERSION_MINOR, PATCHLEVEL,
+#endif
 #ifdef BETA
 		EDITLEVEL,
 #endif
@@ -42,6 +52,71 @@ long filetime;
 {
 	return((boolean)(filetime < BUILD_TIME));
 }
+#endif
+
+boolean
+check_version(version_info, filename, complain)
+long *version_info;
+const char *filename;
+boolean complain;
+{
+	if (
+#ifdef VERSION_COMPATIBILITY
+	    version_info[0] < VERSION_COMPATIBILITY ||
+	    version_info[0] > VERSION_NUMBER
+#else
+	    version_info[0] != VERSION_NUMBER
+#endif
+	  ) {
+	    if (complain)
+		pline("Version mismatch for file \"%s\".", filename);
+	    return FALSE;
+	} else if (version_info[1] != VERSION_FEATURES ||
+		   version_info[2] != VERSION_SANITY) {
+	    if (complain)
+		pline("Configuration incompatability for file \"%s\".",
+		      filename);
+	    return FALSE;
+	}
+	return TRUE;
+}
+
+/* this used to be based on file date and somewhat OS-dependant,
+   but now examines the initial part of the file's contents */
+boolean
+uptodate(fd, name)
+int fd;
+const char *name;
+{
+	long vers_info[3];
+	boolean verbose = name ? TRUE : FALSE;
+
+	(void) read(fd, (genericptr_t) vers_info, sizeof vers_info);
+	minit();	/* ZEROCOMP */
+	if (!check_version(vers_info, name, verbose)) {
+		if (verbose) wait_synch();
+		return FALSE;
+	}
+	return TRUE;
+}
+
+void
+store_version(fd)
+int fd;
+{
+	static long version_info[3] = {
+			VERSION_NUMBER, VERSION_FEATURES, VERSION_SANITY
+	};
+
+	bufoff(fd);
+	/* bwrite() before bufon() uses plain write() */
+	bwrite(fd, (genericptr_t)version_info, (unsigned)(sizeof version_info));
+	bufon(fd);
+	return;
+}
+
+#ifdef AMIGA
+const char amiga_version_string[] = AMIGA_VERSION_STRING;
 #endif
 
 /*version.c*/

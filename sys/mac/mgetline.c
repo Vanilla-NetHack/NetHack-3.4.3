@@ -3,27 +3,22 @@
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
+#include "macwin.h"
+#include "func_tab.h"
 #include "Dialogs.h"
 #include <Packages.h>
 
-// void FDECL(getlin,(const char *, char *));
-// void FDECL(get_ext_cmd,(char *));
-int FDECL ( try_key_queue , ( char * ) ) ;
-
-char * FDECL ( PtoCstr , ( unsigned char * ) ) ;
-unsigned char * FDECL ( CtoPstr , ( char * ) ) ;
-void SetFrameItem ( DialogPtr , short , short ) ;
-void FlashButton ( DialogPtr , short ) ;
-
-void FDECL ( enter_topl_mode , ( char * ) ) ;
-void FDECL ( leave_topl_mode , ( char * ) ) ;
-Boolean FDECL ( topl_key , ( unsigned char ) ) ;
-Boolean FDECL ( topl_ext_key , ( unsigned char ) ) ;
 
 typedef Boolean FDECL ( ( * key_func ) , ( unsigned char ) ) ;
 
+static int get_line_from_key_queue(char * bufp);
+static pascal Boolean getlinFilter(DialogPtr dp, EventRecord *ev, short *itemHit);
+static void popup_getlin(const char *query, char *bufp);
+static void topl_getlin(const char *query, char *bufp, key_func key);
+static pascal Boolean ExtendedCommandDialogFilter(DialogPtr dp, EventRecord *ev, short *item);
 
-int
+
+static int
 get_line_from_key_queue ( char * bufp )
 {
 	* bufp = 0 ;
@@ -43,7 +38,7 @@ get_line_from_key_queue ( char * bufp )
 }
 
 
-pascal Boolean
+static pascal Boolean
 getlinFilter ( DialogPtr dp , EventRecord * ev , short * itemHit )
 {
 	if (ev->what == keyDown) {
@@ -66,7 +61,7 @@ getlinFilter ( DialogPtr dp , EventRecord * ev , short * itemHit )
 }
 
 
-void
+static void
 popup_getlin(const char *query, char *bufp)
 {
 	ControlHandle	ctrl;
@@ -127,7 +122,7 @@ popup_getlin(const char *query, char *bufp)
 }
 
 
-void
+static void
 topl_getlin(const char *query, char *bufp, key_func key)
 {
 	int q_len = strlen(query);
@@ -157,9 +152,7 @@ mac_getlin(const char *query, char *bufp)
 }
 
 
-#ifdef COM_COMPL
-
-pascal Boolean
+static pascal Boolean
 ExtendedCommandDialogFilter ( DialogPtr dp , EventRecord * ev , short * item )
 {
 	int ix ;
@@ -191,7 +184,7 @@ ExtendedCommandDialogFilter ( DialogPtr dp , EventRecord * ev , short * item )
 	}
 	for ( ix = 3 ; ix ; ix ++ ) {
 
-		h = ( Handle ) NULL ;
+		h = ( Handle ) 0 ;
 		k = 0 ;
 		GetDItem ( dp , ix , & k , & h , & r ) ;
 		if ( ! k || ! h ) {
@@ -213,7 +206,7 @@ ExtendedCommandDialogFilter ( DialogPtr dp , EventRecord * ev , short * item )
 	return 0 ;
 }
 
-
+#if 0 /* not used */
 void
 popup_get_ext_cmd(char *bufp)
 {
@@ -340,18 +333,25 @@ popup_get_ext_cmd(char *bufp)
 	
 	mv_close_dialog(extendedDialog);
 }
-
+#endif /* 0 */
 
 /* Read in an extended command - doing command line completion for
  * when enough characters have been entered to make a unique command.
- * This is just a modified getlin().   -jsb
+ * This is just a modified getlin() followed by a lookup.   -jsb
  */
-void
-mac_get_ext_cmd(char *bufp)
+int
+mac_get_ext_cmd()
 {
+	char bufp[BUFSZ];
+	int i;
+
 	topl_getlin("# ", bufp, &topl_ext_key);
+	for (i = 0; extcmdlist[i].ef_txt != (char *)0; i++)
+		if (!strcmp(bufp, extcmdlist[i].ef_txt)) break;
+	if (extcmdlist[i].ef_txt == (char *)0) i = -1;    /* not found */
+
+	return i;
 }
 
-#endif /* COM_COMPL /* */
 
 /* macgetline.c */

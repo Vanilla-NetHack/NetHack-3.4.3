@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)vision.h	3.1	93/05/15	*/
+/*	SCCS Id: @(#)vision.h	3.2	95/01/26	*/
 /* Copyright (c) Dean Luick, with acknowledgements to Dave Cohrs, 1990.	*/
 /* NetHack may be freely redistributed.  See license for details.	*/
 
@@ -13,6 +13,13 @@ extern char *viz_rmax;			/* max could see indices */
 #endif
 #define COULD_SEE 0x1
 #define IN_SIGHT 0x2
+#define TEMP_LIT 0x4
+
+/*
+ * Light source sources
+ */
+#define LS_OBJECT 0
+#define LS_MONSTER 1
 
 /*
  *  cansee()	- Returns true if the hero can see the location.
@@ -22,6 +29,7 @@ extern char *viz_rmax;			/* max could see indices */
  */
 #define cansee(x,y)	(viz_array[y][x] & IN_SIGHT)
 #define couldsee(x,y)	(viz_array[y][x] & COULD_SEE)
+#define templit(x,y)	(viz_array[y][x] & TEMP_LIT)
 
 /*
  *  The following assume the monster is not blind.
@@ -35,7 +43,8 @@ extern char *viz_rmax;			/* max could see indices */
  */
 #define m_cansee(mtmp,x2,y2)	clear_path((mtmp)->mx,(mtmp)->my,(x2),(y2))
 
-#define m_canseeu(m)		((!Invis || perceives((m)->data)) && !Underwater ? \
+#define m_canseeu(m)		((!Invis || perceives((m)->data)) && \
+				  !(Underwater || u.uburied || (m)->mburied) ? \
 				     couldsee((m)->mx,(m)->my) : 0)
 
 /*

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)termcap.h	3.1	92/10/21	*/
+/*	SCCS Id: @(#)termcap.h	3.2	92/10/21	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1989. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -8,7 +8,7 @@
 #define TERMCAP_H
 
 #ifndef MICRO
-#  define TERMLIB	/* include termcap code */
+# define TERMLIB	/* include termcap code */
 #endif
 
 /* might display need graphics code? */
@@ -47,9 +47,9 @@ extern short ospeed;		/* set up in termcap.c */
 
 #ifdef TEXTCOLOR
 # ifdef TOS
-extern const char *hilites[MAXCOLORS];
+extern const char *hilites[CLR_MAX];
 # else
-extern NEARDATA char *hilites[MAXCOLORS];
+extern NEARDATA char *hilites[CLR_MAX];
 # endif
 #endif
 

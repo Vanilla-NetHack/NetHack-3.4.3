@@ -25,7 +25,11 @@
 
 #include <exec/types.h>
 #include <exec/lists.h>
+#ifdef _DCC
+#include <clib/exec_protos.h>
+#else
 #include <proto/exec.h>
+#endif
 /*#include "ldextern.h"*/
 
 		/* one for each file we need something from */
@@ -176,7 +180,7 @@ extern int renumber2(int,int);
 extern void write_header(void);
 extern void owrite(void*,long);
 extern void owrite_long(long);
-extern void owrite_short(short);
+extern void owrite_short(int);
 extern void out_start(char *);
 extern void out_stop(void);
 extern void new_file(void);
@@ -190,7 +194,7 @@ struct listlist_ *NewListList(void);
 struct block_ *NewBlock(void);
 long *NewData(long);
 int rderror(void);	/* should be void, but needs return val for ?: */
-struct block_ *ReadSimpleBlock(struct file_ *,int);
+struct block_ *ReadSimpleBlock(struct file_ *, long );
 int TossSimpleBlock(struct file_ *);
 struct hunk_ *ReadHunk(struct file_ *);
 void ReadReloc(struct file_ *,long,struct List *);

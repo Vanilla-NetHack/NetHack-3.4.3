@@ -1,8 +1,8 @@
-	Instructions for compiling and installing NetHack 3.1
+	Instructions for compiling and installing NetHack 3.2
 		          on a TOS system
 	=====================================================
-	          (or, How to make ST NetHack 3.1)
-		     Last revision: 23 Jan 1993
+	          (or, How to make ST NetHack 3.2)
+		     Last revision: 1 March 1996
 
 1.  Make sure all the NetHack files are in the appropriate directory structure.
     You should have a main directory with subdirectories dat, doc, include,
@@ -28,17 +28,6 @@
     Run the "setup.g" shell script in sys\atari.  This will move all the
     makefiles and other files to the appropriate directories.
 
-    The file termcap.uu is the fixed version of the Fred Fish termcap library.
-    You will need to run a uudecode utility on it to generate the file
-    termcap.arc.  termcap.arc contains several files of termcap routines.
-    Using them with NetHack involves very little knowledge of the UNIX concept
-    of a termcap database; mostly you need to know enough to set a TERM
-    environment variable.  You can unarc termcap.arc here in the sys\share
-    directory, but if you are going to use it, it is probably best to unarc a
-    copy in the src directory.  That way you will not miss copying any
-    files over.  Some compilers (notably the gcc) already have a termcap
-    library; if so, you won't need this one.
-
 3.  Now go to the include subdirectory to edit a couple of the header files
     there.
 
@@ -47,7 +36,7 @@
        make sure that UNIX is *not* defined, and TOS is (if you're using
           the MiNT library, and/or the -mint option to gcc, this will
 	  be done automatically)
-       make sure the HACKDIR is defined properly (or not at all)
+       make sure that HACKDIR is defined properly (or not at all)
        make sure that COMPRESS is not defined
 
     If you want to build a NetHack that will run on a 1 megabyte machine,
@@ -112,7 +101,7 @@
 
 9.  Make sure the support files-- data, rumors, cmdhelp, opthelp, help, hh,
     history, license, and oracles (if ORACLES was #define'd)-- were copied
-    to the game directory.  If not, move them there from the auxil directory
+    to the game directory.  If not, move them there from the dat directory
     yourself.  rumors can be created manually by entering "makedefs -r;"
     data by entering "makedefs -d."
 
@@ -128,15 +117,6 @@
     your game directory.  (Note:  gcc's termcap routines have built-in
     defaults, so the termcap file is not necessary with that compiler.)
 
-    To use funky graphics characters in TOS, uudecode "atarifnt.uue" and unarc
-    the resulting "atarifnt.arc".  This contains a program to run that makes
-    some line graphics characters available to NetHack.  To use them, uncomment
-    the appropriate line in your NetHack.cnf file, and run the program before
-    running NetHack (you can put the program in an AUTO folder if you want).
-    This font won't work if you're running Speedo GDOS (and possibly other
-    GDOS variants). I hope to have a bitmapped GDOS font suitable for
-    NetHack 3.1 "Real Soon Now."
-
     If you're running NetHack from the MultiTOS desktop, and you want a
     more useful set of drop down menus than the plain system "File/Edit"
     ones, copy nethack.mnu to your games directory. This file contains a
@@ -149,11 +129,10 @@ Notes
 -----
 
 1)  Save files and bones files from previous versions will not work with
-    NetHack 3.1.  Don't bother trying to keep them.  
+    NetHack 3.2.  Don't bother trying to keep them.  
 
 2)  To install an update of NetHack after changing something, enter "make"
     from the src directory.  If you add, delete, or reorder monsters or
     objects, or you change the format of saved level files, delete any save
     and bones files.  (Trying to use such files sometimes produces amusing
     confusions on the game's part, but more often produces crashes.)
-

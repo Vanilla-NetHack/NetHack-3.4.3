@@ -1,13 +1,14 @@
-/*	SCCS Id: @(#)steal.c	3.1	93/05/30	*/
+/*	SCCS Id: @(#)steal.c	3.2	96/04/08	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
 
-STATIC_DCL int NDECL(stealarm);
+STATIC_PTR int NDECL(stealarm);
 
 #ifdef OVLB
 static const char * FDECL(equipname, (struct obj *));
+static void FDECL(lose_worn_item, (struct obj *));
 
 static const char *
 equipname(otmp)
@@ -66,29 +67,69 @@ register struct monst *mtmp;
 unsigned int stealoid;		/* object to be stolen */
 unsigned int stealmid;		/* monster doing the stealing */
 
-STATIC_OVL int
+STATIC_PTR int
 stealarm()
 {
 	register struct monst *mtmp;
 	register struct obj *otmp;
 
-	for(otmp = invent; otmp; otmp = otmp->nobj)
-	  if(otmp->o_id == stealoid) {
-	    for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
-	      if(mtmp->m_id == stealmid) {
-		  if(otmp->unpaid) 
-		       subfrombill(otmp, shop_keeper(*u.ushops));
-		  freeinv(otmp);
-		  pline("%s steals %s!", Monnam(mtmp), doname(otmp));
-		  mpickobj(mtmp,otmp);
-		  mtmp->mflee = 1;
-		  if (!tele_restrict(mtmp)) rloc(mtmp);
+	for(otmp = invent; otmp; otmp = otmp->nobj) {
+	    if(otmp->o_id == stealoid) {
+		for(mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
+		    if(mtmp->m_id == stealmid) {
+			if(!dmgtype(mtmp->data, AD_SITM)) /* polymorphed */
+			    goto botm;
+			if(otmp->unpaid)
+			    subfrombill(otmp, shop_keeper(*u.ushops));
+			freeinv(otmp);
+			pline("%s steals %s!", Monnam(mtmp), doname(otmp));
+			mpickobj(mtmp,otmp);
+			mtmp->mflee = 1;
+			if (!tele_restrict(mtmp)) rloc(mtmp);
+		        break;
+		    }
+		}
 		break;
-	      }
-	    break;
-	  }
-	stealoid = 0;
+	    }
+	}
+botm:   stealoid = 0;
 	return 0;
+}
+
+/* an object you're wearing has been stolen */
+static void
+lose_worn_item(obj)
+struct obj *obj;
+{
+	if (donning(obj))
+	    cancel_don();
+	if (!obj->owornmask)
+	    return;
+
+	switch (obj->oclass) {
+	 case TOOL_CLASS:
+	    Blindf_off(obj);
+	    break;
+	 case AMULET_CLASS:
+	    Amulet_off();
+	    break;
+	 case RING_CLASS:
+	    Ring_gone(obj);
+	    break;
+	 case ARMOR_CLASS:
+	    if (obj == uarm) (void) Armor_off();
+	    else if (obj == uarmc) (void) Cloak_off();
+	    else if (obj == uarmf) (void) Boots_off();
+	    else if (obj == uarmg) (void) Gloves_off();
+	    else if (obj == uarmh) (void) Helmet_off();
+	    else if (obj == uarms) (void) Shield_off();
+	    else setworn((struct obj *)0, obj->owornmask & W_ARMOR);
+	    break;
+	 default:
+	    /* shouldn't reach here, but just in case... */
+	    setnotworn(obj);
+	    break;
+	}
 }
 
 /* Returns 1 when something was stolen (or at least, when N should flee now)
@@ -106,11 +147,7 @@ struct monst *mtmp;
 	/* the following is true if successful on first of two attacks. */
 	if(!monnear(mtmp, u.ux, u.uy)) return(0);
 
-	if(!invent
-#ifdef POLYSELF
-		   || (inv_cnt() == 1 && uskin)
-#endif
-						){
+	if (!invent || (inv_cnt() == 1 && uskin)) {
 	    /* Not even a thousand men in armor can strip a naked man. */
 	    if(Blind)
 	      pline("Somebody tries to rob you, but finds nothing to steal.");
@@ -130,20 +167,12 @@ struct monst *mtmp;
 
 	tmp = 0;
 	for(otmp = invent; otmp; otmp = otmp->nobj)
-	    if((!uarm || otmp != uarmc)
-#ifdef POLYSELF
-					&& otmp != uskin
-#endif
-							)
+	    if ((!uarm || otmp != uarmc) && otmp != uskin)
 		tmp += ((otmp->owornmask &
 			(W_ARMOR | W_RING | W_AMUL | W_TOOL)) ? 5 : 1);
 	tmp = rn2(tmp);
 	for(otmp = invent; otmp; otmp = otmp->nobj)
-	    if((!uarm || otmp != uarmc)
-#ifdef POLYSELF
-					&& otmp != uskin
-#endif
-							)
+	    if ((!uarm || otmp != uarmc) && otmp != uskin)
 		if((tmp -= ((otmp->owornmask &
 			(W_ARMOR | W_RING | W_AMUL | W_TOOL)) ? 5 : 1)) < 0)
 			break;
@@ -163,35 +192,22 @@ struct monst *mtmp;
 gotobj:
 	if(otmp->o_id == stealoid) return(0);
 
-#ifdef WALKIES
 	if(otmp->otyp == LEASH && otmp->leashmon) o_unleash(otmp);
-#endif
 
 	if((otmp->owornmask & (W_ARMOR | W_RING | W_AMUL | W_TOOL))){
 		switch(otmp->oclass) {
 		case TOOL_CLASS:
-			Blindf_off(otmp);
-			break;
 		case AMULET_CLASS:
-			Amulet_off();
-			break;
 		case RING_CLASS:
-			Ring_gone(otmp);
+			lose_worn_item(otmp);
 			break;
 		case ARMOR_CLASS:
 			/* Stop putting on armor which has been stolen. */
 			if (donning(otmp)) {
-			  cancel_don();
-			  if (otmp == uarm)  (void) Armor_off();
-			  /* else if (otmp == uarmc) (void) Cloak_off(); */
-			  else if (otmp == uarmf) (void) Boots_off();
-			  else if (otmp == uarmg) (void) Gloves_off();
-			  else if (otmp == uarmh) (void) Helmet_off();
-			  /* else if (otmp == uarms) (void) Shield_off(); */
-			  else setworn((struct obj *)0, otmp->owornmask & W_ARMOR);
-			  break;
+			    lose_worn_item(otmp);
+			    break;
 			}
-		    { int curssv = otmp->cursed;
+		    {	int curssv = otmp->cursed;
 			otmp->cursed = 0;
 			stop_occupation();
 			if(flags.female)
@@ -202,19 +218,13 @@ gotobj:
 			else
 			    pline("%s seduces you and %s off your %s.",
 				  Blind ? "It" : Adjmonnam(mtmp, "beautiful"),
-				  curssv ? "helps you to take" : "you start taking",
+				  curssv ? "helps you to take" :
+	(objects[otmp->otyp].oc_delay > 1) ? "you start taking" : "you take",
 				  equipname(otmp));
 			named++;
 			/* the following is to set multi for later on */
 			nomul(-objects[otmp->otyp].oc_delay);
-
-			if (otmp == uarm)  (void) Armor_off();
-			else if (otmp == uarmc) (void) Cloak_off();
-			else if (otmp == uarmf) (void) Boots_off();
-			else if (otmp == uarmg) (void) Gloves_off();
-			else if (otmp == uarmh) (void) Helmet_off();
-			else if (otmp == uarms) (void) Shield_off();
-			else setworn((struct obj *)0, otmp->owornmask & W_ARMOR);
+			lose_worn_item(otmp);
 			otmp->cursed = curssv;
 			if(multi < 0){
 				/*
@@ -239,17 +249,10 @@ gotobj:
 
 	freeinv(otmp);
 	pline("%s stole %s.", named ? "She" : Monnam(mtmp), doname(otmp));
-	(void) snuff_candle(otmp);
 	mpickobj(mtmp,otmp);
-	if (otmp->otyp == CORPSE && otmp->corpsenm == PM_COCKATRICE
-	    && !resists_ston(mtmp->data)
-#ifdef MUSE
-	    && !(mtmp->misc_worn_check & W_ARMG)
-#endif
-		) {
-	    pline("%s turns to stone.", Monnam(mtmp));
-	    stoned = TRUE;
-	    xkilled(mtmp, 0);
+	if (otmp->otyp == CORPSE && otmp->corpsenm == PM_COCKATRICE &&
+		!(mtmp->misc_worn_check & W_ARMG)) {
+	    minstapetrify(mtmp, TRUE);
 	    return -1;
 	}
 	return((multi < 0) ? 0 : 1);
@@ -263,12 +266,28 @@ mpickobj(mtmp,otmp)
 register struct monst *mtmp;
 register struct obj *otmp;
 {
-    if (otmp->otyp == GOLD_PIECE) {	/* from floor etc. -- not inventory */
+    if (otmp->oclass == GOLD_CLASS) {
 	mtmp->mgold += otmp->quan;
 	obfree(otmp, (struct obj *)0);
     } else {
-	otmp->nobj = mtmp->minvent;
-	mtmp->minvent = otmp;
+	boolean snuff_otmp = FALSE;
+	/* don't want hidden light source inside the monster; assumes that
+	   engulfers won't have external inventories; whirly monsters cause
+	   the light to be extinguished rather than letting it shine thru */
+	if (otmp->lamplit &&  /* hack to avoid function calls for most objs */
+		obj_sheds_light(otmp) &&
+		attacktype(mtmp->data, AT_ENGL)) {
+	    /* this is probably a burning object that you dropped or threw */
+	    if (u.uswallow && mtmp == u.ustuck && !Blind)
+		pline("%s go%s out.", The(xname(otmp)),
+		      otmp->quan == 1L ? "es" : "");
+	    snuff_otmp = TRUE;
+	}
+	/* add_to_minv() might free otmp [if merged with something else],
+	   so we have to call it after doing the object checks */
+	add_to_minv(mtmp, otmp);
+	/* and we had to defer this until object is in mtmp's inventory */
+	if (snuff_otmp) snuff_light_source(mtmp->mx, mtmp->my);
     }
 }
 
@@ -286,12 +305,10 @@ register struct monst *mtmp;
 	if(u.uhave.amulet) {
 		real = AMULET_OF_YENDOR ;
 		fake = FAKE_AMULET_OF_YENDOR ;
-#ifdef MULDGN
 	} else if(u.uhave.questart) {
 	    real = fake = 0;		/* gcc -Wall lint */
 	    for(otmp = invent; otmp; otmp = otmp->nobj)
 	        if(is_quest_artifact(otmp)) goto snatch_it;
-#endif
 	} else if(u.uhave.bell) {
 		real = BELL_OF_OPENING;
 		fake = BELL;
@@ -308,10 +325,8 @@ register struct monst *mtmp;
 	    if(otmp->otyp == real || (otmp->otyp == fake && !mtmp->iswiz)) {
 		/* might be an imitation one */
 snatch_it:
-#ifdef MULDGN
-		if (otmp->oclass == ARMOR_CLASS) adj_abon(otmp, -(otmp->spe));
-#endif
-		setnotworn(otmp);
+		if (otmp->owornmask)
+		    lose_worn_item(otmp);
 		freeinv(otmp);
 		mpickobj(mtmp,otmp);
 		pline("%s stole %s!", Monnam(mtmp), doname(otmp));
@@ -332,42 +347,35 @@ register struct monst *mtmp;
 register int show;
 boolean is_pet;		/* If true, pet should keep wielded/worn items */
 {
-	register struct obj *otmp, *otmp2;
+	register struct obj *otmp;
 	register int omx = mtmp->mx, omy = mtmp->my;
-#ifdef MUSE
-	struct obj *backobj = 0;
+	struct obj *keepobj = 0;
 	struct obj *wep = MON_WEP(mtmp);
-#endif
 
-	otmp = mtmp->minvent;
-	mtmp->minvent = 0;
-	for (; otmp; otmp = otmp2) {
-		otmp2 = otmp->nobj;
-#ifdef MUSE
+	while ((otmp = mtmp->minvent) != 0) {
+		obj_extract_self(otmp);
 		if (otmp->owornmask || otmp == wep) {
-			if (is_pet) { /* skip worn/wielded item */
-				if (!backobj) {
-					mtmp->minvent = backobj = otmp;
-				} else {
-					backobj->nobj = otmp;
-					backobj = backobj->nobj;
-				}
+			if (is_pet) { /* dont drop worn/wielded item */
+				otmp->nobj = keepobj;
+				keepobj = otmp;
 				continue;
 			}
 			mtmp->misc_worn_check &= ~(otmp->owornmask);
 			otmp->owornmask = 0L;
 		}
-		if (backobj) backobj->nobj = otmp->nobj;
-#endif
 		if (is_pet && cansee(omx, omy) && flags.verbose)
 			pline("%s drops %s.", Monnam(mtmp),
 					distant_name(otmp, doname));
 		if (flooreffects(otmp, omx, omy, "fall")) continue;
 		place_object(otmp, omx, omy);
-		otmp->nobj = fobj;
-		fobj = otmp;
-		stackobj(fobj);
+		stackobj(otmp);
 	}
+	/* put kept objects back */
+	while ((otmp = keepobj) != (struct obj *)0) {
+	    keepobj = otmp->nobj;
+	    add_to_minv(mtmp, otmp);
+	}
+
 	if (mtmp->mgold) {
 		register long g = mtmp->mgold;
 		mkgold(g, omx, omy);

@@ -1,23 +1,29 @@
-/*	SCCS Id: @(#)exper.c	3.1	90/22/02
+/*	SCCS Id: @(#)exper.c	3.2	96/01/21	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
 
-#ifdef LINT
-#define	NEW_SCORING
-#endif
-long
+static long FDECL(newuexp, (int));
+static int FDECL(enermod, (int));
+
+static long
 newuexp(lev)
-register unsigned lev;
+int lev;
 {
-#ifdef LINT	/* long conversion */
-	return(0L * lev);
-#else
-	if(lev < 10) return (10L*(1L << lev));
-	if(lev < 20) return (10000L*(1L << (lev-10)));
-	return((long)(10000000L*(lev-19)));
-#endif
+	if (lev < 10) return (10L * (1L << lev));
+	if (lev < 20) return (10000L * (1L << (lev - 10)));
+	return (10000000L * ((long)(lev - 19)));
+}
+
+static int
+enermod(en)
+int en;
+{
+	if(Role_is('W') || Role_is('P')) return(2 * en);
+	else if(Role_is('H') || Role_is('K')) return((3 * en) / 2);
+	else if(Role_is('B') || Role_is('V')) return((3 * en) / 4);
+	else return(en);
 }
 
 int
@@ -64,31 +70,11 @@ experience(mtmp, nk)	/* return # of exp points for mtmp after nk killed */
 	}
 
 /*	For certain "extra nasty" monsters, give even more */
-	if(extra_nasty(ptr)) tmp += (7*mtmp->m_lev);
-	if(ptr->mlet == S_EEL) tmp += 1000;
+	if (extra_nasty(ptr)) tmp += (7 * mtmp->m_lev);
+	if (ptr->mlet == S_EEL && !Amphibious) tmp += 1000;
 
 /*	For higher level monsters, an additional bonus is given */
 	if(mtmp->m_lev > 8) tmp += 50;
-
-#ifdef NEW_SCORING
-	/* ------- recent addition: make nr of points decrease
-		   when this is not the first of this kind */
-	{ unsigned ul = u.ulevel;
-	  int ml = mtmp->m_lev;
-	/* points are given based on present and future level */
-	  if(ul < MAXULEV)
-	    for(tmp2 = 0; !tmp2 || ul + tmp2 <= ml; tmp2++)
-		if(u.uexp + 1 + (tmp + ((tmp2 <= 0) ? 0 : 4<<(tmp2-1)))/nk
-		    >= newuexp(ul) )
-			if(++ul == MAXULEV) break;
-
-	  tmp2 = ml - ul -1;
-	  tmp = (tmp + ((tmp2 < 0) ? 0 : 4<<tmp2))/nk;
-	  if(tmp <= 0) tmp = 1;
-	}
-	/* note: ul is not necessarily the future value of u.ulevel */
-	/* ------- end of recent valuation change ------- */
-#endif /* NEW_SCORING /**/
 
 #ifdef MAIL
 	/* Mail daemons put up no fight. */
@@ -109,29 +95,31 @@ more_experienced(exp, rexp)
 	   || flags.showscore
 #endif
 	   ) flags.botl = 1;
-	if(u.urexp >= ((pl_character[0] == 'W') ? 1000 : 2000))
+	if (u.urexp >= (Role_is('W') ? 1000 : 2000))
 		flags.beginner = 0;
 }
 
 void
-losexp() {	/* hit by drain life attack */
-
+losexp()		/* hit by drain life attack */
+{
 	register int num;
 
-#ifdef POLYSELF
-	if(resists_drli(uasmon)) return;
-#endif
+	if (resists_drli(&youmonst)) return;
 
 	if(u.ulevel > 1) {
-		pline("Goodbye level %u.", u.ulevel--);
+		pline("Goodbye level %d.", u.ulevel--);
 		/* remove intrinsic abilities */
-		adjabil((int)u.ulevel+1, (int)u.ulevel);
+		adjabil(u.ulevel + 1, u.ulevel);
+		reset_rndmonst(NON_PM);	/* new monster selection */
+#ifdef WEAPON_SKILLS
+		lose_weapon_skill();
+#endif /* WEAPON_SKILLS */
 	} else
 		u.uhp = -1;
 	num = newhp();
 	u.uhp -= num;
 	u.uhpmax -= num;
-	num = rn1((int)u.ulevel/2+1, 2);		/* M. Stephenson */
+	num = enermod(rn1(u.ulevel/2 + 1, 2));		/* M. Stephenson */
 	u.uen -= num;
 	if (u.uen < 0)		u.uen = 0;
 	u.uenmax -= num;
@@ -147,44 +135,52 @@ losexp() {	/* hit by drain life attack */
  * at a dragon created with a wand of polymorph??
  */
 void
-newexplevel() {
-
+newexplevel()
+{
 	register int tmp;
 
 	if(u.ulevel < MAXULEV && u.uexp >= newuexp(u.ulevel)) {
 
 		u.ulevel++;
 		if (u.uexp >= newuexp(u.ulevel)) u.uexp = newuexp(u.ulevel) - 1;
-		pline("Welcome to experience level %u.", u.ulevel);
-		set_uasmon();	/* set up for the new level. */
+		pline("Welcome to experience level %d.", u.ulevel);
 		/* give new intrinsics */
-		adjabil((int)u.ulevel-1, (int)u.ulevel);
+		adjabil(u.ulevel - 1, u.ulevel);
+		reset_rndmonst(NON_PM);	/* new monster selection */
 		tmp = newhp();
 		u.uhpmax += tmp;
 		u.uhp += tmp;
-		tmp = rn1((int)ACURR(A_WIS)/2+1, 2); /* M. Stephenson */
+		tmp = enermod(rn1((int)ACURR(A_WIS)/2+1, 2)); /* M. Stephenson */
 		u.uenmax += tmp;
 		u.uen += tmp;
+#ifdef WEAPON_SKILLS
+		add_weapon_skill();
+#endif /* WEAPON_SKILLS */
 		flags.botl = 1;
 	}
 }
 
 void
-pluslvl() {
+pluslvl()
+{
 	register int num;
 
-	You("feel more experienced.");
+	You_feel("more experienced.");
 	num = newhp();
 	u.uhpmax += num;
 	u.uhp += num;
-	num = rn1((int)ACURR(A_WIS)/2+1, 2);	/* M. Stephenson */
+	num = enermod(rn1((int)ACURR(A_WIS)/2+1, 2));	/* M. Stephenson */
 	u.uenmax += num;
 	u.uen += num;
 	if(u.ulevel < MAXULEV) {
 		u.uexp = newuexp(u.ulevel);
-		pline("Welcome to experience level %u.", ++u.ulevel);
-		adjabil((int)u.ulevel-1, (int)u.ulevel);
+		pline("Welcome to experience level %d.", ++u.ulevel);
+		adjabil(u.ulevel - 1, u.ulevel);
+		reset_rndmonst(NON_PM);	/* new monster selection */
 	}
+#ifdef WEAPON_SKILLS
+	add_weapon_skill();
+#endif /* WEAPON_SKILLS */
 	flags.botl = 1;
 }
 

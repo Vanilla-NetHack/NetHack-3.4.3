@@ -1,6 +1,6 @@
-/*    SCCS Id: @(#)amidos.c     3.1    93/01/08
+/*    SCCS Id: @(#)amidos.c     3.2    96/02/16
 /* Copyright (c) Olaf Seibert, Nijmegen, The Netherlands, 1988,1990.    */
-/* Copyright (c) Kenneth Lorber, Bethesda, Maryland, 1991, 1992, 1993.  */
+/* Copyright (c) Kenneth Lorber, Bethesda, Maryland, 1991,1992,1993,1996.  */
 /* NetHack may be freely redistributed.  See license for details.	*/
 
 /*
@@ -29,9 +29,9 @@
 #endif
 
 /* Prototypes */
-#include "Amiga:winami.p"
-#include "Amiga:amiwind.p"
-#include "Amiga:amidos.p"
+#include "NH:sys/amiga/winami.p"
+#include "NH:sys/amiga/amiwind.p"
+#include "NH:sys/amiga/amidos.p"
 
 extern char Initialized;
 extern struct window_procs amii_procs;
@@ -190,6 +190,7 @@ char *file;
     return size;
 }
 
+#if 0
 void
 eraseall(path, files)
 const char *path, *files;
@@ -202,7 +203,7 @@ const char *path, *files;
 #endif
     chklen=(int)index(files,'*')-(int)files;
 
-    if (dirLock = Lock(path ,SHARED_LOCK)) {
+    if (dirLock = Lock( (char *)path ,SHARED_LOCK)) {
 	dirLock2=DupLock(dirLock);
 	dirLock2= CurrentDir(dirLock2);
 	fibp=AllocMem(sizeof(struct FileInfoBlock),0);
@@ -220,6 +221,7 @@ const char *path, *files;
 	UnLock(CurrentDir(dirLock2));
     }
 }
+#endif
 
 /* This size makes that most files can be copied with two Read()/Write()s */
 
@@ -234,8 +236,8 @@ const char *from, *to;
     char *error = NULL;
 
     buffer = (char *) alloc(COPYSIZE);
-    if (fromFile = Open(from, MODE_OLDFILE)) {
-	if (toFile = Open(to, MODE_NEWFILE)) {
+    if (fromFile = Open( (char *)from, MODE_OLDFILE)) {
+	if (toFile = Open( (char *)to, MODE_NEWFILE)) {
 	    while (size = Read(fromFile, buffer, (long)COPYSIZE)) {
 		if (size == -1){
 		    error = "Read error";
@@ -410,18 +412,19 @@ register const char *name, *mode;
 /*
  *  A not general-purpose directory changing routine.
  *  Assumes you want to return to the original directory eventually,
- *  by chdir()ing to orgdir.
+ *  by chdir()ing to orgdir (which is defined in pcmain.c).
  *  Assumes -1 is not a valid lock, since 0 is valid.
  */
 
 #define NO_LOCK     ((BPTR) -1)
 
-char orgdir[1];
 static BPTR OrgDirLock = NO_LOCK;
 
 chdir(dir)
 const char *dir;
 {
+    extern char orgdir[];
+
     if (dir == orgdir) {
 	    /* We want to go back to where we came from. */
 	if (OrgDirLock != NO_LOCK) {
@@ -435,7 +438,7 @@ const char *dir;
 	     */
 	BPTR newDir;
 
-	if (newDir = Lock(dir, SHARED_LOCK)) {
+	if (newDir = Lock( (char *)dir, SHARED_LOCK)) {
 	    if (OrgDirLock == NO_LOCK) {
 		OrgDirLock = CurrentDir(newDir);
 	    } else {
@@ -470,12 +473,6 @@ msexit(code)
 	CleanUp();
 #endif
     exit(code);
-}
-
-int
-uptodate(fd)
-{
-    return(1);
 }
 
 void

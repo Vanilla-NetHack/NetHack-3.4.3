@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)tradstdc.h	3.1	93/05/30	*/
+/*	SCCS Id: @(#)tradstdc.h	3.2	93/05/30	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -13,7 +13,13 @@
 #define void int
 #endif
 
-#if defined(__STDC__) && !defined(NOTSTDC)
+/*
+ * Borland C provides enough ANSI C compatibility in its Borland C++
+ * mode to warrant this.  But it does not set __STDC__ unless it compiles
+ * in its ANSI keywords only mode, which prevents use of <dos.h> and
+ * far pointer use.
+ */
+#if (defined(__STDC__) || defined(__TURBOC__)) && !defined(NOTSTDC)
 #define NHSTDC
 #endif
 
@@ -61,7 +67,7 @@
 
 #ifdef NEED_VARARGS		/* only define these if necessary */
 #ifdef USE_STDARG
-# include <stdarg.h>
+#include <stdarg.h>
 # define VA_DECL(typ1,var1)	(typ1 var1, ...) { va_list the_args;
 # define VA_DECL2(typ1,var1,typ2,var2)	\
 	(typ1 var1, typ2 var2, ...) { va_list the_args;
@@ -75,7 +81,7 @@
 # endif
 #else
 # ifdef USE_VARARGS
-#  include <varargs.h>
+#include <varargs.h>
 #  define VA_DECL(typ1,var1)	(va_alist) va_dcl {\
 		va_list the_args; typ1 var1;
 #  define VA_DECL2(typ1,var1,typ2,var2)	(va_alist) va_dcl {\
@@ -113,7 +119,7 @@
  * trampoli.* mechanism conflicts with the ANSI <<f(void)>> syntax.
  */
 
-# define NDECL(f)	f(void)	/* Must be overridden if OVERLAY set later */
+# define NDECL(f)	f(void)	/* overridden later if USE_TRAMPOLI set */
 
 # define FDECL(f,p)	f p
 
@@ -126,9 +132,8 @@
 /* generic pointer, always a macro; genericptr_t is usually a typedef */
 # define genericptr	void *
 
-# if defined(__TURBOC__) || (defined(ULTRIX_PROTO) && !defined(__GNUC__)) || defined(OS2_CSET2)
-/* Cover for stupid Turbo C */
-/* And Ultrix on a DECstation with 2.0 compiler, which coredumps on
+# if (defined(ULTRIX_PROTO) && !defined(__GNUC__)) || defined(OS2_CSET2)
+/* Cover for Ultrix on a DECstation with 2.0 compiler, which coredumps on
  *   typedef void * genericptr_t;
  *   extern void a(void(*)(int, genericptr_t));
  * Using the #define is OK for other compiler versions too.
@@ -192,13 +197,16 @@ typedef genericptr genericptr_t;	/* (void *) or (char *) */
  * prototypes for the ANSI compilers so people quit trying to fix the
  * prototypes to match the standard and thus lose the typechecking.
  */
-#if defined(MSDOS) && !defined(__TURBOC__) && !defined(__GO32__)
+#if defined(MSDOS) && !defined(__GO32__)
 #define UNWIDENED_PROTOTYPES
 #endif
 #if defined(AMIGA) && !defined(AZTEC_50)
 #define UNWIDENED_PROTOTYPES
 #endif
-#if defined(MAC) && !defined(THINK_C)
+#if defined(applec)
+#define UNWIDENED_PROTOTYPES
+#endif
+#if defined(WIN32)
 #define UNWIDENED_PROTOTYPES
 #endif
 
@@ -210,12 +218,17 @@ typedef genericptr genericptr_t;	/* (void *) or (char *) */
 #endif
 
 #ifndef UNWIDENED_PROTOTYPES
-# if defined(NHSTDC) || defined(__TURBOC__) || defined(ULTRIX_PROTO) || defined(THINK_C)
+# if defined(NHSTDC) || defined(ULTRIX_PROTO) || defined(THINK_C)
 # define WIDENED_PROTOTYPES
 # endif
 #endif
 
-#if defined(sgi) && !defined(__GNUC__)
+#if 0
+/* The problem below is still the case through 4.0.5F, but the suggested
+ * compiler flags in the Makefiles suppress the nasty messages, so we don't
+ * need to be quite so drastic.
+ */
+#if defined(__sgi) && !defined(__GNUC__)
 /*
  * As of IRIX 4.0.1, /bin/cc claims to be an ANSI compiler, but it thinks
  * it's impossible for a prototype to match an old-style definition with
@@ -231,9 +244,12 @@ typedef genericptr genericptr_t;	/* (void *) or (char *) */
 # define FDECL(f,p)	f()
 # define VDECL(f,p)	f()
 #endif
+#endif
 
 
-#ifdef __HC__	/* MetaWare High-C defaults to unsigned chars */
+	/* MetaWare High-C defaults to unsigned chars */
+	/* AIX 3.2 needs this also */
+#if defined(__HC__) || defined(_AIX32)
 # undef signed
 #endif
 

@@ -61,44 +61,20 @@ SAVE=c:\nh31\games;n
 
 # *** CHARACTER GRAPHICS ***
 #
-# The 69 GRAPHICS characters (0-68) are:
-#
-# stone,
-# walls: vertical, horizontal,
-#	 4 corners: top left, top right, bottom left, bottom right,
-#	 cross wall,
-#	 4 T walls: upward, downward, left, right,
-# doors: no door,
-#	 open doors: vertical, horizontal,
-#	 closed doors: vertical, horizontal,
-# floor,
-# corridors: unlit, lit,
-# stairs up, stairs down, ladder up, ladder down,
-# trap, web, altar, throne, sink, fountain, pool/moat, ice, lava,
-# lowered drawbridge: vertical, horizontal,
-# raised drawbridge: vertical, horizontal,
-# air, cloud, water,
-# 4 beams: vertical, horizontal, left slant, right slant,
-# digging beam, camera flash beam, left boomerang, right boomerang,
-# 4 magic shield display symbols,
-# 8 swallowed: top left/middle/right, mid left/right, bottom left/mid/right,
-# 9 explosion: [3 rows (top, middle, bottom) of 3 characters]
-#
-# If you specify fewer than 69 ASCII values, the remaining characters will be
-# set to their respective defaults:
-#	   ' '  |   -   -   -   -   -   -   -   -
-#           |   |   .   -   |   +   +   .   #   #
-#	    <   >   <   >   ^   "   _   \   #   {
-#	    }   .   }   .   .   #   #  ' '  #   }
-#	    |   -   \   /   *   !   )   (   0   #
-#	    @   *   /   -   \   |   |   \   -   /
-#	    /   -   \   |  ' '  |   \   -   /
+# See the on-line help or the Guidebook for which symbols are in which
+# positions.
 #
 # An example using the hackfnt.prg font:
-#GRAPHICS= 032 217 218 194 195 192 193 216 197 196 \
+#DUNGEON=  032 217 218 194 195 192 193 216 197 196 \
 #	   199 198 202 201 201 200 200 202 203 203 \
-#	   210 211 212 213 207 206 209 208 205 204 \
-#	   214 202 214 042 042 215 215 046 035 214 \
-#	   058 045 092 047 042 033 041 040 048 035 \
-#	   064 042 194 218 195 217 217 192 218 193 \
+#	   210 211 212 213 209 208 205 204 214 202 \
+#	   214 042 042 215 215 046 035 214
+#
+#TRAPS=    207 207 207 207 207 207 207 207 207 207 \
+#	   207 207 207 207 207 206 207 207 207 207 \
+#	   207 207
+#
+#EFFECTS=  058 045 092 047 042 033 041 040	   \
+#	   048 035 064 042			   \
+#	   194 218 195 217 217 192 218 193	   \
 #	   047 045 092 058 032 058 092 045 047

@@ -6,3 +6,6 @@ cp ..\unix\Makefile.dat ..\..\dat\Makefile
 cp ..\unix\Makefile.doc ..\..\doc\Makefile
 cp ..\unix\Makefile.src ..\..\src\Makefile
 cp .\Makefile.utl ..\..\util\Makefile
+
+# KLUDGE to fix a Makefile problem
+echo > ..\..\include\win32api.h

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)winstat.c	3.1	93/02/04	*/
+/*	SCCS Id: @(#)winstat.c	3.2	93/02/04	*/
 /* Copyright (c) Dean Luick, 1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -20,6 +20,7 @@
 #include <X11/Xaw/AsciiText.h>
 #include <X11/Xaw/Cardinals.h>
 #include <X11/Xaw/Form.h>
+#include <X11/Xaw/Paned.h>
 #include <X11/Xaw/Label.h>
 #include <X11/Xatom.h>
 
@@ -186,7 +187,7 @@ struct X_status_value {
     char    *name;		/* text name */
     int     type;		/* status type */
     Widget  w;			/* widget of name/value pair */
-    int     last_value;		/* value displayed */
+    long    last_value;		/* value displayed */
     int	    turn_count;		/* last time the value changed */
     boolean set;		/* if hilighed */
     boolean after_init;		/* don't hilight on first change (init) */
@@ -261,7 +262,7 @@ static struct X_status_value shown_stats[NUM_STATS] = {
 
     { "",		SV_NAME,  (Widget) 0, -1, 0, FALSE, TRUE }, /* hunger*/
     { "Confused",	SV_NAME,  (Widget) 0,  0, 0, FALSE, TRUE },	/*20*/
-    { "Sick",		SV_NAME,  (Widget) 0,  0, 0, FALSE, TRUE },
+    { "",    		SV_NAME,  (Widget) 0,  0, 0, FALSE, TRUE }, /* sick */
     { "Blind",		SV_NAME,  (Widget) 0,  0, 0, FALSE, TRUE },
     { "Stunned",	SV_NAME,  (Widget) 0,  0, 0, FALSE, TRUE },
     { "Hallucinating",	SV_NAME,  (Widget) 0,  0, 0, FALSE, TRUE },
@@ -333,7 +334,6 @@ update_val(attr_rec, new_value)
 	    Strcpy(buf, plname);
 	    if ('a' <= buf[0] && buf[0] <= 'z') buf[0] += 'A'-'a';
 	    Strcat(buf, " the ");
-#ifdef POLYSELF
 	    if (u.mtimedone) {
 		char mname[BUFSZ];
 		int k = 0;
@@ -347,7 +347,6 @@ update_val(attr_rec, new_value)
 		}
 		Strcat(buf, mname);
 	    } else
-#endif
 		Strcat(buf, rank_of(u.ulevel, pl_character[0], flags.female));
 
 	} else if (attr_rec == &shown_stats[F_DLEVEL]) {
@@ -376,11 +375,23 @@ update_val(attr_rec, new_value)
 
 	attr_rec->last_value = new_value;
 
-	/* special cases: hunger and encumbrance */
+	/* special cases: hunger, encumbrance, sickness */
 	if (attr_rec == &shown_stats[F_HUNGER]) {
 	    XtSetArg(args[0], XtNlabel, hu_stat[new_value]);
 	} else if (attr_rec == &shown_stats[F_ENCUMBER]) {
 	    XtSetArg(args[0], XtNlabel, enc_stat[new_value]);
+	} else if (attr_rec == &shown_stats[F_SICK]) {
+	    buf[0] = 0;
+	    if (Sick) {
+		if (u.usick_type & SICK_VOMITABLE)
+		    Strcat(buf, "FoodPois");
+		if (u.usick_type & SICK_NONVOMITABLE) {
+		    if (u.usick_type & SICK_VOMITABLE)
+			Strcat(buf, " ");
+		    Strcat(buf, "Ill");
+		}
+	    }
+	    XtSetArg(args[0], XtNlabel, buf);
 	} else if (new_value) {
 	    XtSetArg(args[0], XtNlabel, attr_rec->name);
 	} else {
@@ -457,7 +468,6 @@ update_val(attr_rec, new_value)
 #endif
 	}
 
-#ifdef POLYSELF
 	/* special case: when polymorphed, show "HD", disable exp */
 	else if (attr_rec == &shown_stats[F_LEVEL]) {
 	    static boolean lev_was_poly = FALSE;
@@ -486,7 +496,6 @@ update_val(attr_rec, new_value)
 	    }
 	    if (u.mtimedone) return;	/* no display for exp when poly */
 	}
-#endif
 
 	if (attr_rec->last_value == new_value && !force_update)	/* same */
 	    return;
@@ -497,13 +506,13 @@ update_val(attr_rec, new_value)
 	if (attr_rec == &shown_stats[F_STR]) {
 	    if(new_value > 18) {
 		if (new_value > 118)
-		    Sprintf(buf,"%d", new_value-100);
+		    Sprintf(buf,"%ld", new_value-100);
 		else if(new_value < 118)
-		    Sprintf(buf, "18/%02d", new_value-18);
+		    Sprintf(buf, "18/%02ld", new_value-18);
 		else
 		    Strcpy(buf, "18/**");
 	    } else {
-		Sprintf(buf, "%d", new_value);
+		Sprintf(buf, "%ld", new_value);
 	    }
 	} else if (attr_rec == &shown_stats[F_ALIGN]) {
 
@@ -511,7 +520,7 @@ update_val(attr_rec, new_value)
 			(new_value == A_NEUTRAL) ? "Neutral" :
 						   "Lawful"  );
 	} else {
-	    Sprintf(buf, "%d", new_value);
+	    Sprintf(buf, "%ld", new_value);
 	}
 	set_value(attr_rec->w, buf);
     }
@@ -546,11 +555,10 @@ update_val(attr_rec, new_value)
  *	name, attributes, alignment, score
  *
  * Information on the second line:
- * 	dlvl, gold, hp, power, ac, {level & exp or HD **}
- * 	status (hunger, conf, halu, stun, sick, blind), time, encumbrance
+ *	dlvl, gold, hp, power, ac, {level & exp or HD **}
+ *	status (hunger, conf, halu, stun, sick, blind), time, encumbrance
  *
- * [**] HD is shown instead of level and exp if POLYSELF is defined and
- *	mtimedone is non-zero.
+ * [**] HD is shown instead of level and exp if mtimedone is non-zero.
  */
 static void
 update_fancy_status(wp)
@@ -575,13 +583,14 @@ update_fancy_status(wp)
 	    case F_WIS:		val = (long) ACURR(A_WIS); break;
 	    case F_CHA:		val = (long) ACURR(A_CHA); break;
 	    /*
-	     * Label stats.  With the exceptions of hunger and encumbrance,
+	     * Label stats.  With the exceptions of hunger, encumbrance, sick
 	     * these are either on or off.  Pleae leave the ternary operators
 	     * the way they are.  I want to specify 0 or 1, not a boolean.
 	     */
 	    case F_HUNGER:	val = (long) u.uhs;			break;
 	    case F_CONFUSED:	val = (long) Confusion     ? 1L : 0L;	break;
-	    case F_SICK:	val = (long) Sick	   ? 1L : 0L;	break;
+	    case F_SICK:	val = (long) Sick ? (long)u.usick_type
+								: 0L;	break;
 	    case F_BLIND:	val = (long) Blind	   ? 1L : 0L;	break;
 	    case F_STUNNED:	val = (long) Stunned	   ? 1L : 0L;	break;
 	    case F_HALLU:	val = (long) Hallucination ? 1L : 0L;	break;
@@ -590,26 +599,17 @@ update_fancy_status(wp)
 	    case F_NAME:	val = (long) 0L; break;	/* special */
 	    case F_DLEVEL:	val = (long) 0L; break;	/* special */
 	    case F_GOLD:	val = (long) u.ugold; break;
-#ifdef POLYSELF
 	    case F_HP:		val = (long) (u.mtimedone ?
 					      (u.mh  > 0 ? u.mh  : 0):
 					      (u.uhp > 0 ? u.uhp : 0)); break;
 	    case F_MAXHP:	val = (long) (u.mtimedone ? u.mhmax :
 							    u.uhpmax);  break;
-#else
-	    case F_HP:		val = (long) (u.uhp > 0 ? u.uhp : 0);	break;
-	    case F_MAXHP:	val = (long) u.uhpmax;	break;
-#endif
 	    case F_POWER:	val = (long) u.uen;	break;
 	    case F_MAXPOWER:	val = (long) u.uenmax;	break;
 	    case F_AC:		val = (long) u.uac;	break;
-#ifdef POLYSELF
 	    case F_LEVEL:	val = (long) (u.mtimedone ?
 						mons[u.umonnum].mlevel :
 						u.ulevel);		break;
-#else
-	    case F_LEVEL:	val = (long) u.ulevel;	break;
-#endif
 #ifdef EXP_ON_BOTL
 	    case F_EXP:		val = flags.showexp ? u.uexp : 0L; break;
 #else
@@ -908,7 +908,7 @@ init_info_form(parent, top, left)
     create_widget(form, sv_dlevel, F_DLEVEL);
 
     num_args = 0;
-    XtSetArg(args[num_args], XtNfromVert, sv_name->w); 	num_args++;
+    XtSetArg(args[num_args], XtNfromVert, sv_name->w);	num_args++;
     XtSetValues(sv_dlevel->w, args, num_args);
 
     /* two columns beneath */
@@ -945,7 +945,7 @@ create_fancy_status(parent, top)
 {
     Widget form;	/* The form that surrounds everything. */
     Widget w;
-    Arg args[6];
+    Arg args[8];
     Cardinal num_args;
 
     num_args = 0;
@@ -954,8 +954,9 @@ create_fancy_status(parent, top)
     }
     XtSetArg(args[num_args], XtNdefaultDistance, 0);	num_args++;
     XtSetArg(args[num_args], XtNborderWidth, 0);	num_args++;
+    XtSetArg(args[num_args], XtNorientation, XtorientHorizontal); num_args++;
     form = XtCreateManagedWidget("fancy_status",
-				formWidgetClass,
+				panedWidgetClass,
 				parent,
 				args, num_args);
 

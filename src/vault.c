@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)vault.c	3.1	93/03/30	*/
+/*	SCCS Id: @(#)vault.c	3.2	95/01/16	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -29,14 +29,16 @@ register boolean forceshow;
 		if((grd->mhp <= 0 || !in_fcorridor(grd, u.ux, u.uy)) &&
 				   EGD(grd)->gddone)
 			forceshow = TRUE;
-		if((u.ux == fcx && u.uy == fcy && grd->mhp > 0) ||
-		   (!forceshow && cansee(fcx,fcy))) return(FALSE);
+		if((u.ux == fcx && u.uy == fcy && grd->mhp > 0)
+			|| (!forceshow && couldsee(fcx,fcy))
+			|| (Punished && !carried(uball)
+				&& uball->ox == fcx && uball->oy == fcy))
+			return FALSE;
+
 		if ((mtmp = m_at(fcx,fcy)) != 0) {
 			if(mtmp->isgd) return(FALSE);
 			else if(!in_fcorridor(grd, u.ux, u.uy)) {
-#ifdef SOUNDS
-			    if(mtmp->mpeaceful) yelp(mtmp);
-#endif
+			    if(mtmp->mtame) yelp(mtmp);
 			    rloc(mtmp);
 			}
 		}
@@ -46,7 +48,7 @@ register boolean forceshow;
 		EGD(grd)->fcbeg++;
 	}
 	if(grd->mhp <= 0) {
-	    pline("The corridor disappears.");
+	    pline_The("corridor disappears.");
 	    if(IS_ROCK(levl[u.ux][u.uy].typ)) You("are encased in rock.");
 	}
 	return(TRUE);
@@ -94,8 +96,8 @@ int x, y;
 
 STATIC_OVL
 struct monst *
-findgd() {
-
+findgd()
+{
 	register struct monst *mtmp;
 
 	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
@@ -122,7 +124,6 @@ char *array;
 void
 invault()
 {
-
 #ifdef BSD_43_BUG
     int dummy;		/* hack to avoid schain botch */
 #endif
@@ -153,10 +154,10 @@ invault()
 	      if(levl[x][y].typ == CORR) {
 		  if(x < u.ux) lx = x + 1;
 		  else if(x > u.ux) lx = x - 1;
-		  else x = lx;
+		  else lx = x;
 		  if(y < u.uy) ly = y + 1;
 		  else if(y > u.uy) ly = y - 1;
-		  else y = ly;
+		  else ly = y;
 		  if(levl[lx][ly].typ != STONE && levl[lx][ly].typ != CORR)
 		      goto incr_radius;
 		  goto fnd;
@@ -234,11 +235,7 @@ fnd:
 	reset_faint();			/* if fainted - wake up */
 	pline("Suddenly one of the Vault's guards enters!");
 	newsym(guard->mx,guard->my);
-	if (Strangled
-#ifdef POLYSELF
-			|| uasmon->msound == MS_SILENT
-#endif
-							) {
+	if (Strangled || uasmon->msound == MS_SILENT) {
 	    verbalize("I'll be back when you're ready to speak to me!");
 	    mongone(guard);
 	    return;
@@ -248,10 +245,30 @@ fnd:
 		getlin("\"Hello stranger, who are you?\" -",buf);
 	} while (!letter(buf[0]));
 
-	if(!strcmp(buf, "Croesus") || !strcmp(buf, "Kroisos")) {
+	if (u.ualign.type == A_LAWFUL &&
+	    /* ignore trailing text, in case player includes character's rank */
+	    strncmpi(buf, plname, (int) strlen(plname)) != 0) {
+		adjalign(-1);		/* Liar! */
+	}
+
+	if (!strcmpi(buf, "Croesus") || !strcmpi(buf, "Kroisos")
+#ifdef TOURIST
+		|| !strcmpi(buf, "Creosote")
+#endif
+	    ) {
+	    if (!mvitals[PM_CROESUS].died) {
 		verbalize("Oh, yes, of course.  Sorry to have disturbed you.");
 		mongone(guard);
-		return;
+	    } else {
+		setmangry(guard);
+		verbalize("Back from the dead, are you?  I'll remedy that!");
+		/* don't want guard to waste next turn wielding a weapon */
+		if (!MON_WEP(guard)) {
+		    guard->weapon_check = NEED_HTH_WEAPON;
+		    (void) mon_wield_item(guard);
+		}
+	    }
+	    return;
 	}
 	verbalize("I don't know you.");
 	if (!u.ugold && !hidden_gold())
@@ -289,6 +306,7 @@ fnd:
 	}
 	levl[x][y].typ = DOOR;
 	levl[x][y].doormask = D_NODOOR;
+	unblock_point(x, y);		/* doesn't block light */
 	EGD(guard)->fcend = 1;
 	EGD(guard)->warncnt = 1;
     }
@@ -331,9 +349,7 @@ struct monst *grd;
 		if(!IS_WALL(levl[x][y].typ) && !in_fcorridor(grd, x, y)) {
 		    if(MON_AT(x, y) && grd->mx != x && grd->my != y) {
 			struct monst *mon = m_at(x,y);
-#ifdef SOUNDS
-			yelp(mon);
-#endif
+			if (mon->mtame) yelp(mon);
 			rloc(mon);
 		    }
 		    if ((gold = g_at(x, y)) != 0) {
@@ -368,9 +384,7 @@ struct monst *grd;
 		if(!IS_WALL(levl[x][y].typ) && !in_fcorridor(grd, x, y)) {
 		    if(MON_AT(x, y) && grd->mx != x && grd->my != y) {
 			struct monst *mon = m_at(x,y);
-#ifdef SOUNDS
-			yelp(mon);
-#endif
+			if (mon->mtame) yelp(mon);
 			rloc(mon);
 		    }
 		    if ((gold = g_at(x, y)) != 0) {
@@ -390,12 +404,12 @@ struct monst *grd;
 
 	if(movedgold || fixed) {
 	    if(in_fcorridor(grd, grd->mx, grd->my) || cansee(grd->mx, grd->my))
-		pline("The guard whispers an incantation.");
-	    else You("hear a distant chant.");
+		pline_The("guard whispers an incantation.");
+	    else You_hear("a distant chant.");
 	    if(movedgold)
 		pline("A mysterious force moves the gold into the vault.");
 	    if(fixed)
-		pline("The damaged vault's walls are magically restored!");
+		pline_The("damaged vault's walls are magically restored!");
 	}
 }
 
@@ -477,7 +491,7 @@ register struct monst *grd;
 		    grd->mpeaceful = 0;
 letknow:
 		    if(!cansee(grd->mx, grd->my))
-			You("hear the shrill sound of a guard's whistle.");
+			You_hear("the shrill sound of a guard's whistle.");
 		    else
 			You(um_dist(grd->mx, grd->my, 2) ?
 			    "see an angry %s approaching." :
@@ -497,7 +511,7 @@ letknow:
 		  !egrd->gddone && !in_fcorridor(grd, u.ux, u.uy) &&
 		  levl[egrd->fakecorr[0].fx][egrd->fakecorr[0].fy].typ
 				 == egrd->fakecorr[0].ftyp) {
-		pline("The guard, confused, disappears.");
+		pline_The("guard, confused, disappears.");
 		disappear_msg_seen = TRUE;
 		goto cleanup;
 	    }
@@ -637,6 +651,7 @@ nextpos:
 	}
 	crm->typ = CORR;
 proceed:
+	unblock_point(nx, ny);	/* doesn't block light */
 	if (cansee(nx,ny))
 	    newsym(nx,ny);
 
@@ -647,7 +662,7 @@ proceed:
 	fcp->ftyp = typ;
 newpos:
 	if(egrd->gddone) {
-		/* The following is a kluge.  We need to keep     */
+		/* The following is a kludge.  We need to keep    */
 		/* the guard around in order to be able to make   */
 		/* the fake corridor disappear as the player      */
 		/* moves out of it, but we also need the guard    */
@@ -687,7 +702,6 @@ cleanup:
 void
 paygd()
 {
-
 	register struct monst *grd = findgd();
 	struct obj *gold;
 	int gx,gy;
@@ -733,15 +747,14 @@ hidden_gold()
 	return(value);
 }
 
-#ifdef SOUNDS
 boolean
 gd_sound()  /* prevent "You hear footsteps.." when inappropriate */
 {
 	register struct monst *grd = findgd();
 
-	return((boolean)(grd == (struct monst *)0));
+	if (vault_occupied(u.urooms)) return(FALSE);
+	else return((boolean)(grd == (struct monst *)0));
 }
-#endif
 
 #endif /* OVLB */
 

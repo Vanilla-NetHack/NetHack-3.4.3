@@ -1,13 +1,13 @@
-/*       SCCS Id: @(#)oldcrtl.c   3.1      90/05/24
-/*   	 Pat Rankin  May'90                                       */
-/* VMS NetHack support, not needed for vms 4.6,4.7,or 5.x.        */
+/*	SCCS Id: @(#)oldcrtl.c	3.2	95/06/01	*/
+/*	 Pat Rankin  May'90					  */
+/* VMS NetHack support, not needed for vms 4.6,4.7,5.x,or 6.x	  */
 
 #ifdef VERYOLD_VMS
 /*
  * The following routines are used by NetHack but were not available
  * from the C Run-Time Library (VAXCRTL) prior to VMS V4.6.
  *
- *      atexit, memcmp, memcpy, qsort, rename, vprintf, vsprintf
+ *	atexit, memcmp, memcpy, qsort, rename, vprintf, vsprintf
  *
  * Most of them are implemented here, but others will have to be worked
  * around in another fashion [such as '#define USE_OLDARGS' (even though
@@ -75,9 +75,9 @@ REG char		byt;
 REG int		len;
 {
     while ( --len >= 0 )
-	if ( *buf++ == byt )    /* found */
+	if ( *buf++ == byt )	/* found */
 	    return (char *)--buf;
-    return (char *)0;       /* not found */
+    return (char *)0;	    /* not found */
 }
 
 /* int memcmp(const void *, const void *, size_t) -- compare two chunks.
@@ -98,23 +98,24 @@ REG int		len;
 #ifndef SUPPRESS_ATEXIT
 /* int atexit(void (*)(void)) -- register an exit handler.
 */
-#define MAX_EXIT_FUNCS 32       /* arbitrary (32 matches VAX C v3.x docs) */
-struct _ex_hndlr { long reserved, (*routine)(), arg_count, *arg1_addr; };
-static int ex_cnt = 0;          /* number of handlers registered so far */
-static struct { long dummy_arg; struct _ex_hndlr handler;   /*(black box)*/
-       } ex_data[MAX_EXIT_FUNCS];       /* static handler data */
+#define MAX_EXIT_FUNCS 32	/* arbitrary (32 matches VAX C v3.x docs) */
+struct ex_hndlr { long reserved, (*routine)(), arg_count, *arg1_addr; };
+static int ex_cnt = 0;		/* number of handlers registered so far */
+static struct { long dummy_arg; struct ex_hndlr handler;    /*(black box)*/
+       } ex_data[MAX_EXIT_FUNCS];	/* static handler data */
+extern unsigned long sys$dclexh();
 
 int atexit( function )
-    int (*function)();          /* note: actually gets called with 1 arg */
+    void (*function)();		/* note: actually gets called with 1 arg */
 {
     if ( ex_cnt < MAX_EXIT_FUNCS ) {
 	ex_data[ex_cnt].dummy_arg = 0;  /* ultimately receives exit reason */
 	ex_data[ex_cnt].handler.reserved  = 0;
 	ex_data[ex_cnt].handler.routine   = (long (*)()) function;
-	ex_data[ex_cnt].handler.arg_count = 1;          /*(required)*/
+	ex_data[ex_cnt].handler.arg_count = 1;		/*(required)*/
 	ex_data[ex_cnt].handler.arg1_addr = &ex_data[ex_cnt].dummy_arg;
-	SYS$DCLEXH( &ex_data[ex_cnt].handler);  /* declare exit handler */
-	return ++ex_cnt;        /*(non-zero)*/
+	(void)sys$dclexh(&ex_data[ex_cnt].handler);  /* declare exit handler */
+	return ++ex_cnt;	/*(non-zero)*/
     } else
 	return 0;
 }
@@ -128,22 +129,24 @@ int atexit( function )
 #include <errno.h>
 #define C$$TRANSLATE(status)    (errno = EVMSERR,  vaxc$errno = (status))
 #endif
+extern unsigned long lib$rename_file();
 
 int rename( old_name, new_name )
     const char *old_name;
     const char *new_name;
 {
-    struct _dsc { int len; const char *adr; } old_dsc, new_dsc;
-    unsigned long status, LIB$RENAME_FILE();
+    struct dsc { unsigned short len, mbz; const char *adr; } old_dsc, new_dsc;
+    unsigned long status;
 
     /* put strings into descriptors and call run-time library routine */
+    new_dsc.mbz = old_dsc.mbz = 0;	/* type and class unspecified */
     old_dsc.len = strlen( old_dsc.adr = old_name );
     new_dsc.len = strlen( new_dsc.adr = new_name );
-    status = LIB$RENAME_FILE( &old_dsc, &new_dsc);  /* omit optional args */
-    if ( !(status & 1) ) {      /* even => failure */
+    status = lib$rename_file(&old_dsc, &new_dsc);   /* omit optional args */
+    if ( !(status & 1) ) {	/* even => failure */
 	C$$TRANSLATE(status);
 	return -1;
-    } else                      /*  odd => success */
+    } else			/*  odd => success */
 	return 0;
 }
 #endif /*!SUPPRESS_RENAME*/
@@ -152,6 +155,9 @@ int rename( old_name, new_name )
 #ifndef SUPPRESS_QSORT
 /* void qsort(void *, size_t, size_t, int (*)()) -- sort arbitrary collection.
 */
+extern char *malloc();			/* assume no alloca() available */
+extern void free();
+
 void qsort( base, count, size, compare )
     char *base;
     int   count;
@@ -160,19 +166,19 @@ REG int   size;
 {
 REG int   i, cmp;
 REG char *next, *prev, *tmp = 0;
-    char  wrk_buf[512], *malloc();      /* assume no alloca() available */
+    char  wrk_buf[512];
 
     /* just use a shuffle sort (tradeoff between efficiency & simplicity) */
     /*  [Optimal if already sorted; worst case when initially reversed.]  */
     for ( next = base, i = 1;  i < count;  i++ ) {
-	prev = next,  next += size;             /* increment front pointer */
+	prev = next,  next += size;		/* increment front pointer */
 	if ( (cmp = (*compare)( next, prev)) < 0 ) {
 	    /* found element out of order; move other(s) up then re-insert it */
-	    if ( !tmp )  tmp = (size > sizeof wrk_buf ? malloc(size) : wrk_buf);
-	    memcpy( tmp, next, size);           /* save smaller element */
+	    if ( !tmp )  tmp = size > (int)(sizeof wrk_buf) ? malloc(size) : wrk_buf;
+	    memcpy( tmp, next, size);		/* save smaller element */
 	    while ( cmp < 0 ) {
 		memcpy( prev + size, prev, size);   /* move larger elem. up */
-		prev -= size;                   /* decrement back pointer */
+		prev -= size;			/* decrement back pointer */
 		cmp = (prev >= base ? (*compare)( tmp, prev) : 0);
 	    }
 	    memcpy( prev + size, tmp, size);    /* restore small element */

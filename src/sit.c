@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)sit.c	3.1	93/05/19	*/
+/*	SCCS Id: @(#)sit.c	3.2	95/01/31	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -9,7 +9,7 @@ void
 take_gold()
 {
 	if (u.ugold <= 0)  {
-		You("feel a strange sensation.");
+		You_feel("a strange sensation.");
 	} else {
 		You("notice you have no gold!");
 		u.ugold = 0;
@@ -24,12 +24,12 @@ dosit()
 	register struct trap *trap;
 	register int typ = levl[u.ux][u.uy].typ;
 
-	if(Levitation)  {
-	    pline("You're sitting on air.");
+	if(!can_reach_floor())	{
+	    You("are sitting on air.");
 	    return 0;
-	} 
+	}
 
-	if(OBJ_AT(u.ux, u.uy)) { 
+	if(OBJ_AT(u.ux, u.uy)) {
 	    register struct obj *obj;
 
 	    obj = level.objects[u.ux][u.uy];
@@ -41,7 +41,7 @@ dosit()
 	    if (u.utrap) {
 		exercise(A_WIS, FALSE);	/* you're getting stuck longer */
 		if(u.utraptype == TT_BEARTRAP) {
-		    You("can't sit down with your %s in the bear trap.", body_part(FOOT));
+		    You_cant("sit down with your %s in the bear trap.", body_part(FOOT));
 		    u.utrap++;
 	        } else if(u.utraptype == TT_PIT) {
 		    if(trap->ttyp == SPIKED_PIT) {
@@ -60,7 +60,7 @@ dosit()
 		    u.utrap += rnd(4);
 		    losehp(d(2,10), "sitting in lava", KILLED_BY);
 		} else if(u.utraptype == TT_INFLOOR) {
-		    You("can't maneuver to sit!");
+		    You_cant("maneuver to sit!");
 		    u.utrap++;
 		}
 	    } else {
@@ -71,18 +71,14 @@ dosit()
 	    if (Is_waterlevel(&u.uz))
 		pline("There are no cushions floating nearby.");
 	    else
-		You("sit down in the muddy bottom.");
+		You("sit down on the muddy bottom.");
 	} else if(is_pool(u.ux, u.uy)) {
 
 	    You("sit in the water.");
 	    if (!rn2(10) && uarm)
 		(void) rust_dmg(uarm, "armor", 1, TRUE);
-#ifdef POLYSELF
-	    /* Note: without POLYSELF, this can't _happen_ without */
-	    /* water walking boots.... */
 	    if (!rn2(10) && uarmf && uarmf->otyp != WATER_WALKING_BOOTS)
 		(void) rust_dmg(uarm, "armor", 1, TRUE);
-#endif
 #ifdef SINKS
 	} else if(IS_SINK(typ)) {
 
@@ -106,14 +102,18 @@ dosit()
 
 	    /* must be WWalking */
 	    You(sit_message, "lava");
-	    pline("The lava burns you!");
+	    if (likes_lava(uasmon)) {
+		pline_The("lava feels warm.");
+		return 1;
+	    }
+	    pline_The("lava burns you!");
 	    losehp(d((Fire_resistance ? 2 : 10), 10),
 		   "sitting on lava", KILLED_BY);
 
 	} else if (is_ice(u.ux, u.uy)) {
 
 	    You(sit_message, defsyms[S_ice].explanation);
-	    if (!Cold_resistance) pline("The ice feels cold.");
+	    if (!Cold_resistance) pline_The("ice feels cold.");
 
 	} else if (typ == DRAWBRIDGE_DOWN) {
 
@@ -133,17 +133,17 @@ dosit()
 			break;
 		    case 3:
 			pline("A%s electric shock shoots through your body!",
-			      (Shock_resistance) ? "" : " massive");
+			      (Shock_resistance) ? "n" : " massive");
 			losehp(Shock_resistance ? rnd(6) : rnd(30),
 			       "electric chair", KILLED_BY_AN);
 			exercise(A_CON, FALSE);
 			break;
 		    case 4:
-			You("feel much, much better!");
+			You_feel("much, much better!");
 			if(u.uhp >= (u.uhpmax - 5))  u.uhpmax += 4;
 			u.uhp = u.uhpmax;
 			make_blinded(0L,TRUE);
-			make_sick(0L,FALSE);
+			make_sick(0L, (char *) 0, FALSE, SICK_ALL);
 			heal_legs();
 			flags.botl = 1;
 			break;
@@ -152,7 +152,7 @@ dosit()
 			break;
 		    case 6:
 			if(u.uluck + rn2(5) < 0) {
-			    You("feel your luck is changing.");
+			    You_feel("your luck is changing.");
 			    change_luck(1);
 			} else	    makewish();
 			break;
@@ -199,23 +199,19 @@ dosit()
 			break;
 		    case 11:
 			if (Luck < 0)  {
-			    You("feel threatened.");
+			    You_feel("threatened.");
 			    aggravate();
 			} else  {
 
-			    You("feel a wrenching sensation.");
+			    You_feel("a wrenching sensation.");
 			    tele();		/* teleport him */
 			}
 			break;
 		    case 12:
 			You("are granted an insight!");
 			if (invent) {
-			    int ret, cval = rn2(5); /* agrees w/seffects() */
-			    /* use up `cval' "charges"; 0 is special case */
-			    do {
-				ret = ggetobj("identify", identify, cval);
-				if (ret < 0) break;	/* quit */
-			    } while (ret == 0 || (cval -= ret) > 0);
+			    /* rn2(5) agrees w/seffects() */
+			    identify_pack(rn2(5));
 			}
 			break;
 		    case 13:
@@ -225,17 +221,16 @@ dosit()
 		    default:	impossible("throne effect");
 				break;
 		}
-	    } else	You("feel somehow out of place...");
+	    } else	You_feel("somehow out of place...");
 
 	    if (!rn2(3) && IS_THRONE(levl[u.ux][u.uy].typ)) {
 		/* may have teleported */
-		pline("The throne vanishes in a puff of logic.");
+		pline_The("throne vanishes in a puff of logic.");
 		levl[u.ux][u.uy].typ = ROOM;
 		if(Invisible) newsym(u.ux,u.uy);
 	    }
 
-#ifdef POLYSELF
-	} else if (lays_eggs(uasmon) || u.umonnum == PM_QUEEN_BEE) {
+	} else if (lays_eggs(uasmon)) {
 		struct obj *uegg;
 
 		if (!flags.female) {
@@ -252,14 +247,13 @@ dosit()
 		uegg->spe = 1;
 		uegg->quan = 1;
 		uegg->owt = weight(uegg);
-		uegg->corpsenm =
-		    (u.umonnum==PM_QUEEN_BEE ? PM_KILLER_BEE : monsndx(uasmon));
+		uegg->corpsenm = egg_type_from_parent(u.umonnum, FALSE);
 		uegg->known = uegg->dknown = 1;
+		attach_egg_hatch_timeout(uegg);
 		You("lay an egg.");
 		dropy(uegg);
 		stackobj(uegg);
 		morehungry((int)objects[EGG].oc_nutrition);
-#endif
 	} else if (u.uswallow)
 		pline("There are no seats in here!");
 	else
@@ -310,20 +304,20 @@ rndcurse()			/* curse a few inventory items at random! */
 void
 attrcurse()			/* remove a random INTRINSIC ability */
 {
-	switch(rnd(10)) {
+	switch(rnd(11)) {
 	case 1 : if (HFire_resistance & INTRINSIC) {
 			HFire_resistance &= ~INTRINSIC;
-			You("feel warmer.");
+			You_feel("warmer.");
 			break;
 		}
 	case 2 : if (HTeleportation & INTRINSIC) {
 			HTeleportation &= ~INTRINSIC;
-			You("feel less jumpy.");
+			You_feel("less jumpy.");
 			break;
 		}
 	case 3 : if (HPoison_resistance & INTRINSIC) {
 			HPoison_resistance &= ~INTRINSIC;
-			You("feel a little sick!");
+			You_feel("a little sick!");
 			break;
 		}
 	case 4 : if (HTelepat & INTRINSIC) {
@@ -335,32 +329,38 @@ attrcurse()			/* remove a random INTRINSIC ability */
 		}
 	case 5 : if (HCold_resistance & INTRINSIC) {
 			HCold_resistance &= ~INTRINSIC;
-			You("feel cooler.");
+			You_feel("cooler.");
 			break;
 		}
 	case 6 : if (HInvis & INTRINSIC) {
 			HInvis &= ~INTRINSIC;
-			You("feel paranoid.");
+			You_feel("paranoid.");
 			break;
 		}
 	case 7 : if (HSee_invisible & INTRINSIC) {
 			HSee_invisible &= ~INTRINSIC;
-			You("thought you saw something!");
+			You("%s!", Hallucination ? "tawt you taw a puttie tat"
+						: "thought you saw something");
 			break;
 		}
 	case 8 : if (Fast & INTRINSIC) {
 			Fast &= ~INTRINSIC;
-			You("feel slower.");
+			You_feel("slower.");
 			break;
 		}
 	case 9 : if (Stealth & INTRINSIC) {
 			Stealth &= ~INTRINSIC;
-			You("feel clumsy.");
+			You_feel("clumsy.");
 			break;
 		}
 	case 10: if (Protection & INTRINSIC) {
 			Protection &= ~INTRINSIC;
-			You("feel vulnerable.");
+			You_feel("vulnerable.");
+			break;
+		}
+	case 11: if (Aggravate_monster & INTRINSIC) {
+			Aggravate_monster &= ~INTRINSIC;
+			You_feel("less attractive.");
 			break;
 		}
 	default: break;

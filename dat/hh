@@ -5,8 +5,8 @@ h-.-l   4-.-6           YUHJKLBN: go in specified direction until you
 b j n   1 2 3           g<dir>:   run in direction <dir> until something
       numberpad                     interesting is seen
                         G<dir>,   same, except a branching corridor isn't
-                        ^<dir>:     considered interesting
-                        m<dir>:   move without picking up objects
+ <  up                  ^<dir>:     considered interesting
+ >  down                m<dir>:   move without picking up objects
                 If the number_pad option is set, the number keys move instead.
 
 General commands:
@@ -78,14 +78,14 @@ M-f     force   force a lock
 M-i     invoke  invoke an object's special powers
 M-j     jump    jump to another location
 M-l     loot    loot a box on the floor
-M-m     monster use a monster's special ability (only if defined)
+M-m     monster use a monster's special ability
 M-n     name    name an item or type of object
 M-o     offer   offer a sacrifice to the gods
 M-p     pray    pray to the gods for help
 M-r     rub     rub a lamp
 M-s     sit     sit down
 M-t     turn    turn undead
-M-u     untrap  untrap something (usually a trapped object)
+M-u     untrap  untrap something
 M-v     version print compile time options for this version
 M-w     wipe    wipe off your face
 

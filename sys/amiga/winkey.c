@@ -2,9 +2,9 @@
 /* Copyright (c) Gregg Wonderly, Naperville, Illinois,  1991,1992,1993. */
 /* NetHack may be freely redistributed.  See license for details. */
 
-#include "amiga:windefs.h"
-#include "amiga:winext.h"
-#include "amiga:winproto.h"
+#include "NH:sys/amiga/windefs.h"
+#include "NH:sys/amiga/winext.h"
+#include "NH:sys/amiga/winproto.h"
 
 amii_nh_poskey(x, y, mod)
     int*x, *y, *mod;
@@ -25,9 +25,6 @@ amii_nh_poskey(x, y, mod)
     if( WIN_MAP != WIN_ERR && (cw = amii_wins[ WIN_MAP ]) && ( w = cw->win ) )
     {
 	cursor_on( WIN_MAP );
-#ifdef	VIEWWINDOW
-	cursor_on( WIN_VIEW );
-#endif
     }
     else
 	panic( "no MAP window opened for nh_poskey\n" );
@@ -44,9 +41,16 @@ amii_nh_poskey(x, y, mod)
 		*mod = 0;
 
 	    /* X coordinates are 1 based, Y are zero based. */
-	    *x = ( (lastevent.un.mouse.x - w->BorderLeft) / MAPFTWIDTH ) + 1;
+	    *x = ( (lastevent.un.mouse.x - w->BorderLeft) / mxsize ) + 1;
 	    *y = ( ( lastevent.un.mouse.y - w->BorderTop - MAPFTBASELN ) /
-			MAPFTHEIGHT );
+			mysize );
+#ifdef	CLIPPING
+	    if( clipping )
+	    {
+		*x += clipx;
+		*y += clipy;
+	    }
+#endif
 	    return( 0 );
 	}
 	else if( type == WEKEY )
@@ -66,12 +70,9 @@ amii_nhgetch()
     if( WIN_MAP != WIN_ERR && amii_wins[ WIN_MAP ] )
     {
 	cursor_on( WIN_MAP );
-#ifdef	VIEWWINDOW
-	cursor_on( WIN_VIEW );
-#endif
     }
     if(cw)
-		cw->wflags &= ~FLMAP_SKIP;
+	cw->wflags &= ~FLMAP_SKIP;
 
     ch = WindowGetchar();
     return( ch );

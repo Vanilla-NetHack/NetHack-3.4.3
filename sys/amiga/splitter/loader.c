@@ -8,7 +8,7 @@
 
 /*#define LDEBUG	 	/* turn on debugging I/O */
 #define SDEBUG		/* static primary array allocation */
-/*#define NOCLEAN		/* turn off ovl$memchain code */
+/*#define NOCLEAN		/* turn off ___spl_memchain code */
 /*#define NOSPLIT		/* debug: load an unsplit binary(run ONCE!)*/
 #define MULTI			/* real file reading code */
 /*#define PARANOID		/* check for refs off end that might be OK */
@@ -25,10 +25,16 @@ long *yy;
 #include <exec/types.h>
 #include <exec/memory.h>
 #include <libraries/dosextens.h>
+#ifdef _DCC
+#include <clib/dos_protos.h>
+#include <clib/exec_protos.h>
+#else
 #include <proto/dos.h>
 #include <proto/exec.h>
 #include <dos.h>			/* NOT libraries/dos.h! */
+#endif
 #include <setjmp.h>
+#include <stdlib.h>
 
 jmp_buf jbuf;
 
@@ -41,19 +47,19 @@ jmp_buf jbuf;
 
 #define HT(x)	((x) & ~MEM_OBJ_EXTEND)
 
-void *ovl$AllocMem(unsigned int);
+void *___spl_AllocMem(unsigned int);
 void spanic(char *);			/* think about this!!!! */
 void exit(int);
 
 #ifdef SDEBUG
-unsigned long *ovl$hunktable[500];	/* 229 as of 2/3/93 */
+unsigned long *___spl_hunktable[500];	/* 229 as of 2/3/93 */
 #else
-unsigned long *(*ovl$hunktable)[];
-int ovl$hunktablesize;
+unsigned long *(*___spl_hunktable)[];
+int ___spl_hunktablesize;
 #endif
 
 #ifndef NOCLEAN
-BPTR ovl$memchain=0;
+BPTR ___spl_memchain=0;
 #endif
 BPTR ovlfile=0;
 BPTR fh;
@@ -140,23 +146,23 @@ load_code(dummy,dir)
 	fprintf(stderr,"hunk count=%d\n",hc);
 #endif
 #ifndef SDEBUG
-	ovl$hunktable= (long*(*)[])ovl$AllocMem(hc*4);
-	ovl$hunktablesize=hc*4;
+	___spl_hunktable= (long*(*)[])___spl_AllocMem(hc*4);
+	___spl_hunktablesize=hc*4;
 #endif
 #ifdef LDEBUG
-	fprintf(stderr,"table at %08x\n",ovl$hunktable);
+	fprintf(stderr,"table at %08x\n",___spl_hunktable);
 #endif
 	Read(fh,&x,4);	/* F==0 */
 	Read(fh,&x,4);	/* L==size-1 */
 	for(c=0;c<hc;c++){
 		Read(fh,&x,4);
 #ifdef SDEBUG
-		xx=ovl$hunktable[c]=ovl$AllocMem(x*4);
+		yy=___spl_hunktable[c]=___spl_AllocMem(x*4);
 #else
-		xx=(*ovl$hunktable)[c]=ovl$AllocMem(x*4);
+		yy=(*___spl_hunktable)[c]=___spl_AllocMem(x*4);
 #endif
 #ifdef LDEBUG
-		fprintf(stderr,"t[%d]=%08x, len=%08x\n",c,xx,((long*)xx)[-2]);
+		fprintf(stderr,"t[%d]=%08x, len=%08x\n",c,yy,yy[-2]);
 #endif
 	}
 #ifdef LDEBUG
@@ -165,31 +171,31 @@ load_code(dummy,dir)
 	for(c=0,xp=(unsigned long*)1;xp;c++){
 #ifdef LDEBUG
 # ifdef SDEBUG
-		yy=ovl$hunktable[c];
+		yy=___spl_hunktable[c];
 # else
-		yy=(*ovl$hunktable)[c];
+		yy=(*___spl_hunktable)[c];
 # endif
 		fprintf(stderr,"loading hunk %d@%08x len=%08x\n",c,yy,yy[-2]);
 #endif
 #ifdef SDEBUG
-		xp=load_hunk(fh,dummy,ovl$hunktable[c]);
+		xp=load_hunk(fh,dummy,___spl_hunktable[c]);
 #else
-		xp=load_hunk(fh,dummy,(*ovl$hunktable)[c]);
+		xp=load_hunk(fh,dummy,(*___spl_hunktable)[c]);
 #endif
 	}
 	database=c-1;	/* first hunk for use for data on each load */
 	Close(fh);
 #ifdef LDEBUG
 # ifdef SDEBUG
-	fprintf(stderr,"retval=%08x\n",ovl$hunktable[0]);
+	fprintf(stderr,"retval=%08x\n",___spl_hunktable[0]);
 # else
-	fprintf(stderr,"retval=%08x\n",(*ovl$hunktable)[0]);
+	fprintf(stderr,"retval=%08x\n",(*___spl_hunktable)[0]);
 # endif
 #endif
 #ifdef SDEBUG
-	r= (unsigned long) ovl$hunktable[0];		/* BPTR to seglist */
+	r= (unsigned long) ___spl_hunktable[0];		/* BPTR to seglist */
 #else
-	r= (unsigned long) (*ovl$hunktable)[0];	/* BPTR to seglist */
+	r= (unsigned long) (*___spl_hunktable)[0];	/* BPTR to seglist */
 #endif
 	return (BPTR)(r>>2)-1;
 }
@@ -210,9 +216,9 @@ load_data(fl,dir)
 			/* doing it this way we don't need the hunk count */
 	for(c=database,x=(unsigned long*)1;x;c++){
 #ifdef SDEBUG
-		x=load_hunk(fh,fl,ovl$hunktable[c]);
+		x=load_hunk(fh,fl,___spl_hunktable[c]);
 #else
-		x=load_hunk(fh,fl,(*ovl$hunktable)[c]);
+		x=load_hunk(fh,fl,(*___spl_hunktable)[c]);
 #endif
 	}
 #ifdef LDEBUG
@@ -328,9 +334,9 @@ load_hunk(ovlfile,fl,lbase)
 			lbps= ((unsigned short *)lbuf)+1;
 			hnum=(reloc_shift==2)? lbp[-1]: lbps[-1];
 #ifdef SDEBUG
-			base=ovl$hunktable[hnum];
+			base=___spl_hunktable[hnum];
 #else
-			base=(*ovl$hunktable)[hnum];
+			base=(*___spl_hunktable)[hnum];
 #endif
 #ifdef LDEBUG
 			fprintf(stderr,"reloc #%d: hunk #%d@%08x\n",
@@ -392,7 +398,7 @@ load_hunk(ovlfile,fl,lbase)
 	 0	data
  */
 void *
-ovl$AllocMem(len)
+___spl_AllocMem(len)
 	unsigned int len;
 	{
 	unsigned long *adr;
@@ -414,8 +420,8 @@ ovl$AllocMem(len)
 	if(!adr)spanic("allocation failure");
 	adr[0]=length;
 #ifndef NOCLEAN
-	adr[1]=(unsigned long)ovl$memchain;	/* list for freeing at end */
-	ovl$memchain=((long)adr>>2)+1;	/* BPTR to next ptr */
+	adr[1]=(unsigned long)___spl_memchain;	/* list for freeing at end */
+	___spl_memchain=((long)adr>>2)+1;	/* BPTR to next ptr */
 # ifdef LDEBUG
 	fprintf(stderr,"Alloc: adr[0]=%08x adr[1]=%08x\n",adr[0],adr[1]);
 # endif
@@ -430,9 +436,9 @@ s_UnLoadSeg()
 	BPTR p,p1;
 
 # ifdef LDEBUG
-	fprintf(stderr,"starting Free loop: ovlmemchain=%x\n",ovl$memchain);
+	fprintf(stderr,"starting Free loop: ovlmemchain=%x\n",___spl_memchain);
 # endif
-	for(p=ovl$memchain;p;p=p1){
+	for(p=___spl_memchain;p;p=p1){
 		p1=*(BPTR *)BADDR(p);
 # ifdef LDEBUG
 		fprintf(stderr,"Free(%x,%x)\n",BADDR(p-1),
@@ -442,7 +448,7 @@ s_UnLoadSeg()
 	}
 #endif
 #ifndef SDEBUG
-	FreeMem(ovl$hunktable,ovl$hunktablesize);
+	FreeMem(___spl_hunktable,___spl_hunktablesize);
 #endif
 	return;
 }

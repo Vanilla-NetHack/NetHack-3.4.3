@@ -1,15 +1,14 @@
-/*	SCCS Id: @(#)u_init.c	3.1	93/07/07	*/
+/*	SCCS Id: @(#)u_init.c	3.2	95/12/16	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
 
 struct trobj {
-	unsigned short int trotyp;
+	short trotyp;
 	schar trspe;
 	char trclass;
 	Bitfield(trquan,6);
-	Bitfield(trknown,1);
 	Bitfield(trbless,2);
 };
 
@@ -18,9 +17,9 @@ static void FDECL(knows_object,(int));
 static void FDECL(knows_class,(CHAR_P));
 static int FDECL(role_index,(CHAR_P));
 
-#define	UNDEF_TYP	0
-#define	UNDEF_SPE	'\177'
-#define	UNDEF_BLESS	2
+#define UNDEF_TYP	0
+#define UNDEF_SPE	'\177'
+#define UNDEF_BLESS	2
 
 static boolean random_role = FALSE;
 
@@ -37,192 +36,349 @@ const char *roles[] = {	/* also used in options.c and winxxx.c */
 	"Valkyrie", "Wizard", 0
 };
 
-static struct trobj Cave_man[] = {
-#define C_ARROWS	2
-	{ CLUB, 1, WEAPON_CLASS, 1, 1, UNDEF_BLESS },
-	{ BOW, 1, WEAPON_CLASS, 1, 1, UNDEF_BLESS },
-	{ ARROW, 0, WEAPON_CLASS, 25, 1, UNDEF_BLESS },	/* quan is variable */
-	{ LEATHER_ARMOR, 0, ARMOR_CLASS, 1, 1, UNDEF_BLESS },
-	{ 0, 0, 0, 0, 0, 0 }
-};
-
-static struct trobj Barbarian[] = {
-#define B_MAJOR 0	/* two-handed sword or battle-axe  */
-#define B_MINOR 1	/* matched with axe or short sword */
-	{ TWO_HANDED_SWORD, 0, WEAPON_CLASS, 1, 1, UNDEF_BLESS },
-	{ AXE, 0, WEAPON_CLASS, 1, 1, UNDEF_BLESS },
-	{ RING_MAIL, 0, ARMOR_CLASS, 1, 1, UNDEF_BLESS },
-	{ FOOD_RATION, 0, FOOD_CLASS, 1, 1, 0 },
-	{ 0, 0, 0, 0, 0, 0 }
-};
-
-static struct trobj Knight[] = {
-	{ LONG_SWORD, 0, WEAPON_CLASS, 1, 1, UNDEF_BLESS },
-	{ SPEAR, 2, WEAPON_CLASS, 1, 1, UNDEF_BLESS },
-	{ RING_MAIL, 1, ARMOR_CLASS, 1, 1, UNDEF_BLESS },
-	{ HELMET, 0, ARMOR_CLASS, 1, 1, UNDEF_BLESS },
-	{ SMALL_SHIELD, 0, ARMOR_CLASS, 1, 1, UNDEF_BLESS },
-	{ LEATHER_GLOVES, 0, ARMOR_CLASS, 1, 1, UNDEF_BLESS },
-	{ 0, 0, 0, 0, 0, 0 }
-};
-
-static struct trobj Elf[] = {
-#define E_ARROWS	2
-#define E_ARMOR		3
-	{ ELVEN_SHORT_SWORD, 0, WEAPON_CLASS, 1, 1, UNDEF_BLESS },
-	{ ELVEN_BOW, 0, WEAPON_CLASS, 1, 1, UNDEF_BLESS },
-	{ ELVEN_ARROW, 0, WEAPON_CLASS, 25, 1, UNDEF_BLESS },
-	{ UNDEF_TYP, 0, ARMOR_CLASS, 1, 1, UNDEF_BLESS },
-	{ LEMBAS_WAFER, 0, FOOD_CLASS, 2, 1, 0 },
-	{ 0, 0, 0, 0, 0, 0 }
-};
-
-static struct trobj Valkyrie[] = {
-	{ LONG_SWORD, 1, WEAPON_CLASS, 1, 1, UNDEF_BLESS },
-	{ DAGGER, 0, WEAPON_CLASS, 1, 1, UNDEF_BLESS },
-	{ SMALL_SHIELD, 3, ARMOR_CLASS, 1, 1, UNDEF_BLESS },
-	{ FOOD_RATION, 0, FOOD_CLASS, 1, 1, 0 },
-	{ 0, 0, 0, 0, 0, 0 }
-};
-
-static struct trobj Healer[] = {
-	{ SCALPEL, 0, WEAPON_CLASS, 1, 1, UNDEF_BLESS },
-	{ LEATHER_GLOVES, 1, ARMOR_CLASS, 1, 1, UNDEF_BLESS },
-	{ STETHOSCOPE, 0, TOOL_CLASS, 1, 1, 0 },
-	{ POT_HEALING, 0, POTION_CLASS, 4, 1, UNDEF_BLESS },
-	{ POT_EXTRA_HEALING, 0, POTION_CLASS, 4, 1, UNDEF_BLESS },
-	{ WAN_SLEEP, UNDEF_SPE, WAND_CLASS, 1, 1, UNDEF_BLESS },
-	/* always blessed, so it's guaranteed readable */
-	{ SPE_HEALING, 0, SPBOOK_CLASS, 1, 1, 1 },
-	{ SPE_EXTRA_HEALING, 0, SPBOOK_CLASS, 1, 1, 1 },
-	{ APPLE, 0, FOOD_CLASS, 5, 1, 0 },
-	{ 0, 0, 0, 0, 0, 0 }
-};
+/*
+ *	Initial inventory for the various roles.
+ */
 
 static struct trobj Archeologist[] = {
 	/* if adventure has a name...  idea from tan@uvm-gen */
-	{ BULLWHIP, 2, WEAPON_CLASS, 1, 1, UNDEF_BLESS },
-	{ LEATHER_JACKET, 0, ARMOR_CLASS, 1, 1, UNDEF_BLESS },
-	{ FEDORA, 0, ARMOR_CLASS, 1, 1, UNDEF_BLESS },
-	{ FOOD_RATION, 0, FOOD_CLASS, 3, 1, 0 },
-	{ PICK_AXE, UNDEF_SPE, TOOL_CLASS, 1, 1, UNDEF_BLESS },
-	{ TINNING_KIT, 0, TOOL_CLASS, 1, 1, UNDEF_BLESS },
-	{ SACK, 0, TOOL_CLASS, 1, 0, 0 },
-	{ 0, 0, 0, 0, 0, 0 }
+	{ BULLWHIP, 2, WEAPON_CLASS, 1, UNDEF_BLESS },
+	{ LEATHER_JACKET, 0, ARMOR_CLASS, 1, UNDEF_BLESS },
+	{ FEDORA, 0, ARMOR_CLASS, 1, UNDEF_BLESS },
+	{ FOOD_RATION, 0, FOOD_CLASS, 3, 0 },
+	{ PICK_AXE, UNDEF_SPE, TOOL_CLASS, 1, UNDEF_BLESS },
+	{ TINNING_KIT, 0, TOOL_CLASS, 1, UNDEF_BLESS },
+	{ SACK, 0, TOOL_CLASS, 1, 0 },
+	{ 0, 0, 0, 0, 0 }
 };
-
-static struct trobj Tinopener[] = {
-	{ TIN_OPENER, 0, TOOL_CLASS, 1, 1, 0 },
-	{ 0, 0, 0, 0, 0, 0 }
+static struct trobj Barbarian[] = {
+#define B_MAJOR	0	/* two-handed sword or battle-axe  */
+#define B_MINOR	1	/* matched with axe or short sword */
+	{ TWO_HANDED_SWORD, 0, WEAPON_CLASS, 1, UNDEF_BLESS },
+	{ AXE, 0, WEAPON_CLASS, 1, UNDEF_BLESS },
+	{ RING_MAIL, 0, ARMOR_CLASS, 1, UNDEF_BLESS },
+	{ FOOD_RATION, 0, FOOD_CLASS, 1, 0 },
+	{ 0, 0, 0, 0, 0 }
 };
-
-static struct trobj Magicmarker[] = {
-	{ MAGIC_MARKER, UNDEF_SPE, TOOL_CLASS, 1, 1, 0 },
-	{ 0, 0, 0, 0, 0, 0 }
+static struct trobj Cave_man[] = {
+#define C_ARROWS	2
+	{ CLUB, 1, WEAPON_CLASS, 1, UNDEF_BLESS },
+	{ BOW, 1, WEAPON_CLASS, 1, UNDEF_BLESS },
+	{ ARROW, 0, WEAPON_CLASS, 25, UNDEF_BLESS },	/* quan is variable */
+	{ LEATHER_ARMOR, 0, ARMOR_CLASS, 1, UNDEF_BLESS },
+	{ 0, 0, 0, 0, 0 }
 };
-
-static struct trobj Lamp[] = {
-	{ OIL_LAMP, 1, TOOL_CLASS, 1, 1, 0 },
-	{ 0, 0, 0, 0, 0, 0 }
+static struct trobj Elf[] = {
+#define E_ARROWS	2
+#define E_ARMOR		3
+	{ ELVEN_SHORT_SWORD, 0, WEAPON_CLASS, 1, UNDEF_BLESS },
+	{ ELVEN_BOW, 0, WEAPON_CLASS, 1, UNDEF_BLESS },
+	{ ELVEN_ARROW, 0, WEAPON_CLASS, 25, UNDEF_BLESS },
+	{ UNDEF_TYP, 0, ARMOR_CLASS, 1, UNDEF_BLESS },
+	{ LEMBAS_WAFER, 0, FOOD_CLASS, 2, 0 },
+	{ 0, 0, 0, 0, 0 }
 };
-
-#ifdef TOURIST
-# ifdef WALKIES
-static struct trobj Leash[] = {
-	{ LEASH, 0, TOOL_CLASS, 1, 1, 0 },
-	{ 0, 0, 0, 0, 0, 0 }
+static struct trobj Healer[] = {
+	{ SCALPEL, 0, WEAPON_CLASS, 1, UNDEF_BLESS },
+	{ LEATHER_GLOVES, 1, ARMOR_CLASS, 1, UNDEF_BLESS },
+	{ STETHOSCOPE, 0, TOOL_CLASS, 1, 0 },
+	{ POT_HEALING, 0, POTION_CLASS, 4, UNDEF_BLESS },
+	{ POT_EXTRA_HEALING, 0, POTION_CLASS, 4, UNDEF_BLESS },
+	{ WAN_SLEEP, UNDEF_SPE, WAND_CLASS, 1, UNDEF_BLESS },
+	/* always blessed, so it's guaranteed readable */
+	{ SPE_HEALING, 0, SPBOOK_CLASS, 1, 1 },
+	{ SPE_EXTRA_HEALING, 0, SPBOOK_CLASS, 1, 1 },
+	{ APPLE, 0, FOOD_CLASS, 5, 0 },
+	{ 0, 0, 0, 0, 0 }
 };
-# endif
-
-static struct trobj Towel[] = {
-	{ TOWEL, 0, TOOL_CLASS, 1, 1, 0 },
-	{ 0, 0, 0, 0, 0, 0 }
+static struct trobj Knight[] = {
+	{ LONG_SWORD, 0, WEAPON_CLASS, 1, UNDEF_BLESS },
+	{ SPEAR, 2, WEAPON_CLASS, 1, UNDEF_BLESS },
+	{ RING_MAIL, 1, ARMOR_CLASS, 1, UNDEF_BLESS },
+	{ HELMET, 0, ARMOR_CLASS, 1, UNDEF_BLESS },
+	{ SMALL_SHIELD, 0, ARMOR_CLASS, 1, UNDEF_BLESS },
+	{ LEATHER_GLOVES, 0, ARMOR_CLASS, 1, UNDEF_BLESS },
+	{ 0, 0, 0, 0, 0 }
 };
-#endif
-
-#ifdef EXPLORE_MODE
-static struct trobj Wishing[] = {
-	{ WAN_WISHING, 3, WAND_CLASS, 1, 1, 0 },
-	{ 0, 0, 0, 0, 0, 0 }
+static struct trobj Priest[] = {
+	{ MACE, 1, WEAPON_CLASS, 1, 1 },
+	{ CHAIN_MAIL, 0, ARMOR_CLASS, 1, UNDEF_BLESS },
+	{ SMALL_SHIELD, 0, ARMOR_CLASS, 1, UNDEF_BLESS },
+	{ POT_WATER, 0, POTION_CLASS, 4, 1 },	/* holy water */
+	{ CLOVE_OF_GARLIC, 0, FOOD_CLASS, 1, 0 },
+	{ SPRIG_OF_WOLFSBANE, 0, FOOD_CLASS, 1, 0 },
+	{ UNDEF_TYP, UNDEF_SPE, SPBOOK_CLASS, 2, UNDEF_BLESS },
+	{ 0, 0, 0, 0, 0 }
 };
-#endif
-
-static struct trobj Instrument[] = {
-	{ WOODEN_FLUTE, 0, TOOL_CLASS, 1, 1, 0 },
-	{ 0, 0, 0, 0, 0, 0 }
-};
-
-static struct trobj Blindfold[] = {
-	{ BLINDFOLD, 0, TOOL_CLASS, 1, 1, 0 },
-	{ 0, 0, 0, 0, 0, 0 }
-};
-
-#ifdef TOURIST
-static struct trobj Tourist[] = {
-#define	T_DARTS		0
-	{ DART, 2, WEAPON_CLASS, 25, 1, UNDEF_BLESS },	/* quan is variable */
-	{ UNDEF_TYP, UNDEF_SPE, FOOD_CLASS, 10, 1, 0 },
-	{ POT_EXTRA_HEALING, 0, POTION_CLASS, 2, 1, UNDEF_BLESS },
-	{ SCR_MAGIC_MAPPING, 0, SCROLL_CLASS, 4, 1, UNDEF_BLESS },
-	{ HAWAIIAN_SHIRT, 0, ARMOR_CLASS, 1, 1, UNDEF_BLESS },
-	{ EXPENSIVE_CAMERA, 0, TOOL_CLASS, 1, 1, 0 },
-	{ CREDIT_CARD, 0, TOOL_CLASS, 1, 1, 0 },
-	{ 0, 0, 0, 0, 0, 0 }
-};
-#endif
-
 static struct trobj Rogue[] = {
 #define R_DAGGERS	1
-	{ SHORT_SWORD, 0, WEAPON_CLASS, 1, 1, UNDEF_BLESS },
-	{ DAGGER, 0, WEAPON_CLASS, 10, 1, 0 },	/* quan is variable */
-	{ LEATHER_ARMOR, 1, ARMOR_CLASS, 1, 1, UNDEF_BLESS },
-	{ POT_SICKNESS, 0, POTION_CLASS, 1, 1, 0 },
-	{ LOCK_PICK, 9, TOOL_CLASS, 1, 1, 0 },
-	{ SACK, 0, TOOL_CLASS, 1, 0, 0 },
-	{ 0, 0, 0, 0, 0, 0 }
+	{ SHORT_SWORD, 0, WEAPON_CLASS, 1, UNDEF_BLESS },
+	{ DAGGER, 0, WEAPON_CLASS, 10, 0 },	/* quan is variable */
+	{ LEATHER_ARMOR, 1, ARMOR_CLASS, 1, UNDEF_BLESS },
+	{ POT_SICKNESS, 0, POTION_CLASS, 1, 0 },
+	{ LOCK_PICK, 9, TOOL_CLASS, 1, 0 },
+	{ SACK, 0, TOOL_CLASS, 1, 0 },
+	{ 0, 0, 0, 0, 0 }
 };
-
+static struct trobj Samurai[] = {
+#define S_ARROWS	3
+	{ KATANA, 0, WEAPON_CLASS, 1, UNDEF_BLESS },
+	{ SHORT_SWORD, 0, WEAPON_CLASS, 1, UNDEF_BLESS }, /* wakizashi */
+	{ YUMI, 0, WEAPON_CLASS, 1, UNDEF_BLESS },
+	{ YA, 0, WEAPON_CLASS, 25, UNDEF_BLESS }, /* variable quan */
+	{ SPLINT_MAIL, 0, ARMOR_CLASS, 1, UNDEF_BLESS },
+	{ FORTUNE_COOKIE, 0, FOOD_CLASS, 3, 0 },
+	{ 0, 0, 0, 0, 0 }
+};
+#ifdef TOURIST
+static struct trobj Tourist[] = {
+#define T_DARTS		0
+	{ DART, 2, WEAPON_CLASS, 25, UNDEF_BLESS },	/* quan is variable */
+	{ UNDEF_TYP, UNDEF_SPE, FOOD_CLASS, 10, 0 },
+	{ POT_EXTRA_HEALING, 0, POTION_CLASS, 2, UNDEF_BLESS },
+	{ SCR_MAGIC_MAPPING, 0, SCROLL_CLASS, 4, UNDEF_BLESS },
+	{ HAWAIIAN_SHIRT, 0, ARMOR_CLASS, 1, UNDEF_BLESS },
+	{ EXPENSIVE_CAMERA, 0, TOOL_CLASS, 1, 0 },
+	{ CREDIT_CARD, 0, TOOL_CLASS, 1, 0 },
+	{ 0, 0, 0, 0, 0 }
+};
+#endif
+static struct trobj Valkyrie[] = {
+	{ LONG_SWORD, 1, WEAPON_CLASS, 1, UNDEF_BLESS },
+	{ DAGGER, 0, WEAPON_CLASS, 1, UNDEF_BLESS },
+	{ SMALL_SHIELD, 3, ARMOR_CLASS, 1, UNDEF_BLESS },
+	{ FOOD_RATION, 0, FOOD_CLASS, 1, 0 },
+	{ 0, 0, 0, 0, 0 }
+};
 static struct trobj Wizard[] = {
 #define W_MULTSTART	2
 #define W_MULTEND	6
-	{ ATHAME, 1, WEAPON_CLASS, 1, 1, 1 },	/* for dealing with ghosts */
-	{ CLOAK_OF_MAGIC_RESISTANCE, 0, ARMOR_CLASS, 1, 1, UNDEF_BLESS },
-	{ UNDEF_TYP, UNDEF_SPE, WAND_CLASS, 1, 1, UNDEF_BLESS },
-	{ UNDEF_TYP, UNDEF_SPE, RING_CLASS, 2, 1, UNDEF_BLESS },
-	{ UNDEF_TYP, UNDEF_SPE, POTION_CLASS, 3, 1, UNDEF_BLESS },
-	{ UNDEF_TYP, UNDEF_SPE, SCROLL_CLASS, 3, 1, UNDEF_BLESS },
-	{ UNDEF_TYP, UNDEF_SPE, SPBOOK_CLASS, 1, 1, UNDEF_BLESS },
-	{ 0, 0, 0, 0, 0, 0 }
+	{ ATHAME, 1, WEAPON_CLASS, 1, 1 },	/* for dealing with ghosts */
+	{ CLOAK_OF_MAGIC_RESISTANCE, 0, ARMOR_CLASS, 1, UNDEF_BLESS },
+	{ UNDEF_TYP, UNDEF_SPE, WAND_CLASS, 1, UNDEF_BLESS },
+	{ UNDEF_TYP, UNDEF_SPE, RING_CLASS, 2, UNDEF_BLESS },
+	{ UNDEF_TYP, UNDEF_SPE, POTION_CLASS, 3, UNDEF_BLESS },
+	{ UNDEF_TYP, UNDEF_SPE, SCROLL_CLASS, 3, UNDEF_BLESS },
+	{ UNDEF_TYP, UNDEF_SPE, SPBOOK_CLASS, 1, UNDEF_BLESS },
+	{ 0, 0, 0, 0, 0 }
 };
 
-static struct trobj Samurai[] = {
-#define S_ARROWS	3
-	{ KATANA, 0, WEAPON_CLASS, 1, 1, UNDEF_BLESS },
-	{ SHORT_SWORD, 0, WEAPON_CLASS, 1, 1, UNDEF_BLESS }, /* wakizashi */
-	{ YUMI, 0, WEAPON_CLASS, 1, 1, UNDEF_BLESS },
-	{ YA, 0, WEAPON_CLASS, 25, 1, UNDEF_BLESS }, /* variable quan */
-	{ SPLINT_MAIL, 0, ARMOR_CLASS, 1, 1, UNDEF_BLESS },
-	{ FORTUNE_COOKIE, 0, FOOD_CLASS, 3, 1, 0 },
-	{ 0, 0, 0, 0, 0, 0 }
+/*
+ *	Optional extra inventory items.
+ */
+
+static struct trobj Tinopener[] = {
+	{ TIN_OPENER, 0, TOOL_CLASS, 1, 0 },
+	{ 0, 0, 0, 0, 0 }
+};
+static struct trobj Magicmarker[] = {
+	{ MAGIC_MARKER, UNDEF_SPE, TOOL_CLASS, 1, 0 },
+	{ 0, 0, 0, 0, 0 }
+};
+static struct trobj Lamp[] = {
+	{ OIL_LAMP, 1, TOOL_CLASS, 1, 0 },
+	{ 0, 0, 0, 0, 0 }
+};
+static struct trobj Blindfold[] = {
+	{ BLINDFOLD, 0, TOOL_CLASS, 1, 0 },
+	{ 0, 0, 0, 0, 0 }
+};
+static struct trobj Instrument[] = {
+	{ WOODEN_FLUTE, 0, TOOL_CLASS, 1, 0 },
+	{ 0, 0, 0, 0, 0 }
+};
+#ifdef TOURIST
+static struct trobj Leash[] = {
+	{ LEASH, 0, TOOL_CLASS, 1, 0 },
+	{ 0, 0, 0, 0, 0 }
+};
+static struct trobj Towel[] = {
+	{ TOWEL, 0, TOOL_CLASS, 1, 0 },
+	{ 0, 0, 0, 0, 0 }
+};
+#endif	/* TOURIST */
+static struct trobj Wishing[] = {
+	{ WAN_WISHING, 3, WAND_CLASS, 1, 0 },
+	{ 0, 0, 0, 0, 0 }
 };
 
-static struct trobj Priest[] = {
-	{ MACE, 1, WEAPON_CLASS, 1, 1, 1 },
-	{ CHAIN_MAIL, 0, ARMOR_CLASS, 1, 1, UNDEF_BLESS },
-	{ SMALL_SHIELD, 0, ARMOR_CLASS, 1, 1, UNDEF_BLESS },
-	{ POT_WATER, 0, POTION_CLASS, 4, 1, 1 },	/* holy water */
-	{ CLOVE_OF_GARLIC, 0, FOOD_CLASS, 1, 1, 0 },
-	{ SPRIG_OF_WOLFSBANE, 0, FOOD_CLASS, 1, 1, 0 },
-	{ UNDEF_TYP, UNDEF_SPE, SPBOOK_CLASS, 2, 1, UNDEF_BLESS },
-	{ 0, 0, 0, 0, 0, 0 }
+#ifdef WEAPON_SKILLS
+static struct def_skill Skill_A[] = {
+    { P_DAGGER, P_BASIC },		{ P_KNIFE,  P_BASIC },
+    { P_PICK_AXE, P_EXPERT },		{ P_SHORT_SWORD, P_BASIC },
+    { P_SCIMITAR, P_SKILLED },		{ P_SABER, P_EXPERT },
+    { P_CLUB, P_SKILLED },		{ P_QUARTERSTAFF, P_SKILLED },
+    { P_SLING, P_SKILLED },		{ P_DART, P_BASIC },
+    { P_BOOMERANG, P_EXPERT },		{ P_WHIP, P_EXPERT },
+    { P_UNICORN_HORN, P_SKILLED },	{ P_TWO_WEAPON_COMBAT, P_BASIC },
+    { P_BARE_HANDED_COMBAT, 4 },
+    { P_NO_TYPE, 0 }
 };
+
+static struct def_skill Skill_B[] = {
+    { P_DAGGER, P_BASIC },		{ P_AXE, P_EXPERT },
+    { P_PICK_AXE, P_EXPERT },		{ P_SHORT_SWORD, P_BASIC },
+    { P_BROAD_SWORD, P_SKILLED },	{ P_LONG_SWORD, P_SKILLED },
+    { P_TWO_HANDED_SWORD, P_EXPERT },	{ P_SCIMITAR, P_SKILLED },
+    { P_SABER, P_BASIC },		{ P_CLUB, P_SKILLED },
+    { P_MACE, P_SKILLED },		{ P_MORNING_STAR, P_SKILLED },
+    { P_FLAIL, P_BASIC },               { P_HAMMER, P_EXPERT },
+    { P_QUARTERSTAFF, P_BASIC },	{ P_SPEAR, P_SKILLED },
+    { P_TRIDENT, P_SKILLED },		{ P_BOW, P_BASIC },
+    { P_TWO_WEAPON_COMBAT, P_BASIC },	{ P_BARE_HANDED_COMBAT, 6 },
+    { P_NO_TYPE, 0 }
+};
+
+static struct def_skill Skill_C[] = {
+    { P_DAGGER, P_BASIC },		{ P_KNIFE,  P_SKILLED },
+    { P_AXE, P_SKILLED },		{ P_PICK_AXE, P_BASIC },
+    { P_CLUB, P_EXPERT },		{ P_MACE, P_EXPERT },
+    { P_MORNING_STAR, P_BASIC },	{ P_FLAIL, P_SKILLED },
+    { P_HAMMER, P_SKILLED },		{ P_QUARTERSTAFF, P_EXPERT },
+    { P_POLEARMS, P_SKILLED },		{ P_SPEAR, P_EXPERT },
+    { P_JAVELIN, P_SKILLED },		{ P_TRIDENT, P_SKILLED },
+    { P_BOW, P_EXPERT },		{ P_SLING, P_SKILLED },
+    { P_BOOMERANG, P_EXPERT },		{ P_UNICORN_HORN, P_BASIC },
+    { P_BARE_HANDED_COMBAT, 6 },
+    { P_NO_TYPE, 0 }
+};
+
+static struct def_skill Skill_E[] = {
+    { P_DAGGER, P_EXPERT },		{ P_KNIFE, P_SKILLED },
+    { P_SHORT_SWORD, P_EXPERT },	{ P_BROAD_SWORD, P_EXPERT },
+    { P_LONG_SWORD, P_SKILLED },	{ P_TWO_HANDED_SWORD, P_BASIC },
+    { P_SCIMITAR, P_SKILLED },		{ P_SABER, P_SKILLED },
+    { P_SPEAR, P_EXPERT },		{ P_JAVELIN, P_BASIC },
+    { P_BOW, P_EXPERT },		{ P_SLING, P_BASIC },
+    { P_CROSSBOW, P_BASIC },		{ P_SHURIKEN, P_BASIC },
+    { P_TWO_WEAPON_COMBAT, P_EXPERT },	{ P_MARTIAL_ARTS, 2 },
+    { P_NO_TYPE, 0 }
+};
+
+static struct def_skill Skill_H[] = {
+    { P_DAGGER, P_SKILLED },		{ P_KNIFE, P_EXPERT },
+    { P_SHORT_SWORD, P_SKILLED },	{ P_SCIMITAR, P_BASIC },
+    { P_SABER, P_BASIC },		{ P_CLUB, P_SKILLED },
+    { P_MACE, P_BASIC },		{ P_QUARTERSTAFF, P_EXPERT },
+    { P_POLEARMS, P_BASIC },		{ P_SPEAR, P_BASIC },
+    { P_JAVELIN, P_BASIC },		{ P_TRIDENT, P_BASIC },
+    { P_SLING, P_SKILLED },		{ P_DART, P_EXPERT },
+    { P_SHURIKEN, P_SKILLED },		{ P_UNICORN_HORN, P_EXPERT },
+    { P_BARE_HANDED_COMBAT, 2 },
+    { P_NO_TYPE, 0 }
+};
+
+static struct def_skill Skill_K[] = {
+    { P_DAGGER, P_BASIC },		{ P_KNIFE, P_BASIC },
+    { P_AXE, P_SKILLED },		{ P_PICK_AXE, P_BASIC },
+    { P_SHORT_SWORD, P_SKILLED },	{ P_BROAD_SWORD, P_SKILLED },
+    { P_LONG_SWORD, P_EXPERT },	{ P_TWO_HANDED_SWORD, P_SKILLED },
+    { P_SCIMITAR, P_BASIC },		{ P_SABER, P_SKILLED },
+    { P_CLUB, P_BASIC },		{ P_MACE, P_SKILLED },
+    { P_MORNING_STAR, P_SKILLED },	{ P_FLAIL, P_BASIC },
+    { P_HAMMER, P_BASIC },		{ P_POLEARMS, P_SKILLED },
+    { P_SPEAR, P_SKILLED },		{ P_JAVELIN, P_SKILLED },
+    { P_TRIDENT, P_BASIC },		{ P_LANCE, P_EXPERT },
+    { P_BOW, P_BASIC },			{ P_CROSSBOW, P_SKILLED },
+    { P_TWO_WEAPON_COMBAT, P_SKILLED }, { P_BARE_HANDED_COMBAT, 4 },
+    { P_NO_TYPE, 0 }
+};
+
+static struct def_skill Skill_P[] = {
+    { P_CLUB, P_EXPERT },		{ P_MACE, P_EXPERT },
+    { P_MORNING_STAR, P_EXPERT },	{ P_FLAIL, P_EXPERT },
+    { P_HAMMER, P_EXPERT },		{ P_QUARTERSTAFF, P_EXPERT },
+    { P_POLEARMS, P_SKILLED },		{ P_SPEAR, P_SKILLED },
+    { P_JAVELIN, P_SKILLED },		{ P_TRIDENT, P_SKILLED },
+    { P_LANCE, P_BASIC },		{ P_BOW, P_BASIC },
+    { P_SLING, P_BASIC },		{ P_CROSSBOW, P_BASIC },
+    { P_DART, P_BASIC },		{ P_SHURIKEN, P_BASIC },
+    { P_BOOMERANG, P_BASIC },		{ P_UNICORN_HORN, P_SKILLED },
+    { P_NO_TYPE, 0 }
+};
+
+static struct def_skill Skill_R[] = {
+    { P_DAGGER, P_EXPERT },		{ P_KNIFE,  P_EXPERT },
+    { P_SHORT_SWORD, P_EXPERT },	{ P_BROAD_SWORD, P_SKILLED },
+    { P_LONG_SWORD, P_SKILLED },	{ P_TWO_HANDED_SWORD, P_BASIC },
+    { P_SCIMITAR, P_SKILLED },		{ P_SABER, P_SKILLED },
+    { P_CLUB, P_SKILLED },		{ P_MACE, P_SKILLED },
+    { P_MORNING_STAR, P_BASIC },	{ P_FLAIL, P_BASIC },
+    { P_HAMMER, P_BASIC },		{ P_POLEARMS, P_BASIC },
+    { P_SPEAR, P_BASIC },		{ P_CROSSBOW, P_EXPERT },
+    { P_DART, P_EXPERT },		{ P_SHURIKEN, P_SKILLED },
+    { P_TWO_WEAPON_COMBAT, P_EXPERT },	{ P_BARE_HANDED_COMBAT, 2 },
+    { P_NO_TYPE, 0 }
+};
+
+static struct def_skill Skill_S[] = {
+    { P_DAGGER, P_BASIC },		{ P_KNIFE,  P_SKILLED },
+    { P_SHORT_SWORD, P_EXPERT },	{ P_BROAD_SWORD, P_SKILLED },
+    { P_LONG_SWORD, P_EXPERT },		{ P_TWO_HANDED_SWORD, P_EXPERT },
+    { P_SCIMITAR, P_BASIC },		{ P_SABER, P_BASIC },
+    { P_FLAIL, P_SKILLED },		{ P_QUARTERSTAFF, P_BASIC },
+    { P_POLEARMS, P_SKILLED },		{ P_SPEAR, P_BASIC },
+    { P_JAVELIN, P_BASIC },		{ P_LANCE, P_SKILLED },
+    { P_BOW, P_EXPERT },		{ P_SHURIKEN, P_EXPERT },
+    { P_TWO_WEAPON_COMBAT, P_EXPERT },	{ P_MARTIAL_ARTS, 6 },
+    { P_NO_TYPE, 0 }
+};
+
+#ifdef TOURIST
+static struct def_skill Skill_T[] = {
+    { P_DAGGER, P_EXPERT },		{ P_KNIFE,  P_SKILLED },
+    { P_AXE, P_BASIC },			{ P_PICK_AXE, P_BASIC },
+    { P_SHORT_SWORD, P_EXPERT },	{ P_BROAD_SWORD, P_BASIC },
+    { P_LONG_SWORD, P_BASIC },		{ P_TWO_HANDED_SWORD, P_BASIC },
+    { P_SCIMITAR, P_SKILLED },		{ P_SABER, P_SKILLED },
+    { P_MACE, P_BASIC },		{ P_MORNING_STAR, P_BASIC },
+    { P_FLAIL, P_BASIC },		{ P_HAMMER, P_BASIC },
+    { P_QUARTERSTAFF, P_BASIC },	{ P_POLEARMS, P_BASIC },
+    { P_SPEAR, P_BASIC },		{ P_JAVELIN, P_BASIC },
+    { P_TRIDENT, P_BASIC },		{ P_LANCE, P_BASIC },
+    { P_BOW, P_BASIC },			{ P_SLING, P_BASIC },
+    { P_CROSSBOW, P_BASIC },		{ P_DART, P_EXPERT },
+    { P_SHURIKEN, P_BASIC },		{ P_BOOMERANG, P_BASIC },
+    { P_WHIP, P_BASIC },		{ P_UNICORN_HORN, P_SKILLED },
+    { P_TWO_WEAPON_COMBAT, P_SKILLED }, { P_BARE_HANDED_COMBAT, 4 },
+    { P_NO_TYPE, 0 }
+};
+#endif /* TOURIST */
+
+static struct def_skill Skill_V[] = {
+    { P_DAGGER, P_EXPERT },		{ P_AXE, P_EXPERT },
+    { P_PICK_AXE, P_SKILLED },		{ P_SHORT_SWORD, P_SKILLED },
+    { P_BROAD_SWORD, P_SKILLED },	{ P_LONG_SWORD, P_EXPERT },
+    { P_TWO_HANDED_SWORD, P_EXPERT },	{ P_SCIMITAR, P_BASIC },
+    { P_SABER, P_BASIC },		{ P_HAMMER, P_EXPERT },
+    { P_QUARTERSTAFF, P_BASIC },	{ P_POLEARMS, P_SKILLED },
+    { P_SPEAR, P_SKILLED },		{ P_JAVELIN, P_BASIC },
+    { P_TRIDENT, P_BASIC },		{ P_LANCE, P_SKILLED },
+    { P_SLING, P_BASIC },		{ P_TWO_WEAPON_COMBAT, P_SKILLED },
+    { P_BARE_HANDED_COMBAT, 4 },
+    { P_NO_TYPE, 0 }
+};
+
+static struct def_skill Skill_W[] = {
+    { P_DAGGER, P_EXPERT },		{ P_KNIFE,  P_SKILLED },
+    { P_AXE, P_SKILLED },		{ P_SHORT_SWORD, P_BASIC },
+    { P_CLUB, P_SKILLED },		{ P_MACE, P_BASIC },
+    { P_QUARTERSTAFF, P_EXPERT },	{ P_POLEARMS, P_SKILLED },
+    { P_SPEAR, P_BASIC },		{ P_JAVELIN, P_BASIC },
+    { P_TRIDENT, P_BASIC },		{ P_SLING, P_SKILLED },
+    { P_DART, P_EXPERT },		{ P_SHURIKEN, P_BASIC },
+    { P_BARE_HANDED_COMBAT, 2 },
+    { P_NO_TYPE, 0 }
+};
+#endif /* WEAPON_SKILLS */
+
 
 static void
 knows_object(obj)
 register int obj;
 {
 	makeknown(obj);
-	objects[obj].oc_descr_idx = 0;		/* not a "discovery" */
+	objects[obj].oc_pre_discovered = 1;	/* not a "discovery" */
 }
 
 /* Know ordinary (non-magical) objects of a certain class,
@@ -233,7 +389,7 @@ knows_class(sym)
 register char sym;
 {
 	register int ct;
-	for (ct = 1; ct <= NROFOBJECTS; ct++)
+	for (ct = 1; ct < NUM_OBJECTS; ct++)
 		if (objects[ct].oc_class == sym && !objects[ct].oc_magic)
 			knows_object(ct);
 }
@@ -258,8 +414,8 @@ u_init()
 	pc = pl_character[0];
 	if(pc == '\0') {
 	    /* should be unnecessary now */
-	    exit_nhwindows(NULL);
-	    terminate(0);
+	    exit_nhwindows((char *)0);
+	    terminate(EXIT_SUCCESS);
 	}
 	i = role_index(pc);
 	if (random_role) {
@@ -275,9 +431,9 @@ u_init()
 	 * necessary when aborting from a failed restore */
 	(void) memset((genericptr_t)&u, 0, sizeof(u));
 	u.ustuck = (struct monst *)0;
-	u.usick_cause = NULL;
 
 #if 0	/* documentation of more zero values as desirable */
+	u.usick_cause[0] = 0;
 	u.uluck  = u.moreluck = 0;
 # ifdef TOURIST
 	uarmu = 0;
@@ -293,19 +449,19 @@ u_init()
 	u.uevent.uopened_dbridge = 0;
 	u.uevent.udemigod = 0;		/* not a demi-god yet... */
 	u.udg_cnt = 0;
-# ifdef POLYSELF
 	u.mh = u.mhmax = u.mtimedone = 0;
-# endif
 	u.uz.dnum = u.uz0.dnum = 0;
 	u.utotype = 0;
 #endif	/* 0 */
-	u.uz.dlevel = u.uz0.dlevel = 1;
+	u.uz.dlevel = 1;
+	u.uz0.dlevel = 0;
 	u.utolev = u.uz;
 
+	u.role = pl_character[0];
 	u.usym = S_HUMAN;
 	u.umoved = FALSE;
 	u.umortality = 0;
-	u.ugrave_arise = -1;
+	u.ugrave_arise = NON_PM;
 
 	u.ulevel = 0;	/* set up some of the initial attributes */
 	u.uhp = u.uhpmax = newhp();
@@ -313,14 +469,12 @@ u_init()
 	u.ulevel = 1;
 
 	init_uhunger();
-	u.uen = u.uenmax = 1;
+	u.uen = u.uenmax = 2;
 	for (i = 0; i <= MAXSPELL; i++) spl_book[i].sp_id = NO_SPELL;
 	u.ublesscnt = 300;			/* no prayers just yet */
-#ifdef POLYSELF
-	u.umonnum = -1;
-	u.ulycn = -1;
+	u.umonnum = PM_PLAYERMON;
+	u.ulycn = NON_PM;
 	set_uasmon();
-#endif
 
 #ifdef BSD
 	(void) time((long *)&u.ubirthday);
@@ -346,9 +500,9 @@ u_init()
 		else if(!rn2(10)) ini_inv(Magicmarker);
 		knows_class(GEM_CLASS);
 		knows_object(SACK);
-		/* We can't set trknown for it, then it'd be "uncursed"
-		 * sack...
-		 */
+#ifdef WEAPON_SKILLS
+		skill_init(Skill_A);
+#endif /* WEAPON_SKILLS */
 		break;
 	case 'B':
 		u.umonster = PM_BARBARIAN;
@@ -360,11 +514,17 @@ u_init()
 		if(!rn2(6)) ini_inv(Lamp);
 		knows_class(WEAPON_CLASS);
 		knows_class(ARMOR_CLASS);
+#ifdef WEAPON_SKILLS
+		skill_init(Skill_B);
+#endif /* WEAPON_SKILLS */
 		break;
 	case 'C':
-		u.umonster = PM_CAVEMAN;
+		u.umonster = flags.female ? PM_CAVEWOMAN : PM_CAVEMAN;
 		Cave_man[C_ARROWS].trquan = rn1(30, 13);
 		ini_inv(Cave_man);
+#ifdef WEAPON_SKILLS
+		skill_init(Skill_C);
+#endif /* WEAPON_SKILLS */
 		break;
 	case 'E':
 		u.umonster = PM_ELF;
@@ -403,29 +563,43 @@ u_init()
 		knows_object(ELVEN_SHIELD);
 		knows_object(ELVEN_BOOTS);
 		knows_object(ELVEN_CLOAK);
+#ifdef WEAPON_SKILLS
+		skill_init(Skill_E);
+#endif /* WEAPON_SKILLS */
 		break;
 	case 'H':
 		u.umonster = PM_HEALER;
+		u.uen = u.uenmax += rn1(4, 1);
 		u.ugold = u.ugold0 = rn1(1000, 1001);
 		ini_inv(Healer);
 		if(!rn2(25)) ini_inv(Lamp);
+#ifdef WEAPON_SKILLS
+		skill_init(Skill_H);
+#endif /* WEAPON_SKILLS */
 		break;
 	case 'K':
 		u.umonster = PM_KNIGHT;
+		u.uen = u.uenmax += rn1(4, 1);
 		ini_inv(Knight);
 		knows_class(WEAPON_CLASS);
 		knows_class(ARMOR_CLASS);
 		/* give knights chess-like mobility
 		 * -- idea from wooledge@skybridge.scl.cwru.edu */
 		Jumping |= FROMOUTSIDE;
+#ifdef WEAPON_SKILLS
+		skill_init(Skill_K);
+#endif /* WEAPON_SKILLS */
 		break;
 	case 'P':
-		u.umonster = PM_PRIEST;
-		u.uen = u.uenmax += rn2(4);
+		u.umonster = flags.female ? PM_PRIESTESS : PM_PRIEST;
+		u.uen = u.uenmax += rn1(3, 4);
 		ini_inv(Priest);
 		if(!rn2(10)) ini_inv(Magicmarker);
 		else if(!rn2(10)) ini_inv(Lamp);
 		knows_object(POT_WATER);
+#ifdef WEAPON_SKILLS
+		skill_init(Skill_P);
+#endif /* WEAPON_SKILLS */
 		break;
 	case 'R':
 		u.umonster = PM_ROGUE;
@@ -434,6 +608,9 @@ u_init()
 		ini_inv(Rogue);
 		if(!rn2(5)) ini_inv(Blindfold);
 		knows_object(SACK);
+#ifdef WEAPON_SKILLS
+		skill_init(Skill_R);
+#endif /* WEAPON_SKILLS */
 		break;
 	case 'S':
 		u.umonster = PM_SAMURAI;
@@ -442,6 +619,9 @@ u_init()
 		if(!rn2(5)) ini_inv(Blindfold);
 		knows_class(WEAPON_CLASS);
 		knows_class(ARMOR_CLASS);
+#ifdef WEAPON_SKILLS
+		skill_init(Skill_S);
+#endif /* WEAPON_SKILLS */
 		break;
 #ifdef TOURIST
 	case 'T':
@@ -450,11 +630,12 @@ u_init()
 		u.ugold = u.ugold0 = rnd(1000);
 		ini_inv(Tourist);
 		if(!rn2(25)) ini_inv(Tinopener);
-#ifdef WALKIES
 		else if(!rn2(25)) ini_inv(Leash);
-#endif
 		else if(!rn2(25)) ini_inv(Towel);
 		else if(!rn2(25)) ini_inv(Magicmarker);
+#ifdef WEAPON_SKILLS
+		skill_init(Skill_T);
+#endif /* WEAPON_SKILLS */
 		break;
 #endif
 	case 'V':
@@ -464,22 +645,27 @@ u_init()
 		if(!rn2(6)) ini_inv(Lamp);
 		knows_class(WEAPON_CLASS);
 		knows_class(ARMOR_CLASS);
+#ifdef WEAPON_SKILLS
+		skill_init(Skill_V);
+#endif /* WEAPON_SKILLS */
 		break;
 	case 'W':
 		u.umonster = PM_WIZARD;
-		u.uen = u.uenmax += rn2(4);
+		u.uen = u.uenmax += rn1(3, 4);
 		ini_inv(Wizard);
 		if(!rn2(5)) ini_inv(Magicmarker);
 		if(!rn2(5)) ini_inv(Blindfold);
+#ifdef WEAPON_SKILLS
+		skill_init(Skill_W);
+#endif /* WEAPON_SKILLS */
 		break;
 
 	default:	/* impossible */
 		break;
 	}
-#ifdef EXPLORE_MODE
 	if (discover)
 		ini_inv(Wishing);
-#endif
+
 	u.ugold0 += hidden_gold();	/* in case sack has gold in it */
 
 	find_ac();			/* get initial ac value */
@@ -498,6 +684,8 @@ u_init()
 	/* make sure you can carry all you have - especially for Tourists */
 	while(inv_weight() > 0 && ACURR(A_STR) < 118)
 		(void) adjattrib(A_STR, 1, TRUE);
+	/* undo exercise for wisdom due to `makeknown' of prediscovered items */
+	AEXE(A_WIS) = 0;
 
 	u.ualignbase[0] = u.ualignbase[1] = u.ualign.type;
 }
@@ -524,17 +712,13 @@ register struct trobj *trop;
 		 * weapon.)
 		 */
 		if (undefined) {
-#ifdef POLYSELF
-			static NEARDATA unsigned nocreate = STRANGE_OBJECT;
-			static NEARDATA unsigned nocreate2 = STRANGE_OBJECT;
-#endif
-			static NEARDATA unsigned nocreate3 = STRANGE_OBJECT;
+			static NEARDATA short nocreate = STRANGE_OBJECT;
+			static NEARDATA short nocreate2 = STRANGE_OBJECT;
+			static NEARDATA short nocreate3 = STRANGE_OBJECT;
 
 			while(obj->otyp == WAN_WISHING
-#ifdef POLYSELF
 				|| obj->otyp == nocreate
 				|| obj->otyp == nocreate2
-#endif
 				|| obj->otyp == nocreate3
 #ifdef ELBERETH
 				|| obj->otyp == RIN_LEVITATION
@@ -565,7 +749,6 @@ register struct trobj *trop;
 			 * particular symbol is to be prohibited.  (For more
 			 * objects, we need more nocreate variables...)
 			 */
-#ifdef POLYSELF
 			switch (obj->otyp) {
 			    case WAN_POLYMORPH:
 			    case RIN_POLYMORPH:
@@ -575,36 +758,19 @@ register struct trobj *trop;
 				nocreate = RIN_POLYMORPH;
 				nocreate2 = SPE_POLYMORPH;
 			}
-#endif /* POLYSELF */
-			/* Don't have 2 of the same ring */
-			if (obj->oclass == RING_CLASS)
+			/* Don't have 2 of the same ring or spellbook */
+			if (obj->oclass == RING_CLASS ||
+			    obj->oclass == SPBOOK_CLASS)
 				nocreate3 = obj->otyp;
 		}
 
-		obj->bknown = trop->trknown;
-		if(objects[obj->otyp].oc_uses_known) obj->known = trop->trknown;
-		/* not obj->dknown = 1; - let him look at it at least once */
+		obj->dknown = obj->bknown = obj->rknown = 1;
+		if (objects[obj->otyp].oc_uses_known) obj->known = 1;
 		obj->cursed = 0;
 		if(obj->oclass == WEAPON_CLASS || obj->oclass == TOOL_CLASS) {
 			obj->quan = (long) trop->trquan;
 			trop->trquan = 1;
 		}
-		if(obj->oclass == FOOD_CLASS && undefined) {
-			obj->known = 1;
-			/* needed for tins and eggs; harmless otherwise */
-			obj->bknown = 1;
-		}
-		/*
-		 * The below lines not needed because they don't correspond
-		 * to any actual inventory; nobody gets random tools.
-		else if(obj->oclass == TOOL_CLASS && undefined) {
-			obj->bknown = (obj->otyp != BAG_OF_TRICKS
-				&& obj->otyp != SACK
-				&& obj->otyp != CHEST
-				&& obj->otyp != LARGE_BOX
-				&& obj->otyp != ICE_BOX);
-		}
-		*/
 		if(trop->trspe != UNDEF_SPE)
 			obj->spe = trop->trspe;
 		if(trop->trbless != UNDEF_BLESS)
@@ -617,6 +783,8 @@ register struct trobj *trop;
 		/* Make the type known if necessary */
 		if (OBJ_DESCR(objects[obj->otyp]) && obj->known)
 			makeknown(obj->otyp);
+		if (obj->otyp == OIL_LAMP)
+			knows_object(POT_OIL);
 
 		if(obj->oclass == ARMOR_CLASS){
 			if (is_shield(obj) && !uarms)
@@ -626,7 +794,7 @@ register struct trobj *trop;
 			else if (is_gloves(obj) && !uarmg)
 				setworn(obj, W_ARMG);
 #ifdef TOURIST
-			else if (obj->otyp == HAWAIIAN_SHIRT && !uarmu)
+			else if (is_shirt(obj) && !uarmu)
 				setworn(obj, W_ARMU);
 #endif
 			else if (is_cloak(obj) && !uarmc)

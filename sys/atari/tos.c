@@ -220,7 +220,7 @@ char *str;
 	char *ptr;
 	char drive;
 
-	if ((ptr = index(str, ':')) != NULL) {
+	if ((ptr = index(str, ':')) != (char *)0) {
 		drive = toupper(*(ptr - 1));
 		(void)Dsetdrv(drive - 'A');
 	}
@@ -341,7 +341,7 @@ dosuspend() {
 #   ifdef MINT
 	}
 	else if(signal(SIGTSTP, SIG_IGN) == SIG_DFL) {
-		suspend_nhwindows(NULL);
+		suspend_nhwindows((char *)0);
 		(void) signal(SIGTSTP, SIG_DFL);
 		(void) kill(0, SIGTSTP);
 		get_scr_size();

@@ -1,6 +1,7 @@
-/*	SCCS Id: @(#)vision.c	3.1	93/03/28	*/
+/*	SCCS Id: @(#)vision.c	3.2	96/02/14	*/
 /* Copyright (c) Dean Luick, with acknowledgements to Dave Cohrs, 1990.	*/
 /* NetHack may be freely redistributed.  See license for details.	*/
+
 #include "hack.h"
 
 /* Circles ==================================================================*/
@@ -19,9 +20,9 @@
  *				....X	+4
  *				....X	+4
  *				@...X   +4
- *  
+ *
  */
-static char circle_data[] = {
+char circle_data[] = {
 /*  0*/	 1, 1,
 /*  2*/	 2, 2, 1,
 /*  5*/	 3, 3, 2, 1,
@@ -44,7 +45,7 @@ static char circle_data[] = {
  * These are the starting indexes into the circle_data[] array for a
  * circle of a given radius.
  */
-static char circle_start[] = {
+char circle_start[] = {
 /*  */	  0,	/* circles of radius zero are not used */
 /* 1*/    0,
 /* 2*/	  2,
@@ -106,7 +107,7 @@ static void FDECL(rogue_vision, (char **,char *,char *));
 
 /* Macro definitions that I can't find anywhere. */
 #define sign(z) ((z) < 0 ? -1 : ((z) ? 1 : 0 ))
-#define abs(z)  ((z) < 0 ? -(z) : (z))
+#define v_abs(z)  ((z) < 0 ? -(z) : (z))	/* don't use abs -- it may exist */
 
 /*
  * vision_init()
@@ -313,7 +314,7 @@ rogue_vision(next, rmin, rmax)
 	    for (zx = start; zx <= stop; zx++) {
 		if (rooms[rnum].rlit) {
 		    next[zy][zx] = COULD_SEE | IN_SIGHT;
-		    levl[zx][zy].seen = 1;	/* see the walls */
+		    levl[zx][zy].seenv = SVALL;	/* see the walls */
 		} else
 		    next[zy][zx] = COULD_SEE;
 	    }
@@ -337,7 +338,7 @@ rogue_vision(next, rmin, rmax)
 	     * Yuck, update adjacent non-diagonal positions when in a doorway.
 	     * We need to do this to catch the case when we first step into
 	     * a room.  The room's walls were not seen from the outside, but
-	     * now are seen (the seen bit is set just above).  However, the
+	     * now are seen (the seen bits are set just above).  However, the
 	     * positions are not updated because they were already in sight.
 	     * So, we have to do it here.
 	     */
@@ -346,6 +347,100 @@ rogue_vision(next, rmin, rmax)
     }
 }
 #endif /* REINCARNATION */
+
+/*#define EXTEND_SPINE		/* possibly better looking wall-angle */
+
+#ifdef EXTEND_SPINE
+
+static int FDECL(new_angle, (struct rm *, unsigned char *, int, int));
+/*
+ * new_angle()
+ *
+ * Return the new angle seen by the hero for this location.  The angle
+ * bit is given in the value pointed at by sv.
+ *
+ * For T walls and crosswall, just setting the angle bit, even though
+ * it is technically correct, doesn't look good.  If we can see the
+ * next position beyond the current one and it is a wall that we can
+ * see, then we want to extend a spine of the T to connect with the wall
+ * that is beyond.  Example:
+ *
+ *	 Correct, but ugly			   Extend T spine
+ *
+ *		| ...					| ...
+ *		| ...	<-- wall beyond & floor -->	| ...
+ *		| ...					| ...
+ * Unseen   -->   ...					| ...
+ * spine	+-...	<-- trwall & doorway	-->	+-...
+ *		| ...					| ...
+ *
+ *
+ *		   @	<-- hero		-->	   @
+ *
+ *
+ * We fake the above check by only checking if the horizontal &
+ * vertical positions adjacent to the crosswall and T wall are
+ * unblocked.  Then, _in general_ we can see beyond.  Generally,
+ * this is good enough.
+ *
+ *	+ When this function is called we don't have all of the seen
+ *	  information (we're doing a top down scan in vision_recalc).
+ *	  We would need to scan once to set all IN_SIGHT and COULD_SEE
+ *	  bits, then again to correctly set the seenv bits.
+ *	+ I'm trying to make this as cheap as possible.  The display &
+ *	  vision eat up too much CPU time.
+ *	
+ *
+ * Note:  Even as I write this, I'm still not convinced.  There are too
+ *	  many exceptions.  I may have to bite the bullet and do more
+ *	  checks.	- Dean 2/11/93
+ */
+static int
+new_angle(lev, sv, row, col)
+    struct rm *lev;
+    unsigned char *sv;
+    int row, col;
+{
+    register int res = *sv;
+
+    /*
+     * Do extra checks for crosswalls and T walls if we see them from
+     * an angle.
+     */
+    if (lev->typ >= CROSSWALL && lev->typ <= TRWALL) {
+	switch (res) {
+	    case SV0:
+		if (col > 0	  && viz_clear[row][col-1]) res |= SV7;
+		if (row > 0	  && viz_clear[row-1][col]) res |= SV1;
+		break;
+	    case SV2:
+		if (row > 0	  && viz_clear[row-1][col]) res |= SV1;
+		if (col < COLNO-1 && viz_clear[row][col+1]) res |= SV3;
+		break;
+	    case SV4:
+		if (col < COLNO-1 && viz_clear[row][col+1]) res |= SV3;
+		if (row < ROWNO-1 && viz_clear[row+1][col]) res |= SV5;
+		break;
+	    case SV6:
+		if (row < ROWNO-1 && viz_clear[row+1][col]) res |= SV5;
+		if (col > 0	  && viz_clear[row][col-1]) res |= SV7;
+		break;
+	}
+    }
+    return res;
+}
+#else
+/*
+ * new_angle()
+ *
+ * Return the new angle seen by the hero for this location.  The angle
+ * bit is given in the value pointed at by sv.
+ *
+ * The other parameters are not used.
+ */
+#define new_angle(lev, sv, row, col) (*sv)
+
+#endif
 
 
 /*
@@ -409,8 +504,13 @@ vision_recalc(control)
     register int col;	/* inner loop counter */
     register struct rm *lev;	/* pointer to current pos */
     struct rm *flev;	/* pointer to position in "front" of current pos */
+    extern unsigned char seenv_matrix[3][3];	/* from display.c */
+    static unsigned char colbump[COLNO+1];	/* cols to bump sv */
+    unsigned char *sv;				/* ptr to seen angle bits */
+    int oldseenv;				/* previous seenv value */
 
     vision_full_recalc = 0;			/* reset flag */
+    if (in_mklev) return;
 
 #ifdef GCC_WARN
     row = 0;
@@ -437,7 +537,7 @@ vision_recalc(control)
 	 *	+ Monsters to see with the "new" vision, even on the rogue
 	 *	  level.
 	 *
-	 *	+ Monsters to see you even when you're in a pit.
+	 *	+ Monsters can see you even when you're in a pit.
 	 */
 	view_from(u.uy, u.ux, next_array, next_rmin, next_rmax,
 					0,(void(*)())0,(genericptr_t)0);
@@ -515,14 +615,14 @@ vision_recalc(control)
 
 		for (row = u.uy-u.xray_range; row <= u.uy+u.xray_range; row++) {
 		    if (row < 0) continue;	if (row >= ROWNO) break;
-		    dy = abs(u.uy-row);		next_row = next_array[row];
+		    dy = v_abs(u.uy-row);	next_row = next_array[row];
 
 		    start = max(      0, u.ux - ranges[dy]);
 		    stop  = min(COLNO-1, u.ux + ranges[dy]);
 
 		    for (col = start; col <= stop; col++) {
 			next_row[col] |= IN_SIGHT;
-			levl[col][row].seen = 1;	/* we see walls */
+			levl[col][row].seenv = SVALL;	/* see all! */
 		    }
 
 		    next_rmin[row] = min(start, next_rmin[row]);
@@ -531,7 +631,7 @@ vision_recalc(control)
 
 	    } else {	/* range is 0 */
 		next_array[u.uy][u.ux] |= IN_SIGHT;
-		levl[u.ux][u.uy].seen = 1;
+		levl[u.ux][u.uy].seenv = SVALL;
 		next_rmin[u.uy] = min(u.ux, next_rmin[u.uy]);
 		next_rmax[u.uy] = max(u.ux, next_rmax[u.uy]);
 	    }
@@ -540,7 +640,7 @@ vision_recalc(control)
 	if (has_night_vision && u.xray_range < u.nv_range) {
 	    if (!u.nv_range) {	/* range is 0 */
 		next_array[u.uy][u.ux] |= IN_SIGHT;
-		levl[u.ux][u.uy].seen = 1;
+		levl[u.ux][u.uy].seenv = SVALL;
 		next_rmin[u.uy] = min(u.ux, next_rmin[u.uy]);
 		next_rmax[u.uy] = max(u.ux, next_rmax[u.uy]);
 	    } else if (u.nv_range > 0) {
@@ -548,7 +648,7 @@ vision_recalc(control)
 
 		for (row = u.uy-u.nv_range; row <= u.uy+u.nv_range; row++) {
 		    if (row < 0) continue;	if (row >= ROWNO) break;
-		    dy = abs(u.uy-row);		next_row = next_array[row];
+		    dy = v_abs(u.uy-row);	next_row = next_array[row];
 
 		    start = max(      0, u.ux - ranges[dy]);
 		    stop  = min(COLNO-1, u.ux + ranges[dy]);
@@ -563,6 +663,9 @@ vision_recalc(control)
 	}
     }
 
+    /* Set the correct bits for all light sources. */
+    do_light_sources(next_array);
+
 
     /*
      * Make the viz_array the new array so that cansee() will work correctly.
@@ -576,24 +679,17 @@ vision_recalc(control)
      *	    + Set the IN_SIGHT bit for places that we could see and are lit.
      *	    + Reset changed places.
      *
-     * There are two things that make deciding what the hero can see
+     * There is one thing that make deciding what the hero can see
      * difficult:
      *
-     *  1.  Walls.  Walls are only seen as walls from the inside of a room.
-     *	    On the outside they look like stone.  The "seen" bit in the rm
-     *	    structure is used in the display system to decide what to
-     *	    display, but it is here where we decide to set the seen bit.
-     *	    In this case the wall must already be in sight (either by night
-     *	    vision or could be seen and lit) *and* we must see the wall
-     *	    from across a room-typ square.
-     *
-     *  2.  Directional lighting.  Items that block light create problems.
+     *  1.  Directional lighting.  Items that block light create problems.
      *      The worst offenders are doors.  Suppose a door to a lit room
      *      is closed.  It is lit on one side, but not on the other.  How
      *      do you know?  You have to check the closest adjacent position.
      *	    Even so, that is not entirely correct.  But it seems close
      *	    enough for now.
      */
+    colbump[u.ux] = colbump[u.ux+1] = 1;
     for (row = 0; row < ROWNO; row++) {
 	dy = u.uy - row;                dy = sign(dy);
 	next_row = next_array[row];     old_row = temp_array[row];
@@ -603,81 +699,28 @@ vision_recalc(control)
 	stop  = max(viz_rmax[row], next_rmax[row]);
 	lev = &levl[start][row];
 
-	for (col = start; col <= stop; col++, lev += ROWNO) {
+	sv = &seenv_matrix[dy+1][start < u.ux ? 0 : (start > u.ux ? 2:1)];
+
+	for (col = start; col <= stop;
+				lev += ROWNO, sv += (int) colbump[++col]) {
 	    if (next_row[col] & IN_SIGHT) {
 		/*
 		 * We see this position because of night- or xray-vision.
-		 *
-		 * Check for "unseen" walls.
 		 */
-		if ( (!lev->seen || (lev->diggable & W_REPAIRED)) && 
-		     (IS_WALL(lev->typ) || lev->typ == SDOOR) ) {
-		    /* Check the closest adjacent position. */
-		    dx = u.ux - col;	dx = sign(dx);
-		    flev = &(levl[col+dx][row+dy]);
+		oldseenv = lev->seenv;
+		lev->seenv |= new_angle(lev,sv,row,col); /* update seen angle */
 
-		    /* If it was a non-corridor "open" area, we see the wall */
-		    if ((ZAP_POS(flev->typ) && (flev->typ != CORR)) ||
-			(lev->diggable & W_REPAIRED)) {
-			lev->seen = 1;	/* we've seen it */
-			lev->diggable &= ~W_REPAIRED;
-
-			/* Make sure newly "seen" walls show up */
-			newsym(col,row);
-		    }
-
-		    /* Update position if it was not in sight before. */
-		    else if (!(old_row[col]&IN_SIGHT)) newsym(col,row);
-		}
-
-		/* Update position if it was not in sight before. */
-		else if ( !(old_row[col] & IN_SIGHT) ) {
-		    lev->seen = 1;
+		/* Update pos if previously not in sight or new angle. */
+		if ( !(old_row[col] & IN_SIGHT) || oldseenv != lev->seenv)
 		    newsym(col,row);
-		}
 	    }
 
-	    else if ( next_row[col] && lev->lit ) {
+	    else if (next_row[col] & COULD_SEE
+				&& (lev->lit || next_row[col] & TEMP_LIT)) {
 		/*
 		 * We see this position because it is lit.
-		 *
-		 * It is assumed here that lit walls are lit from the
-		 * inside of the room,  Hence, walls are not "seen"
-		 * unless we can see them from across a lit room square.
 		 */
-		if (IS_WALL(lev->typ) || lev->typ == SDOOR) {
-
-		    /* Check the closest adjacent position. */
-		    dx = u.ux - col;	dx = sign(dx);
-		    flev = &(levl[col+dx][row+dy]);
-		    /*
-		     * If it is a non-corridor "open" area, and it is lit,
-		     * then we see the wall as a wall.
-		     *
-		     * What happens when the hero is standing on this
-		     * location (dx == dy == 0)?
-		     */
-		    if (ZAP_POS(flev->typ) && (flev->typ != CORR) &&
-								flev->lit) {
-			next_row[col] |= IN_SIGHT;	/* we see it */
-			if (!lev->seen || (lev->diggable & W_REPAIRED)) {
-			    lev->seen = 1;		/* see it as a wall */
-			    lev->diggable &= ~W_REPAIRED;
-			    /*
-			     * Force an update on the position, even if it
-			     * was previously in sight.  Reason:  the hero
-			     * could have been in a corridor or outside of
-			     * an undiscovered wall and then teleported into
-			     * the room.  The wall was in sight before, but
-			     * seen as stone.  Now we need to see it as a
-			     * wall.
-			     */
-			    newsym(col,row);
-			}
-		    } else
-			goto not_in_sight;	/* we don't see it */
-
-		} else if (IS_DOOR(lev->typ) && !viz_clear[row][col]) {
+		if (IS_DOOR(lev->typ) && !viz_clear[row][col]) {
 		    /*
 		     * Make sure doors, boulders or mimics don't show up
 		     * at the end of dark hallways.  We do this by checking
@@ -686,27 +729,32 @@ vision_recalc(control)
 		     */
 		    dx = u.ux - col;	dx = sign(dx);
 		    flev = &(levl[col+dx][row+dy]);
-		    if (flev->lit) {
+		    if (flev->lit || next_array[row+dy][col+dx] & TEMP_LIT) {
 			next_row[col] |= IN_SIGHT;	/* we see it */
 
-			/* Update position if it was not in sight before. */
-			if (!(old_row[col] & IN_SIGHT)) newsym(col,row);
+			oldseenv = lev->seenv;
+			lev->seenv |= new_angle(lev,sv,row,col);
+
+			/* Update pos if previously not in sight or new angle.*/
+			if (!(old_row[col] & IN_SIGHT) || oldseenv!=lev->seenv)
+			    newsym(col,row);
 		    } else
 			goto not_in_sight;	/* we don't see it */
 
 		} else {
 		    next_row[col] |= IN_SIGHT;	/* we see it */
 
-		    /* Update position if it was not in sight before. */
-		    if ( !(old_row[col] & IN_SIGHT) ) {
-			lev->seen = 1;
+		    oldseenv = lev->seenv;
+		    lev->seenv |= new_angle(lev,sv,row,col);
+
+		    /* Update pos if previously not in sight or new angle. */
+		    if ( !(old_row[col] & IN_SIGHT) || oldseenv != lev->seenv)
 			newsym(col,row);
-		    }
 		}
-	    } else if (next_row[col] && lev->waslit ) {
+	    } else if (next_row[col] & COULD_SEE && lev->waslit) {
 		/*
-		 * If we make it here, the hero _could see_ the location
-		 * (next_row[col] is true), but doesn't see it (lit is false).
+		 * If we make it here, the hero _could see_ the location,
+		 * but doesn't see it (location is not lit).
 		 * However, the hero _remembers_ it as lit (waslit is true).
 		 * The hero can now see that it is not lit, so change waslit
 		 * and update the location.
@@ -726,6 +774,7 @@ not_in_sight:
 
 	} /* end for col . . */
     }	/* end for row . .  */
+    colbump[u.ux] = colbump[u.ux+1] = 0;
 
 skip:
     newsym(u.ux,u.uy);		/* Make sure the hero shows up! */
@@ -799,7 +848,7 @@ unblock_point(x,y)
  *
  * OK, now the tough stuff.  We must maintain our left and right
  * row pointers.  The rules are as follows:
- *  
+ *
  * Left Pointers:
  * ______________
  *
@@ -855,7 +904,7 @@ dig_point(row,col)
 		right_ptrs[row][i] = COLNO-2;
 	}
     }
-     
+
     /*
      * At this point, we know we aren't on the boundaries.
      */
@@ -1010,10 +1059,10 @@ static genericptr_t varg;
  *      good_row(z)	  - Return TRUE if the argument is a legal row.
  *      set_cs(rowp,col)  - Set the local could see array.
  *      set_min(z)	  - Save the min value of the argument and the current
- *  			      row minimum.
+ *			      row minimum.
  *      set_max(z)	  - Save the max value of the argument and the current
- *  			      row maximum.
- *  
+ *			      row maximum.
+ *
  * The last three macros depend on having local pointers row_min, row_max,
  * and rowp being set correctly.
  */
@@ -1053,7 +1102,7 @@ static genericptr_t varg;
 /*
  *  Quadrant I (step < 0).
  */
-#define q1_path(srow,scol,y2,x2,label)		       	\
+#define q1_path(srow,scol,y2,x2,label)			\
 {							\
     int dx, dy;						\
     register int k, err, x, y, dxs, dys;		\
@@ -1142,7 +1191,7 @@ static genericptr_t varg;
 /*
  * Quadrant II (step < 0).
  */
-#define q2_path(srow,scol,y2,x2,label)		       	\
+#define q2_path(srow,scol,y2,x2,label)			\
 {							\
     int dx, dy;						\
     register int k, err, x, y, dxs, dys;		\
@@ -1423,6 +1472,7 @@ _q3_path(srow,scol,y2,x2)
  * (col1,row1) to (col2,row2).  This is used by:
  *		m_cansee()
  *		m_canseeu()
+ *		do_light_sources()
  */
 boolean
 clear_path(col1,row1,col2,row2)
@@ -1615,7 +1665,7 @@ right_side(row, cb_row, cb_col, fb_row, fb_col, left, right_mark, limits)
      * Mark all stone walls as seen before the left shadow.  All this work
      * for a special case.
      *
-     * NOTE.  With the addition of this code in here, it is now *required* 
+     * NOTE.  With the addition of this code in here, it is now *required*
      * for the algorithm to work correctly.  If this is commented out,
      * change the above assignment so that left and not left_shadow is the
      * variable that gets the shadow.
@@ -1893,7 +1943,7 @@ left_side(row, cb_row, cb_col, fb_row, fb_col, left_mark, right, limits)
 
     if ((left_shadow = far_shadow(FROM_LEFT,row,fb_row,fb_col)) < 0)
 	left_shadow = 0;
-    
+
     /* Do vertical walls as we want. */
     if (left_shadow > fb_col && !viz_clear_rows[row][fb_col])
 	left_shadow = fb_col;
@@ -1995,7 +2045,7 @@ left_side(row, cb_row, cb_col, fb_row, fb_col, left_mark, right, limits)
 
 /*
  * view_from
- *  
+ *
  * Calculate a view from the given location.  Initialize and fill a
  * ROWNOxCOLNO array (could_see) with all the locations that could be
  * seen from the source location.  Initialize and fill the left most
@@ -2090,7 +2140,7 @@ view_from(srow,scol,loc_cs_rows,left_most,right_most, range, func, arg)
 \*===========================================================================*/
 
 /*
- * Defines local to Algorithm C.  
+ * Defines local to Algorithm C.
  */
 static void FDECL(right_side, (int,int,int,char*));
 static void FDECL(left_side, (int,int,int,char*));
@@ -2161,7 +2211,7 @@ right_side(row, left, right_mark, limits)
 	     */
 	    if (right_edge > right_mark) {
 		/*
-		 * If the mark on the previous row was a clear position, 
+		 * If the mark on the previous row was a clear position,
 		 * the odds are that we can actually see part of the wall
 		 * beyond the mark on this row.  If so, then see one beyond
 		 * the mark.  Otherwise don't.  This is a kludge so corners
@@ -2181,7 +2231,7 @@ right_side(row, left, right_mark, limits)
 	}
 
 	/* No checking needed if our left side is the start column. */
-	if (left != start_col) { 
+	if (left != start_col) {
 	    /*
 	     * Find the left side.  Move right until we can see it or we run
 	     * into a wall.
@@ -2201,7 +2251,7 @@ rside1:					/* used if q?_path() is a macro */
 	     * an infinite loop where:
 	     *
 	     *		left == right_edge == right_mark == lim_max.
-	     * 
+	     *
 	     */
 	    if (left > lim_max) return;	/* check (1) */
 	    if (left == lim_max) {	/* check (2) */
@@ -2512,7 +2562,8 @@ do_clear_area(scol,srow,range,func,arg)
 {
 	/* If not centered on hero, do the hard work of figuring the area */
 	if (scol != u.ux || srow != u.uy)
-	    view_from(srow, scol, (char **)0, NULL, NULL, range, func, arg);
+	    view_from(srow, scol, (char **)0, (char *)0, (char *)0,
+							range, func, arg);
 	else {
 	    register int x;
 	    int y, min_x, max_x, max_y, offset;
@@ -2526,7 +2577,7 @@ do_clear_area(scol,srow,range,func,arg)
 	    if ((max_y = (srow + range)) >= ROWNO) max_y = ROWNO-1;
 	    if ((y = (srow - range)) < 0) y = 0;
 	    for (; y <= max_y; y++) {
-		offset = limits[abs(y-srow)];
+		offset = limits[v_abs(y-srow)];
 		if((min_x = (scol - offset)) < 0) min_x = 0;
 		if((max_x = (scol + offset)) >= COLNO) max_x = COLNO-1;
 		for (x = min_x; x <= max_x; x++)

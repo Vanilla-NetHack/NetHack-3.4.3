@@ -1,8 +1,8 @@
-/*	SCCS Id: @(#)wield.c	3.1	92/12/10	*/
+/*	SCCS Id: @(#)wield.c	3.2	96/01/24	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
-#include	"hack.h"
+#include "hack.h"
 
 /* elven weapons vibrate warningly when enchanted beyond a limit */
 #define is_elven_weapon(optr)	((optr)->otyp == ELVEN_ARROW\
@@ -12,32 +12,45 @@
 				|| (optr)->otyp == ELVEN_BROADSWORD\
 				|| (optr)->otyp == ELVEN_BOW)
 
-/* Note: setuwep() with a null obj, and uwepgone(), are NOT the same!  Sometimes
- * unwielding a weapon can kill you, and lifesaving will then put it back into
- * your hand.  If lifesaving is permitted to do this, use
- * setwuep((struct obj *)0); otherwise use uwepgone().
+/* used by welded(), and also while wielding */
+#define will_weld(optr)		((optr)->cursed \
+				&& ((optr)->oclass == WEAPON_CLASS \
+				   || is_weptool(optr) \
+				   || (optr)->otyp == HEAVY_IRON_BALL \
+				   || (optr)->otyp == TIN_OPENER))
+
+/* Note: setuwep() with a null obj, and uwepgone(), are NOT the same!
+ * Sometimes unwielding a weapon can kill you, and lifesaving will then
+ * put it back into your hand.  If lifesaving is permitted to do this,
+ * use setwuep((struct obj *)0); otherwise use uwepgone().
  */
 void
 setuwep(obj)
 register struct obj *obj;
 {
+	if (obj == uwep) return; /* necessary to not set unweapon */
 	setworn(obj, W_WEP);
 	/* Note: Explicitly wielding a pick-axe will not give a "bashing"
 	 * message.  Wielding one via 'a'pplying it will.
 	 */
 	if (obj)
-		unweapon = ((obj->otyp >= BOW || obj->otyp <= BOOMERANG) &&
-			obj->otyp != PICK_AXE && obj->otyp != UNICORN_HORN);
+		unweapon = ((obj->oclass == WEAPON_CLASS &&
+			     (objects[obj->otyp].oc_wepcat == WEP_BOW ||
+			      objects[obj->otyp].oc_wepcat == WEP_AMMO ||
+			      objects[obj->otyp].oc_wepcat == WEP_MISSILE)) ||
+			    (obj->oclass == TOOL_CLASS && !is_weptool(obj)));
 	else
 		unweapon = TRUE;	/* for "bare hands" message */
+	update_inventory();
 }
 
 void
 uwepgone()
 {
 	if (uwep) {
-		setnotworn(uwep);
+		setworn((struct obj *)0, W_WEP);
 		unweapon = TRUE;
+		update_inventory();
 	}
 }
 
@@ -51,76 +64,74 @@ dowield()
 	register int res = 0;
 
 	multi = 0;
-#ifdef POLYSELF
 	if (cantwield(uasmon)) {
-		pline("Don't be ridiculous!");
-		return(0);
+	    pline("Don't be ridiculous!");
+	    return(0);
 	}
-#endif
-	if (!(wep = getobj(wield_objs, "wield"))) /* nothing */;
-	else if (uwep == wep)
-		You("are already wielding that!");
-	else if (welded(uwep))
-		weldmsg(uwep, TRUE);
-	else if (wep == &zeroobj) {
+	if (!(wep = getobj(wield_objs, "wield"))) {
+	    ;	/* nothing */
+	} else if (uwep == wep) {
+	    You("are already wielding that!");
+	    if (is_weptool(wep)) unweapon = FALSE;	/* [see setuwep()] */
+	} else if (welded(uwep)) {
+	    weldmsg(uwep, TRUE);
+	} else if (wep == &zeroobj) {
 	    if (uwep == 0)
 		You("are already empty %s.", body_part(HANDED));
 	    else  {
-	  	You("are empty %s.", body_part(HANDED));
-	  	setuwep((struct obj *) 0);
-	  	res++;
+		You("are empty %s.", body_part(HANDED));
+		setuwep((struct obj *) 0);
+		res++;
 	    }
-	} else if (!uarmg &&
-#ifdef POLYSELF
-		   !resists_ston(uasmon) &&
-#endif
+	} else if (!uarmg && !resists_ston(&youmonst) &&
 		   (wep->otyp == CORPSE && wep->corpsenm == PM_COCKATRICE)) {
 	    /* Prevent wielding cockatrice when not wearing gloves --KAA */
 	    You("wield the cockatrice corpse in your bare %s.",
 			makeplural(body_part(HAND)));
-# ifdef POLYSELF
-	    if (!(poly_when_stoned(uasmon) && polymon(PM_STONE_GOLEM)))
-# endif
-	    {
-		You("turn to stone...");
-		killer_format = KILLED_BY;
-		killer="touching a cockatrice corpse";
-		done(STONING);
-	    }
+	    instapetrify("cockatrice corpse");
 	} else if (uarms && bimanual(wep))
 	    You("cannot wield a two-handed %s while wearing a shield.",
 		is_sword(wep) ? "sword" :
 		    wep->otyp == BATTLE_AXE ? "axe" : "weapon");
 	else if (wep->owornmask & (W_ARMOR | W_RING | W_AMUL | W_TOOL))
-		You("cannot wield that!");
-	else if (!wep->oartifact || touch_artifact(wep,&youmonst)) {
-		res++;
-		if (wep->cursed &&
-		    (wep->oclass == WEAPON_CLASS ||
-		     wep->otyp == HEAVY_IRON_BALL || wep->otyp == PICK_AXE ||
-		     wep->otyp == UNICORN_HORN || wep->otyp == TIN_OPENER)) {
-		    const char *tmp = xname(wep), *thestr = "The ";
-		    if (strncmp(tmp, thestr, 4) && !strncmp(The(tmp),thestr,4))
-			tmp = thestr;
-		    else tmp = "";
-		    pline("%s%s %s to your %s!",
-			tmp, aobjnam(wep, "weld"),
-			(wep->quan == 1L) ? "itself" : "themselves", /* a3 */
-			body_part(HAND));
-		    wep->bknown = TRUE;
-		} else {
-			/* The message must be printed before setuwep (since
-			 * you might die and be revived from changing weapons),
-			 * and the message must be before the death message and
-			 * Lifesaved rewielding.  Yet we want the message to
-			 * say "weapon in hand", thus this kludge.
-			 */
-			long dummy = wep->owornmask;
-			wep->owornmask |= W_WEP;
-			prinv(NULL, wep, 0L);
-			wep->owornmask = dummy;
+	    You("cannot wield that!");
+	else if (wep->oartifact && !touch_artifact(wep, &youmonst))
+	    res++;	/* takes a turn even though it doesn't get wielded */
+	else {
+	    res++;
+	    if (will_weld(wep)) {
+		const char *tmp = xname(wep), *thestr = "The ";
+		if (strncmp(tmp, thestr, 4) && !strncmp(The(tmp),thestr,4))
+		    tmp = thestr;
+		else tmp = "";
+		pline("%s%s %s to your %s!",
+		      tmp, aobjnam(wep, "weld"),
+		      (wep->quan == 1L) ? "itself" : "themselves", /* a3 */
+		      body_part(HAND));
+		wep->bknown = TRUE;
+	    } else {
+		/* The message must be printed before setuwep (since
+		 * you might die and be revived from changing weapons),
+		 * and the message must be before the death message and
+		 * Lifesaved rewielding.  Yet we want the message to
+		 * say "weapon in hand", thus this kludge.
+		 */
+		long dummy = wep->owornmask;
+		wep->owornmask |= W_WEP;
+		prinv((char *)0, wep, 0L);
+		wep->owornmask = dummy;
+	    }
+	    setuwep(wep);
+	    if (wep->unpaid) {
+		struct monst *this_shkp;
+
+		if ((this_shkp = shop_keeper(inside_shop(u.ux, u.uy))) !=
+		    (struct monst *)0) {
+		    pline("%s says \"You be careful with my %s!\"",
+			  shkname(this_shkp),
+			  xname(wep));
 		}
-		setuwep(wep);
+	    }
 	}
 	return(res);
 }
@@ -132,7 +143,7 @@ boolean acid_dmg;
 {
 	if(!uwep || uwep->oclass != WEAPON_CLASS) return;	/* %% */
 	if (uwep->greased) {
-		grease_protect(uwep,NULL,FALSE);
+		grease_protect(uwep,(char *)0,FALSE);
 	} else if(uwep->oerodeproof ||
 	   (acid_dmg ? !is_corrodeable(uwep) : !is_rustprone(uwep))) {
 		if (flags.verbose || !(uwep->oerodeproof && uwep->rknown))
@@ -155,18 +166,16 @@ chwepon(otmp, amount)
 register struct obj *otmp;
 register int amount;
 {
-	register const char *color = Hallucination ? hcolor() :
-				     (amount < 0) ? Black : blue;
+	register const char *color = hcolor((amount < 0) ? Black : blue);
 	register const char *xtime;
 
-	if(!uwep || (uwep->oclass != WEAPON_CLASS && uwep->otyp != PICK_AXE
-			&& uwep->otyp != UNICORN_HORN)) {
-		char buf[36];
+	if(!uwep || (uwep->oclass != WEAPON_CLASS && !is_weptool(uwep))) {
+		char buf[BUFSZ];
 
 		Sprintf(buf, "Your %s %s.", makeplural(body_part(HAND)),
 			(amount >= 0) ? "twitch" : "itch");
 		strange_feeling(otmp, buf);
-		exercise(A_DEX, amount >= 0);
+		exercise(A_DEX, (boolean) (amount >= 0));
 		return(0);
 	}
 
@@ -236,12 +245,7 @@ int
 welded(obj)
 register struct obj *obj;
 {
-	if (obj && obj == uwep && obj->cursed &&
-		  (obj->oclass == WEAPON_CLASS ||
-		   obj->otyp == HEAVY_IRON_BALL ||
-		   obj->otyp == TIN_OPENER || obj->otyp == PICK_AXE ||
-		   obj->otyp == UNICORN_HORN))
-	{
+	if (obj && obj == uwep && will_weld(obj)) {
 		obj->bknown = TRUE;
 		return 1;
 	}
@@ -269,13 +273,9 @@ boolean specific;
 			is_sword(obj) ? "sword" : "weapon",
 			plur(obj->quan));
 	Strcat(buf, (obj->quan == 1L) ? " is" : " are");
-#ifdef POLYSELF
 	Sprintf(eos(buf), " welded to your %s!",
-		bimanual(obj) ? (const char *)makeplural(body_part(HAND)) : body_part(HAND));
-#else
-	Sprintf(eos(buf), " welded to your hand%s!",
-		bimanual(obj) ? "s" : "");
-#endif
+		bimanual(obj) ? (const char *)makeplural(body_part(HAND))
+				: body_part(HAND));
 	pline(buf);
 }
 

@@ -7,6 +7,7 @@
 #endif
 
 #include "hack.h"
+#include "macwin.h"
 
 #include <OSUtils.h>
 #include <files.h>
@@ -15,7 +16,11 @@
 #include <String.h>
 #include <Strings.h>
 #else
-#include <pascal.h>
+# ifdef __MWERKS__
+#  include <strings.h>
+# else
+#  include <pascal.h>
+# endif
 #endif
 #include <Dialogs.h>
 #include <Packages.h>
@@ -26,14 +31,7 @@
 #define errAlertID 129
 #define stdIOErrID 1999
 
-void FDECL(comment,(char *, long));
-void FDECL(showerror,(char *, const char *));
-Boolean FDECL(itworked,(short));
-void FDECL(mustwork,(short));
 static void VDECL(vprogerror,(const char *line, va_list the_args));
-void FDECL(attemptingto,( char * activity ));
-void FDECL(pushattemptingto,( char * activity ));
-void NDECL(popattempt);
 
 static Str255 gActivities[stackDepth] = {"","","",""};
 static short gTopactivity = 1;
@@ -45,7 +43,7 @@ void  comment( char *s, long n )
   
   sprintf((char *)paserr, "%s - %d",s,n);
   ParamText(c2pstr((char *)paserr),(StringPtr)"",(StringPtr)"",(StringPtr)"");
-  itemHit = Alert(128, (ModalFilterProcPtr)nil);
+  itemHit = Alert(128, (ModalFilterUPP)nil);
 }
 
 void showerror( char * errdesc, const char * errcomment )
@@ -59,7 +57,7 @@ void showerror( char * errdesc, const char * errcomment )
 	  else strcpy((char *)pascomment,(char *)errcomment);
 	strcpy((char *)paserr,(char *)errdesc);
 	ParamText(c2pstr((char *)paserr),c2pstr((char *)pascomment),gActivities[gTopactivity],(StringPtr)"");
-	itemHit = Alert(errAlertID, (ModalFilterProcPtr)nil);
+	itemHit = Alert(errAlertID, (ModalFilterUPP)nil);
 }
 
 
@@ -89,7 +87,7 @@ Boolean itworked( short errcode )
 	}
 	SetCursor(&qd.arrow);
 	ParamText(errdesc,(StringPtr)"",gActivities[gTopactivity],(StringPtr)"");
-	itemHit = Alert(errAlertID, (ModalFilterProcPtr)nil);
+	itemHit = Alert(errAlertID, (ModalFilterUPP)nil);
 
   }
   return(errcode==0);

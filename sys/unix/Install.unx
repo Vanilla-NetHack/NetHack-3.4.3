@@ -1,4 +1,4 @@
-                Instructions for installing NetHack 3.1
+                Instructions for installing NetHack 3.2
                            on a UNIX system
                 =======================================
 
@@ -49,26 +49,38 @@
     official distribution, type 'touch makedefs.c' to make sure certain files
     (onames.h, pm.h) get remade instead of relying on the potentially
     troublesome timestamps.)  Then type 'make' in src and go get a cup of
-    coffee or take a nap.  You should now have created the game executable.
+    coffee or take a nap, depending on the speed of your system.  You should
+    now have created the game executable.
 
 7.  Go back to the top directory and edit that Makefile, explaining where
-    you want everything to be installed.  Make sure that you follow the
-    comments about setting GAMEDIR.  The Makefile assumes you want to
-    run NetHack setuid 'games' to cut down on possible tampering; it's
-    fairly straightforward to comment out the appropriate chmod if you
-    don't want that, or to change any of the rest of the procedure.  (Note
-    that if you don't want to run NetHack either setuid or setgid, and
-    people in more than one group will be playing it, you'll need to go back
-    and set FCMASK to 0666 in unixconf.h and let everybody fiddle with the
-    files NetHack creates.)  Type 'make all' from the top directory to
-    set up all the auxiliary files the main executable will use.
-    Then become root if necessary and type 'make install'.  Everything
-    should now be set.
+    you want everything to be installed.
+
+    Make sure that you follow the comments about setting GAMEDIR -- the
+    installation process will wipe out the contents of the directory you
+    point it at, under the assumption that it's debris from an old version
+    of NetHack, which will cause the new version to crash mysteriously while
+    running.  If this is not the case, you'll want to install somewhere
+    else, or comment out the rm under the install target.
+
+    The Makefile assumes you want to run NetHack setuid 'games' to cut down
+    on possible tampering; it's fairly straightforward to comment out the
+    appropriate chmod if you don't want that, or to change any of the rest
+    of the procedure.  (Note that if you don't want to run NetHack either
+    setuid or setgid, and people in more than one group will be playing it,
+    you'll need to go back and set FCMASK to 0666 in unixconf.h and let
+    everybody fiddle with the files NetHack creates.)
+
+    If the tbl, nroff or col commands are not available on your system,
+    edit the doc/Makefile and change the GUIDECMD as directed.
+
+    Type 'make all' from the top directory to set up all the auxiliary
+    files the main executable will use.  Then become root if necessary and
+    type 'make install'.  Everything should now be set.
 
 Notes:
 
 1.  Save files and bones files from previous versions will not work with
-    NetHack 3.1.2.  Don't bother trying to keep them.
+    NetHack 3.2.  Don't bother trying to keep them.
 
 2.  To install an update of this version of NetHack after changing something,
     type 'make update' from the main directory.  If you created the new
@@ -127,11 +139,12 @@ Notes:
     symbol table that it does not need this workaround.
 
 8.  If NetHack seems to compile fine, starts up, allows you to pick a
-    character, and then either hangs or gets a segmentation fault, you
-    might try changing the schar and uchar definitions in config.h to
-    short ints.  This problem is known to occur on the AT&T 3B series,
-    Silicon Graphics Irises, and IBM systems (PC/RT & RS/6000) running AIX,
-    and may occur on other computers as well.
+    character, and then hangs indefinitely, gets a segmentation fault, or
+    traps you in a single room on the first level, you might try changing
+    the schar and uchar definitions in config.h to short ints.  This problem
+    is known to occur on the AT&T 3B series, Silicon Graphics Irises, and
+    IBM systems (PC/RT & RS/6000) running AIX, and may occur on other
+    computers as well.
 
     This problem is really most likely caused by having a non-__STDC__
     compiler with char's unsigned by default.  Since some such compilers
@@ -144,11 +157,19 @@ Notes:
     setting the default char type to signed, you could try setting it in
     the Makefiles.  The appropriate switch for SGI Irises with MIPS C
     compiler is "-signed" and for RS/6000's with standard cc "-qchars=signed".
-    Note that at least RS/6000's seem to like this method better but there
-    is also a problem:  The lexers created by the standard lex program in
-    AIX may come out faulty when this switch is used (known to happen at
-    least in AIX 3.1.3), so you may have to use an alternative, like flex,
-    which is available at major archive sites (see notes 10 and 11).
+    (SGI machines running IRIX 4.0.x have a compiler close enough to
+    standard to suit NetHack, so you may merely use the suggested flags
+    in the Makefiles.)
+
+    Note that at least RS/6000's seem to like changing the default to
+    signed better but there is also a problem:  The lexers created by
+    the standard lex program in AIX may come out faulty when this switch
+    is used (known to happen at least in AIX 3.1.3), so you may have to
+    use an alternative, like flex, which is available at major archive
+    sites (see notes 10 and 11).
+
+    By AIX 3.2.5, this whole problem should be taken care of automatically
+    (but AIX_31 should still be defined in unixconf.h for other reasons).
 
 9.  Under SCO UNIX, you may have all sorts of complaints about
     include/obj.h.  Go to the file and uncomment the marked line, working
@@ -179,11 +200,15 @@ Notes:
     lev_yacc.c to util.
 
 12. Yes, Virginia, you compile NetHack for a NeXT as if it ran UNIX instead
-    of Mach.  Just tell NetHack you're a BSD system.  (Mach is extremely
+    of Mach.  Just tell NetHack you're a BSD system (Mach is extremely
     close to BSD UNIX for traditional system calls, so this is also a
-    likely thing to try for any other programs you want to compile.)
+    likely thing to try for any other programs you want to compile).
 
-13. If you are unlucky enough to have SunOS5.x (aka Solaris) you must take
+    If you get errors when starting nethack warning that "Setuid execution is 
+    not allowed", you might want to re-install using the setgid option instead
+    (see Note 7 above, and the setgid comment in the toplevel Makefile).
+
+13. If you are using Solaris 2.x (aka SunOS 5.x) you must take
     special care when configuring config.h and unixconf.h.  Solaris is
     basically a SVR4 system, not a BSD system.  Therefore, you configure
     config.h and unixconf.h as per a SVR4 system:
@@ -191,15 +216,19 @@ Notes:
 	config.h: UNIX, TERMINFO, TTY_GRAPHICS
 	unixconf.h: SYSV, SVR4, POSIX_JOB_CONTROL, POSIX_TYPES
 
-    X11_GRAPHICS (and the related OPENWINBUG) is untested under SunOS5.x.
+    X11_GRAPHICS does work.  Do not define OPENWINBUG.
     You may safely define NETWORK, TEXTCOLOR if desired.
     Other #defines in these files may be defined too, as needed.  Just make
     sure that the set mentioned here are not misdefined, or your compile
-    will fail (do _not_ define BSD or SUNOS4).
+    will fail (do _not_ define BSD or SUNOS4).  Unless you are using gzip
+    you will probably want to define COMPRESS to be "/usr/bin/compress".
 
     When compiling, make sure that you use the ANSI C SVR4 compatible
     compiler, /usr/bin/cc, or gcc, but _not_ ucbcc.  The lattermost will
     not work.  After this, you should get a clean compile.
+
+    Also, it is recommended that you use FLEX instead of the standard
+    lex bundled with Solaris 2.x (even if that last one should work ;-).
 
 14. If your machine is a 286, 386, or 486 running an appropriate OS, you
     may wish to use the console speaker driver included in

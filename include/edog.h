@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)edog.h	3.1	93/01/16	*/
+/*	SCCS Id: @(#)edog.h	3.2	95/05/31	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -19,7 +19,7 @@
 struct edog {
 	long droptime;			/* moment dog dropped object */
 	unsigned dropdist;		/* dist of drpped obj from @ */
-	unsigned apport;		/* amount of training */
+	int apport;			/* amount of training */
 	long whistletime;		/* last time he whistled */
 	long hungrytime;		/* will get hungry at this time */
 	coord ogoal;			/* previous goal location */

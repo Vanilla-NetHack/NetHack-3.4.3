@@ -1,17 +1,19 @@
 #	NetHack Makefile (VMS) - top level for making & installing everything.
-#	SCCS Id: @(#)Makefile.top	3.1	93/01/06
+#	SCCS Id: @(#)Makefile.top	3.2	96/03/02
 
 #  Copy this file to <top>Makefile.; edit the appropriate values for
 #  GAMEDIR ("playground" location) and GAMEOWNER (UIC or identifier
 #  for the owner of playground files).
 
 #	usage:	mms all,install
+#	  or	mms no_tools,all,install
+#	  or substitute freeware `MMK' for Digital's `MMS'.
 
-MAKE	= mms
+MAKE	= $(MMS)
 CD	= set default
 ECHO	= write sys$output
 EXEC	= @
-NOOP	= !			# don't do anything
+NOOP	= continue		# don't do anything interesting
 TOUCH	= set file/truncate	# multiple files per $(TOUCH), but no creation
 # support directories, relative to 'top'
 DAT = [.dat]
@@ -24,11 +26,11 @@ VMS = [.sys.vms]
 GAMEDIR =			# defaults to [.play]
 GAMEOWNER =			# defaults to installer's UIC
 # these are the distributed values in [.include]vmsconf.h
-#GAMEDIR = DISK$USERS:[GAMES.NETHACK.3-1-0.PLAY]
+#GAMEDIR = DISK$USERS:[GAMES.NETHACK.3-2-0.PLAY]
 #GAMEOWNER = NHWIZARD
 
 # just about everything, except installation
-all :	program utilities data documentation
+all :	program utilities data dlb_data documentation
       @ $(ECHO) "all code and data is now up to date."
 
 program :
@@ -48,7 +50,7 @@ documentation :
 	$(MAKE)$(MAKEFLAGS) all
       @ $(CD) $(TOP)
 
-install :	make_directories create_writeable_files update
+install :	program all_data make_directories create_writeable_files update
       @ $(ECHO) "installation is now complete."
 
 # assume there're no active games in progress
@@ -64,13 +66,13 @@ update	:	place_readonly_files place_executable place_vms_support
       @ write f\
  "$ if f$search(""*.*;-1"").nes."""" then  set file/prot=(s:rwed,o:rwed) *.*;-1"
       @ write f "$ if f$search(""*.*;-1"").nes."""" then  purge"
-      @ write f "$ if f$search(""bones*.*"").nes."""" then  $(TOUCH) bones*.*"
-      @ write f "$ if f$search(""[.save]*"").nes."""" then  $(TOUCH) [.save]*"
+      @ write f "$! if f$search(""bones*.*"").nes."""" then  $(TOUCH) bones*.*"
+      @ write f "$! if f$search(""[.save]*"").nes."""" then  $(TOUCH) [.save]*"
       @ write f "$ set default 'old_default'"
       @ write f "$ exit"
       @ close f
-      - $(EXEC)tmp-update.com; $(GAMEDIR)  !purge old version, touch save files
-      @ delete tmp-update.com;
+      - $(EXEC)tmp-update.com; $(GAMEDIR)  !purge old version
+      @ delete tmp-update.com; 
       @ $(ECHO) "playground files updated."
 
 Guidebook :
@@ -81,6 +83,12 @@ manpages :
 	$(CD) $(DOC)
 	$(MAKE)$(MAKEFLAGS) manpages
       @ $(CD) $(TOP)
+
+all_data : data dlb_data
+      @ $(NOOP)
+
+dlb_data :
+	$(EXEC)$(VMS)install.com "$(GAMEDIR)" "$(GAMEOWNER)" dlb
 
 make_directories :
 	$(EXEC)$(VMS)install.com "$(GAMEDIR)" "$(GAMEOWNER)" directories

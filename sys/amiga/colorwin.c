@@ -1,4 +1,3 @@
-
 SHORT Col_BorderVectors1[] = {
 	0,0,
 	59,0,
@@ -15,7 +14,7 @@ struct Border Col_Border1 = {
 };
 
 struct IntuiText Col_IText1 = {
-	7,0,JAM2,	/* front and back text pens, drawmode and fill byte */
+	7,0,JAM1,	/* front and back text pens, drawmode and fill byte */
 	13,1,	/* XY origin relative to container TopLeft */
 	NULL,	/* font pointer or NULL for default */
 	"Save",	/* pointer to text */
@@ -54,7 +53,7 @@ struct Border Col_Border2 = {
 };
 
 struct IntuiText Col_IText2 = {
-	7,0,JAM2,	/* front and back text pens, drawmode and fill byte */
+	7,0,JAM1,	/* front and back text pens, drawmode and fill byte */
 	17,1,	/* XY origin relative to container TopLeft */
 	NULL,	/* font pointer or NULL for default */
 	"Use",	/* pointer to text */
@@ -93,7 +92,7 @@ struct Border Col_Border3 = {
 };
 
 struct IntuiText Col_IText3 = {
-	7,0,JAM2,	/* front and back text pens, drawmode and fill byte */
+	7,0,JAM1,	/* front and back text pens, drawmode and fill byte */
 	6,1,	/* XY origin relative to container TopLeft */
 	NULL,	/* font pointer or NULL for default */
 	"Cancel",	/* pointer to text */
@@ -212,7 +211,7 @@ struct Gadget Col_BluePen = {
 #define Col_GadgetList1 Col_BluePen
 
 struct IntuiText Col_IText6 = {
-	3,0,JAM2,	/* front and back text pens, drawmode and fill byte */
+	3,0,JAM1,	/* front and back text pens, drawmode and fill byte */
 	17,38,	/* XY origin relative to container TopLeft */
 	NULL,	/* font pointer or NULL for default */
 	"B",	/* pointer to text */
@@ -220,7 +219,7 @@ struct IntuiText Col_IText6 = {
 };
 
 struct IntuiText Col_IText5 = {
-	4,0,JAM2,	/* front and back text pens, drawmode and fill byte */
+	4,0,JAM1,	/* front and back text pens, drawmode and fill byte */
 	16,26,	/* XY origin relative to container TopLeft */
 	NULL,	/* font pointer or NULL for default */
 	"G",	/* pointer to text */
@@ -228,7 +227,7 @@ struct IntuiText Col_IText5 = {
 };
 
 struct IntuiText Col_IText4 = {
-	7,0,JAM2,	/* front and back text pens, drawmode and fill byte */
+	7,0,JAM1,	/* front and back text pens, drawmode and fill byte */
 	16,14,	/* XY origin relative to container TopLeft */
 	NULL,	/* font pointer or NULL for default */
 	"R",	/* pointer to text */

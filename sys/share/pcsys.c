@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)pcsys.c	3.1	93/05/24
+/*	SCCS Id: @(#)pcsys.c	3.2	93/05/24
 /* NetHack may be freely redistributed.  See license for details. */
 
 /*
@@ -11,11 +11,12 @@
 
 #include <ctype.h>
 #include <fcntl.h>
-#ifndef __GO32__
+#ifndef MSDOS			/* already done */
 #include <process.h>
-#else
-#define P_WAIT          0
-#define P_NOWAIT        1
+#endif
+#ifdef __GO32__
+#define P_WAIT		0
+#define P_NOWAIT	1
 #endif
 #ifdef TOS
 #include <osbind.h>
@@ -26,8 +27,8 @@ extern void __far __cdecl _movepause( void );
 extern void __far __cdecl _moveresume( void );
 extern unsigned short __far __cdecl _movefpause;
 extern unsigned short __far __cdecl _movefpaused;
-#define     __MOVE_PAUSE_DISK     2   /* Represents the executable file */
-#define     __MOVE_PAUSE_CACHE    4   /* Represents the cache memory */
+#define     __MOVE_PAUSE_DISK	  2   /* Represents the executable file */
+#define     __MOVE_PAUSE_CACHE	  4   /* Represents the cache memory */
 #endif /* MOVERLAY */
 
 static boolean NDECL(record_exists);
@@ -48,7 +49,7 @@ flushout()
 	return;
 }
 
-static const char *COMSPEC = 
+static const char *COMSPEC =
 # ifdef TOS
 "SHELL";
 # else
@@ -63,7 +64,7 @@ dosh()
 {
 	extern char orgdir[];
 	char *comspec;
- 	int spawnstat;
+	int spawnstat;
 
 	if (comspec = getcomspec()) {
 #  ifndef TOS	/* TOS has a variety of shells */
@@ -75,18 +76,18 @@ dosh()
 #  ifdef __GO32__
 		if (system(comspec) < 0) {  /* wsu@eecs.umich.edu */
 #  else
-#   ifdef MOVERLAY          
-       /* Free the cache memory used by overlays, close .exe */ 
+#   ifdef MOVERLAY
+       /* Free the cache memory used by overlays, close .exe */
 	_movefpause |= __MOVE_PAUSE_DISK;
 	_movefpause |= __MOVE_PAUSE_CACHE;
 	_movepause();
 #   endif
- 		spawnstat = spawnl(P_WAIT, comspec, comspec, NULL);
+		spawnstat = spawnl(P_WAIT, comspec, comspec, (char *)0);
 #   ifdef MOVERLAY
-                 _moveresume();
+		 _moveresume();
 #   endif
- 
- 		if ( spawnstat < 0) {
+
+		if ( spawnstat < 0) {
 #  endif
 			raw_printf("Can't spawn \"%s\"!", comspec);
 			getreturn("to continue");
@@ -114,11 +115,11 @@ const char *path, *files;
 	char buf[PATHLEN];
 	char *foundfile;
 
-	foundfile = foundfile_buffer(); 
-        Sprintf(buf, "%s%s", path, files);
+	foundfile = foundfile_buffer();
+	Sprintf(buf, "%s%s", path, files);
 	if (findfirst(buf))
 	    do {
-               Sprintf(buf, "%s%s", path, foundfile); 
+	       Sprintf(buf, "%s%s", path, foundfile);
 		(void) unlink(buf);
 	    } while (findnext());
 	return;
@@ -155,7 +156,7 @@ int mode;
 	if (findfirst(from))
 		do {
 #  ifdef TOS
-			Sprintf(from, "%s%s", frompath, foundfile); 
+			Sprintf(from, "%s%s", frompath, foundfile);
 			Sprintf(to, "%s%s", topath, foundfile);
 			if (_copyfile(from, to))
 				goto error_copying;
@@ -177,7 +178,7 @@ int mode;
 		Sprintf(to, "%s%s", topath, allbones);
 		comspec = getcomspec();
 		status =spawnl(P_WAIT, comspec, comspec, copy, from,
-			to, "> nul", NULL);
+			to, "> nul", (char *)0);
 	} else
 		return;
 #  endif /* TOS */
@@ -205,7 +206,7 @@ error_copying:
 	else
 #  endif
 	    msmsg((freediskspace(topath) < filesize(from)) ?
-            "insufficient disk space." : "bad path(s)?");
+	    "insufficient disk space." : "bad path(s)?");
 	if (mode == TOPERM) {
 		msmsg("Bones will be left in \"%s\"\n",
 			*levels ? levels : hackdir);
@@ -231,7 +232,7 @@ playwoRAMdisk()
 	c = tgetch(); if (c == 'Y') c = 'y';
 	if (c != 'y') {
 		settty("Be seeing you...\n");
-		exit(0);
+		exit(EXIT_SUCCESS);
 	}
 	set_lock_and_bones();
 	return;
@@ -326,7 +327,7 @@ gameDiskPrompt()
 
 	if (!comspec_exists())
 		msmsg("\n\nWARNING: can't find command processor \"%s\"!\n", getcomspec());
-        if (!record_exists())
+	if (!record_exists())
 		msmsg("\n\nWARNING: can't find record file \"%s\"!\n", RECORD);
 	msmsg("If the game disk is not in, insert it now.\n");
 	getreturn("to continue");
@@ -336,7 +337,7 @@ gameDiskPrompt()
 #endif /* MICRO */
 
 /*
- * Add a backslash to any name not ending in /, \ or :   There must
+ * Add a backslash to any name not ending in /, \ or :	 There must
  * be room for the \
  */
 void
@@ -368,15 +369,40 @@ const char *str;
 	return;
 }
 
+#ifndef WIN32
 void
 msmsg VA_DECL(const char *, fmt)
 	VA_START(fmt);
 	VA_INIT(fmt, const char *);
-	Vprintf(fmt, VA_ARGS);
-	flushout();
+# if defined(MSDOS)
+	if (flags.grmode) {
+		char buf[BUFSZ];
+
+		Vsprintf(buf,fmt, VA_ARGS);
+		xputs(buf);
+	} else
+# endif
+	{
+	  Vprintf(fmt, VA_ARGS);
+	  flushout();
+	}
 	VA_END();
 	return;
 }
+#else
+void
+msmsg VA_DECL(const char *, fmt)
+	VA_START(fmt);
+	VA_INIT(fmt, const char *);
+	{
+	    char buf[BUFSZ];
+
+	    Vsprintf(buf,fmt, VA_ARGS);
+	    xputs(buf);
+	}
+}
+#endif
+
 
 /*
  * Follow the PATH, trying to fopen the file.
@@ -385,10 +411,10 @@ msmsg VA_DECL(const char *, fmt)
 # ifdef __MINT__
 #define PATHSEP ':'
 # else
-#define PATHSEP	','
+#define PATHSEP ','
 # endif
 #else
-#define PATHSEP	';'
+#define PATHSEP ';'
 #endif
 
 FILE *
@@ -430,12 +456,14 @@ const char *name, *mode;
 
 /* Chdir back to original directory
  */
-#undef exit
 #ifdef TOS
 extern boolean run_from_desktop;	/* set in pcmain.c */
 #endif
 
-void exit(int);
+#undef exit
+#if !defined(MSDOS) && !defined(WIN32)
+extern void FDECL(exit, (int));
+#endif
 
 void
 msexit(code)
@@ -448,7 +476,7 @@ int code;
 	flushout();
 #ifndef TOS
 # ifndef WIN32
-	enable_ctrlP();		/* in case this wasn't done */
+	enable_ctrlP(); 	/* in case this wasn't done */
 # endif
 #endif
 #ifdef MFLOPPY
@@ -471,11 +499,10 @@ int code;
 	 * we need to get one last return, so the score board does
 	 * not vanish instantly after being created.
 	 * ProgmanLaunched is defined and set in nttty.c.
-         */
-	 
+	 */
+
 	if (ProgmanLaunched) getreturn("to end");
 #endif
 	exit(code);
 	return;
 }
-

@@ -1,22 +1,20 @@
 
-	  Using, Compiling, and Installing Amiga NetHack 3.1
+                   Using and Installing Amiga NetHack 3.2
       (or Everything You Never Wanted to Know Before NetHacking)
 
-	     Last Revision: 18 June 1993 for NetHack 3.1.3
+	     Last Revision: 2 March 1996 for NetHack 3.2.0
 
 
-0. Pre-intro for NetHack 3.1.3.
-   New for 3.1.3:
-     Updated this file: new binary release organization and missing options.
-     Fixed PAL screen calculation error.
-     Improved font characters for walls, floor, wands, doors, and swallowed.
-     Support for individual icons per character type.
-   New for 3.1.2:
-     Addition of asksavedisk option to eliminate need for savedir;n syntax
-     Scrolling message window if screen is tall enough.
-     Consolidation of defaults and config information into one in HackWB.
-     All known fatal bugs dealing with the Amiga port have been fixed.
-     Preliminary tty mode - see below.
+0. Pre-intro for NetHack 3.2.0
+   Amiga-specific changes for 3.2.0:
+     Tile (graphics images) support.
+     Repackaged support files (see the DLB man page).
+     Improved TTY/BBS mode.
+     New option: altmeta.
+     New option: fast_map.
+
+   And the bad news: HackWB is not supported in 3.2.0 - we hope to have it
+   ready for 3.2.1.  Our apologies - please use HackCli to start the game.
      
    We would like to thank each and every one of the people who took
    the time and effort to report bugs to us.  THANK YOU!
@@ -25,18 +23,16 @@ I. Introduction
 
 I.A. Overview
     Welcome to Amiga NetHack!  If this is your first visit to our fair
-    city, you are in for an amazing and dangerous journey; if you have
+    city, you are in for an amazing but dangerous journey; if you have
     visited us before, beware! the city has changed in many strange and
     subtle ways; it has also grown quite a bit.  This missive brings to
     light those mundane tasks which must be dealt with before beginning
     your journey; for those of you who are faced with the task of
     installing the pre-fabricated version of our town, section III
-    (Installing Amiga NetHack 3.1) will guide you through the task at
+    (Installing Amiga NetHack 3.2) will guide you through the task at
     hand.  If you are ready to visit, the local visitors guide is in
-    section II (Using Amiga NetHack 3.1); please also see the general
-    guide packaged separately (the file GuideBook).  Finally, for those
-    brave souls among you who prefer to scratch-build your own models,
-    your guidance is in section IV (Compiling Amiga NetHack 3.1).
+    section II (Using Amiga NetHack 3.2); please also see the general
+    guide packaged separately (the file "GuideBook").
     
     To all our visitors, a hearty Welcome! - and please be careful.
 
@@ -46,48 +42,51 @@ I.A. Overview
 
 I.B. Getting Help
     If you have questions about strategy, weapons, or monsters, the best
-    place to go for help is the Usenet newsgroup rec.games.hack.  If you
-    have problems with installation or think you have found a bug in
-    the game, please report it by electronic mail to the development
-    group at nethack-bugs@linc.cis.upenn.edu, where it will be routed
-    to the appropriate person.  Include your configuration, the version of
-    NetHack you are playing, and as much specific information as possible.
-    As NetHack runs on many different machines, be sure to mention that
-    you are playing the Amiga version.  Finally, if you are having trouble
-    compiling NetHack, you may use the same address, or, for compiler
-    specific problems, send mail to:
-    	Greg Olson (golson@sundown.sun.com) for Manx.
-    	Richard Addison (addison@pollux.usc.edu) for SAS/C.
-    We do not currently have a contact for the DICE port.
+    place to go for help is the Usenet newsgroup rec.games.roguelike.nethack.
+
+    If you have problems with installation or think you have found a bug
+    in the game, please report it by electronic mail to the development
+    team at nethack-bugs@linc.cis.upenn.edu, where it will be routed to
+    the appropriate person.  Include your configuration, the version of
+    NetHack you are playing (use the 'v' command), whether or not you are
+    using an official binary release (and if so which one) and as much
+    specific information as possible.  As NetHack runs on many different
+    machines, be sure to mention that you are playing the Amiga version.
 
 I.C. Credits
     Olaf Seibert first ported NetHack 2.3 and 3.0 to the Amiga.  Richard
-    Addison, Jochen Erwied, Mark Gooderum, Ken Lorber, Greg Olson, Mike
-    Passaretti, and Gregg Wonderly polished and extended the 3.0 and 3.1
-    ports.
+    Addison, Andrew Church, Jochen Erwied, Mark Gooderum, Ken Lorber,
+    Greg Olson, Mike Passaretti, and Gregg Wonderly polished and extended
+    the 3.0 and 3.1 ports.  Andrew Church, Ken Lorber, and Gregg Wonderly
+    are responsible for the 3.2 port.
 
-
-II. Using Amiga NetHack 3.1
+II. Using Amiga NetHack 3.2
     The short version: from the WorkBench click on HackWB and from the
-    CLI invoke HackCli.
+    CLI invoke HackCli.  (For 3.2.0 HackWB is not included - please use
+    HackCli.)
 
 II.A. Sources of Information
     Where to go depends on what you want to find out.  If you want to find
-    out about distributing NetHack, read the license (in NetHack:license or
-    type ?i during the game).  For an introduction to NetHack, read the
-    GuideBook file.  Finally, for information during the game on all kinds
-    of things, type ? and select from the menu.  Further information on
-    HackWB is below and available from HackWB - press the Help key; more
-    information on HackCli is in the NetHack ManPage.
+    out about distributing NetHack, read the license (in NetHack:license
+    or type ?i during the game).  For an introduction to NetHack, read
+    the GuideBook file.  To find out what options are compiled into your
+    copy of NetHack, type #v during the game.  Finally, for information
+    during the game on all kinds of things, type ? and select from the
+    menu.  Further information on HackWB is below and available from HackWB -
+    press the Help key; more information on HackCli is in the NetHack
+    ManPage and in section II.C.
 
 II.B. The Amiga NetHack WorkBench Front End
+    3.2.0 does not include HackWB; it is expected to return in the next
+    patch release.  Please ignore this section until then.
+
     The Amiga NetHack WorkBench Front End, HackWB, looks more or less like a
     WorkBench Drawer - and acts the same way.  Games start with double clicks
     and menus provide more detailed control of games and defaults.  On-line
     help is available - just press the help key.
 
     Just as with WorkBench itself, options for games are set using the Info
-    menu item to modify Tooltypes.  Most common options can be set more 
+    menu item to modify ToolTypes.  Most common options can be set more 
     easily using buttons available via Info also.
 
     If necessary, you can adjust the following using the ToolTypes from the
@@ -121,25 +120,35 @@ II.B. The Amiga NetHack WorkBench Front End
     values for OPTIONS, which will generally be overridden by ToolTypes
     entries.
 
-    Also, there are two additional options that may be specified in the
-    NetHack.cnf file or on an OPTIONS line: flush and silent.  When enabled,
-    flush discards all characters in the queue except the first, which limits
-    typeahead accidents.  The default setting is noflush.  Silent turns off
-    the audio output.
-
     Usually, most of the confusing options will be set in the NetHack.cnf
     file once when the game is installed and can be ignored after that.
 
 II.C. The Amiga NetHack CLI Front End
+
     The CLI Front End, HackCli, provides the standard Unix-like command line
     interface to NetHack.  Unlike the Unix front end however, the CLI front
     end will ask if you want to play again (and optionally change the
     arguments) before exiting.  See the ManPage file for the standard Unix
     flags for NetHack.  In addition to those flags, Amiga NetHack accepts
-    flags -l to force non-interlaced mode and -L to force interlaced mode.
+    the flags -l to force non-interlaced mode and -L to force interlaced mode.
+    HackCli is also used if you are running NetHack on a BBS - see the BBS
+    section below.
 
+II.D. Amiga-Specific Information for NetHack
 
-III. Installing Amiga NetHack 3.1
+    There are several options that are unique to the Amiga version of
+    NetHack that may be specified in the NetHack.cnf file or on an
+    OPTIONS line:
+
+    altmeta     allows the ALT keys to function as META keys.  The default
+                is altmeta.
+    fast_map	use a faster display function - but only works with a limited
+                set of display setups.  The default is fast_map.
+    flush       flush discards all characters in the queue except the first,
+                which limits typeahead accidents.  The default is !flush.
+    silent      turn off the audio output.  The default is silent.
+
+III. Installing Amiga NetHack 3.2
 
 III.A. General Installation
     Installation should be easy - basically it consists of putting files
@@ -147,84 +156,102 @@ III.A. General Installation
     installing from the official binary distribution, simply unpacking
     each archive in the appropriate directory will put the files in the
     places they belong (note that the archives may have been split
-    for distribution).  If you are installing from source, most of this
-    work will be done by the time the build is finished.  See below for
-    complete installation instructions.
+    for distribution).
 
     IF YOU ALREADY HAVE A PREVIOUS VERSION INSTALLED YOU MUST DELETE THE
     OLD SAVE AND BONES FILES - THEY WILL NOT WORK!  This includes save
-    and bones files from NetHack 3.1.0 and 3.1.1.
+    and bones files from all versions of NetHack 3.1.
 
 Will NetHack fit on your machine?
-    NetHack 3.1 is large.  NetHack 3.1 is very large.  You will need:
-    > Amiga 500, 1000, 2000, 2500, 3000, or 4000.  The A600, and A1200
-      should work, but have not been tested.
+    NetHack 3.2 is large.  NetHack 3.2 is very large.  You will need:
+    > Any standard series Amiga: 500, 600, 1000, 1200, 2000, 2500, 3000, 4000.
     > WorkBench 1.3 or 2.04 or later.  WorkBench 1.2 or 2.02 will NOT work;
       we will NOT be fixing that. 
     > At least 2 meg of RAM.  NetHack will NOT run in 1 meg.
-    > Mass storage: NetHack will run on one floppy - but it won't be nice.
-      Two floppies are almost enough.  A hard drive with over 3 meg of
-      free space is recommended.
+    > Mass storage:  A hard drive with over 3 meg of free space is highly
+      recommended.  NetHack will probably still run on one floppy - but it
+      won't be nice and hasn't been tested recently.  Two floppies are almost
+      enough.
 
-Find space for the files
-    Floppy installation:
+Hard Disk Installation:
+    Find the space
+    	cd to wherever you want to install NetHack
+	make a new directory to be the main NetHack directory:
+	  makedir NH320
+	  makedir NH320/NetHack
+	  makedir NH320/HackExe
+	  makedir NH320/HackExe2
+	In S:User-Startup (under 2.0 or later) or S:Startup-Sequence
+	(under 1.3):
+	  assign NetHack: to the NetHack directory you created above.
+	  assign HackExe: to the HackExe directory.
+	  assign HackExe2: to the HackExe2 directory.
+    Install the files
+	Cd to the appropriate places then unpack the files:
+	Archive 1 (the one this ReadMe came in), should be unpacked into
+	NetHack:
+	  cd NH320:
+	  lz x NH32P0-1.lzh
+	Archive 2 unpacks in two sections to two different places.
+	  cd NH320:
+	  lz x NH32P0-2.lzh HackExe/#?
+	  lz x NH32P0-2.lzh HackExe2/#?
+
+    Use the table in the next section to see where things should end up.
+    Be sure that the file 8 ends up in NetHack:hack/8.  Note that NetHack 3.2
+    has several dozen FEWER files than previous versions.
+      
+Floppy Installation:
+	Caution: the floppy installation instructions have not been
+	tested recently.  Please report any problems.
+    Find the space
 	Format five disks named:
 	    NetHack
 	    HackExe
 	    HackExe2
 	    NHsave
 	    NHlevels
-    Hard Disk installation:
-    	cd to wherever you want to install NetHack
-	make a new directory to be the main NetHack directory:
-	  makedir NH313
-	  makedir NH313/NetHack
-	  makedir NH313/HackExe
-	  makedir NH313/HackExe2
-	In S:User-Startup (under 2.0 or later) or S:Startup-Sequence
-	(under 1.3):
-	  assign NetHack: to the NetHack directory you created above.
-	  assign HackExe: to the HackExe directory.
-	  assign HackExe2: to the HackExe2 directory.
-
-Install the files
-    Unpack the archives in the directories or onto the disks.  Cd to
-    the appropriate places then unpack the files:
-    Archive 1 (the one this ReadMe came in), should be unpacked into
-    NetHack:.  If you are installing to hard disk, cd to the NH313 directory
-    before unpacking.
-      lz x NH31P3-1.lzh
-    Archive 2 unpacks in two sections to two different places.  If you are
-    installing to hard disk, cd to the NH313 directory before unpacking; if
-    you are installing to floppies, unpack each section to a different disk.
-      lz x NH31P3-2.lzh HackExe/#?
-      lz x NH31P3-2.lzh HackExe2/#?
+    Install the files
+	Unpack the archives onto the disks.
+	Archive 1 (the one this ReadMe came in), should be unpacked onto
+	NetHack:.
+	  cd NetHack:
+	  lz x NH32P0-1.lzh
+	Archive 2 unpacks in two sections to two different places.
+	  cd HackExe:
+	  lz x NH32P0-2.lzh HackExe/#?
+	  cd HackExe2:
+	  lz x NH32P0-2.lzh HackExe2/#?
       
     Use the table in the next section to see where things should end up.
-    Be sure that the file 8 ends up in NetHack:hack/8 and that the sounds
-    files end up in the NetHack:sounds directory.
+    Be sure that the file 8 ends up in NetHack:hack/8.  Note that NetHack 3.2
+    has several dozen FEWER files than previous versions.
 
-Floppy fixup
-    If you are installing to floppies the files on each disk are probably one
-    level too far down (for example NetHack:NetHack.cnf is probably
-    NetHack:NetHack/NetHack.cnf).  This is how to fix that:
+    The files on each disk are now probably one level too far down
+    (for example NetHack:NetHack.cnf is probably NetHack:NetHack/NetHack.cnf).
+    This is how to fix that:
     Put the following lines into the file ram:fixit (be sure to delete the
     blanks from the start of the lines or this will NOT work!)
       .key x
       rename <x> /<x>
 
-    For each of the disks NH313, NetHack, and HackExe, cd into the "inner"
+    For each of the disks NetHack, HackExe, and HackExe2, cd into the "inner"
     directory (for example "cd NetHack:NetHack") and execute these commands:
       list >ram:x lformat="execute ram:fixit %s" #?
       execute ram:x
+
+    Finally, if you build a custom boot disk for NetHack, note that the
+    following disk-based libraries are needed in LIBS:
+	diskfont.library
+	iffparse.library (if using graphics font)
 
 Configuration
     Using your favorite text editor, edit NetHack:NetHack.cnf to match
     your system.  Check HackExe:NetHack.dir and be sure that the paths
     are correct (note that the C or D beginning the line is required and
     is not part of the file path).  The HackWB program uses two standard
-    Amiga programs that must be installed in their standard places: c:copy
-    and c:rename.  The icons for the documentation invoke SYS:Utilities/More
+    Amiga programs that must be installed in their standard places: C:Copy
+    and C:Rename.  The icons for the documentation invoke SYS:Utilities/More
     and will probably need to be updated for your installation.
 
     Create the save file directory (makedir NetHack:save) and the levels file
@@ -236,179 +263,49 @@ Configuration
 
 III.B. File Location Table
 NetHack:
-	amii.hlp	cmdhelp		data		default.icon
-	dungeon		Guidebook	Guidebook.info	hack.font
-	hack/8		HackCli		HackCli.info	HackWB
-	HackWB.hlp	HackWB.info	help		hh
-	history		license		ManPage		ManPage.info
-	NetHack.cnf	NewGame.info	opthelp		options
-	oracles		quest.dat	ReadMe		ReadMe.info
-	Recover		Recover.info	RecoverMan	RecoverMan.info	
-	rumors
-	sounds/Bell			sounds/Bugle
-	sounds/Drum_Of_Earthquake	sounds/Fire_Horn
-	sounds/Frost_Horn		sounds/Leather_Drum
-	sounds/Magic_Flute		sounds/Magic_Harp
-	sounds/Tooled_Horn		sounds/Wooden_Flute
-	sounds/Wooden_Harp
-	wizhelp
+	amii.hlp	default.icon	dlb		DlbMan
+	DlbMan.info	Guidebook	Guidebook.info	hack.font
+	hack/8		HackCli		license		ManPage
+	ManPage.info	NetHack.cnf	NewGame.info	nhdat
+	nhsdat		ReadMe		ReadMe.info	Recover
+	Recover.info	RecoverMan	RecoverMan.info	
 
 HackExe:
-	A-filla.lev	A-fillb.lev	A-goal.lev	A-locate.lev
-	A-start.lev	air.lev		asmodeus.lev	astral.lev
-	B-filla.lev	B-fillb.lev	B-goal.lev	B-locate.lev
-	B-start.lev	baalz.lev	bigroom.lev	C-filla.lev
-	C-fillb.lev	C-goal.lev	C-locate.lev	C-start.lev
-	castle.lev	E-filla.lev	E-fillb.lev	E-goal.lev
-	E-locate.lev	E-start.lev	earth.lev	fakewiz1.lev
-	fakewiz2.lev	fire.lev	H-filla.lev	H-fillb.lev
-	H-goal.lev	H-locate.lev	H-start.lev	juiblex.lev
-	K-filla.lev	K-fillb.lev	K-goal.lev	K-locate.lev
-	K-start.lev	knox.lev	medusa-1.lev	medusa-2.lev
-	minefill.lev	minetown.lev	mine_end.lev	NetHack.c01
-	NetHack.d00	NetHack.dir	oracle.lev	orcus.lev
-	P-filla.lev	P-fillb.lev	P-goal.lev	P-locate.lev
-	P-start.lev	R-filla.lev	R-fillb.lev	R-goal.lev
-	R-locate.lev	R-start.lev	S-filla.lev	S-fillb.lev
-	S-goal.lev	S-locate.lev	S-start.lev	sanctum.lev
-	T-filla.lev	T-fillb.lev	T-goal.lev	T-locate.lev
-	T-start.lev	tower1.lev	tower2.lev	tower3.lev
-	V-filla.lev	V-fillb.lev	V-goal.lev	V-locate.lev
-	V-start.lev	valley.lev	W-filla.lev	W-fillb.lev
-	W-goal.lev	W-locate.lev	W-start.lev	water.lev
-	wizard1.lev	wizard2.lev	wizard3.lev
+	NetHack.c01	NetHack.d00	NetHack.dir	
 
 HackExe2:
 	NetHack.c00
 
+IV. BBS Interface
+    The BBS mode is based on the standard NetHack tty port and is designed
+    for use in a BBS setting - it is specifically not recommended for use
+    on the console.  The current TTY mode has changed significantly since
+    the preliminary version released with 3.1.2.  In particular, BBS mode
+    now works with split binaries (only), and now supports multiple games
+    in progress at the same time for multi-line boards (note however that
+    any individual user should not be allowed to run two instances of
+    NetHack at the same time).
 
-IV. Compiling Amiga NetHack 3.1
+    To set up NetHack for use with a BBS, set OPTIONS=windowtype:tty
+    and unset DUNGEONS, TRAPS, and EFFECTS in NetHack.cnf.  Configure
+    the BBS to expect I/O through stdin and stdout, and have NetHack
+    invoked as:
+       HackCLI :uid -u uname options...
+    where uid is any string (without embedded spaces, colons, or slashes)
+    that is unique for each BBS user and uname is some corresponding human-
+    readable name for that user.  Uid is used in constructing file names
+    to prevent collisions between simultaneous games and to prevent
+    people from using other people's save files.  Uname is the name the
+    character will have in the game and the name that will appear in the
+    record file.
 
-IV.A. Compilation Overview
-    Compiling NetHack is not very hard - basically you do a little
-    configuration and start make.  It does, however, require a good amount
-    of disk space - almost 7 meg (and subject to change; more if you are
-    not doing the simple compile - more on that later).  It also needs a
-    good bit of memory.
+    The terminal is assumed to be a 24x80 ANSI-compatible terminal.
+    The present version does not deal with situations such as low
+    memory gracefully - as NetHack uses a considerable amount of
+    memory this is particularly painful with multiple games in
+    progress.  Sysops are reminded to be familiar with the recover
+    utility, which may be needed from time to time and which should
+    probably not be available directly to users.  Bug reports and
+    suggestions for improvements are requested from the user community -
+    this is still considered alpha software.
 
-IV.B. Basic Compilation
-    NetHack can be built with SAS/C version 6.2, Manx/Aztec version 5,
-    or the registered version of DICE.  The "official" compiler for NetHack 3.1
-    patchlevel 3 is SAS/C 6.2 - we have dropped support for SAS/C 5.x.
-
-IV.B.1. Introduction to Compiling NetHack
-    Before doing any compilation, read the README files distributed
-    with the source.  These should familiarize you with the source tree
-    layout, and what files are shared with what computers.  Generally,
-    everything in the sys/amiga directory is used exclusively by the Amiga.
-
-    The makefile (Makefile.ami) is set up to depend upon certain assignments,
-    providing the developer with a fairly flexible environment.  See
-    makefile.ami for assignment assumptions.
-
-    Edit config.h to your liking and system configuration.  The following
-    need to be checked:
-
-	UNIX - undef
-	MACRO_CPATH - undef
-	HACKDIR - define as "NetHack:"
-
-    At this point, you're almost ready to begin a compile.  Read VERY
-    CAREFULLY through the Makefile to familiarize yourself with which
-    assignments are assumed.  Otherwise, you're going to get something
-    like "Insert NHS: in any drive." requestors.  You will need the
-    programs uudecode, flex, and bison.  The first thing Makefile.ami does
-    is build a program called 'makedefs', which handles a variety of
-    data file generation, and a pair of programs called 'lev_comp' and
-    'dgn_comp' which compile the special levels.  Makedefs will then be
-    run to create a few files, followed by an alphabetically sorted
-    compilation of the entire source tree.  This compilation process
-    will compile selected files from the Amiga:, Share:, and NHS:
-    directories.  If all goes well, all of the  objects will be linked
-    together to form a binary.  After building the main binary, a make
-    install will build the auxiliary files including help files, special
-    levels, icons, and the font files and will put these files into their
-    final positions.  The first make run should be done in OBJ: and the
-    make install should be done in NetHack:; for both runs, the makefile
-    is Amiga:Makefile.ami.
-
-    Note that not all the source is simple C code.  If you are modifying
-    lev_comp or dgn_comp you may need bison and/or flex (depending on what
-    modifications you are making).  If you wish to modify the Intuition
-    windows in HackWB, the (uuencoded) PowerWindows files are provided.  You
-    do not need any of these tools to simply build NetHack - all the C output
-    files are provided in the source distribution.  Also, the ifchange
-    script requires a version of diff that produces standard Unix format
-    context diffs for proper operation - the version shipped with SASC
-    is not sufficient.
-
-    If you do not have bison and flex, copy the files from Share:.  The
-    include files go in incl: and the C files go in util:.  If the compile
-    fails due to prototype errors for malloc and realloc, try deleting
-    the first line of lev_comp.c and dgn_comp.c.
-
-IV.B.2. Compiling NetHack with SAS/C version 6.2
-
-    NOTE WELL - Amiga NetHack has dropped support for SAS/C version 5.
-    This version of NetHack was developed with SAS/C 6.2.  Earlier versions
-    of the compiler are known to cause problems - don't use them.
-
-    A couple of notes and warnings from the SAS/C users on the team:
-
-	* Included in the SAS/C port is code for generating a SnapShot.tb
-	  file upon catching various internal disasters.  That is why the
-	  debug=l flag is in the makefile.  This adds about 270K to the disk
-	  image, but it does not increase the run time memory requirements.
-          (But note that this is not useful for split binaries - see below.)
-
-	* The 5.10b optimizer did not produce correct code for NetHack.  The
-	  current optimizer has not been tested.
-
-	* There are a large number of warnings under SAS/C, which are
-	  harmless.
-
-IV.B.3. Compiling NetHack with Manx/Aztec version 5
-    The Manx port has not been tested recently and is probably broken.  We
-    expect to have it back in shape soon but we welcome context diffs.  As
-    of the last check, NetHack required version 5.0B of the compiler.  
-
-IV.B.4	Compiling NetHack with the registered version of DICE
-    The DICE port was complete at one point but has not been tested in
-    several months - it probably will not work as is.  We welcome context
-    diffs (or volunteers) to fix it.
-
-IV.C. Advanced Compilation
-    As mentioned above, NetHack is very large.  There are several
-    techniques under development by the Amiga NetHack Team for dealing
-    with the situation.  As they are completed, they will be documented
-    here.  Before attempting any of them, you MUST do a "normal" build
-    as documented above; the techniques described below require the
-    auxiliary files from a normal build to form a complete NetHack
-    installation.
-
-IV.C.1 Splitter
-    Splitter addresses two problems with NetHack: first, the long startup
-    time of the game, and second, the size of the binary (which will not fit
-    on a single disk).  See the file split/split.doc for information on
-    splitter.  The normal install target in Makefile.ami will build the
-    split version of NetHack as part of the normal install process; the
-    front ends will run from either the normal version (HackExe:NetHack) or,
-    preferably, from the split version (NetHack.c#?  NetHack.d#?) - the
-    decision is based on the presence (or absence) of HackExe:NetHack.dir.
-    Note that the contents of NetHack.dir after a build will generally not
-    be the correct contents for a floppy based system.
-
-IV.C.2 TTY Interface
-    There is a basic tty interface available since 3.1.2.  This is a
-    preliminary version and it will change in the future.  Expect bugs.
-    (Due to the instability of the interface it will not be in the
-    official binaries for 3.1.3).  The TTY mode is designed for use in
-    a BBS setting - it is specifically not recommended for use on the
-    console.  The TTY interface is not currently compatible with split
-    binaries - invoke NetHack directly as NetHack.  In addition, you should
-    specify #undef SHELL when you compile and add "OPTIONS=windowtype=tty"
-    and delete GRAPHICS from NetHack.cnf; a 24x80 ANSI-compatible terminal
-    is assumed.  The present version does not deal with protecting one
-    user's saved games from another's, or deal with situations such as
-    low disk space gracefully.  Bug reports and suggestions for improvements
-    are requested from the user community.

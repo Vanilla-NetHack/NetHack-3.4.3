@@ -18,7 +18,7 @@
  * SIZE (-1) info: flags: 0x5880, size: 65536L/65536L (64k/64k)
  * libraries: MacTraps [yes], MacTraps2 (HFileStuff) [yes], ANSI [no]
  * compatibility: system 6 and system 7
- * misc: sizeof(int): 4, "\p": unsigned char, enum size varies,
+ * misc: sizeof(int): 2, "\p": unsigned char, enum size varies,
  *   prototypes required, type checking enforced, no optimizers,
  *   FAR CODE [no], FAR DATA [no], SEPARATE STRS [no], single segment,
  *   short macsbug symbols
@@ -50,7 +50,9 @@
 #include <OSUtils.h>
 #include <Resources.h>
 #include <Files.h>
+#ifdef applec
 #include <SysEqu.h>
+#endif
 #include <SegLoad.h>
 
 #include <Quickdraw.h>
@@ -68,7 +70,7 @@
 #include <StandardFile.h>
 #include <ToolUtils.h>
 
-#if 1	/* glue for System 7 Icon Family call (needed by Think C 5.0.4) */
+#ifndef __MWERKS__	/* glue for System 7 Icon Family call (needed by Think C 5.0.4) */
 pascal OSErr GetIconSuite(Handle *theIconSuite, short theResID, long selector)
 	= {0x303C, 0x0501, 0xABC9};
 #endif
@@ -244,7 +246,7 @@ typedef schar		xchar;				/* global.h */
 unsigned char	savename[SAVESIZE];		/* originally a C string */
 unsigned char	lock[256];				/* pascal string */
 
-long			hpid;					/* NetHack (unix-style) process i.d. */
+int			hpid;					/* NetHack (unix-style) process i.d. */
 short			saveRefNum;				/* save file descriptor */
 short			gameRefNum;				/* level 0 file descriptor */
 short			levRefNum;				/* level n file descriptor */
@@ -1112,7 +1114,7 @@ saveRezStrings()
 	{
 		plName++;
 		(*savename)--;
-		hpid /= 10L;
+		hpid /= 10;
 	}
 	while (hpid);
 	*plName = *savename;
@@ -1256,7 +1258,7 @@ copy_bytes(short inRefNum, short outRefNum)
 static void
 restore_savefile()
 {
-	static long	savelev;
+	static int	savelev;
 	long		saveTemp, lev;
 	xchar		levc;
 

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)WindowP.h	3.1	92/3/7	*/
+/*	SCCS Id: @(#)WindowP.h	3.2	92/03/07	*/
 /* Copyright (c) Dean Luick, 1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 

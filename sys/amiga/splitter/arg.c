@@ -1,5 +1,5 @@
-/*    SCCS Id: @(#)arg.c		3.1   93/01/08
-/*    Copyright (c) Kenneth Lorber, Bethesda, Maryland, 1992, 1993 */
+/*    SCCS Id: @(#)arg.c		3.1   95/07/25
+/*    Copyright (c) Kenneth Lorber, Bethesda, Maryland, 1992, 1993, 1995 */
 /* NetHack may be freely redistributed.  See license for details. */
 
 /*
@@ -7,7 +7,11 @@
  */
 #include <exec/types.h>
 #include <exec/lists.h>
-#include <proto/exec.h>
+#ifdef _DCC
+# include <clib/exec_protos.h>
+#else
+# include <proto/exec.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -22,7 +26,6 @@ static char more=0;
 static char *argp;
 
 static char *arg_fillbuf(void);
-/*static char *splitline(struct fentry *); L505 bug? see below */
 static char *splitline2(char *);
 
 char *argarg;
@@ -94,12 +97,12 @@ int arg_next(){
 				if(*++cp==':'){
 					if(*argp){
 						argarg=argp;
-					}else{
+					} else {
 						argarg=arg_fillbuf();
 						if(!argarg)return(ARG_ERROR);
 					}
 					more=0;
-				}else{
+				} else {
 					argarg=0; /* doesn't take an arg */
 					more= *argp;
 				}
@@ -107,7 +110,7 @@ int arg_next(){
 			}
 		}
 		return(ARG_ERROR);	/* no such option */
-	}else{
+	} else {
 		argarg=argp;
 		more=0;
 		return(ARG_FREE);
@@ -115,33 +118,32 @@ int arg_next(){
 }
 
 static char *arg_fillbuf(){
-	char *p,*nlp;;
+    char *p,*nlp;
 
-	if(ListEmpty(flist)){
-		if(++a_apos>a_argc)return(0);
-		p=a_argv[a_apos];
-	}else{
-		struct fentry *f=(struct fentry *)ListHead(flist);
-		if(!f->ptr){
-			do{
-				if(!fgets(f->buf,ARGLEN,f->fp)){
-					if(ferror(f->fp)){
-						fprintf(stderr,
-							"I/O error on @file\n");
-						return(0);
-					}
-					fclose(f->fp);
-					RemHead(&flist);
-					free(f);
-					return(arg_fillbuf());
-				}
-			}while(f->buf[0]=='#');	/* comment */
-			if(nlp=strchr(f->buf,'\n'))*nlp='\0';
+    if(ListEmpty(flist)){
+	if(++a_apos>a_argc)return(0);
+	p=a_argv[a_apos];
+    } else {
+	struct fentry *f=(struct fentry *)ListHead(flist);
+	if(!f->ptr){
+	    do{
+		if(!fgets(f->buf,ARGLEN,f->fp)){
+		    if(ferror(f->fp)){
+			fprintf(stderr, "I/O error on @file\n");
+			return(0);
+		    }
+		    fclose(f->fp);
+		    RemHead(&flist);
+		    free(f);
+		    return(arg_fillbuf());
 		}
-		p=splitline(f);
-		if(p== (char *)-1)return(0);		/* error */
-		if(!p)return(arg_fillbuf());	/* skip blank line */
+	    }while(f->buf[0]=='#');	/* comment */
+	    if(nlp=strchr(f->buf,'\n'))*nlp='\0';
 	}
+	p=splitline(f);
+	if(p == (char *)-1)return(0);		/* error */
+	if(!p)return(arg_fillbuf());		/* skip blank line */
+    }
 	if(p && *p=='@'){
 		struct fentry *f=calloc(sizeof(struct fentry),1);
 		f->fp=fopen(++p,"r");
@@ -159,6 +161,7 @@ static char *arg_fillbuf(){
 static char *splitline(struct fentry *f){
 	char *out=(f->ptr?f->ptr:f->buf);
 	char *ret;
+
 	while(*out && isspace(*out))out++;
 	if(!*out)return(0);	/* blank line or spaces at end */
 	ret=out;
@@ -177,7 +180,7 @@ static char *splitline(struct fentry *f){
 	}
 	if(!*out){
 		f->ptr=0;	/* this was last arg on current line */
-	}else{
+	} else {
 		*out='\0';
 		f->ptr= ++out;
 		if(!(*f->ptr))f->ptr=0;
@@ -188,7 +191,7 @@ static char *splitline(struct fentry *f){
 static char *splitline2(char *p){
 	char *out=p;
 	char c;
-	char dq=0,sq=0;
+	char dq=0, sq=0;
 	while(*p){
 		switch(c= *p++){
 		case '\\':
@@ -203,13 +206,13 @@ static char *splitline2(char *p){
 			break;
 		case '\"':	if(sq){
 					*out++=c;
-				}else{
+				} else {
 					dq=1-dq;
 				}
 				break;
 		case '\'':	if(dq){
 					*out++=c;
-				}else{
+				} else {
 					sq=1-sq;
 				}
 				break;

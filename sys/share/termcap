@@ -132,6 +132,28 @@ AX|ANSI X3.64|full ANSI X3.64 (1977) standard:\
 	:kn#4:k1=\EOP:k2=\EOQ:k3=\EOR:k4=\EOS:\
 	:im=\E[4h:ei=\E[4l:al=\E[L:dl=\E[M:ic=\E[@:dc=\E[P:sf=\ED:sr=\EM:
 #
+# For PC-9800 NetHack:
+#
+pc9800|pc9801|pc98|NEC PC-9800 Series:\
+	:co#80:li#25:\
+	:cm=\E[%i%d;%dH:ho=\E[H:ll=\E[25;1H:cr=^M:le=^H:nd=^L:\
+	:up=\EM:do=\ED:bw:nw=\EE:sc=\E[s:rc=\E[u:ta=^I:bc=^H:bs:nl=\ED:\
+	:am:xn:\
+	:sf=\ED:sr=\EM:\
+	:cl=\E*:cd=\E[J:ce=\E[K:\
+	:al=\E[L:dl=\E[M:AL=\E[%dL:DL=\E[%dM:\
+	:so=\E[36m:se=\E[m:\
+	:mb=\E[5m:md=\E[33m:mh=\E[32m:mk=\E[8m:me=\E[m:\
+	:as=\E)3:ae=\E)0:\
+	:us=\E[4m:ue=\E[m:\
+	:vi=\E[>5h:ve=\E[>5l:\
+	:bl=^G:\
+	:kl=\E[D:kr=\E[C:ku=\E[A:kd=\E[B:\
+	:k0=\EZ:k1=\ES:k2=\ET:k3=\EU:k4=\EV:\
+	:k5=\EW:k6=\EE:k7=\EJ:k8=\EP:k9=\EQ:\
+	:kb=^H:\
+	:ti=\E[0;37m\E[>1h\E[>5l:te=\E[0;37m\E[>1l:
+#
 # Display hacker's tool
 #
 debug|debugging entry:\

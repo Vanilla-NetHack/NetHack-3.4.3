@@ -1,10 +1,11 @@
-/*	SCCS Id: @(#)pcmain.c	3.1	93/06/28	*/
+/*	SCCS Id: @(#)pcmain.c	3.2	95/07/26	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 /* main.c - MSDOS, OS/2, ST, Amiga, and NT NetHack */
 
 #include "hack.h"
+#include "dlb.h"
 
 #ifndef NO_SIGNAL
 #include <signal.h>
@@ -20,14 +21,22 @@
 # endif
 #endif
 
-#if !defined(LATTICE)
-char orgdir[PATHLEN];
+#ifdef WIN32
+#include "win32api.h"			/* for GetModuleFileName */
 #endif
 
-#ifdef MFLOPPY
-struct finfo	zfinfo = ZFINFO;
-int i;
-#endif /* MFLOPPY */
+#ifdef __DJGPP__
+#include <unistd.h>			/* for getcwd() prototype */
+#endif
+
+#ifdef OVL0
+#define SHARED_DCL
+#else
+#define SHARED_DCL extern
+#endif
+
+
+SHARED_DCL char orgdir[PATHLEN];	/* also used in pcsys.c, amidos.c */
 
 #ifdef TOS
 boolean run_from_desktop = TRUE;	/* should we pause before exiting?? */
@@ -38,43 +47,83 @@ long _stksize = 16*1024;
 
 #ifdef AMIGA
 extern int bigscreen;
-#endif
-#ifdef AMII_GRAPHICS
-extern unsigned short amii_initmap[8];
-#endif
-
-static void FDECL(process_options,(int argc,char **argv));
-
-int FDECL(main, (int,char **));
-
-const char *classes = "ABCEHKPRSTVW";
-#ifdef	AMIGA
 void NDECL( preserve_icon );
 #endif
 
+static void FDECL(process_options,(int argc,char **argv));
+STATIC_DCL void NDECL(nhusage);
+
+#ifdef EXEPATH
+STATIC_DCL char *FDECL(exepath,(char *));
+#endif
+
+#ifdef OVL0
+int FDECL(main, (int,char **));
+#endif
+
+extern void FDECL(pcmain, (int,char **));
+
+#ifdef OVLB
+const char *classes = "ABCEHKPRSTVW";
+#else
+extern const char *classes;
+#endif
+
+#ifdef __BORLANDC__
+void NDECL( startup );
+# ifdef OVLB
+unsigned _stklen = STKSIZ;
+# else
+extern unsigned _stklen;
+# endif
+#endif
+
+#ifdef OVL0
 int
 main(argc,argv)
 int argc;
 char *argv[];
 {
+     pcmain(argc,argv);
+     moveloop();
+     exit(EXIT_SUCCESS);
+     /*NOTREACHED*/
+     return 0;
+}
+#endif /*OVL0*/
+#ifdef OVL1
+
+void
+pcmain(argc,argv)
+int argc;
+char *argv[];
+{
+
 	register int fd;
 	register char *dir;
+
+#ifdef __BORLANDC__
+	startup();
+#endif
+
 #ifdef TOS
 	long clock_time;
-	if (*argv[0]) {			/* only a CLI can give us argv[0] */
+	if (*argv[0]) { 		/* only a CLI can give us argv[0] */
 		hname = argv[0];
 		run_from_desktop = FALSE;
 	} else
 #endif
-		hname = "NetHack";	/* used for syntax messages */
+		hname = "NetHack";      /* used for syntax messages */
 
+#ifndef WIN32_GRAPHICS
 	choose_windows(DEFAULT_WINDOW_SYS);
+#endif
 
 #if !defined(AMIGA) && !defined(GNUDOS)
 	/* Save current directory and make sure it gets restored when
 	 * the game is exited.
 	 */
-	if (getcwd(orgdir, sizeof orgdir) == NULL)
+	if (getcwd(orgdir, sizeof orgdir) == (char *)0)
 		error("NetHack: current directory path too long");
 # ifndef NO_SIGNAL
 	signal(SIGINT, (SIG_RET_TYPE) exit);	/* restore original directory */
@@ -82,15 +131,20 @@ char *argv[];
 #endif /* !AMIGA && !GNUDOS */
 
 	dir = getenv("NETHACKDIR");
-	if (dir == NULL)
+	if (dir == (char *)0)
 		dir = getenv("HACKDIR");
-	if (dir != NULL) {
+#ifdef EXEPATH
+	if (dir == (char *)0)
+		dir = exepath(argv[0]);
+#endif
+	if (dir != (char *)0) {
 		Strcpy(hackdir, dir);
 #ifdef CHDIR
 		chdirx (dir, 1);
 #endif
 	}
-#if defined(AMIGA) && defined(CHDIR)
+#ifdef AMIGA
+# ifdef CHDIR
 	/*
 	 * If we're dealing with workbench, change the directory.  Otherwise
 	 * we could get "Insert disk in drive 0" messages. (Must be done
@@ -98,22 +152,16 @@ char *argv[];
 	 */
 	if(argc == 0)
 		chdirx(HACKDIR, 1);
+# endif
+	ami_argset(&argc, argv);
+	ami_wininit_data();
 #endif
 
-#ifdef MFLOPPY
-	/* zero "fileinfo" array to prevent crashes on level change */
-	for (i = 0 ; i <= MAXLEVEL; i++) {
-		fileinfo[i] = zfinfo;
-	}
-#endif /* MFLOPPY */
-#ifdef AMIGA
-	ami_argc=argc;
-	ami_argv=argv;
-#endif
-#ifdef AMII_GRAPHICS
-	memcpy(flags.amii_curmap,amii_initmap,sizeof(flags.amii_curmap));
-#endif
 	initoptions();
+
+#ifdef AMIGA
+	ami_mkargline(&argc, &argv);
+#endif
 
 #if defined(TOS) && defined(TEXTCOLOR)
 	if (flags.BIOS && flags.use_color)
@@ -142,18 +190,25 @@ char *argv[];
 		if(!*dir)
 		    error("Flag -d must be followed by a directory name.");
 		Strcpy(hackdir, dir);
-	    } else
+	    }
+	    if (argc > 1) {
 
-	/*
-	 * Now we know the directory containing 'record' and
-	 * may do a prscore().
-	 */
-	    if (!strncmp(argv[1], "-s", 2)) {
+		/*
+		 * Now we know the directory containing 'record' and
+		 * may do a prscore().
+		 */
+		if (!strncmp(argv[1], "-s", 2)) {
 #ifdef CHDIR
-		chdirx(hackdir,0);
+			chdirx(hackdir,0);
 #endif
-		prscore(argc, argv);
-		exit(0);
+			prscore(argc, argv);
+			exit(EXIT_SUCCESS);
+		}
+		/* Don't inialize the window system just to print usage */
+		if (!strncmp(argv[1], "-?", 2) || !strncmp(argv[1], "-H", 2)) {
+			nhusage();
+			exit(EXIT_SUCCESS);
+		}
 	    }
 	}
 
@@ -177,12 +232,9 @@ char *argv[];
 	chdirx(hackdir,1);
 #endif
 
+	init_nhwindows(&argc,argv);
 	process_options(argc, argv);
 
-#ifdef AMIGA
-	ami_wbench_args();
-#endif
-	init_nhwindows();
 #ifdef MFLOPPY
 	set_lock_and_bones();
 # ifndef AMIGA
@@ -196,7 +248,7 @@ char *argv[];
 #endif
 	if (!*plname)
 		askname();
-	plnamesuffix();		/* strip suffix from name; calls askname() */
+	plnamesuffix(); 	/* strip suffix from name; calls askname() */
 				/* again if suffix was whole name */
 				/* accepts any suffix */
 #ifndef MFLOPPY
@@ -205,9 +257,9 @@ char *argv[];
 	regularize(lock);	/* is this necessary? */
 #endif
 
-	/* set up level 0 file to keep game state in */
-	/* this will have to be expanded to something like the
-	 * UNIX/VMS getlock() to allow networked PCs in any case
+	/* Set up level 0 file to keep the game state.	This will have to
+	 * be expanded to something like the UNIX/VMS getlock() to allow
+	 * networked PCs in any case.
 	 */
 	fd = create_levelfile(0);
 	if (fd < 0) {
@@ -218,7 +270,7 @@ char *argv[];
 		close(fd);
 	}
 #ifdef MFLOPPY
-	    fileinfo[0].where = ACTIVE;
+	level_info[0].where = ACTIVE;
 #endif
 
 	/*
@@ -239,21 +291,11 @@ char *argv[];
 	 */
 	vision_init();
 
+	dlb_init();
+
 	display_gamewindows();
 
-	set_savefile_name();
-
-	if (
-#ifdef MFLOPPY
-# ifdef AMIGA
-	    (FromWBench || saveDiskPrompt(1)) &&
-# else
-	    saveDiskPrompt(1) &&
-# endif
-#endif /* MFLOPPY */
-	    ((fd = open_savefile()) >= 0) &&
-	   /* if not up-to-date, quietly unlink file via false condition */
-	   (uptodate(fd) || ((void)close(fd), delete_savefile()))) {
+	if ((fd = restore_saved_game()) >= 0) {
 #ifdef WIZARD
 		/* Since wizard is actually flags.debug, restoring might
 		 * overwrite it.
@@ -279,22 +321,19 @@ char *argv[];
 #endif
 		pline("Hello %s, welcome back to NetHack!", plname);
 		check_special_room(FALSE);
-
-#ifdef EXPLORE_MODE
 		if (discover)
 			You("are in non-scoring discovery mode.");
-#endif
-#if defined(EXPLORE_MODE) || defined(WIZARD)
+
 		if (discover || wizard) {
 			if(yn("Do you want to keep the save file?") == 'n'){
 				(void) delete_savefile();
 			}
-#ifdef AMIGA
+# ifdef AMIGA
 			else
 				preserve_icon();
-#endif
+# endif
 		}
-#endif
+
 		flags.move = 0;
 	} else {
 not_recovered:
@@ -302,29 +341,15 @@ not_recovered:
 		newgame();
 		/* give welcome message before pickup messages */
 		pline("Hello %s, welcome to NetHack!", plname);
-#ifdef EXPLORE_MODE
 		if (discover)
 			You("are in non-scoring discovery mode.");
-#endif
+
 		flags.move = 0;
 		set_wear();
 		pickup(1);
 		read_engr_at(u.ux,u.uy);
 	}
-	
-	flags.moonphase = phase_of_the_moon();
-	if(flags.moonphase == FULL_MOON) {
-		You("are lucky!  Full moon tonight.");
-		change_luck(1);
-	} else if(flags.moonphase == NEW_MOON) {
-		pline("Be careful!  New moon tonight.");
-	}
-	if(flags.friday13 = friday_13th()) {
-		pline("Watch out!  Bad things can happen on Friday the 13th.");
-		change_luck(-1);
-	}
 
-	initrack();
 #ifndef NO_SIGNAL
 	(void) signal(SIGINT, SIG_IGN);
 #endif
@@ -332,11 +357,10 @@ not_recovered:
 	gettty(); /* somehow ctrl-P gets turned back on during startup ... */
 #endif
 
-	moveloop();
-	return 0;
+	return;
 }
 
-static void
+STATIC_OVL void
 process_options(argc, argv)
 int argc;
 char *argv[];
@@ -348,10 +372,6 @@ char *argv[];
 		argv++;
 		argc--;
 		switch(argv[0][1]){
-#if defined(WIZARD) || defined(EXPLORE_MODE)
-# ifndef EXPLORE_MODE
-		case 'X':
-# endif
 		case 'D':
 # ifdef WIZARD
 			/* Must have "name" set correctly by NETHACK.CNF,
@@ -367,12 +387,9 @@ char *argv[];
 			}
 			/* otherwise fall thru to discover */
 # endif
-# ifdef EXPLORE_MODE
 		case 'X':
 			discover = TRUE;
-# endif
 			break;
-#endif
 #ifdef NEWS
 		case 'n':
 			flags.news = FALSE;
@@ -394,7 +411,7 @@ char *argv[];
 			if (!strncmpi(argv[0]+1, "IBM", 3))
 				switch_graphics(IBM_GRAPHICS);
 			break;
-	    /*  case 'D': */
+	    /*	case 'D': */
 		case 'd':
 			if (!strncmpi(argv[0]+1, "DEC", 3))
 				switch_graphics(DEC_GRAPHICS);
@@ -426,33 +443,45 @@ char *argv[];
 				break;
 			} else raw_printf("\nUnknown switch: %s", argv[0]);
 		case '?':
-		    (void) printf(
-			"\nUsage: %s [-d dir] -s [-[%s]] [maxrank] [name]...",
-			hname, classes);
-		    (void) printf("\n       or");
-		    (void) printf("\n       %s [-d dir] [-u name] [-[%s]]",
-			hname, classes);
-#if defined(WIZARD) || defined(EXPLORE_MODE)
-		    (void) printf(" [-[DX]]");
-#endif
+			nhusage();
+			exit(EXIT_SUCCESS);
+		}
+	}
+}
+
+static void 
+nhusage()
+{
+	char buf1[BUFSZ];
+
+	(void) Sprintf(buf1,
+	       "\nUsage: %s [-d dir] -s [-[%s]] [maxrank] [name]...\n       or",
+		hname, classes);
+	if (!flags.window_inited)
+		raw_printf(buf1);
+	else
+		(void)	printf(buf1);
+
+	(void) Sprintf(buf1,"\n       %s [-d dir] [-u name] [-[%s]] [-[DX]]",
+		hname, classes);
 #ifdef NEWS
-		    (void) printf(" [-n]");
+	Strcat(buf1," [-n]");
 #endif
 #ifndef AMIGA
-		    (void) printf(" [-I] [-i] [-d]");
+	Strcat(buf1," [-I] [-i] [-d]");
 #endif
 #ifdef MFLOPPY
 # ifndef AMIGA
-		    (void) printf(" [-r]");
+	Strcat(buf1," [-r]");
 # endif
 #endif
 #ifdef AMIGA
-		    (void) printf(" [-[lL]]");
+	Strcat(buf1," [-[lL]]");
 #endif
-		    putchar('\n');
-		    exit(0);
-		}
-	}
+	if (!flags.window_inited)
+		raw_printf("%s\n",buf1);
+	else
+		(void) printf("%s\n",buf1);
 }
 
 #ifdef CHDIR
@@ -461,20 +490,20 @@ chdirx(dir, wr)
 char *dir;
 boolean wr;
 {
-#ifdef AMIGA
+# ifdef AMIGA
 	static char thisdir[] = "";
-#else
+# else
 	static char thisdir[] = ".";
-#endif
+# endif
 	if(dir && chdir(dir) < 0) {
 		error("Cannot chdir to %s.", dir);
 	}
 
+# ifndef AMIGA
 	/* Change the default drive as well.
 	 */
-#ifndef AMIGA
 	chdrive(dir);
-#endif
+# endif
 
 	/* warn the player if we can't write the record file */
 	/* perhaps we should also test whether . is writable */
@@ -482,8 +511,10 @@ boolean wr;
 	if (wr) check_recordfile(dir ? dir : thisdir);
 }
 #endif /* CHDIR */
+#endif /*OVL1*/
+#ifdef OVLB
 
-#ifdef  PORT_HELP
+#ifdef PORT_HELP
 # if defined(MSDOS) || defined(WIN32)
 void
 port_help()
@@ -494,4 +525,36 @@ port_help()
 # endif /* MSDOS || WIN32 */
 #endif /* PORT_HELP */
 
+#ifdef EXEPATH
+
+#ifdef __DJGPP__
+#define PATH_SEPARATOR '/'
+#else
+#define PATH_SEPARATOR '\\'
+#endif
+
+char *exepath(str)
+char *str;
+{
+	char *tmp, *tmp2;
+	int bsize;
+
+	if (!str) return (char *)0;
+#ifndef WIN32
+	bsize = strlen(str) + 1;
+#else
+	bsize = 256;
+#endif
+	tmp = (char *)alloc(bsize);
+#ifndef WIN32
+	strcpy (tmp, str);
+#else
+	*(tmp + GetModuleFileName((HANDLE)0, tmp, bsize)) = '\0';
+#endif
+	tmp2 = strrchr(tmp, PATH_SEPARATOR);
+	if (tmp2) *tmp2 = '\0';
+	return tmp;
+}
+#endif /* EXEPATH */
+#endif /*OVLB*/
 /*pcmain.c*/

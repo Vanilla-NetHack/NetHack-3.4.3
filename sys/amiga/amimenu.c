@@ -1,13 +1,13 @@
-/*    SCCS Id: @(#)amimenu.c    3.1    93/01/08
+/*    SCCS Id: @(#)amimenu.c    3.2    96/02/04			   */
 /*    Copyright (c) Olaf 'Rhialto' Seibert, 1989		   */
-/*    Copyright (c) Kenneth Lorber, Bethesda, Maryland, 1992, 1993 */
+/*    Copyright (c) Kenneth Lorber, Bethesda, Maryland, 1992, 1993, 1996 */
 /* NetHack may be freely redistributed.  See license for details.  */
 
 /*  Originally by John Toebes.  */
 
 #define TEXT(nam,str) \
 static struct IntuiText nam = \
-  {0,1,JAM2,0,0,0L,(UBYTE*)str,0L}  /* 0,1 == C_BLACK,C_WHITE */
+  {1,0,JAM2,0,0,0L,(UBYTE*)str,0L}  /* 0,1 == C_BLACK,C_WHITE */
 
     /* Commands */
     TEXT(T_HELP,  "?   Display help menu");
@@ -38,7 +38,6 @@ static struct IntuiText nam = \
     TEXT(T_t,     "t   Throw/shoot weapon");
     TEXT(T_z,     "z   Zap a wand");
     TEXT(T_Z,     "Z   Cast a spell");
-    TEXT(T_HASH,  "#   Extended command");
 
     /* Preparations */
     TEXT(T_w,     "w   Wield a weapon");
@@ -63,10 +62,38 @@ static struct IntuiText nam = \
     TEXT(T_WAIT,  ".   Wait a moment");
     TEXT(T_E,     "E   Engrave msg on floor");
 
+    /* Extended */
+    TEXT(T_Ma, "M-a  #adjust inventory letters");
+    TEXT(T_Mc, "M-c  #chat with someone");
+    TEXT(T_Md, "M-d  #dip an object into something");
+#ifdef WEAPON_SKILLS
+    TEXT(T_Me, "M-e  #enhance weapon skills");
+#endif
+    TEXT(T_Mf, "M-f  #force a lock");
+    TEXT(T_Mi, "M-i  #invoke an object's special powers");
+    TEXT(T_Mj, "M-j  #jump to another location");
+    TEXT(T_Ml, "M-l  #loot a box on the floor");
+    TEXT(T_Mm, "M-m  Use a #monster's special ability");
+    TEXT(T_Mn, "M-n  #name an item or type of object");
+    TEXT(T_Mo, "M-o  #offer a sacrifice to the gods");
+    TEXT(T_Mp, "M-p  #pray to the gods for help");
+#ifdef WEAPON_SKILLS
+    TEXT(T_Mq, "M-q  Show #qualifications with weapons");
+#endif
+    TEXT(T_Mr, "M-r  #rub a lamp");
+    TEXT(T_Ms, "M-s  #sit down");
+    TEXT(T_Mt, "M-t  #turn undead");
+    TEXT(T_Mu, "M-u  #untrap something");
+    TEXT(T_Mv, "M-v  long #version information");
+    TEXT(T_Mw, "M-w  #wipe off your face");
+
 #define IFLAGS ITEMENABLED|ITEMTEXT|HIGHCOMP
-#define IDATA(cmd,str,off) 0,off,WDT,9,IFLAGS,0,(APTR)&str,(APTR)0,cmd,0L,0
+#define IDATA(cmd,str,off) \
+    MOFF,off,WDT,9,IFLAGS,0,(APTR)&str,(APTR)0,(signed char)(cmd),0L,0
 
 /* Commands */
+
+#define MOFF 0
 
 #undef  WDT
 #define WDT 184
@@ -110,8 +137,7 @@ static struct MenuItem actsub[] = {
     { &actsub[4], IDATA('r', T_r,    30) },	/*   Read a scroll/spellbook */
     { &actsub[5], IDATA('t', T_t,    40) },	/*   Throw/shoot weapon */
     { &actsub[6], IDATA('z', T_z,    50) },	/*   Zap a wand */
-    { &actsub[7], IDATA('Z', T_Z,    60) },	/*   Cast a spell */
-    { NULL  , IDATA('#', T_HASH, 70) },		/*   Extended command */
+    { NULL      , IDATA('Z', T_Z,    60) },	/*   Cast a spell */
 };
 
 /* Preparations */
@@ -149,6 +175,50 @@ static struct MenuItem movsub[] = {
     { NULL  , IDATA('E', T_E,    80) },		/*   Engrave msg on floor */
 };
 
+#undef	WDT
+#define WDT 312
+
+#undef MOFF
+#define MOFF -(442+312+8+3-640)
+
+#ifdef WEAPON_SKILLS
+# define WS1	1
+# define WS10	10
+#else
+# define WS1	0
+# define WS10	0
+#endif
+
+static struct MenuItem extsub[] = {
+    { &extsub[ 1], IDATA(128+'a', T_Ma,   0) },
+    { &extsub[ 2], IDATA(128+'c', T_Mc,  10) },
+    { &extsub[ 3], IDATA(128+'d', T_Md,  20) },
+#ifdef WEAPON_SKILLS
+    { &extsub[ 4], IDATA(128+'e', T_Me,  30) },
+#endif
+    { &extsub[ 4+WS1], IDATA(128+'f', T_Mf,  30+WS10) },
+    { &extsub[ 5+WS1], IDATA(128+'i', T_Mi,  40+WS10) },
+    { &extsub[ 6+WS1], IDATA(128+'j', T_Mj,  50+WS10) },
+    { &extsub[ 7+WS1], IDATA(128+'l', T_Ml,  60+WS10) },
+    { &extsub[ 8+WS1], IDATA(128+'m', T_Mm,  70+WS10) },
+    { &extsub[ 9+WS1], IDATA(128+'n', T_Mn,  80+WS10) },
+    { &extsub[10+WS1], IDATA(128+'o', T_Mo,  90+WS10) },
+    { &extsub[11+WS1], IDATA(128+'p', T_Mp, 100+WS10) },
+#ifdef WEAPON_SKILLS
+    { &extsub[12+WS1], IDATA(128+'q', T_Mq,  110+WS10) },
+#endif
+    { &extsub[12+WS1+WS1], IDATA(128+'r', T_Mr, 110+WS10+WS10) },
+    { &extsub[13+WS1+WS1], IDATA(128+'s', T_Ms, 120+WS10+WS10) },
+    { &extsub[14+WS1+WS1], IDATA(128+'t', T_Mt, 130+WS10+WS10) },
+    { &extsub[15+WS1+WS1], IDATA(128+'u', T_Mu, 140+WS10+WS10) },
+    { &extsub[16+WS1+WS1], IDATA(128+'v', T_Mv, 150+WS10+WS10) },
+    { NULL       , IDATA(128+'w', T_Mw, 160+WS10+WS10) },
+};
+#undef WS1
+#undef WS10
+#undef WDT
+#undef MOFF
+
 /* Menustrip */
 
 /* Width = #letters * 8 + 8 + 10 */
@@ -158,5 +228,6 @@ struct Menu HackMenu[] = {
    { &HackMenu[2], 82,0, 80,0,MENUENABLED,"Inventory",    &invsub[0] }, /*9*/
    { &HackMenu[3],172,0, 64,0,MENUENABLED,"Actions",      &actsub[0] }, /*7*/
    { &HackMenu[4],246,0,104,0,MENUENABLED,"Preparations", &armsub[0] }, /*12*/
-   { NULL,    360,0, 72,0,MENUENABLED,"Movement",     &movsub[0] },	/*8*/
+   { &HackMenu[5],360,0, 72,0,MENUENABLED,"Movement",     &movsub[0] },	/*8*/
+   { NULL,   442,0, 72,0,MENUENABLED,"Extended", &extsub[0] }, /*8*/
 };

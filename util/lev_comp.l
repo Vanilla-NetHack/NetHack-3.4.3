@@ -1,5 +1,5 @@
 %{
-/*	SCCS Id: @(#)lev_lex.c	3.1	93/06/17	*/
+/*	SCCS Id: @(#)lev_lex.c	3.2	96/03/02	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -13,7 +13,7 @@
  * yyunput is properly declared in flex.skel.
  */
 #if !defined(FLEX_SCANNER) && !defined(FLEXHACK_SCANNER)
-int FDECL(yyback, (int *, int));
+int FDECL(yyback, (int *,int));
 int NDECL(yylook);
 int NDECL(yyinput);
 int NDECL(yywrap);
@@ -27,16 +27,16 @@ int NDECL(yylex);
 	 * compiler do not.  To detect this, we need help from outside --
 	 * sys/unix/Makefile.utl.
 	 */
-# if defined(NeXT) || defined(SVR4)
+# if defined(NeXT) || defined(SVR4) || defined(_AIX32)
 #  define VOIDYYPUT
 # endif
 # if !defined(VOIDYYPUT)
-#  if defined(POSIX_TYPES) && !defined(BOS) && !defined(HISX) && !defined(_M_UNIX)
+#  if defined(POSIX_TYPES) && !defined(BOS) && !defined(HISX) && !defined(_M_UNIX) && !defined(VMS)
 #   define VOIDYYPUT
 #  endif
 # endif
 # if !defined(VOIDYYPUT) && defined(WEIRD_LEX)
-#  if defined(SUNOS4) && defined(__STDC__) && (WEIRD_LEX > 1) 
+#  if defined(SUNOS4) && defined(__STDC__) && (WEIRD_LEX > 1)
 #   define VOIDYYPUT
 #  endif
 # endif
@@ -49,12 +49,20 @@ int FDECL(yyoutput, (int));
 # endif
 #endif	/* !FLEX_SCANNER && !FLEXHACK_SCANNER */
 
+#ifdef FLEX_SCANNER
+#define YY_MALLOC_DECL \
+	      genericptr_t FDECL(malloc, (size_t)); \
+	      genericptr_t FDECL(realloc, (genericptr_t,size_t));
+#endif
+
 void FDECL(init_yyin, (FILE *));
 void FDECL(init_yyout, (FILE *));
 
 #ifdef MICRO
 #undef exit
+# if !defined(MSDOS) && !defined(WIN32)
 extern void FDECL(exit, (int));
+# endif
 #endif
 
 /*
@@ -74,6 +82,10 @@ int line_number = 1, colon_line_number = 1;
 #undef YYLMAX
 #endif
 #define YYLMAX	2048
+#if defined(sun) && defined(SVR4) && !defined(FLEX_SCANNER)
+char wwtext[YYLMAX];
+#define yytext wwtext
+#endif
 
 /*
  *	This is a hack required by Michael Hamel to get things
@@ -124,7 +136,7 @@ input()		/* Under MPW \n is chr(13)! Compensate for this. */
 #endif	/* FLEX23_BUG */
 		  BEGIN(INITIAL);
 		  yylval.map = (char *) alloc(yyleng-5);
-		  strncpy(yylval.map, yytext,yyleng-6);
+		  (void) strncpy(yylval.map, yytext,yyleng-6);
 		  yylval.map[yyleng-6] = 0;
 		  return MAP_ID;
 		}
@@ -140,6 +152,7 @@ FLAGS		return FLAGS_ID;
 GEOMETRY	return GEOMETRY_ID;
 ^MAP\n		{ BEGIN(MAPC); line_number++; }
 OBJECT		return OBJECT_ID;
+CONTAINER	return COBJECT_ID;
 MONSTER		return MONSTER_ID;
 TRAP		return TRAP_ID;
 DOOR		return DOOR_ID;
@@ -221,6 +234,7 @@ mark		{ yylval.i=MARK; return ENGRAVING_TYPE; }
 blessed		{ yylval.i=1; return CURSE_TYPE; }
 uncursed	{ yylval.i=2; return CURSE_TYPE; }
 cursed		{ yylval.i=3; return CURSE_TYPE; }
+contained	{ return CONTAINED; }
 noteleport	{ yylval.i=NOTELEPORT; return FLAG_TYPE; }
 hardfloor	{ yylval.i=HARDFLOOR; return FLAG_TYPE; }
 nommap		{ yylval.i=NOMMAP; return FLAG_TYPE; }
@@ -228,7 +242,7 @@ shortsighted	{ yylval.i=SHORTSIGHTED; return FLAG_TYPE; }
 [+\-]?[0-9]+	{ yylval.i=atoi(yytext); return INTEGER; }
 \"[^"]*\"	{ yytext[yyleng-1] = 0; /* Discard the trailing \" */
 		  yylval.map = (char *) alloc(strlen(yytext+1)+1);
-		  strcpy(yylval.map, yytext+1); /* Discard the first \" */
+		  Strcpy(yylval.map, yytext+1); /* Discard the first \" */
 		  return STRING; }
 \n		{ line_number++; }
 [ \t]+		;
@@ -261,3 +275,4 @@ FILE *output_f;
 	yyout = output_f;
 }
 
+/*lev_comp.l*/

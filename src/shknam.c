@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)shknam.c	3.1	93/05/15	*/
+/*	SCCS Id: @(#)shknam.c	3.2	96/02/27	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -7,7 +7,10 @@
 #include "hack.h"
 #include "eshk.h"
 
-#ifdef OVLB
+#ifndef OVLB
+extern const struct shclass shtypes[];
+
+#else
 
 static void FDECL(mkshobj_at, (const struct shclass *,int,int));
 static void FDECL(nameshk, (struct monst *,const char **));
@@ -25,7 +28,7 @@ static const char *shkliquors[] = {
     /* Schweiz */
     "Leuk", "Brig", "Brienz", "Thun", "Sarnen", "Burglen", "Elm",
     "Flims", "Vals", "Schuls", "Zum Loch",
-    ""
+    0
 };
 
 static const char *shkbooks[] = {
@@ -36,7 +39,7 @@ static const char *shkbooks[] = {
     "Cahersiveen", "Glenbeigh", "Kilmihil", "Kiltamagh",
     "Droichead Atha", "Inniscrone", "Clonegal", "Lisnaskea",
     "Culdaff", "Dunfanaghy", "Inishbofin", "Kesh",
-    ""
+    0
 };
 
 static const char *shkarmors[] = {
@@ -47,7 +50,7 @@ static const char *shkarmors[] = {
     "Bayburt", "Ayancik", "Zonguldak", "Balya", "Tefenni",
     "Artvin", "Kars", "Makharadze", "Malazgirt", "Midyat",
     "Birecik", "Kirikkale", "Alaca", "Polatli", "Nallihan",
-    ""
+    0
 };
 
 static const char *shkwands[] = {
@@ -61,7 +64,7 @@ static const char *shkwands[] = {
     "Kerloch", "Beinn a Ghlo", "Drumnadrochit", "Morven",
     "Uist", "Storr", "Sgurr na Ciche", "Cannich", "Gairloch",
     "Kyleakin", "Dunvegan",
-    ""
+    0
 };
 
 static const char *shkrings[] = {
@@ -74,7 +77,7 @@ static const char *shkrings[] = {
     "Rastegaisa", "Varjag Njarga", "Kautekeino", "Abisko",
     "Enontekis", "Rovaniemi", "Avasaksa", "Haparanda",
     "Lulea", "Gellivare", "Oeloe", "Kajaani", "Fauske",
-    ""
+    0
 };
 
 static const char *shkfoods[] = {
@@ -86,7 +89,7 @@ static const char *shkfoods[] = {
     "Trenggalek", "Karangkobar", "Njalindoeng", "Pasawahan",
     "Pameunpeuk", "Patjitan", "Kediri", "Pemboeang", "Tringanoe",
     "Makin", "Tipor", "Semai", "Berhala", "Tegal", "Samoe",
-    ""
+    0
 };
 
 static const char *shkweapons[] = {
@@ -97,7 +100,7 @@ static const char *shkweapons[] = {
     "Cazelon", "Eypau", "Carignan", "Monbazillac", "Jonzac",
     "Pons", "Jumilhac", "Fenouilledes", "Laguiolet", "Saujon",
     "Eymoutiers", "Eygurande", "Eauze", "Labouheyre",
-    ""
+    0
 };
 
 static const char *shktools[] = {
@@ -109,7 +112,7 @@ static const char *shktools[] = {
     "Rewuorb", "Rellenk", "Yad", "Cire Htims", "Y-crad", "Nenilukah",
     "Corsh", "Aned",
 #ifdef OVERLAY
-    "Erreip", "Nehpets", "Mron", "Snivek", "Lapu",
+    "Erreip", "Nehpets", "Mron", "Snivek", "Lapu", "Kahztiy",
 #endif
 #ifdef WIN32
     "Lechaim",
@@ -125,7 +128,7 @@ static const char *shktools[] = {
 #ifdef VMS
     "Lez-tneg", "Ytnu-haled", "Niknar",
 #endif
-    ""
+    0
 };
 
 static const char *shklight[] = {
@@ -137,7 +140,7 @@ static const char *shklight[] = {
     "Silistra", "Tulovo", "Panagyuritshte", "Smolyan", "Kirklareli",
     "Pernik", "Lom", "Haskovo", "Dobrinishte", "Varvara", "Oryahovo",
     "Troyan", "Lovech", "Sliven",
-    ""
+    0
 };
 
 static const char *shkgeneral[] = {
@@ -155,7 +158,7 @@ static const char *shkgeneral[] = {
     /* Iceland */
     "Akureyri", "Kopasker", "Budereyri", "Akranes", "Bordeyri",
     "Holmavik",
-    ""
+    0
 };
 
 /*
@@ -209,16 +212,8 @@ const struct shclass shtypes[] = {
 	{"lighting store", TOOL_CLASS, 0, D_SHOP,
 	    {{32, -WAX_CANDLE}, {50, -TALLOW_CANDLE},
 	     {5, -BRASS_LANTERN}, {10, -OIL_LAMP}, {3, -MAGIC_LAMP}}, shklight},
-	{NULL, 0, 0, 0, {{0, 0}, {0, 0}, {0, 0}}, 0}
+	{(char *)0, 0, 0, 0, {{0, 0}, {0, 0}, {0, 0}}, 0}
 };
-
-#else	/* OVLB */
-
-extern const struct shclass shtypes[];
-
-#endif	/* OVLB */
-
-#ifdef OVLB
 
 #if 0
 /* validate shop probabilities; otherwise incorrect local changes could
@@ -270,46 +265,58 @@ nameshk(shk, nlp)
 struct monst *shk;
 const char *nlp[];
 {
-	int i, try, names_avail;
+	int i, trycnt, names_avail;
 	const char *shname = 0;
 	struct monst *mtmp;
-	int name_wanted = ledger_no(&u.uz);	/* Note: _not_ depth */
+	int name_wanted;
+	s_level *sptr;
 
-	for (names_avail = 0; *nlp[names_avail]; names_avail++)
-		;
+	if (nlp == shklight && In_mines(&u.uz)
+		&& (sptr = Is_special(&u.uz)) != 0 && sptr->flags.town) {
+	    /* special-case minetown lighting shk */
+	    shname = "Izchak";
+	    shk->female = FALSE;
+	} else {
+	    /* We want variation from game to game, without needing the save
+	       and restore support which would be necessary for randomization;
+	       try not to make too many assumptions about time_t's internals;
+	       use ledger_no rather than depth to keep mine town distinct. */
+	    int nseed = (int)((long)u.ubirthday / 257L);
 
-	for (try = 0; try < 50; try++) {
+	    name_wanted = ledger_no(&u.uz) + (nseed % 13) - (nseed % 5);
+	    if (name_wanted < 0) name_wanted += (13 + 5);
+	    shk->female = name_wanted & 1;
+
+	    for (names_avail = 0; nlp[names_avail]; names_avail++)
+		continue;
+
+	    for (trycnt = 0; trycnt < 50; trycnt++) {
 		if (nlp == shktools) {
 		    shname = shktools[rn2(names_avail)];
 		    shk->female = (*shname == '_');
 		    if (shk->female) shname++;
+		} else if (name_wanted < names_avail) {
+		    shname = nlp[name_wanted];
+		} else if ((i = rn2(names_avail)) != 0) {
+		    shname = nlp[i - 1];
+		} else if (nlp != shkgeneral) {
+		    nlp = shkgeneral;	/* try general names */
+		    for (names_avail = 0; nlp[names_avail]; names_avail++)
+			continue;
+		    continue;		/* next `trycnt' iteration */
 		} else {
-		    shk->female = name_wanted % 2;
-
-		    if (name_wanted < names_avail) {
-			shname = nlp[name_wanted];
-		    } else {
-			if ((i = rn2(names_avail)) != 0)
-			    shname = nlp[i-1];
-			else if (nlp != shkgeneral) {
-			    nlp = shkgeneral;	/* try general names */
-			    for (names_avail = 0; *nlp[names_avail];
-								names_avail++)
-				    ;
-			    continue;
-			} else
-			    shname = "Dirk";
-		    }
+		    shname = shk->female ? "Lucrezia" : "Dirk";
 		}
 
 		/* is name already is use on this level? */
 		for (mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
-			if (mtmp == shk) continue;
-			if (!mtmp->isshk) continue;
-			if (strcmp(ESHK(mtmp)->shknam, shname)) continue;
-			break;
+		    if (mtmp == shk) continue;
+		    if (!mtmp->isshk) continue;
+		    if (strcmp(ESHK(mtmp)->shknam, shname)) continue;
+		    break;
 		}
 		if (!mtmp) break;	/* new name */
+	    }
 	}
 	(void) strncpy(ESHK(shk)->shknam, shname, PL_NSIZ);
 	ESHK(shk)->shknam[PL_NSIZ-1] = 0;
@@ -429,6 +436,7 @@ register struct mkroom *sroom;
     }
     if(levl[sx][sy].typ == SDOOR) {
 	    levl[sx][sy].typ = DOOR;
+	    levl[sx][sy].doormask = exposed_sdoor_mask(&levl[sx][sy]);
 	    newsym(sx,sy);
     }
     if(levl[sx][sy].doormask & D_TRAPPED)
@@ -469,14 +477,14 @@ register struct mkroom *sroom;
 #endif /* OVLB */
 #ifdef OVL0
 
-/* does "shop" stock this item type? */
+/* does shkp's shop stock this item type? */
 boolean
-saleable(shp_indx, obj)
-register int shp_indx;
-register struct	obj *obj;
+saleable(shkp, obj)
+struct monst *shkp;
+struct obj *obj;
 {
-    register int i;
-    register const struct shclass *shp = &shtypes[shp_indx];
+    int i, shp_indx = ESHK(shkp)->shoptype - SHOPBASE;
+    const struct shclass *shp = &shtypes[shp_indx];
 
     if (shp->symb == RANDOM_CLASS) return TRUE;
     else for (i = 0; i < SIZE(shtypes[0].iprobs) && shp->iprobs[i].iprob; i++)

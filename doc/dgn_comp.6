@@ -1,4 +1,4 @@
-.TH DGN_COMP 6 "1 May 1992"
+.TH DGN_COMP 6 "12 Dec 1995"
 .UC 4
 .SH NAME
 dgn_comp \- NetHack dungeon compiler
@@ -12,7 +12,7 @@ If no arguments are given, it reads standard input.
 .SH DESCRIPTION
 .PP
 .I Dgn_comp
-is a dungeon compiler for NetHack version 3.1 and higher.  It
+is a dungeon compiler for NetHack version 3.2 and higher.  It
 takes a description file as an argument and produces a dungeon "script" 
 that is to be loaded by NetHack at runtime.
 .PP
@@ -196,6 +196,16 @@ from the level being chained from,
 is the generation percentage, and
 .B rndlevs
 is the number of similar levels available to choose from.
+
+LEVELDESC:
+.B type
+.PP
+where
+.B type
+is the level type, (see DESCRIPTION, above). The
+.B type
+is used to override any pre-set value used to describe the entire dungeon,
+for this level only.
 
 BRANCH:
 .B name

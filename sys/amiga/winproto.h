@@ -1,14 +1,14 @@
-/*	SCCS Id: @(#)winproto.h	3.1	93/04/26	*/
+/*	SCCS Id: @(#)winproto.h	3.2	96/01/15	*/
 /* Copyright (c) Gregg Wonderly, Naperville, Illinois,  1991,1992,1993. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 /* winreq.c */
 void EditColor ( void );
+void EditClipping( void );
 void DrawCol ( struct Window *w , int idx , UWORD *colors );
 void DispCol ( struct Window *w , int idx , UWORD *colors );
 void amii_change_color( int, long, int );
 char *amii_get_color_string( );
-void amii_setpens ( void );
 void amii_getlin ( const char *prompt , char *bufp );
 void getlind ( const char *prompt , char *bufp , const char *dflt );
 char *amii_get_color_string( void );
@@ -19,14 +19,17 @@ char *dirname( char *str );
 /* winstr.c */
 void amii_putstr ( winid window , int attr , const char *str );
 void outmore ( struct amii_WinDesc *cw );
-void outsubstr ( struct amii_WinDesc *cw , char *str , int len );
+void outsubstr ( struct amii_WinDesc *cw , char *str , int len, int fudge );
 void amii_putsym ( winid st , int i , int y , CHAR_P c );
 void amii_addtopl ( const char *s );
 void TextSpaces ( struct RastPort *rp , int nr );
 void amii_remember_topl ( void );
+long CountLines( winid );
+long FindLine( winid, int );
 int amii_doprev_message ( void );
 void flushIDCMP( struct MsgPort * );
 int amii_msgborder( struct Window * );
+void amii_scrollmsg( register struct Window *w, register struct amii_WinDesc *cw );
 
 /* winkey.c */
 int amii_nh_poskey ( int *x , int *y , int *mod );
@@ -36,12 +39,12 @@ void amii_getret ( void );
 
 /* winmenu.c */
 void amii_start_menu ( winid window );
-void amii_add_menu ( winid window , char ch , int attr , const char *str );
-void amii_end_menu ( winid window , char cancel , const char *str , const char *morestr );
-char amii_select_menu ( winid window );
-void DoMenuScroll ( int win , int blocking );
-int ReDisplayData ( winid win );
-void DisplayData ( winid win , int start , int where );
+void FDECL(amii_add_menu, (winid,int,const anything *,CHAR_P,int,const char *,BOOLEAN_P));
+void FDECL(amii_end_menu, (winid, const char *));
+int FDECL(amii_select_menu, (winid, int, menu_item **));
+int DoMenuScroll ( int win , int blocking, int how, menu_item ** );
+void ReDisplayData ( winid win );
+void DisplayData ( winid win , int start );
 void SetPropInfo ( struct Window *win , struct Gadget *gad , long vis , long total , long top );
 
 /* amiwind.c */
@@ -77,7 +80,10 @@ void clear_icon( void );
 /* winfuncs.c */
 void amii_destroy_nhwindow ( winid win );
 int amii_create_nhwindow ( int type );
-void amii_init_nhwindows ( void );
+void amii_init_nhwindows ( int *, char ** );
+void amii_setdrawpens( struct Window *, int type );
+void amii_sethipens( struct Window *, int type, int attr );
+void amii_setfillpens( struct Window *, int type );
 void amii_clear_nhwindow ( winid win );
 void dismiss_nhwindow ( winid win );
 void amii_exit_nhwindows ( const char *str );
@@ -87,7 +93,7 @@ void kill_nhwindows ( int all );
 void amii_cl_end ( struct amii_WinDesc *cw , int i );
 void cursor_off ( winid window );
 void cursor_on ( winid window );
-void amii_suspend_nhwindows ( char *str );
+void amii_suspend_nhwindows ( const char *str );
 void amii_resume_nhwindows ( void );
 void amii_bell ( void );
 void removetopl ( int cnt );
@@ -101,6 +107,10 @@ void amii_wait_synch ( void );
 void amii_setclipped ( void );
 void amii_cliparound ( int x , int y );
 void amii_set_text_font( char *font, int size );
+BitMapHeader ReadImageFiles( char **, struct BitMap **, char ** );
+BitMapHeader ReadTileImageFiles(void);
+void FreeImageFiles( char **, struct BitMap ** );
+void FreeTileImageFiles();
 
 /* winami.c */
 #ifdef	SHAREDLIB
@@ -110,7 +120,7 @@ void __UserLibCleanup ( void );
 void amii_askname ( void );
 void amii_player_selection ( void );
 void RandomWindow ( char *name );
-void amii_get_ext_cmd ( char *bufp );
+int amii_get_ext_cmd ( void );
 char amii_yn_function ( const char *prompt , const char *resp , char def );
 char amii_yn_function ( const char *query , const char *resp , char def );
 void amii_display_file ( const char *fn , boolean complain );
@@ -124,8 +134,18 @@ void amii_loadlib ( void );
 void amiv_loadlib ( void );
 void CleanUp ( void );
 void setup_librefs ( WinamiBASE *base );
+#else
 void Abort ( long rc );
 #endif
 
-/* amiga:amirip.c */
+/* amirip.c */
 void FDECL(amii_outrip, ( winid tmpwin, int how ));
+
+/* winchar.c */
+void SetMazeType(MazeType);
+int GlyphToIcon(int glyph);
+#ifdef OPT_DISPMAP
+void dispmap_sanity(void);
+int dispmap_sanity1(int);
+#endif
+void FreeTileImageFiles(void);

@@ -1,19 +1,19 @@
-/*	SCCS Id: @(#)rnd.c	3.1	90/22/02
+/*	SCCS Id: @(#)rnd.c	3.2	96/02/07	*/
 /* NetHack may be freely redistributed.  See license for details. */
 
-#include	"hack.h"
+#include "hack.h"
 
+/* "Rand()"s definition is determined by [OS]conf.h */
 #if defined(LINT) && defined(UNIX)	/* rand() is long... */
 extern int NDECL(rand);
 #define RND(x)	(rand() % x)
 #else /* LINT */
-/* rand() is either random() or lrand48() - see config.h. */
-#ifdef UNIX
+# if defined(UNIX) || defined(RANDOM)
 #define RND(x)	(int)(Rand() % (long)(x))
-#else
+# else
 /* Good luck: the bottom order bits are cyclic. */
 #define RND(x)	(int)((Rand()>>3) % (x))
-#endif
+# endif
 #endif /* LINT */
 
 #ifdef OVL0
@@ -23,8 +23,8 @@ rn2(x)		/* 0 <= rn2(x) < x */
 register int x;
 {
 #ifdef DEBUG
-	if (x == 0) {
-		impossible("rn2(0) attempted");
+	if (x <= 0) {
+		impossible("rn2(%d) attempted", x);
 		return(0);
 	}
 	x = RND(x);
@@ -44,8 +44,8 @@ register int x;	/* good luck approaches 0, bad luck approaches (x-1) */
 	register int i;
 
 #ifdef DEBUG
-	if (x == 0) {
-		impossible("rnl(0) attempted");
+	if (x <= 0) {
+		impossible("rnl(%d) attempted", x);
 		return(0);
 	}
 #endif
@@ -68,8 +68,8 @@ rnd(x)		/* 1 <= rnd(x) <= x */
 register int x;
 {
 #ifdef DEBUG
-	if (x == 0) {
-		impossible("rnd(0) attempted");
+	if (x <= 0) {
+		impossible("rnd(%d) attempted", x);
 		return(1);
 	}
 	x = RND(x)+1;
@@ -89,8 +89,8 @@ register int n, x;
 	register int tmp = n;
 
 #ifdef DEBUG
-	if (x == 0 && n != 0) {
-		impossible("d(n,0) attempted");
+	if (x < 0 || n < 0 || (x == 0 && n != 0)) {
+		impossible("d(%d,%d) attempted", n, x);
 		return(1);
 	}
 #endif
@@ -102,12 +102,24 @@ register int n, x;
 #ifdef OVLB
 
 int
-rne(x)	  /* by stewr 870807 */
+rne(x)
 register int x;
 {
-	register int tmp = 1;
-	while(!rn2(x)) tmp++;
-	return(min(tmp,(u.ulevel < 15) ? 5 : (int)u.ulevel/3));
+	register int tmp, utmp;
+
+	utmp = (u.ulevel < 15) ? 5 : u.ulevel/3;
+	tmp = 1;
+	while (tmp < utmp && !rn2(x))
+		tmp++;
+	return tmp;
+
+	/* was:
+	 *	tmp = 1;
+	 *	while(!rn2(x)) tmp++;
+	 *	return(min(tmp,(u.ulevel < 15) ? 5 : u.ulevel/3));
+	 * which is clearer but less efficient and stands a vanishingly
+	 * small chance of overflowing tmp
+	 */
 }
 
 int

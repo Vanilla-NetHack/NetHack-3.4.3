@@ -1,5 +1,5 @@
 %{
-/*	SCCS Id: @(#)lev_comp.c	3.1	93/05/15	*/
+/*	SCCS Id: @(#)lev_yacc.c	3.2	95/11/10	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -15,40 +15,32 @@
  *
  * Note: some cpps barf on this 'undefined control' (#pragma).
  * Addition of the leading space seems to prevent barfage for now,
- * and AIX will still see the directive in its non-standard locale.
+ * and AIX will still see the directive.
  */
-
 #ifdef _AIX
  #pragma alloca		/* keep leading space! */
 #endif
 
 #include "hack.h"
 #include "sp_lev.h"
-#ifndef O_WRONLY
-# include <fcntl.h>
-#endif
-#ifndef O_CREAT	/* some older BSD systems do not define O_CREAT in <fcntl.h> */
-# include <sys/file.h>
-#endif
-#ifndef O_BINARY	/* used for micros, no-op for others */
-# define O_BINARY 0
-#endif
-
-#ifdef MICRO
-# define OMASK FCMASK
-#else
-# define OMASK 0644
-#endif
 
 #define MAX_REGISTERS	10
 #define ERR		(-1)
+/* many types of things are put in chars for transference to NetHack.
+ * since some systems will use signed chars, limit everybody to the
+ * same number for portability.
+ */
+#define MAX_OF_TYPE	128
 
 #define New(type)		(type *) alloc(sizeof(type))
 #define NewTab(type, size)	(type **) alloc(sizeof(type *) * size)
+#define Free(ptr)		free((genericptr_t)ptr)
 
 #ifdef MICRO
 # undef exit
+# if !defined(MSDOS) && !defined(WIN32)
 extern void FDECL(exit, (int));
+# endif
 #endif
 
 extern void FDECL(yyerror, (const char *));
@@ -56,11 +48,10 @@ extern void FDECL(yywarning, (const char *));
 extern int NDECL(yylex);
 int NDECL(yyparse);
 
-extern char *FDECL(dup_string,(char *));
 extern int FDECL(get_floor_type, (CHAR_P));
 extern int FDECL(get_room_type, (char *));
 extern int FDECL(get_trap_type, (char *));
-extern int FDECL(get_monster_id, (char *, CHAR_P));
+extern int FDECL(get_monster_id, (char *,CHAR_P));
 extern int FDECL(get_object_id, (char *));
 extern boolean FDECL(check_monster_char, (CHAR_P));
 extern boolean FDECL(check_object_char, (CHAR_P));
@@ -68,12 +59,11 @@ extern char FDECL(what_map_char, (CHAR_P));
 extern void FDECL(scan_map, (char *));
 extern void NDECL(wallify_map);
 extern boolean NDECL(check_subrooms);
-extern void FDECL(check_coord, (int, int, const char *));
+extern void FDECL(check_coord, (int,int,const char *));
 extern void NDECL(store_part);
 extern void NDECL(store_room);
-extern void FDECL(write_maze, (int, specialmaze *));
-extern void FDECL(write_lev, (int, splev *));
-extern void FDECL(free_rooms, (room **, int));
+extern boolean FDECL(write_level_file, (char *,splev *,specialmaze *));
+extern void FDECL(free_rooms, (splev *));
 
 static struct reg {
 	int x1, y1;
@@ -91,29 +81,32 @@ static struct size {
 }		current_size;
 
 char tmpmessage[256];
-altar *tmpaltar[256];
-lad *tmplad[256];
-stair *tmpstair[256];
-digpos *tmpdig[256];
 digpos *tmppass[32];
 char *tmpmap[ROWNO];
-region *tmpreg[256];
-lev_region *tmplreg[32];
-door *tmpdoor[256];
-room_door *tmprdoor[256];
-trap *tmptrap[256];
-monster *tmpmonst[256];
-object *tmpobj[256];
-drawbridge *tmpdb[256];
-walk *tmpwalk[256];
-gold *tmpgold[256];
-fountain *tmpfountain[256];
-sink *tmpsink[256];
-pool *tmppool[256];
-engraving *tmpengraving[256];
+
+digpos *tmpdig[MAX_OF_TYPE];
+region *tmpreg[MAX_OF_TYPE];
+lev_region *tmplreg[MAX_OF_TYPE];
+door *tmpdoor[MAX_OF_TYPE];
+drawbridge *tmpdb[MAX_OF_TYPE];
+walk *tmpwalk[MAX_OF_TYPE];
+
+room_door *tmprdoor[MAX_OF_TYPE];
+trap *tmptrap[MAX_OF_TYPE];
+monster *tmpmonst[MAX_OF_TYPE];
+object *tmpobj[MAX_OF_TYPE];
+altar *tmpaltar[MAX_OF_TYPE];
+lad *tmplad[MAX_OF_TYPE];
+stair *tmpstair[MAX_OF_TYPE];
+gold *tmpgold[MAX_OF_TYPE];
+engraving *tmpengraving[MAX_OF_TYPE];
+fountain *tmpfountain[MAX_OF_TYPE];
+sink *tmpsink[MAX_OF_TYPE];
+pool *tmppool[MAX_OF_TYPE];
+
 mazepart *tmppart[10];
 room *tmproom[MAXNROFROOMS*2];
-corridor *tmpcor[256];
+corridor *tmpcor[MAX_OF_TYPE];
 
 static specialmaze maze;
 static splev special_lev;
@@ -129,7 +122,7 @@ unsigned int ndb = 0, nwalk = 0, npart = 0, ndig = 0, nlad = 0, nstair = 0;
 unsigned int naltar = 0, ncorridor = 0, nrooms = 0, ngold = 0, nengraving = 0;
 unsigned int nfountain = 0, npool = 0, nsink = 0, npass = 0;
 
-static unsigned long lev_flags = 0;
+static int lev_flags = 0;
 
 unsigned int max_x_map, max_y_map;
 
@@ -155,7 +148,7 @@ extern const char *fname;
 
 %token	<i> CHAR INTEGER BOOLEAN
 %token	<i> MESSAGE_ID MAZE_ID LEVEL_ID LEV_INIT_ID GEOMETRY_ID NOMAP_ID
-%token	<i> OBJECT_ID MONSTER_ID TRAP_ID DOOR_ID DRAWBRIDGE_ID
+%token	<i> OBJECT_ID COBJECT_ID MONSTER_ID TRAP_ID DOOR_ID DRAWBRIDGE_ID
 %token	<i> MAZEWALK_ID WALLIFY_ID REGION_ID FILLING
 %token	<i> RANDOM_OBJECTS_ID RANDOM_MONSTERS_ID RANDOM_PLACES_ID
 %token	<i> ALTAR_ID LADDER_ID STAIR_ID NON_DIGGABLE_ID NON_PASSWALL_ID ROOM_ID
@@ -166,14 +159,15 @@ extern const char *fname;
 %token	<i> ALIGNMENT LEFT_OR_RIGHT CENTER TOP_OR_BOT ALTAR_TYPE UP_OR_DOWN
 %token	<i> SUBROOM_ID NAME_ID FLAGS_ID FLAG_TYPE MON_ATTITUDE MON_ALERTNESS
 %token	<i> MON_APPEARANCE
+%token	<i> CONTAINED
 %token	<i> ',' ':' '(' ')' '[' ']'
 %token	<map> STRING MAP_ID
 %type	<i> h_justif v_justif trap_name room_type door_state light_state
 %type	<i> alignment altar_type a_register roomfill filling door_pos
-%type	<i> door_wall walled secret curse_state enchantment amount
+%type	<i> door_wall walled secret amount
 %type	<i> engraving_type flags flag_list prefilled lev_region lev_init
 %type	<i> monster monster_c m_register object object_c o_register
-%type	<map> string maze_def level_def m_name o_name art_name
+%type	<map> string maze_def level_def m_name o_name
 %type	<corpos> corr_spec
 %start	file
 
@@ -192,63 +186,45 @@ level		: maze_level
 
 maze_level	: maze_def flags lev_init messages regions
 		  {
-			  int fout, i;
+			unsigned i;
 
 			if (fatal_error > 0) {
-				fprintf(stderr,
-			      "%s : %d errors detected. No output created!\n",
+				(void) fprintf(stderr,
+				"%s : %d errors detected. No output created!\n",
 					fname, fatal_error);
 			} else {
-				char lbuf[20];
-				Strcpy(lbuf, $1);
-				Strcat(lbuf, LEV_EXT);
-#ifdef THINK_C
-				fout = open(lbuf, O_WRONLY|O_CREAT|O_BINARY);
-#else
-				fout = open(lbuf, O_WRONLY|O_CREAT|O_BINARY, OMASK);
-#endif
-				if (fout < 0) {
-					yyerror("Can't open output file!!");
-					exit(1);
-				}
 				maze.flags = $2;
-				memcpy(&(maze.init_lev), &(init_lev),
-				       sizeof(lev_init));
+				(void) memcpy((genericptr_t)&(maze.init_lev),
+						(genericptr_t)&(init_lev),
+						sizeof(lev_init));
 				maze.numpart = npart;
 				maze.parts = NewTab(mazepart, npart);
 				for(i=0;i<npart;i++)
 				    maze.parts[i] = tmppart[i];
-				write_maze(fout, &maze);
-				(void) close(fout);
+				if (!write_level_file($1, (splev *)0, &maze)) {
+					yyerror("Can't open output file!!");
+					exit(EXIT_FAILURE);
+				}
 				npart = 0;
 			}
+			Free($1);
 		  }
 		;
 
 room_level	: level_def flags lev_init messages rreg_init rooms corridors_def
 		  {
-			int fout, i;
+			unsigned i;
 
 			if (fatal_error > 0) {
-			    fprintf(stderr,
+			    (void) fprintf(stderr,
 			      "%s : %d errors detected. No output created!\n",
 					fname, fatal_error);
 			} else {
-				char lbuf[20];
-				Strcpy(lbuf, $1);
-				Strcat(lbuf, LEV_EXT);
-#ifdef THINK_C
-				fout = open(lbuf, O_WRONLY|O_CREAT|O_BINARY);
-#else
-				fout = open(lbuf, O_WRONLY|O_CREAT|O_BINARY, OMASK);
-#endif
-				if (fout < 0) {
-					yyerror("Can't open output file!!");
-					exit(1);
-				}
-				special_lev.flags = $2;
-				memcpy(&(special_lev.init_lev), &(init_lev),
-				       sizeof(lev_init));
+				special_lev.flags = (long) $2;
+				(void) memcpy(
+					(genericptr_t)&(special_lev.init_lev),
+					(genericptr_t)&(init_lev),
+					sizeof(lev_init));
 				special_lev.nroom = nrooms;
 				special_lev.rooms = NewTab(room, nrooms);
 				for(i=0; i<nrooms; i++)
@@ -257,13 +233,18 @@ room_level	: level_def flags lev_init messages rreg_init rooms corridors_def
 				special_lev.corrs = NewTab(corridor, ncorridor);
 				for(i=0; i<ncorridor; i++)
 				    special_lev.corrs[i] = tmpcor[i];
-				if (check_subrooms())
-				    write_lev(fout, &special_lev);
-				free_rooms(special_lev.rooms,special_lev.nroom);
+				if (check_subrooms()) {
+				    if (!write_level_file($1, &special_lev,
+							  (specialmaze *)0)) {
+					yyerror("Can't open output file!!");
+					exit(EXIT_FAILURE);
+				    }
+				}
+				free_rooms(&special_lev);
 				nrooms = 0;
 				ncorridor = 0;
-				(void) close(fout);
 			}
+			Free($1);
 		  }
 		;
 
@@ -271,25 +252,31 @@ level_def	: LEVEL_ID ':' string
 		  {
 			if (index($3, '.'))
 			    yyerror("Invalid dot ('.') in level name.");
-			if (strlen($3) > 8)
+			if ((int) strlen($3) > 8)
 			    yyerror("Level names limited to 8 characters.");
 			$$ = $3;
-			special_lev.nrobjects = 0;
-			special_lev.nrmonst = 0;
+			special_lev.nrmonst = special_lev.nrobjects = 0;
+			n_mlist = n_olist = 0;
 		  }
 		;
 
 lev_init	: /* nothing */
 		  {
+			/* in case we're processing multiple files,
+			   explicitly clear any stale settings */
+			(void) memset((genericptr_t) &init_lev, 0,
+					sizeof init_lev);
 			init_lev.init_present = FALSE;
 			$$ = 0;
 		  }
 		| LEV_INIT_ID ':' CHAR ',' CHAR ',' BOOLEAN ',' BOOLEAN ',' light_state ',' walled
 		  {
 			init_lev.init_present = TRUE;
-			if((init_lev.fg = what_map_char($3)) == INVALID_TYPE)
+			init_lev.fg = what_map_char((char) $3);
+			if (init_lev.fg == INVALID_TYPE)
 			    yyerror("Invalid foreground type.");
-			if((init_lev.bg = what_map_char($5)) == INVALID_TYPE)
+			init_lev.bg = what_map_char((char) $5);
+			if (init_lev.bg == INVALID_TYPE)
 			    yyerror("Invalid background type.");
 			init_lev.smoothed = $7;
 			init_lev.joined = $9;
@@ -332,15 +319,16 @@ message		: MESSAGE_ID ':' STRING
 		  {
 			int i, j;
 
-			i = strlen($3) + 1;
-			j = tmpmessage[0] ? strlen(tmpmessage) : 0;
-			if(i+j > 255) {
+			i = (int) strlen($3) + 1;
+			j = (int) strlen(tmpmessage);
+			if (i + j > 255) {
 			   yyerror("Message string too long (>256 characters)");
 			} else {
-			    if(j) tmpmessage[j++] = '\n';
-			    strncpy(tmpmessage+j, $3, i-1);
-			    tmpmessage[j+i-1] = 0;
+			    if (j) tmpmessage[j++] = '\n';
+			    (void) strncpy(tmpmessage+j, $3, i - 1);
+			    tmpmessage[j + i - 1] = 0;
 			}
+			Free($3);
 		  }
 		;
 
@@ -422,21 +410,30 @@ corridor	: CORRIDOR_ID ':' corr_spec ',' corr_spec
 			tmpcor[ncorridor]->dest.wall = $5.wall;
 			tmpcor[ncorridor]->dest.door = $5.door;
 			ncorridor++;
+			if (ncorridor >= MAX_OF_TYPE) {
+				yyerror("Too many corridors in level!");
+				ncorridor--;
+			}
 		  }
 		| CORRIDOR_ID ':' corr_spec ',' INTEGER
 		  {
+			tmpcor[ncorridor] = New(corridor);
 			tmpcor[ncorridor]->src.room = $3.room;
 			tmpcor[ncorridor]->src.wall = $3.wall;
 			tmpcor[ncorridor]->src.door = $3.door;
 			tmpcor[ncorridor]->dest.room = -1;
 			tmpcor[ncorridor]->dest.wall = $5;
 			ncorridor++;
+			if (ncorridor >= MAX_OF_TYPE) {
+				yyerror("Too many corridors in level!");
+				ncorridor--;
+			}
 		  }
 		;
 
 corr_spec	: '(' INTEGER ',' DIRECTION ',' door_pos ')'
 		  {
-			if ($2 >= nrooms)
+			if ((unsigned) $2 >= nrooms)
 			    yyerror("Wrong room number!");
 			$$.room = $2;
 			$$.wall = $4;
@@ -459,7 +456,7 @@ subroom_def	: SUBROOM_ID ':' room_type ',' light_state ',' subroom_pos ',' room_
 			tmproom[nrooms] = New(room);
 			(void) memset((genericptr_t) tmproom[nrooms], 0,
 					sizeof *tmproom[nrooms]);
-			tmproom[nrooms]->parent = dup_string($11);
+			tmproom[nrooms]->parent = $11;
 			tmproom[nrooms]->name = (char *) 0;
 			tmproom[nrooms]->rtype = $3;
 			tmproom[nrooms]->rlit = $5;
@@ -581,7 +578,7 @@ room_name	: NAME_ID ':' string
 			if (tmproom[nrooms]->name)
 			    yyerror("This room already has a name!");
 			else
-			    tmproom[nrooms]->name = dup_string($3);
+			    tmproom[nrooms]->name = $3;
 		  }
 		;
 
@@ -610,6 +607,10 @@ room_door	: DOOR_ID ':' secret ',' door_state ',' door_wall ',' door_pos
 			    tmprdoor[ndoor]->wall = $7;
 			    tmprdoor[ndoor]->pos = $9;
 			    ndoor++;
+			    if (ndoor >= MAX_OF_TYPE) {
+				    yyerror("Too many doors in room!");
+				    ndoor--;
+			    }
 			}
 		  }
 		;
@@ -631,10 +632,11 @@ maze_def	: MAZE_ID ':' string ',' filling
 			maze.filling = $5;
 			if (index($3, '.'))
 			    yyerror("Invalid dot ('.') in level name.");
-			if (strlen($3) > 8)
+			if ((int) strlen($3) > 8)
 			    yyerror("Level names limited to 8 characters.");
 			$$ = $3;
 			in_room = 0;
+			n_plist = n_mlist = n_olist = 0;
 		  }
 		;
 
@@ -683,6 +685,7 @@ map_definition	: NOMAP_ID
 			tmppart[npart]->nloc = 0;
 			tmppart[npart]->nrmonst = 0;
 			scan_map($2);
+			Free($2);
 		  }
 		;
 
@@ -827,26 +830,32 @@ monster_detail	: MONSTER_ID ':' monster_c ',' m_name ',' coordinate
 			tmpmonst[nmons]->peaceful = -1; /* no override */
 			tmpmonst[nmons]->asleep = -1;
 			tmpmonst[nmons]->align = - MAX_REGISTERS - 2;
-			tmpmonst[nmons]->name = (char *) 0;
+			tmpmonst[nmons]->name.str = 0;
 			tmpmonst[nmons]->appear = 0;
-			tmpmonst[nmons]->appear_as = (char *) 0;
+			tmpmonst[nmons]->appear_as.str = 0;
 			if (!in_room)
 			    check_coord(current_coord.x, current_coord.y,
 					"Monster");
 			if (!$5)
-			    tmpmonst[nmons]->id = -1;
+			    tmpmonst[nmons]->id = NON_PM;
 			else {
 				int token = get_monster_id($5, (char) $<i>3);
 				if (token == ERR) {
-				    yywarning("Illegal monster name!  Making random monster.");
-				    tmpmonst[nmons]->id = -1;
+				    yywarning(
+			      "Invalid monster name!  Making random monster.");
+				    tmpmonst[nmons]->id = NON_PM;
 				} else
 				    tmpmonst[nmons]->id = token;
+				Free($5);
 			}
 		  }
 		 monster_infos
 		  {
 			nmons++;
+			if (nmons >= MAX_OF_TYPE) {
+			    yyerror("Too many monsters in room or mazepart!");
+			    nmons--;
+			}
 		  }
 		;
 
@@ -856,7 +865,7 @@ monster_infos	: /* nothing */
 
 monster_info	: ',' string
 		  {
-			tmpmonst[nmons]->name = dup_string($2);
+			tmpmonst[nmons]->name.str = $2;
 		  }
 		| ',' MON_ATTITUDE
 		  {
@@ -873,71 +882,128 @@ monster_info	: ',' string
 		| ',' MON_APPEARANCE string
 		  {
 			tmpmonst[nmons]->appear = $<i>2;
-			tmpmonst[nmons]->appear_as = dup_string($3);
+			tmpmonst[nmons]->appear_as.str = $3;
 		  }
 		;
 
-object_detail	: OBJECT_ID ':' object_c ',' o_name ',' coordinate
+object_detail	: OBJECT_ID ':' object_desc
+		  {
+		  }
+		| COBJECT_ID ':' object_desc
+		  {
+			/* 1: is contents of next object with 2 */
+			/* 2: is a container */
+			/* 0: neither */
+			tmpobj[nobj-1]->containment = 2;
+		  }
+		;
+
+object_desc	: object_c ',' o_name
 		  {
 			tmpobj[nobj] = New(object);
-			tmpobj[nobj]->x = current_coord.x;
-			tmpobj[nobj]->y = current_coord.y;
-			tmpobj[nobj]->class = $<i>3;
-			tmpobj[nobj]->corpsenm = -1;	/* init as none */
+			tmpobj[nobj]->class = $<i>1;
+			tmpobj[nobj]->corpsenm = NON_PM;
 			tmpobj[nobj]->curse_state = -1;
-			tmpobj[nobj]->name = (char *) 0;
-			if (!in_room)
-			    check_coord(current_coord.x, current_coord.y,
-					"Object");
-			if (!$5)
+			tmpobj[nobj]->name.str = 0;
+			if (!$3)
 			    tmpobj[nobj]->id = -1;
 			else {
-				int token = get_object_id($5);
+				int token = get_object_id($3);
 				if (token == ERR) {
 				    yywarning("Illegal object name!  Making random object.");
 				    tmpobj[nobj]->id = -1;
 				} else
 				    tmpobj[nobj]->id = token;
+				Free($3);
 			}
 		  }
-		 object_infos
+		 ',' object_where object_infos
 		  {
 			nobj++;
+			if (nobj >= MAX_OF_TYPE) {
+				yyerror("Too many objects in room or mazepart!");
+				nobj--;
+			}
+		  }
+		;
+
+object_where	: coordinate
+		  {
+			tmpobj[nobj]->containment = 0;
+			tmpobj[nobj]->x = current_coord.x;
+			tmpobj[nobj]->y = current_coord.y;
+			if (!in_room)
+			    check_coord(current_coord.x, current_coord.y,
+					"Object");
+		  }
+		| CONTAINED
+		  {
+			tmpobj[nobj]->containment = 1;
+			/* random coordinate, will be overridden anyway */
+			tmpobj[nobj]->x = -MAX_REGISTERS-1;
+			tmpobj[nobj]->y = -MAX_REGISTERS-1;
 		  }
 		;
 
 object_infos	: /* nothing */
 		  {
 			tmpobj[nobj]->spe = -127;
+	/* Note below: we're trying to make as many of these optional as
+	 * possible.  We clearly can't make curse_state, enchantment, and
+	 * monster_id _all_ optional, since ",random" would be ambiguous.
+	 * We can't even just make enchantment mandatory, since if we do that
+	 * alone, ",random" requires too much lookahead to parse.
+	 */
 		  }
-		| ',' STRING ',' enchantment
+		| ',' curse_state ',' monster_id ',' enchantment optional_name
 		  {
-			int token = get_monster_id($2, (char)0);
-			if (token == ERR)	/* "random" */
-			    tmpobj[nobj]->corpsenm = -2;
-			else
-			    tmpobj[nobj]->corpsenm = token;
-			tmpobj[nobj]->spe = $<i>4;
 		  }
-		| ',' curse_state ',' enchantment ',' art_name
+		| ',' curse_state ',' enchantment optional_name
 		  {
-			tmpobj[nobj]->curse_state = $<i>2;
-			tmpobj[nobj]->spe = $<i>4;
-			if ($6)
-			    tmpobj[nobj]->name = dup_string($6);
-			else
-			    tmpobj[nobj]->name = (char *) 0;
+		  }
+		| ',' monster_id ',' enchantment optional_name
+		  {
 		  }
 		;
 
 curse_state	: RANDOM_TYPE
+		  {
+			tmpobj[nobj]->curse_state = -1;
+		  }
 		| CURSE_TYPE
+		  {
+			tmpobj[nobj]->curse_state = $1;
+		  }
 		;
 
-enchantment	: INTEGER
-		| RANDOM_TYPE
+monster_id	: STRING
 		  {
-			$<i>$ = -127;
+			int token = get_monster_id($1, (char)0);
+			if (token == ERR)	/* "random" */
+			    tmpobj[nobj]->corpsenm = NON_PM - 1;
+			else
+			    tmpobj[nobj]->corpsenm = token;
+			Free($1);
+		  }
+		;
+
+enchantment	: RANDOM_TYPE
+		  {
+			tmpobj[nobj]->spe = -127;
+		  }
+		| INTEGER
+		  {
+			tmpobj[nobj]->spe = $1;
+		  }
+		;
+
+optional_name	: /* nothing */
+		| ',' NONE
+		  {
+		  }
+		| ',' STRING
+		  {
+			tmpobj[nobj]->name.str = $2;
 		  }
 		;
 
@@ -952,6 +1018,10 @@ door_detail	: DOOR_ID ':' door_state ',' coordinate
 			   tmpmap[current_coord.y][current_coord.x] != SDOOR)
 			    yyerror("Door decl doesn't match the map");
 			ndoor++;
+			if (ndoor >= MAX_OF_TYPE) {
+				yyerror("Too many doors in mazepart!");
+				ndoor--;
+			}
 		  }
 		;
 
@@ -961,10 +1031,31 @@ trap_detail	: TRAP_ID ':' trap_name ',' coordinate
 			tmptrap[ntrap]->x = current_coord.x;
 			tmptrap[ntrap]->y = current_coord.y;
 			tmptrap[ntrap]->type = $<i>3;
+			tmptrap[ntrap]->chance = 100;
 			if (!in_room)
 			    check_coord(current_coord.x, current_coord.y,
 					"Trap");
 			ntrap++;
+			if (ntrap >= MAX_OF_TYPE) {
+				yyerror("Too many traps in room or mazepart!");
+				ntrap--;
+			}
+		  }
+		| TRAP_ID ':' trap_name ',' coordinate ',' trap_chance
+		  {
+			tmptrap[ntrap] = New(trap);
+			tmptrap[ntrap]->x = current_coord.x;
+			tmptrap[ntrap]->y = current_coord.y;
+			tmptrap[ntrap]->type = $<i>3;
+			tmptrap[ntrap]->chance = $<i>7;
+			if (!in_room)
+			    check_coord(current_coord.x, current_coord.y,
+					"Trap");
+			ntrap++;
+			if (ntrap >= MAX_OF_TYPE) {
+				yyerror("Too many traps in room or mazepart!");
+				ntrap--;
+			}
 		  }
 		;
 
@@ -1003,6 +1094,10 @@ drawbridge_detail: DRAWBRIDGE_ID ':' coordinate ',' DIRECTION ',' door_state
 			else
 			    yyerror("A drawbridge can only be open or closed!");
 			ndb++;
+			if (ndb >= MAX_OF_TYPE) {
+				yyerror("Too many drawbridges in mazepart!");
+				ndb--;
+			}
 		   }
 		;
 
@@ -1013,6 +1108,10 @@ mazewalk_detail : MAZEWALK_ID ':' coordinate ',' DIRECTION
 			tmpwalk[nwalk]->y = current_coord.y;
 			tmpwalk[nwalk]->dir = $5;
 			nwalk++;
+			if (nwalk >= MAX_OF_TYPE) {
+				yyerror("Too many mazewalks in mazepart!");
+				nwalk--;
+			}
 		  }
 		;
 
@@ -1032,6 +1131,10 @@ ladder_detail	: LADDER_ID ':' coordinate ',' UP_OR_DOWN
 			    check_coord(current_coord.x, current_coord.y,
 					"Ladder");
 			nlad++;
+			if (nlad >= MAX_OF_TYPE) {
+				yyerror("Too many ladders in mazepart!");
+				nlad--;
+			}
 		  }
 		;
 
@@ -1045,6 +1148,10 @@ stair_detail	: STAIR_ID ':' coordinate ',' UP_OR_DOWN
 			    check_coord(current_coord.x, current_coord.y,
 					"Stairway");
 			nstair++;
+			if (nstair >= MAX_OF_TYPE) {
+				yyerror("Too many stairs in room or mazepart!");
+				nstair--;
+			}
 		  }
 		;
 
@@ -1068,8 +1175,12 @@ stair_region	: STAIR_ID ':' lev_region
 			    tmplreg[nlreg]->rtype = LR_UPSTAIR;
 			else
 			    tmplreg[nlreg]->rtype = LR_DOWNSTAIR;
-			tmplreg[nlreg]->rname = 0;
+			tmplreg[nlreg]->rname.str = 0;
 			nlreg++;
+			if (nlreg >= MAX_OF_TYPE) {
+				yyerror("Too many levregions in mazepart!");
+				nlreg--;
+			}
 		  }
 		;
 
@@ -1090,8 +1201,12 @@ portal_region	: PORTAL_ID ':' lev_region
 			tmplreg[nlreg]->delarea.x2 = current_region.x2;
 			tmplreg[nlreg]->delarea.y2 = current_region.y2;
 			tmplreg[nlreg]->rtype = LR_PORTAL;
-			tmplreg[nlreg]->rname = $8;
+			tmplreg[nlreg]->rname.str = $8;
 			nlreg++;
+			if (nlreg >= MAX_OF_TYPE) {
+				yyerror("Too many levregions in mazepart!");
+				nlreg--;
+			}
 		  }
 		;
 
@@ -1119,8 +1234,12 @@ teleprt_region	: TELEPRT_ID ':' lev_region
 			case 0: tmplreg[nlreg]->rtype = LR_DOWNTELE; break;
 			case 1: tmplreg[nlreg]->rtype = LR_UPTELE; break;
 			}
-			tmplreg[nlreg]->rname = 0;
+			tmplreg[nlreg]->rname.str = 0;
 			nlreg++;
+			if (nlreg >= MAX_OF_TYPE) {
+				yyerror("Too many levregions in mazepart!");
+				nlreg--;
+			}
 		  }
 		;
 
@@ -1141,8 +1260,12 @@ branch_region	: BRANCH_ID ':' lev_region
 			tmplreg[nlreg]->delarea.x2 = current_region.x2;
 			tmplreg[nlreg]->delarea.y2 = current_region.y2;
 			tmplreg[nlreg]->rtype = LR_BRANCH;
-			tmplreg[nlreg]->rname = 0;
+			tmplreg[nlreg]->rname.str = 0;
 			nlreg++;
+			if (nlreg >= MAX_OF_TYPE) {
+				yyerror("Too many levregions in mazepart!");
+				nlreg--;
+			}
 		  }
 		;
 
@@ -1189,6 +1312,10 @@ fountain_detail : FOUNTAIN_ID ':' coordinate
 			    check_coord(current_coord.x, current_coord.y,
 					"Fountain");
 			nfountain++;
+			if (nfountain >= MAX_OF_TYPE) {
+			    yyerror("Too many fountains in room or mazepart!");
+			    nfountain--;
+			}
 		  }
 		;
 
@@ -1198,6 +1325,10 @@ sink_detail : SINK_ID ':' coordinate
 			tmpsink[nsink]->x = current_coord.x;
 			tmpsink[nsink]->y = current_coord.y;
 			nsink++;
+			if (nsink >= MAX_OF_TYPE) {
+				yyerror("Too many sinks in room!");
+				nsink--;
+			}
 		  }
 		;
 
@@ -1207,6 +1338,10 @@ pool_detail : POOL_ID ':' coordinate
 			tmppool[npool]->x = current_coord.x;
 			tmppool[npool]->y = current_coord.y;
 			npool++;
+			if (npool >= MAX_OF_TYPE) {
+				yyerror("Too many pools in room!");
+				npool--;
+			}
 		  }
 		;
 
@@ -1218,6 +1353,10 @@ diggable_detail : NON_DIGGABLE_ID ':' region
 			tmpdig[ndig]->x2 = current_region.x2;
 			tmpdig[ndig]->y2 = current_region.y2;
 			ndig++;
+			if (ndig >= MAX_OF_TYPE) {
+				yyerror("Too many diggables in mazepart!");
+				ndig--;
+			}
 		  }
 		;
 
@@ -1229,6 +1368,10 @@ passwall_detail : NON_PASSWALL_ID ':' region
 			tmppass[npass]->x2 = current_region.x2;
 			tmppass[npass]->y2 = current_region.y2;
 			npass++;
+			if (npass >= 32) {
+				yyerror("Too many passwalls in mazepart!");
+				npass--;
+			}
 		  }
 		;
 
@@ -1253,8 +1396,8 @@ region_detail	: REGION_ID ':' region ',' light_state ',' room_type prefilled
 				yyerror("Vaults must be exactly 2x2!");
 			if(want_warnings && !tmpreg[nreg]->rirreg &&
 			   current_region.x1 > 0 && current_region.y1 > 0 &&
-			   current_region.x2 < max_x_map &&
-			   current_region.y2 < max_y_map) {
+			   current_region.x2 < (int)max_x_map &&
+			   current_region.y2 < (int)max_y_map) {
 			    /* check for walls in the room */
 			    char ebuf[60];
 			    register int x, y, nrock = 0;
@@ -1291,6 +1434,10 @@ region_detail	: REGION_ID ':' region ',' light_state ',' room_type prefilled
 			    yyerror(ebuf);
 			}
 			nreg++;
+			if (nreg >= MAX_OF_TYPE) {
+				yyerror("Too many regions in mazepart!");
+				nreg--;
+			}
 		  }
 		;
 
@@ -1305,6 +1452,10 @@ altar_detail	: ALTAR_ID ':' coordinate ',' alignment ',' altar_type
 			    check_coord(current_coord.x, current_coord.y,
 					"Altar");
 			naltar++;
+			if (naltar >= MAX_OF_TYPE) {
+				yyerror("Too many altars in room or mazepart!");
+				naltar--;
+			}
 		  }
 		;
 
@@ -1318,6 +1469,10 @@ gold_detail	: GOLD_ID ':' amount ',' coordinate
 			    check_coord(current_coord.x, current_coord.y,
 					"Gold");
 			ngold++;
+			if (ngold >= MAX_OF_TYPE) {
+				yyerror("Too many golds in room or mazepart!");
+				ngold--;
+			}
 		  }
 		;
 
@@ -1326,12 +1481,16 @@ engraving_detail: ENGRAVING_ID ':' coordinate ',' engraving_type ',' string
 			tmpengraving[nengraving] = New(engraving);
 			tmpengraving[nengraving]->x = current_coord.x;
 			tmpengraving[nengraving]->y = current_coord.y;
-			tmpengraving[nengraving]->e.text = $7;
+			tmpengraving[nengraving]->engr.str = $7;
 			tmpengraving[nengraving]->etype = $<i>5;
 			if (!in_room)
 			    check_coord(current_coord.x, current_coord.y,
 					"Engraving");
 			nengraving++;
+			if (nengraving >= MAX_OF_TYPE) {
+			    yyerror("Too many engravings in room or mazepart!");
+			    nengraving--;
+			}
 		  }
 		;
 
@@ -1371,8 +1530,20 @@ trap_name	: string
 			if (token == ERR)
 				yyerror("Unknown trap type!");
 			$<i>$ = token;
+			Free($1);
 		  }
 		| RANDOM_TYPE
+		;
+
+trap_chance	: CHANCE_ID ':' INTEGER
+		   {
+			if (tmptrap[ntrap]->chance)
+			    yyerror("This trap already assigned a chance!");
+			else if ($3 < 1 || $3 > 99)
+			    yyerror("The chance is supposed to be percentile.");
+			else
+			    tmptrap[ntrap]->chance = $3;
+		   }
 		;
 
 room_type	: string
@@ -1383,6 +1554,7 @@ room_type	: string
 				$<i>$ = OROOM;
 			} else
 				$<i>$ = token;
+			Free($1);
 		  }
 		| RANDOM_TYPE
 		;
@@ -1494,13 +1666,6 @@ object		: CHAR
 string		: STRING
 		;
 
-art_name	: STRING
-		| NONE
-		  {
-			$$ = (char *) 0;
-		  }
-		;
-
 amount		: INTEGER
 		| RANDOM_TYPE
 		;
@@ -1512,8 +1677,8 @@ engraving_type	: ENGRAVING_TYPE
 coord		: '(' INTEGER ',' INTEGER ')'
 		  {
 			if (!in_room && !init_lev.init_present &&
-			    ($2 < 0 || $2 > max_x_map ||
-			     $4 < 0 || $4 > max_y_map))
+			    ($2 < 0 || $2 > (int)max_x_map ||
+			     $4 < 0 || $4 > (int)max_y_map))
 			    yyerror("Coordinates out of map range!");
 			current_coord.x = $2;
 			current_coord.y = $4;
@@ -1524,13 +1689,13 @@ region		: '(' INTEGER ',' INTEGER ',' INTEGER ',' INTEGER ')'
 		  {
 /* This series of if statements is a hack for MSC 5.1.  It seems that its
    tiny little brain cannot compile if these are all one big if statement. */
-			if ($2 < 0 || $2 > max_x_map)
+			if ($2 < 0 || $2 > (int)max_x_map)
 				yyerror("Region out of map range!");
-			else if ($4 < 0 || $4 > max_y_map)
+			else if ($4 < 0 || $4 > (int)max_y_map)
 				yyerror("Region out of map range!");
-			else if ($6 < 0 || $6 > max_x_map)
+			else if ($6 < 0 || $6 > (int)max_x_map)
 				yyerror("Region out of map range!");
-			else if ($8 < 0 || $8 > max_y_map)
+			else if ($8 < 0 || $8 > (int)max_y_map)
 				yyerror("Region out of map range!");
 			current_region.x1 = $2;
 			current_region.y1 = $4;
@@ -1540,3 +1705,5 @@ region		: '(' INTEGER ',' INTEGER ',' INTEGER ',' INTEGER ')'
 		;
 
 %%
+
+/*lev_comp.y*/

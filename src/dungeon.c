@@ -1,24 +1,18 @@
-/*	SCCS Id: @(#)dungeon.c	3.1	93/06/26	*/
+/*	SCCS Id: @(#)dungeon.c	3.2	96/03/10	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
 #include "dgn_file.h"
+#include "dlb.h"
 
 #ifdef OVL1
 
-#define	DUNGEON_FILE	"dungeon"
-#if (defined(MICRO) && !defined(AMIGA)) || defined(THINK_C)
-# define RDMODE "rb"
-#else
-# define RDMODE "r"
-#endif
+#define DUNGEON_FILE	"dungeon"
 
-#ifdef MULDGN
-#define	X_START		"x-start"
+#define X_START		"x-start"
 #define X_LOCATE	"x-locate"
-#define	X_GOAL		"x-goal"
-#endif
+#define X_GOAL		"x-goal"
 
 struct proto_dungeon {
 	struct	tmpdungeon tmpdungeon[MAXDUNGEON];
@@ -35,7 +29,7 @@ int n_dgns;				/* number of dungeons (used here,  */
 					/*   and mklev.c)		   */
 static branch *branches = (branch *) 0;	/* dungeon branch list		   */
 
-static void FDECL(Fread, (genericptr_t, int, int, FILE *));
+static void FDECL(Fread, (genericptr_t, int, int, dlb *));
 static xchar FDECL(dname_to_dnum, (const char *));
 static int FDECL(find_branch, (const char *, struct proto_dungeon *));
 static xchar FDECL(parent_dnum, (const char *, struct proto_dungeon *));
@@ -109,23 +103,40 @@ dumpit()
 
 /* Save the dungeon structures. */
 void
-save_dungeon(fd)
+save_dungeon(fd, perform_write, free_data)
     int fd;
+    boolean perform_write, free_data;
 {
-    branch *curr;
+    branch *curr, *next;
     int    count;
 
-    bwrite(fd, (genericptr_t) &n_dgns, sizeof(n_dgns));
-    bwrite(fd, (genericptr_t) dungeons, sizeof(dungeon) * (unsigned)n_dgns);
-    bwrite(fd, (genericptr_t) &dungeon_topology, sizeof dungeon_topology);
-    bwrite(fd, (genericptr_t) tune, sizeof tune);
+    if (perform_write) {
+	bwrite(fd, (genericptr_t) &n_dgns, sizeof n_dgns);
+	bwrite(fd, (genericptr_t) dungeons, sizeof(dungeon) * (unsigned)n_dgns);
+	bwrite(fd, (genericptr_t) &dungeon_topology, sizeof dungeon_topology);
+	bwrite(fd, (genericptr_t) tune, sizeof tune);
 
-    for (count = 0, curr = branches; curr; curr = curr->next)
-	count++;
+	for (count = 0, curr = branches; curr; curr = curr->next)
+	    count++;
+	bwrite(fd, (genericptr_t) &count, sizeof(count));
 
-    bwrite(fd, (genericptr_t) &count, sizeof(count));
-    for (curr = branches; curr; curr = curr->next)
-	bwrite(fd, (genericptr_t) curr, sizeof(branch));
+	for (curr = branches; curr; curr = curr->next)
+	    bwrite(fd, (genericptr_t) curr, sizeof (branch));
+
+	count = maxledgerno();
+	bwrite(fd, (genericptr_t) &count, sizeof count);
+	bwrite(fd, (genericptr_t) level_info,
+			(unsigned)count * sizeof (struct linfo));
+	bwrite(fd, (genericptr_t) &inv_pos, sizeof inv_pos);
+    }
+
+    if (free_data) {
+	for (curr = branches; curr; curr = next) {
+	    next = curr->next;
+	    free((genericptr_t) curr);
+	}
+	branches = 0;
+    }
 }
 
 /* Restore the dungeon structures. */
@@ -154,21 +165,27 @@ restore_dungeon(fd)
 	    branches = curr;
 	last = curr;
     }
+
+    mread(fd, (genericptr_t) &count, sizeof(count));
+    if (count >= MAXLINFO)
+	panic("level information count larger (%d) than allocated size", count);
+    mread(fd, (genericptr_t) level_info, (unsigned)count*sizeof(struct linfo));
+    mread(fd, (genericptr_t) &inv_pos, sizeof inv_pos);
 }
 
 static void
 Fread(ptr, size, nitems, stream)
 	genericptr_t	ptr;
 	int	size, nitems;
-	FILE	*stream;
+	dlb	*stream;
 {
 	int cnt;
 
-	if((cnt = fread(ptr, size, nitems, stream)) != nitems) {
-
-	    panic("PREMATURE EOF ON DUNGEON DESCRIPTION FILE!\nExpected %d bytes - got %d\n",
-		    (size * nitems), (size * cnt));
-	    terminate(1);
+	if((cnt = dlb_fread(ptr, size, nitems, stream)) != nitems) {
+	    panic(
+ "Premature EOF on dungeon description file!\r\nExpected %d bytes - got %d.",
+		  (size * nitems), (size * cnt));
+	    terminate(EXIT_FAILURE);
 	}
 }
 
@@ -192,7 +209,7 @@ find_level(s)
 {
 	s_level *curr;
 	for(curr = sp_levchn; curr; curr = curr->next)
-	    if(!strcmp(s, curr->proto)) break;
+	    if (!strcmpi(s, curr->proto)) break;
 	return curr;
 }
 
@@ -203,9 +220,24 @@ find_branch(s, pd)
 	struct proto_dungeon *pd;
 {
 	int i;
-	for (i = 0; i < pd->n_brs; i++)
-	    if (!strcmp(pd->tmpbranch[i].name, s)) break;
-	if (i == pd->n_brs) panic("find_branch: can't find %s", s);
+
+	if (pd) {
+	    for (i = 0; i < pd->n_brs; i++)
+		if (!strcmp(pd->tmpbranch[i].name, s)) break;
+	    if (i == pd->n_brs) panic("find_branch: can't find %s", s);
+	} else {
+	    /* support for level tport by name */
+	    branch *br;
+	    const char *dnam;
+
+	    for (br = branches; br; br = br->next) {
+		dnam = dungeons[br->end2.dnum].dname;
+		if (!strcmpi(dnam, s) ||
+			(!strncmpi(dnam, "The ", 4) && !strcmpi(dnam + 4, s)))
+		    break;
+	    }
+	    i = br ? ((ledger_no(&br->end1) << 8) | ledger_no(&br->end2)) : -1;
+	}
 	return i;
 }
 
@@ -561,9 +593,7 @@ struct level_map {
 	{ "fakewiz1",	&portal_level },
 	{ "fire",	&fire_level },
 	{ "juiblex",	&juiblex_level },
-#ifdef MULDGN
 	{ "knox",	&knox_level },
-#endif
 	{ "medusa",	&medusa_level },
 	{ "oracle",	&oracle_level },
 	{ "orcus",	&orcus_level },
@@ -576,28 +606,32 @@ struct level_map {
 	{ "wizard1",	&wiz1_level },
 	{ "wizard2",	&wiz2_level },
 	{ "wizard3",	&wiz3_level },
-#ifdef MULDGN
 	{ X_START,	&qstart_level },
 	{ X_LOCATE,	&qlocate_level },
 	{ X_GOAL,	&nemesis_level },
-#endif
 	{ "",		(d_level *)0 }
 };
 
 void
 init_dungeons()		/* initialize the "dungeon" structs */
 {
-	FILE	*dgn_file;
+	dlb	*dgn_file;
 	register int i, cl = 0, cb = 0;
 	register s_level *x;
 	struct proto_dungeon pd;
 	struct level_map *lev_map;
+	long vers_info[3];
 
 	pd.n_levs = pd.n_brs = 0;
 
-	dgn_file = fopen_datafile(DUNGEON_FILE, RDMODE);
+	dgn_file = dlb_fopen(DUNGEON_FILE, RDBMODE);
 	if (!dgn_file)
-	    panic("\rCANNOT OPEN DUNGEON DESCRIPTION FILE %s.", DUNGEON_FILE);
+	    panic("Cannot open dungeon description file \"%s\"!", DUNGEON_FILE);
+
+	/* validate the data's version against the program's version */
+	Fread((genericptr_t) vers_info, sizeof vers_info, 1, dgn_file);
+	if (!check_version(vers_info, DUNGEON_FILE, TRUE))
+	    panic("Dungeon description not valid.");
 
 	/*
 	 * Read in each dungeon and transfer the results to the internal
@@ -634,9 +668,9 @@ init_dungeons()		/* initialize the "dungeon" structs */
 	    dungeons[i].boneid = pd.tmpdungeon[i].boneschar;
 
 	    if(pd.tmpdungeon[i].lev.rand)
-		dungeons[i].num_dunlevs = rn1(pd.tmpdungeon[i].lev.rand,
-					      pd.tmpdungeon[i].lev.base);
-	    else dungeons[i].num_dunlevs = pd.tmpdungeon[i].lev.base;
+		dungeons[i].num_dunlevs = (xchar)rn1(pd.tmpdungeon[i].lev.rand,
+						     pd.tmpdungeon[i].lev.base);
+	    else dungeons[i].num_dunlevs = (xchar)pd.tmpdungeon[i].lev.base;
 
 	    if(!i) {
 		dungeons[i].ledger_start = 0;
@@ -750,7 +784,7 @@ init_dungeons()		/* initialize the "dungeon" structs */
 		Fread((genericptr_t)&pd.tmpbranch[cb],
 					sizeof(struct tmpbranch), 1, dgn_file);
 	}
-	(void) fclose(dgn_file);
+	(void) dlb_fclose(dgn_file);
 
 	for (i = 0; i < 5; i++) tune[i] = 'A' + rn2(7);
 	tune[5] = 0;
@@ -763,7 +797,6 @@ init_dungeons()		/* initialize the "dungeon" structs */
 		x = find_level(lev_map->lev_name);
 		if (x) {
 			assign_level(lev_map->lev_spec, &x->dlevel);
-#ifdef MULDGN
 			if (!strncmp(lev_map->lev_name, "x-", 2)) {
 				/* This is where the name substitution on the
 				 * levels of the quest dungeon occur.
@@ -784,17 +817,27 @@ init_dungeons()		/* initialize the "dungeon" structs */
 				/* adjust the branch's position on the list */
 				insert_branch(br, TRUE);
 			}
-#endif
 		}
 	}
-#ifdef MULDGN
 /*
  *	I hate hardwiring these names. :-(
  */
 	quest_dnum = dname_to_dnum("The Quest");
 	mines_dnum = dname_to_dnum("The Gnomish Mines");
-#endif
 	tower_dnum = dname_to_dnum("Vlad's Tower");
+
+	/* one special fixup for dummy surface level */
+	if ((x = find_level("dummy")) != 0) {
+	    i = x->dlevel.dnum;
+	    /* the code above puts earth one level above dungeon level #1,
+	       making the dummy level overlay level 1; but the whole reason
+	       for having the dummy level is to make earth have depth -1
+	       instead of 0, so adjust the start point to shift endgame up */
+	    if (dunlevs_in_dungeon(&x->dlevel) > 1 - dungeons[i].depth_start)
+		dungeons[i].depth_start -= 1;
+	    /* TO DO: strip "dummy" out all the way here,
+	       so that it's hidden from <ctrl/O> feedback. */
+	}
 
 #ifdef DEBUG
 	dumpit();
@@ -922,8 +965,8 @@ d_level	*lev1, *lev2;
 #endif /* OVL0 */
 #ifdef OVL1
 
-s_level *
 /* is this level referenced in the special level chain? */
+s_level *
 Is_special(lev)
 d_level	*lev;
 {
@@ -937,7 +980,7 @@ d_level	*lev;
 
 /*
  * Is this a multi-dungeon branch level?  If so, return a pointer to the
- * branch.  Otherwise, return NULL.
+ * branch.  Otherwise, return null.
  */
 branch *
 Is_branchlev(lev)
@@ -989,24 +1032,38 @@ boolean	at_stairs;
 }
 
 void
+u_on_newpos(x, y)
+int x, y;
+{
+	u.ux = x;
+	u.uy = y;
+#ifdef CLIPPING
+	cliparound(u.ux, u.uy);
+#endif
+}
+
+void
 u_on_sstairs() {	/* place you on the special staircase */
 
-	if (sstairs.sx && sstairs.sy) {
-	    u.ux = sstairs.sx;
-	    u.uy = sstairs.sy;
+	if (sstairs.sx) {
+	    u_on_newpos(sstairs.sx, sstairs.sy);
 	} else {
 	    /* code stolen from goto_level */
-	    int try = 0;
+	    int trycnt = 0;
+	    xchar x, y;
 #ifdef DEBUG
 	    pline("u_on_sstairs: picking random spot");
 #endif
 #define badspot(x,y) ((levl[x][y].typ != ROOM && levl[x][y].typ != CORR) || MON_AT(x, y))
 	    do {
-		u.ux = rnd(COLNO-1);
-		u.uy = rn2(ROWNO);
-	    } while(try++ < 100 && badspot(u.ux, u.uy));
-	    if (try >= 100)
-		panic("u_on_sstairs: could not relocate player!");
+		x = rnd(COLNO-1);
+		y = rn2(ROWNO);
+		if (!badspot(x, y)) {
+		    u_on_newpos(x, y);
+		    return;
+		}
+	    } while (++trycnt <= 500);
+	    panic("u_on_sstairs: could not relocate player!");
 #undef badspot
 	}
 }
@@ -1014,23 +1071,19 @@ u_on_sstairs() {	/* place you on the special staircase */
 void
 u_on_upstairs()	/* place you on upstairs (or special equivalent) */
 {
-	if(xupstair && yupstair)  {
-
-		u.ux = xupstair;
-		u.uy = yupstair;
-	}
-	else u_on_sstairs();
+	if (xupstair) {
+		u_on_newpos(xupstair, yupstair);
+	} else
+		u_on_sstairs();
 }
 
 void
 u_on_dnstairs()	/* place you on dnstairs (or special equivalent) */
 {
-	if(xdnstair && ydnstair)  {
-
-		u.ux = xdnstair;
-		u.uy = ydnstair;
-	}
-	else u_on_sstairs();
+	if (xdnstair) {
+		u_on_newpos(xdnstair, ydnstair);
+	} else
+		u_on_sstairs();
 }
 
 boolean
@@ -1078,13 +1131,16 @@ d_level *lev;
  * Checks for amulets and such must be done elsewhere.
  */
 boolean
-Can_rise_up(lev)
+Can_rise_up(x, y, lev)
+int	x, y;
 d_level *lev;
 {
-    return((boolean)(!In_endgame(lev) &&
-	(lev->dlevel > 1 ||
-	 (dungeons[lev->dnum].entry_lev == 1 && ledger_no(lev) != 1 &&
-	  sstairs.sx && sstairs.up))));
+    /* can't rise up from inside the top of the Wizard's tower */
+    if (In_endgame(lev) || (Is_wiz1_level(lev) && In_W_tower(x, y, lev)))
+	return FALSE;
+    return (boolean)(lev->dlevel > 1 ||
+		(dungeons[lev->dnum].entry_lev == 1 && ledger_no(lev) != 1 &&
+		 sstairs.sx && sstairs.up));
 }
 
 /*
@@ -1149,19 +1205,16 @@ int levnum;
 #endif /* OVL1 */
 #ifdef OVL0
 
-#ifdef MULDGN
 boolean
 In_quest(lev)	/* are you in the quest dungeon? */
 d_level *lev;
 {
 	return((boolean)(lev->dnum == quest_dnum));
 }
-#endif /* MULDGN */
 
 #endif /* OVL0 */
 #ifdef OVL1
 
-#ifdef MULDGN
 boolean
 In_mines(lev)	/* are you in the mines dungeon? */
 d_level	*lev;
@@ -1212,13 +1265,40 @@ at_dgn_entrance(s)
     br = dungeon_branch(s);
     return((boolean)(on_level(&u.uz, &br->end1) ? TRUE : FALSE));
 }
-#endif /* MULDGN */
 
 boolean
-In_tower(lev)	/* are you inside the tower? */
+In_V_tower(lev)	/* is `lev' part of Vlad's tower? */
 d_level	*lev;
 {
 	return((boolean)(lev->dnum == tower_dnum));
+}
+
+boolean
+On_W_tower_level(lev)	/* is `lev' a level containing the Wizard's tower? */
+d_level	*lev;
+{
+	return (boolean)(Is_wiz1_level(lev) ||
+			 Is_wiz2_level(lev) ||
+			 Is_wiz3_level(lev));
+}
+
+boolean
+In_W_tower(x, y, lev)	/* is <x,y> of `lev' inside the Wizard's tower? */
+int	x, y;
+d_level	*lev;
+{
+	if (!On_W_tower_level(lev)) return FALSE;
+	/*
+	 * Both of the exclusion regions for arriving via level teleport
+	 * (from above or below) define the tower's boundary.
+	 *	assert( updest.nIJ == dndest.nIJ for I={l|h},J={x|y} );
+	 */
+	if (dndest.nlx > 0)
+	    return (boolean)within_bounded_area(x, y, dndest.nlx, dndest.nly,
+						dndest.nhx, dndest.nhy);
+	else
+	    impossible("No boundary for Wizard's Tower?");
+	return FALSE;
 }
 
 #endif /* OVL1 */
@@ -1235,13 +1315,20 @@ d_level	*lev;
 #ifdef OVL1
 
 void
+find_hell(lev)	/* sets *lev to be the gateway to Gehennom... */
+d_level *lev;
+{
+	lev->dnum = valley_level.dnum;
+	lev->dlevel = 1;
+}
+
+void
 goto_hell(at_stairs, falling)	/* go directly to hell... */
 boolean	at_stairs, falling;
 {
 	d_level lev;
 
-	lev.dnum = wiz1_level.dnum;
-	lev.dlevel = 1;
+	find_hell(&lev);
 	goto_level(&lev, at_stairs, falling, FALSE);
 }
 
@@ -1311,6 +1398,74 @@ level_difficulty()
 			return(deepest_lev_reached(FALSE));
 		else
 			return((xchar) depth(&u.uz));
+}
+
+/* Take one word and try to match it to a level.
+ * Recognized levels are as shown by print_dungeon().
+ */
+schar
+lev_by_name(nam)
+const char *nam;
+{
+    schar lev = 0;
+    s_level *slev;
+    d_level dlev;
+    const char *p;
+    int idx, idxtoo;
+    char buf[BUFSZ];
+
+    /* allow strings like "the oracle level" to find "oracle" */
+    if (!strncmpi(nam, "the ", 4)) nam += 4;
+    if ((p = strstri(nam, " level")) != 0 && p == eos((char*)nam) - 6) {
+	nam = strcpy(buf, nam);
+	*(eos(buf) - 6) = '\0';
+    }
+    /* hell is the old name, and wouldn't match; gehennom would match its
+       branch, yielding the castle level instead of the valley of the dead */
+    if (!strcmpi(nam, "gehennom") || !strcmpi(nam, "hell")) {
+	if (In_V_tower(&u.uz)) nam = " to Vlad's tower";  /* branch to... */
+	else nam = "valley";
+    }
+
+    if ((slev = find_level(nam)) != 0) {
+	dlev = slev->dlevel;
+	idx = ledger_no(&dlev);
+	if ((dlev.dnum == u.uz.dnum ||
+		/* within same branch, or else main dungeon <-> gehennom */
+		(u.uz.dnum == valley_level.dnum &&
+			dlev.dnum == medusa_level.dnum) ||
+		(u.uz.dnum == medusa_level.dnum &&
+			dlev.dnum == valley_level.dnum)) &&
+	    (	/* either wizard mode or else seen and not forgotten */
+#ifdef WIZARD
+	     wizard ||
+#endif
+		(level_info[idx].flags & (FORGOTTEN|VISITED)) == VISITED)) {
+	    lev = depth(&slev->dlevel);
+	}
+    } else {	/* not a specific level; try branch names */
+	idx = find_branch(nam, (struct proto_dungeon *)0);
+	/* "<branch> to Xyzzy" */
+	if (idx < 0 && (p = strstri(nam, " to ")) != 0)
+	    idx = find_branch(p + 4, (struct proto_dungeon *)0);
+
+	if (idx >= 0) {
+	    idxtoo = (idx >> 8) & 0x00FF;
+	    idx &= 0x00FF;
+	    if (  /* either wizard mode, or else _both_ sides of branch seen */
+#ifdef WIZARD
+		wizard ||
+#endif
+		((level_info[idx].flags & (FORGOTTEN|VISITED)) == VISITED &&
+		 (level_info[idxtoo].flags & (FORGOTTEN|VISITED)) == VISITED)) {
+		if (ledger_to_dnum(idxtoo) == u.uz.dnum) idx = idxtoo;
+		dlev.dnum = ledger_to_dnum(idx);
+		dlev.dlevel = ledger_to_dlev(idx);
+		lev = depth(&dlev);
+	    }
+	}
+    }
+    return lev;
 }
 
 
@@ -1449,8 +1604,8 @@ print_dungeon()
     display_nhwindow(win, TRUE);
     destroy_nhwindow(win);
 }
-
 #endif /* WIZARD */
+
 #endif /* OVL1 */
 
 /*dungeon.c*/

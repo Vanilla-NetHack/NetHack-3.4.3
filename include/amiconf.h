@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)amiconf.h	3.1	93/01/17	*/
+/*	SCCS Id: @(#)amiconf.h	3.2	95/09/03	*/
 /* Copyright (c) Kenneth Lorber, Bethesda, Maryland, 1990, 1991, 1992, 1993. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -14,24 +14,30 @@
 #include <time.h>	/* get time_t defined before use! */
 
 #ifdef __SASC_60	/* since SAS can prevent re-inclusion */
-# include <stdlib.h>	/* general things, including builtins */
-# include <string.h>
+#include <stdlib.h>	/* general things, including builtins */
+#include <string.h>
 #endif
 
 #ifdef AZTEC_50
-# include <stdlib.h>
+#include <stdlib.h>
 # define AZTEC_C_WORKAROUND /* Bug which turns up in sounds.c. Bummer... */
 # define NO_SIGNAL	/* 5.0 signal handling doesn't like SIGINT...   */
 #endif
 
 #ifdef _DCC
-# include <stdlib.h>
+#include <stdlib.h>
 # define _SIZE_T
+# define DCC30_BUG	/* A bitfield bug (from dog.c, others) in DICE 3.0. */
 #endif
 
 typedef long off_t;
 
 #define MICRO		/* must be defined to allow some inclusions */
+
+/* data librarian defs */
+#define DLBFILE		"NetHack:nhdat"		/* main library */
+#define DLBFILE2	"NetHack:nhsdat"	/* sound library */
+#define FILENAME_CMP	stricmp			/* case insensitive */
 
 #ifndef	__SASC_60
 # define O_BINARY	0
@@ -54,29 +60,36 @@ extern void NDECL(CleanUp);
 extern void FDECL(Abort, (long));
 extern int NDECL(getpid);
 extern char *FDECL(CopyFile, (const char *, const char *));
+extern int NDECL(kbhit);
 extern int NDECL(WindowGetchar);
+extern void FDECL(ami_argset, (int *, char *[]));
+extern void FDECL(ami_mkargline, (int *, char **[]));
+extern void ami_wininit_data(void);
 
 extern boolean FromWBench;	/* how were we run? */
 extern int ami_argc;
 extern char **ami_argv;
 
 #ifndef MICRO_H
-# include "micro.h"
+#include "micro.h"
 #endif
 
 #ifndef PCCONF_H
-# include "pcconf.h"     /* remainder of stuff is almost same as the PC */
-# undef	OVERLAY
+#include "pcconf.h"	/* remainder of stuff is almost same as the PC */
 #endif
 
 #define remove(x)       unlink(x)
+
+/* DICE wants rewind() to return void.  We want it to return int. */
+#ifdef _DCC
+# define rewind(f)	fseek(f, 0, 0)
+#endif
 
 #ifdef AZTEC_C
 extern FILE *FDECL(freopen, (const char *, const char *, FILE *));
 extern char *FDECL(gets, (char *));
 #endif
 
-/*#define msmsg		raw_printf*/
 #define msmsg		printf
 
 /*
@@ -96,38 +109,49 @@ extern char *FDECL(gets, (char *));
 #define MAIL			/* Get mail at unexpected occasions */
 #define DEFAULT_ICON "NetHack:default.icon"	/* private icon */
 #define AMIFLUSH		/* toss typeahead (select flush in .cnf) */
+#define OPT_DISPMAP		/* enable fast_map option */
 
 /* new window system options */
 			/* WRONG - AMIGA_INTUITION should go away */
 #ifdef AMII_GRAPHICS
-# define AMIGA_INTUITION		/* high power graphics interface (amii) */
+# define AMIGA_INTUITION	/* high power graphics interface (amii) */
 #endif
 
 #define CHANGE_COLOR	1
 
 #ifdef	TEXTCOLOR
-# ifdef	VIEWWINDOW
-#  define	DEPTH	4
-# else
-#  define	DEPTH	3
-# endif
+#  define	DEPTH	6	/* Maximum depth of the screen allowed */
 #else
-# define	DEPTH	2
+# define	DEPTH	2	/* Four colors...sigh... */
 #endif
+
+#define AMII_MAXCOLORS	(1L<<DEPTH)
+typedef unsigned short AMII_COLOR_TYPE;
 
 #define PORT_HELP	"nethack:amii.hlp"
 
 #undef	TERMLIB
 
-#define	AMII_MUFFLED_VOLUME	40
-#define	AMII_SOFT_VOLUME	50
-#define	AMII_OKAY_VOLUME	60
-#define	AMII_LOUDER_VOLUME	80
+#define AMII_MUFFLED_VOLUME	40
+#define AMII_SOFT_VOLUME	50
+#define AMII_OKAY_VOLUME	60
+#define AMII_LOUDER_VOLUME	80
 
 #ifdef TTY_GRAPHICS
 # define ANSI_DEFAULT
 #endif
 
 extern int amibbs;	/* BBS mode? */
+
+#ifdef AMII_GRAPHICS
+extern int amii_numcolors;
+void FDECL( amii_setpens, (int) );
+#endif
+
+/* for cmd.c: override version in micro.h */
+#ifdef __SASC_60
+# undef M
+# define M(c) ((c) - 128 )
+#endif
 
 #endif /* AMICONF_H */

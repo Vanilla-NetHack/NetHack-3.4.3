@@ -1,4 +1,4 @@
-#	SCCS Id: @(#)gehennom.des	3.1	91/12/27
+#	SCCS Id: @(#)gehennom.des	3.2	95/04/22
 #	Copyright (c) 1989 by Jean-Christophe Collet
 #	Copyright (c) 1992 by M. Stephenson and Izchak Miller
 # NetHack may be freely redistributed.  See license for details.
@@ -40,6 +40,7 @@ REGION:(37,09,43,14),unlit,"morgue",filled,true
 STAIR:(01,01),down
 # Branch location
 BRANCH:(66,17,66,17),(0,0,0,0)
+TELEPORT_REGION:(58,09,72,18),(0,0,0,0),down
 
 # Secret Doors
 DOOR:locked,(04,01)
@@ -153,8 +154,28 @@ MONSTER:'M',random,random
 # The Juiblex level
 #
 MAZE:"juiblex",' '
-FLAGS:noteleport
+FLAGS:noteleport,shortsighted
 INIT_MAP:'.','}',true,true,unlit,false
+# guarantee at least one open spot to ensure successful stair placement
+GEOMETRY:left,bottom
+MAP
+}}}}}}}}
+}}...}}}
+}}}...}}
+}}}}.}}}
+}}}}}}}}
+ENDMAP
+OBJECT:'`',"boulder",random
+GEOMETRY:right,top
+MAP
+}}}}}}}}
+}}}}.}}}
+}}}...}}
+}}...}}}
+}}}}}}}}
+ENDMAP
+OBJECT:'`',"boulder",random
+# lair
 GEOMETRY:center,center
 MAP
 ..}}}}}.}}}}}.}}}}}.}}}}}.}}}}}.}}}}}.}}}}}.}}}}}..
@@ -183,10 +204,10 @@ RANDOM_PLACES:(04,02),(46,02),(04,15),(46,15)
 REGION:(00,00,50,17),unlit,"swamp"
 MAZEWALK:(00,09),west
 MAZEWALK:(50,08),east
-STAIR:levregion(01,00,08,20),(0,0,50,17),down
+STAIR:levregion(01,00,11,20),(0,0,50,17),down
 STAIR:levregion(69,00,79,20),(0,0,50,17),up
-BRANCH:levregion(01,00,08,20),(0,0,50,17)
-TELEPORT_REGION:levregion(01,00,08,20),(0,0,50,17),up
+BRANCH:levregion(01,00,11,20),(0,0,50,17)
+TELEPORT_REGION:levregion(01,00,11,20),(0,0,50,17),up
 TELEPORT_REGION:levregion(69,00,79,20),(0,0,50,17),down
 FOUNTAIN:place[0]
 MONSTER:'m',"giant mimic",place[1],m_feature "fountain"
@@ -213,10 +234,10 @@ MONSTER:monster[3],random,(27,08)
 MONSTER:monster[2],random,(24,09)
 MONSTER:monster[1],random,(26,09)
 MONSTER:monster[0],random,(25,10)
-MONSTER:'J',random,random
-MONSTER:'J',random,random
-MONSTER:'J',random,random
-MONSTER:'J',random,random
+MONSTER:'j',random,random
+MONSTER:'j',random,random
+MONSTER:'j',random,random
+MONSTER:'j',random,random
 MONSTER:'P',random,random
 MONSTER:'P',random,random
 MONSTER:'P',random,random
@@ -236,6 +257,7 @@ OBJECT:'!',random,random
 OBJECT:'%',random,random
 OBJECT:'%',random,random
 OBJECT:'%',random,random
+OBJECT:'`',"boulder",random
 # Some traps
 TRAP:"sleep gas",random
 TRAP:"sleep gas",random
@@ -624,8 +646,8 @@ OBJECT:'?',random,random
 # Some monsters.
 MONSTER:'&',"horned devil",(14,12),hostile
 MONSTER:'&',"barbed devil",(18,08),hostile
-MONSTER:'&',"erinyes",(10,04),hostile
-MONSTER:'&',"marilith",(15,04),hostile
+MONSTER:'&',"erinys",(10,04),hostile
+MONSTER:'&',"marilith",(07,09),hostile
 MONSTER:'&',"nalfeshnee",(27,08),hostile
 # Moloch's horde
 MONSTER:'@',"aligned priest",(20,03),noalign,hostile

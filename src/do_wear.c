@@ -1,14 +1,8 @@
-/*	SCCS Id: @(#)do_wear.c	3.1	93/06/24	*/
+/*	SCCS Id: @(#)do_wear.c	3.2	96/02/29	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
-
-#ifdef OVLB
-
-static NEARDATA int todelay;
-
-#endif /*OVLB */
 
 #ifndef OVLB
 
@@ -17,6 +11,25 @@ STATIC_DCL long takeoff_mask, taking_off;
 #else /* OVLB */
 
 STATIC_OVL NEARDATA long takeoff_mask = 0L, taking_off = 0L;
+
+static NEARDATA int todelay;
+
+static NEARDATA const char see_yourself[] = "see yourself";
+static NEARDATA const char unknown_type[] = "Unknown type of %s (%d)";
+static NEARDATA const char *c_armor  = "armor",
+			   *c_suit   = "suit",
+#ifdef TOURIST
+			   *c_shirt  = "shirt",
+#endif
+			   *c_cloak  = "cloak",
+			   *c_gloves = "gloves",
+			   *c_boots  = "boots",
+			   *c_helmet = "helmet",
+			   *c_shield = "shield",
+			   *c_weapon = "weapon",
+			   *c_sword  = "sword",
+			   *c_axe    = "axe",
+			   *c_that_  = "that";
 
 static NEARDATA const long takeoff_order[] = { WORN_BLINDF, 1L, /* weapon */
 	WORN_SHIELD, WORN_GLOVES, LEFT_RING, RIGHT_RING, WORN_CLOAK,
@@ -37,6 +50,7 @@ static void FDECL(Ring_off_or_gone, (struct obj *, BOOLEAN_P));
 STATIC_PTR int FDECL(select_off, (struct obj *));
 static struct obj *NDECL(do_takeoff);
 STATIC_PTR int NDECL(take_off);
+static int FDECL(menu_remarm, (int));
 static void FDECL(already_wearing, (const char*));
 
 void
@@ -55,55 +69,6 @@ register struct obj *otmp;
 	if(flags.verbose)
 	    You("are now wearing %s.",
 		obj_is_pname(otmp) ? the(xname(otmp)) : an(xname(otmp)));
-}
-
-#endif /* OVLB */
-#ifdef OVL2
-
-boolean
-is_boots(otmp)
-register struct obj *otmp;
-{
-	return((boolean)(otmp->otyp >= LOW_BOOTS &&
-		otmp->otyp <= LEVITATION_BOOTS));
-}
-
-boolean
-is_helmet(otmp)
-register struct obj *otmp;
-{
-	return((boolean)(otmp->otyp >= ELVEN_LEATHER_HELM &&
-		otmp->otyp <= HELM_OF_TELEPATHY));
-}
-
-#endif /* OVLB */
-#ifdef OVL2
-
-boolean
-is_gloves(otmp)
-register struct obj *otmp;
-{
-	return((boolean)(otmp->otyp >= LEATHER_GLOVES &&
-		otmp->otyp <= GAUNTLETS_OF_DEXTERITY));
-}
-
-#endif /* OVL2 */
-#ifdef OVLB
-
-boolean
-is_cloak(otmp)
-register struct obj *otmp;
-{
-	return((boolean)(otmp->otyp >= MUMMY_WRAPPING &&
-		otmp->otyp <= CLOAK_OF_DISPLACEMENT));
-}
-
-boolean
-is_shield(otmp)
-register struct obj *otmp;
-{
-	return((boolean)(otmp->otyp >= SMALL_SHIELD &&
-		otmp->otyp <= SHIELD_OF_REFLECTION));
 }
 
 /*
@@ -131,7 +96,7 @@ Boots_on()
 		/* though not better than potion speed */
 		if (!(oldprop & TIMEOUT)) {
 			makeknown(uarmf->otyp);
-			You("feel yourself speed up%s.",
+			You_feel("yourself speed up%s.",
 				oldprop ? " a bit more" : "");
 		}
 		break;
@@ -151,7 +116,7 @@ Boots_on()
 			float_up();
 		}
 		break;
-	default: impossible("Unknown type of boots (%d)", uarmf->otyp);
+	default: impossible(unknown_type, c_boots, uarmf->otyp);
     }
     return 0;
 }
@@ -159,35 +124,32 @@ Boots_on()
 int
 Boots_off()
 {
-    register struct obj *obj = uarmf;
+    int otyp = uarmf->otyp;
+    long oldprop = u.uprops[objects[otyp].oc_oprop].p_flgs & ~WORN_BOOTS;
+
 	/* For levitation, float_down() returns if Levitation, so we
 	 * must do a setworn() _before_ the levitation case.
 	 */
-    long oldprop = u.uprops[objects[uarmf->otyp].oc_oprop].p_flgs & ~WORN_BOOTS;
-
     setworn((struct obj *)0, W_ARMF);
-    switch(obj->otyp) {
+    switch (otyp) {
 	case SPEED_BOOTS:
 		if (!(oldprop & TIMEOUT)) {
-			makeknown(obj->otyp);
-			You("feel yourself slow down%s.",
+			makeknown(otyp);
+			You_feel("yourself slow down%s.",
 				oldprop ? " a bit" : "");
 		}
 		break;
 	case WATER_WALKING_BOOTS:
-		if(is_pool(u.ux,u.uy) && !Levitation
-#ifdef POLYSELF
-		    && !is_flyer(uasmon) && !is_clinger(uasmon)
-#endif
-		    ) {
-			makeknown(obj->otyp);
+		if (is_pool(u.ux,u.uy) && !Levitation
+			    && !is_flyer(uasmon) && !is_clinger(uasmon)) {
+			makeknown(otyp);
 			/* make boots known in case you survive the drowning */
 			spoteffects();
 		}
 		break;
 	case ELVEN_BOOTS:
 		if (!oldprop) {
-			makeknown(obj->otyp);
+			makeknown(otyp);
 			You("sure are noisy.");
 		}
 		break;
@@ -197,8 +159,8 @@ Boots_off()
 		break;
 	case LEVITATION_BOOTS:
 		if (!oldprop) {
-			(void) float_down();
-			makeknown(obj->otyp);
+			(void) float_down(0L);
+			makeknown(otyp);
 		}
 		break;
 	case LOW_BOOTS:
@@ -206,7 +168,7 @@ Boots_off()
 	case HIGH_BOOTS:
 	case JUMPING_BOOTS:
 		break;
-	default: impossible("Unknown type of boots (%d)", obj->otyp);
+	default: impossible(unknown_type, c_boots, otyp);
     }
     return 0;
 }
@@ -222,22 +184,31 @@ Cloak_on()
 	case CLOAK_OF_DISPLACEMENT:
 		makeknown(uarmc->otyp);
 		break;
-	case MUMMY_WRAPPING:
 	case ORCISH_CLOAK:
 	case DWARVISH_CLOAK:
 	case CLOAK_OF_MAGIC_RESISTANCE:
 		break;
+	case MUMMY_WRAPPING:
+		/* Note: it's already being worn, so we have to cheat here. */
+		if (((HInvis & ~I_BLOCKED) || pm_invisible(uasmon))
+		    && !See_invisible && !Blind) {
+			newsym(u.ux,u.uy);
+			You("can %s!", see_yourself);
+		}
+		break;
 	case CLOAK_OF_INVISIBILITY:
+		/* since cloak of invisibility was worn, we know mummy wrapping
+		   wasn't, so no need to check `oldprop' against I_BLOCKED */
 		if (!oldprop && !See_invisible && !Blind) {
 			makeknown(uarmc->otyp);
 			newsym(u.ux,u.uy);
-			pline("Suddenly you cannot see yourself.");
+			pline("Suddenly you cannot %s.", see_yourself);
 		}
 		break;
 	case OILSKIN_CLOAK:
 		pline("%s fits very tightly.",The(xname(uarmc)));
 		break;
-	default: impossible("Unknown type of cloak (%d)", uarmc->otyp);
+	default: impossible(unknown_type, c_cloak, uarmc->otyp);
     }
     return 0;
 }
@@ -245,10 +216,12 @@ Cloak_on()
 int
 Cloak_off()
 {
-    long oldprop = u.uprops[objects[uarmc->otyp].oc_oprop].p_flgs & ~WORN_CLOAK;
+    int otyp = uarmc->otyp;
+    long oldprop = u.uprops[objects[otyp].oc_oprop].p_flgs & ~WORN_CLOAK;
 
-    switch(uarmc->otyp) {
-	case MUMMY_WRAPPING:
+	/* For mummy wrapping, taking it off first resets `Invisible'. */
+    setworn((struct obj *)0, W_ARMC);
+    switch (otyp) {
 	case ELVEN_CLOAK:
 	case ORCISH_CLOAK:
 	case DWARVISH_CLOAK:
@@ -257,18 +230,21 @@ Cloak_off()
 	case CLOAK_OF_DISPLACEMENT:
 	case OILSKIN_CLOAK:
 		break;
-	case CLOAK_OF_INVISIBILITY:
-		if (!oldprop && !See_invisible && !Blind) {
-			makeknown(uarmc->otyp);
-			setworn((struct obj *)0, W_ARMC);
+	case MUMMY_WRAPPING:
+		if (Invisible && !Blind) {
 			newsym(u.ux,u.uy);
-			pline("Suddenly you can see yourself.");
-			return 0;
+			You("can no longer %s.", see_yourself);
 		}
 		break;
-	default: impossible("Unknown type of cloak (%d)", uarmc->otyp);
+	case CLOAK_OF_INVISIBILITY:
+		if (!oldprop && !See_invisible && !Blind) {
+			makeknown(CLOAK_OF_INVISIBILITY);
+			newsym(u.ux,u.uy);
+			pline("Suddenly you can %s.", see_yourself);
+		}
+		break;
+	default: impossible(unknown_type, c_cloak, otyp);
     }
-    setworn((struct obj *)0, W_ARMC);
     return 0;
 }
 
@@ -293,14 +269,43 @@ Helmet_on()
 			makeknown(uarmh->otyp);
 		}
 		break;
+	case CORNUTHAUM:
+		/* people think marked wizards know what they're talking
+		 * about, but it takes trained arrogance to pull it off,
+		 * and the actual enchantment of the hat is irrelevant.
+		 */
+		ABON(A_CHA) += (Role_is('W') ? 1 : -1);
+		flags.botl = 1;
+		makeknown(uarmh->otyp);
+		break;
 	case HELM_OF_OPPOSITE_ALIGNMENT:
 		if (u.ualign.type == A_NEUTRAL)
 		    u.ualign.type = rn2(2) ? A_CHAOTIC : A_LAWFUL;
 		else u.ualign.type = -(u.ualign.type);
-		makeknown(uarmh->otyp);
-		flags.botl = 1;
+		u.ublessed = 0; /* lose your god's protection */
+	     /* makeknown(uarmh->otyp);   -- moved below, after xname() */
+		/*FALLTHRU*/
+	case DUNCE_CAP:
+		if (!uarmh->cursed) {
+		    pline("%s %s%s for a moment.", The(xname(uarmh)),
+			  Blind ? "vibrates" : "glows ",
+			  Blind ? (const char *)"" : hcolor(Black));
+		    curse(uarmh);
+		}
+		flags.botl = 1;		/* reveal new alignment or INT & WIS */
+		if (Hallucination) {
+		    pline("My brain hurts!"); /* Monty Python's Flying Circus */
+		} else if (uarmh->otyp == DUNCE_CAP) {
+		    You_feel("%s.",	/* track INT change; ignore WIS */
+		  ACURR(A_INT) <= (ABASE(A_INT) + ABON(A_INT) + ATEMP(A_INT)) ?
+			     "like sitting in a corner" : "giddy");
+		} else {
+		    Your("%s oscillates briefly.",
+			 mindless(uasmon) ? body_part(HEAD) : "mind");
+		    makeknown(HELM_OF_OPPOSITE_ALIGNMENT);
+		}
 		break;
-	default: impossible("Unknown type of helm (%d)", uarmh->otyp);
+	default: impossible(unknown_type, c_helmet, uarmh->otyp);
     }
     return 0;
 }
@@ -316,6 +321,13 @@ Helmet_off()
 	case DWARVISH_IRON_HELM:
 	case ORCISH_HELM:
 		break;
+	case DUNCE_CAP:
+		flags.botl = 1;
+		break;
+	case CORNUTHAUM:
+		ABON(A_CHA) += (Role_is('W') ? -1 : 1);
+		flags.botl = 1;
+		break;
 	case HELM_OF_TELEPATHY:
 		/* need to update ability before calling see_monsters() */
 		setworn((struct obj *)0, W_ARMH);
@@ -330,9 +342,10 @@ Helmet_off()
 		break;
 	case HELM_OF_OPPOSITE_ALIGNMENT:
 		u.ualign.type = u.ualignbase[0];
+		u.ublessed = 0; /* lose the other god's protection */
 		flags.botl = 1;
 		break;
-	default: impossible("Unknown type of helm (%d)", uarmh->otyp);
+	default: impossible(unknown_type, c_helmet, uarmh->otyp);
     }
     setworn((struct obj *)0, W_ARMH);
     return 0;
@@ -361,7 +374,7 @@ Gloves_on()
 		ABON(A_DEX) += uarmg->spe;
 		flags.botl = 1;
 		break;
-	default: impossible("Unknown type of gloves (%d)", uarmg->otyp);
+	default: impossible(unknown_type, c_gloves, uarmg->otyp);
     }
     return 0;
 }
@@ -388,21 +401,15 @@ Gloves_off()
 		ABON(A_DEX) -= uarmg->spe;
 		flags.botl = 1;
 		break;
-	default: impossible("Unknown type of gloves (%d)", uarmg->otyp);
+	default: impossible(unknown_type, c_gloves, uarmg->otyp);
     }
     setworn((struct obj *)0, W_ARMG);
-    if (uwep && uwep->otyp == CORPSE && uwep->corpsenm == PM_COCKATRICE
-#ifdef POLYSELF
-	    && !(poly_when_stoned(uasmon) && polymon(PM_STONE_GOLEM))
-#endif
-							) {
+    if (uwep && uwep->otyp == CORPSE && uwep->corpsenm == PM_COCKATRICE) {
 	/* Prevent wielding cockatrice when not wearing gloves */
 	You("wield the cockatrice corpse in your bare %s.",
 	    makeplural(body_part(HAND)));
-	You("turn to stone...");
-	killer_format = KILLED_BY_AN;
-	killer = "cockatrice corpse";
-	done(STONING);
+	instapetrify("cockatrice corpse");
+	uwepgone();  /* life-saved still doesn't allow touching cockatrice */
     }
     return 0;
 }
@@ -420,7 +427,7 @@ Shield_on()
 	case LARGE_SHIELD:
 	case SHIELD_OF_REFLECTION:
 		break;
-	default: impossible("Unknown type of shield (%d)", uarms->otyp);
+	default: impossible(unknown_type, c_shield, uarms->otyp);
     }
     return 0;
 }
@@ -439,7 +446,7 @@ Shield_off()
 	case LARGE_SHIELD:
 	case SHIELD_OF_REFLECTION:
 		break;
-	default: impossible("Unknown type of shield (%d)", uarms->otyp);
+	default: impossible(unknown_type, c_shield, uarms->otyp);
     }
 */
     setworn((struct obj *)0, W_ARMS);
@@ -492,7 +499,7 @@ Amulet_on()
 		You("are suddenly very %s!", flags.female ? "feminine"
 			: "masculine");
 		flags.botl = 1;
-		pline("The amulet disintegrates!");
+		pline_The("amulet disintegrates!");
 		useup(uamul);
 		break;
 	case AMULET_OF_STRANGULATION:
@@ -524,16 +531,14 @@ Amulet_off()
 		break;
 	case AMULET_OF_MAGICAL_BREATHING:
 		if (Underwater) {
-#ifdef POLYSELF
-			if (!breathless(uasmon) && !amphibious(uasmon)
-			    && !is_swimmer(uasmon))
-#endif
+		    if (!breathless(uasmon) && !amphibious(uasmon)
+						&& !is_swimmer(uasmon))
 			You("suddenly inhale an unhealthy amount of water!");
-			/* HMagical_breathing must be set off
-			   before calling drown() */
-			setworn((struct obj *)0, W_AMUL);
-			(void) drown();
-			return;
+		    /* HMagical_breathing must be set off
+		       before calling drown() */
+		    setworn((struct obj *)0, W_AMUL);
+		    (void) drown();
+		    return;
 		}
 		break;
 	case AMULET_OF_CHANGE:
@@ -558,11 +563,12 @@ void
 Ring_on(obj)
 register struct obj *obj;
 {
-    long oldprop = u.uprops[objects[obj->otyp].oc_oprop].p_flgs & ~W_RING;
+    long oldprop = u.uprops[objects[obj->otyp].oc_oprop].p_flgs;
+    int old_attrib;
 
-    /* might put on two rings of the same type */
-    if((u.uprops[objects[obj->otyp].oc_oprop].p_flgs & W_RING) == W_RING)
-	oldprop = 1;
+    /* only mask out W_RING when we don't have both
+       left and right rings of the same type */
+    if ((oldprop & W_RING) != W_RING) oldprop &= ~W_RING;
 
     switch(obj->otyp){
 	case RIN_TELEPORTATION:
@@ -578,21 +584,15 @@ register struct obj *obj;
 	case RIN_CONFLICT:
 	case RIN_WARNING:
 	case RIN_TELEPORT_CONTROL:
-#ifdef POLYSELF
 	case RIN_POLYMORPH:
 	case RIN_POLYMORPH_CONTROL:
-#endif
 		break;
 	case RIN_SEE_INVISIBLE:
 		/* can now see invisible monsters */
 		set_mimic_blocking(); /* do special mimic handling */
 		see_monsters();
 
-		if (Invis && !oldprop
-#ifdef POLYSELF
-				&& !perceives(uasmon)
-#endif
-							&& !Blind) {
+		if (Invis && !oldprop && !perceives(uasmon) && !Blind) {
 			newsym(u.ux,u.uy);
 			pline("Suddenly you can see yourself.");
 			makeknown(RIN_SEE_INVISIBLE);
@@ -607,9 +607,12 @@ register struct obj *obj;
 		}
 		break;
 	case RIN_ADORNMENT:
+		old_attrib = ACURR(A_CHA);
 		ABON(A_CHA) += obj->spe;
 		flags.botl = 1;
-		if (obj->spe || objects[RIN_ADORNMENT].oc_name_known) {
+		if (ACURR(A_CHA) != old_attrib ||
+		    (objects[RIN_ADORNMENT].oc_name_known &&
+		     old_attrib != 25 && old_attrib != 3)) {
 			makeknown(RIN_ADORNMENT);
 			obj->known = TRUE;
 		}
@@ -622,9 +625,12 @@ register struct obj *obj;
 		}
 		break;
 	case RIN_GAIN_STRENGTH:
+		old_attrib = ACURR(A_STR);
 		ABON(A_STR) += obj->spe;
 		flags.botl = 1;
-		if (obj->spe || objects[RIN_GAIN_STRENGTH].oc_name_known) {
+		if (ACURR(A_STR) != old_attrib ||
+		    (objects[RIN_GAIN_STRENGTH].oc_name_known &&
+		     old_attrib != 125 && old_attrib != 3)) {
 			makeknown(RIN_GAIN_STRENGTH);
 			obj->known = TRUE;
 		}
@@ -651,6 +657,7 @@ register struct obj *obj;
 boolean gone;
 {
     register long mask = obj->owornmask & W_RING;
+    int old_attrib;
 
     if(!(u.uprops[objects[obj->otyp].oc_oprop].p_flgs & mask))
 	impossible("Strange... I didn't know you had that ring.");
@@ -670,10 +677,8 @@ boolean gone;
 	case RIN_CONFLICT:
 	case RIN_WARNING:
 	case RIN_TELEPORT_CONTROL:
-#ifdef POLYSELF
 	case RIN_POLYMORPH:
 	case RIN_POLYMORPH_CONTROL:
-#endif
 		break;
 	case RIN_SEE_INVISIBLE:
 		/* Make invisible monsters go away */
@@ -689,22 +694,27 @@ boolean gone;
 		}
 		break;
 	case RIN_INVISIBILITY:
-		if (!(Invisible & ~W_RING) && !See_invisible && !Blind) {
+		if (!Invis && !(HInvis & I_BLOCKED) &&
+		    !See_invisible && !Blind) {
 			newsym(u.ux,u.uy);
 			Your("body seems to unfade...");
 			makeknown(RIN_INVISIBILITY);
 		}
 		break;
 	case RIN_ADORNMENT:
+		old_attrib = ACURR(A_CHA);
 		ABON(A_CHA) -= obj->spe;
+		if (ACURR(A_CHA) != old_attrib) makeknown(RIN_ADORNMENT);
 		flags.botl = 1;
 		break;
 	case RIN_LEVITATION:
-		(void) float_down();
+		(void) float_down(0L);
 		if (!Levitation) makeknown(RIN_LEVITATION);
 		break;
 	case RIN_GAIN_STRENGTH:
+		old_attrib = ACURR(A_STR);
 		ABON(A_STR) -= obj->spe;
+		if (ACURR(A_STR) != old_attrib) makeknown(RIN_GAIN_STRENGTH);
 		flags.botl = 1;
 		break;
 	case RIN_INCREASE_DAMAGE:
@@ -738,6 +748,9 @@ Blindf_on(otmp)
 register struct obj *otmp;
 {
 	long already_blinded = Blinded;
+
+	if (otmp == uwep)
+	    setuwep((struct obj *) 0);
 	setworn(otmp, W_TOOL);
 	if (otmp->otyp == TOWEL && flags.verbose)
 	    You("wrap %s around your %s.", an(xname(otmp)), body_part(HEAD));
@@ -795,7 +808,7 @@ cancel_don()
 	 * otherwise finish)
 	 */
 	afternmv = 0;
-	nomovemsg = NULL;
+	nomovemsg = (char *)0;
 	multi = 0;
 }
 
@@ -826,11 +839,12 @@ dotakeoff()
 #endif
 	}
 	if (!armorpieces) {
-#ifdef POLYSELF
+	     /* assert( GRAY_DRAGON_SCALES > YELLOW_DRAGON_SCALE_MAIL ); */
 		if (uskin)
-		    pline("The dragon scale mail is merged with your skin!");
+		    pline_The("%s merged with your skin!",
+			      uskin->otyp >= GRAY_DRAGON_SCALES ?
+				"dragon scales are" : "dragon scale mail is");
 		else
-#endif
 		    pline("Not wearing any armor.");
 		return 0;
 	}
@@ -841,28 +855,30 @@ dotakeoff()
 		You("are not wearing that.");
 		return(0);
 	}
-	if (((otmp == uarm) && (uarmc))
+	/* note: the `uskin' case shouldn't be able to happen here; dragons
+	   can't wear any armor so will end up with `armorpieces == 0' above */
+	if (otmp == uskin || ((otmp == uarm) && uarmc)
 #ifdef TOURIST
-				|| ((otmp == uarmu) && (uarmc || uarm))
+			  || ((otmp == uarmu) && (uarmc || uarm))
 #endif
-								) {
-		You("can't take that off.");
-		return(0);
+		) {
+	    You_cant("take that off.");
+	    return 0;
 	}
-	if(otmp == uarmg && welded(uwep)) {
-    You("seem unable to take off the gloves while holding your %s.",
-	  is_sword(uwep) ? "sword" : "weapon");
-		uwep->bknown = TRUE;
-		return(0);
+	if (otmp == uarmg && welded(uwep)) {
+	    You("seem unable to take off the gloves while holding your %s.",
+		is_sword(uwep) ? c_sword : c_weapon);
+	    uwep->bknown = TRUE;
+	    return 0;
 	}
-	if(otmp == uarmg && Glib) {
-    You("can't remove the slippery gloves with your slippery fingers.");
-		return(0);
+	if (otmp == uarmg && Glib) {
+	    You_cant("remove the slippery gloves with your slippery fingers.");
+	    return 0;
 	}
-	if(otmp == uarmf && u.utrap && (u.utraptype == TT_BEARTRAP ||
+	if (otmp == uarmf && u.utrap && (u.utraptype == TT_BEARTRAP ||
 					u.utraptype == TT_INFLOOR)) { /* -3. */
 	    if(u.utraptype == TT_BEARTRAP)
-		pline("The bear trap prevents you from pulling your %s out.",
+		pline_The("bear trap prevents you from pulling your %s out.",
 		      body_part(FOOT));
 	    else
 		You("are stuck in the %s, and cannot pull your %s out.",
@@ -877,12 +893,7 @@ dotakeoff()
 int
 doremring()
 {
-#ifdef GCC_WARN
-	register struct obj *otmp = (struct obj *)0;
-		/* suppress "may be used uninitialized" warning */
-#else
-	register struct obj *otmp;
-#endif
+	register struct obj *otmp = 0;
 	int Accessories = 0;
 
 #define MOREACC(x) if (x) { Accessories++; otmp = x; }
@@ -903,27 +914,28 @@ doremring()
 	}
 	if(cursed(otmp)) return(0);
 	if(otmp->oclass == RING_CLASS) {
-#ifdef POLYSELF
 		if (nolimbs(uasmon)) {
 			pline("It seems to be stuck.");
 			return(0);
 		}
-#endif
 		if (uarmg && uarmg->cursed) {
 			uarmg->bknown = TRUE;
-You("seem unable to remove your ring without taking off your gloves.");
+			You(
+	    "seem unable to remove your ring without taking off your gloves.");
 			return(0);
 		}
 		if (welded(uwep) && bimanual(uwep)) {
 			uwep->bknown = TRUE;
-You("seem unable to remove the ring while your hands hold your %s.",
-				is_sword(uwep) ? "sword" : "weapon");
+			You(
+	       "seem unable to remove the ring while your hands hold your %s.",
+			    is_sword(uwep) ? c_sword : c_weapon);
 			return(0);
 		}
 		if (welded(uwep) && otmp==uright) {
 			uwep->bknown = TRUE;
-You("seem unable to remove the ring while your right hand holds your %s.",
-				is_sword(uwep) ? "sword" : "weapon");
+			You(
+	 "seem unable to remove the ring while your right hand holds your %s.",
+			    is_sword(uwep) ? c_sword : c_weapon);
 			return(0);
 		}
 		/* Sometimes we want to give the off_msg before removing and
@@ -941,12 +953,13 @@ You("seem unable to remove the ring while your right hand holds your %s.",
 	return(1);
 }
 
+/* Check if something worn is cursed _and_ unremovable. */
 int
 cursed(otmp)
 register struct obj *otmp;
 {
 	/* Curses, like chickens, come home to roost. */
-	if(otmp->cursed){
+	if((otmp == uwep) ? welded(otmp) : (int)otmp->cursed) {
 		You("can't.  %s to be cursed.",
 			(is_boots(otmp) || is_gloves(otmp) || otmp->quan > 1L)
 			? "They seem" : "It seems");
@@ -994,6 +1007,8 @@ register struct obj *otmp;
 		 * off_msg before removal anyway so there's no problem.  Take
 		 * care in adding armors granting fire resistance; this code
 		 * might need modification.
+		 * 3.2 (actually 3.1 even): this comment is obsolete since
+		 * fire resistance is not needed for Gehennom.
 		 */
 		if(is_cloak(otmp))
 			(void) Cloak_off();
@@ -1010,9 +1025,10 @@ static void
 already_wearing(cc)
 const char *cc;
 {
-	You("are already wearing %s", cc);
+	You("are already wearing %s%c", cc, (cc == c_that_) ? '!' : '.');
 }
 
+/* the 'W' command */
 int
 dowear()
 {
@@ -1020,57 +1036,59 @@ dowear()
 	register int delay;
 	register int err = 0;
 	long mask = 0;
+	const char *which;
 
-#ifdef POLYSELF
 	/* cantweararm checks for suits of armor */
 	/* verysmall or nohands checks for shields, gloves, etc... */
 	if ((verysmall(uasmon) || nohands(uasmon))) {
 		pline("Don't even bother.");
 		return(0);
 	}
-#endif
+
 	otmp = getobj(clothes, "wear");
 	if(!otmp) return(0);
-#ifdef POLYSELF
-	if (cantweararm(uasmon) && !is_shield(otmp) &&
-			!is_helmet(otmp) && !is_gloves(otmp) &&
-			!is_boots(otmp)) {
-		pline("The %s will not fit on your body.",
-			is_cloak(otmp) ? "cloak" :
-# ifdef TOURIST
-			otmp->otyp == HAWAIIAN_SHIRT ? "shirt" :
-# endif
-			"suit");
-		return(0);
-	}
+
+	which = is_cloak(otmp) ? c_cloak :
+#ifdef TOURIST
+		is_shirt(otmp) ? c_shirt :
 #endif
-	if(otmp->owornmask & W_ARMOR) {
-		already_wearing("that!");
-		return(0);
+		is_suit(otmp)  ? c_suit  : 0;
+	if (which && cantweararm(uasmon) &&
+		/* same exception for cloaks as used in m_dowear() */
+		(which != c_cloak || uasmon->msize != MZ_SMALL)) {
+	    pline_The("%s will not fit on your body.", which);
+	    return 0;
+	} else if (otmp->owornmask & W_ARMOR) {
+	    already_wearing(c_that_);
+	    return 0;
 	}
+
 	if(is_helmet(otmp)) {
 		if(uarmh) {
-			already_wearing("a helmet.");
+			already_wearing(an(c_helmet));
 			err++;
 		} else
 			mask = W_ARMH;
 	} else if(is_shield(otmp)){
 		if(uarms) {
-			already_wearing("a shield.");
+			already_wearing(an(c_shield));
 			err++;
 		}
 		if(uwep && bimanual(uwep)) {
 		    You("cannot wear a shield while wielding a two-handed %s.",
-			is_sword(uwep) ? "sword" :
-				uwep->otyp == BATTLE_AXE ? "axe" : "weapon");
+			is_sword(uwep) ? c_sword :
+				uwep->otyp == BATTLE_AXE ? c_axe : c_weapon);
 			err++;
 		}
 		if(!err) mask = W_ARMS;
 	} else if(is_boots(otmp)) {
 		if (uarmf) {
-			already_wearing("boots.");
+			already_wearing(c_boots);
 			err++;
-		} if (u.utrap && (u.utraptype == TT_BEARTRAP ||
+		} else if (Upolyd && slithy(uasmon)) {
+			You("have no feet...");	/* not body_part(FOOT) */
+			err++;
+		} else if (u.utrap && (u.utraptype == TT_BEARTRAP ||
 				  u.utraptype == TT_INFLOOR)) {
 			if (u.utraptype == TT_BEARTRAP)
 			    Your("%s is trapped!", body_part(FOOT));
@@ -1083,30 +1101,29 @@ dowear()
 			mask = W_ARMF;
 	} else if(is_gloves(otmp)) {
 		if(uarmg) {
-			already_wearing("gloves.");
+			already_wearing(c_gloves);
 			err++;
-		} else
-		if (welded(uwep)) {
+		} else if (welded(uwep)) {
 			You("cannot wear gloves over your %s.",
-			      is_sword(uwep) ? "sword" : "weapon");
+			      is_sword(uwep) ? c_sword : c_weapon);
 			err++;
 		} else
 			mask = W_ARMG;
 #ifdef TOURIST
-	} else if( otmp->otyp == HAWAIIAN_SHIRT ) {
+	} else if(is_shirt(otmp)) {
 		if (uarm || uarmc || uarmu) {
 			if(uarmu)
-			   already_wearing("a shirt.");
+			   already_wearing(an(c_shirt));
 			else
-			   You("can't wear that over your %s.",
-				 (uarm && !uarmc) ? "armor" : "cloak");
+			   You_cant("wear that over your %s.",
+				 (uarm && !uarmc) ? c_armor : c_cloak);
 			err++;
 		} else
 			mask = W_ARMU;
 #endif
 	} else if(is_cloak(otmp)) {
 		if(uarmc) {
-			already_wearing("a cloak.");
+			already_wearing(an(c_cloak));
 			err++;
 		} else
 			mask = W_ARMC;
@@ -1115,7 +1132,7 @@ dowear()
 			You("cannot wear armor over a cloak.");
 			err++;
 		} else if(uarm) {
-			already_wearing("some armor.");
+			already_wearing("some armor");
 			err++;
 		}
 		if(!err) mask = W_ARM;
@@ -1128,6 +1145,18 @@ dowear()
 	}
  */
 	if(err) return(0);
+
+	if (otmp->oartifact && !touch_artifact(otmp, &youmonst))
+	    return 1;	/* costs a turn even though it didn't get worn */
+
+	if (otmp->otyp == HELM_OF_OPPOSITE_ALIGNMENT &&
+			qstart_level.dnum == u.uz.dnum) {	/* in quest */
+		You("narrowly avoid losing all chance at your goal.");
+		u.ublessed = 0; /* lose your god's protection */
+		makeknown(otmp->otyp);
+		flags.botl = 1;
+		return 1;
+	}
 
 	otmp->known = TRUE;
 	if(otmp == uwep)
@@ -1157,19 +1186,15 @@ doputon()
 	long mask = 0L;
 
 	if(uleft && uright && uamul && ublindf) {
-#ifdef POLYSELF
-		Your("%s%s are full, and you're already wearing an amulet and a blindfold.",
+    Your("%s%s are full, and you're already wearing an amulet and a blindfold.",
 			humanoid(uasmon) ? "ring-" : "",
 			makeplural(body_part(FINGER)));
-#else
-		Your("ring-fingers are full, and you're already wearing an amulet and a blindfold.");
-#endif
 		return(0);
 	}
 	otmp = getobj(accessories, "wear");
 	if(!otmp) return(0);
 	if(otmp->owornmask & (W_RING | W_AMUL | W_TOOL)) {
-		already_wearing("that!");
+		already_wearing(c_that_);
 		return(0);
 	}
 	if(welded(otmp)) {
@@ -1179,20 +1204,14 @@ doputon()
 	if(otmp == uwep)
 		setuwep((struct obj *)0);
 	if(otmp->oclass == RING_CLASS) {
-#ifdef POLYSELF
 		if(nolimbs(uasmon)) {
 			You("cannot make the ring stick to your body.");
 			return(0);
 		}
-#endif
 		if(uleft && uright){
-#ifdef POLYSELF
 			pline("There are no more %s%s to fill.",
 				humanoid(uasmon) ? "ring-" : "",
 				makeplural(body_part(FINGER)));
-#else
-			pline("There are no more ring-fingers to fill.");
-#endif
 			return(0);
 		}
 		if(uleft) mask = RIGHT_RING;
@@ -1201,13 +1220,9 @@ doputon()
 			char qbuf[QBUFSZ];
 			char answer;
 
-#ifdef POLYSELF
 			Sprintf(qbuf, "What %s%s, Right or Left?",
 				humanoid(uasmon) ? "ring-" : "",
 				body_part(FINGER));
-#else
-			Strcpy(qbuf, "What ring-finger, Right or Left?");
-#endif
 			if(!(answer = yn_function(qbuf, "rl", '\0')))
 				return(0);
 			switch(answer){
@@ -1240,7 +1255,7 @@ doputon()
 		Ring_on(otmp);
 	} else if (otmp->oclass == AMULET_CLASS) {
 		if(uamul) {
-			already_wearing("an amulet.");
+			already_wearing("an amulet");
 			return(0);
 		}
 		setworn(otmp, W_AMUL);
@@ -1256,17 +1271,17 @@ doputon()
 				Your("%s is already covered by a towel.",
 					body_part(FACE));
 			else
-				already_wearing("a blindfold.");
+				already_wearing("a blindfold");
 			return(0);
 		}
 		if (otmp->otyp != BLINDFOLD && otmp->otyp != TOWEL) {
-			You("can't wear that!");
+			You_cant("wear that!");
 			return(0);
 		}
 		Blindf_on(otmp);
 		return(1);
 	}
-	prinv(NULL, otmp, 0L);
+	prinv((char *)0, otmp, 0L);
 	return(1);
 }
 
@@ -1278,9 +1293,7 @@ void
 find_ac()
 {
 	register int uac = 10;
-#ifdef POLYSELF
 	if (u.mtimedone) uac = mons[u.umonnum].ac;
-#endif
 	if(uarm) uac -= ARM_BONUS(uarm);
 	if(uarmc) uac -= ARM_BONUS(uarmc);
 	if(uarmh) uac -= ARM_BONUS(uarmh);
@@ -1312,22 +1325,18 @@ glibr()
 	leftfall = (uleft && !uleft->cursed &&
 		    (!uwep || !welded(uwep) || !bimanual(uwep)));
 	rightfall = (uright && !uright->cursed && (!welded(uwep)));
-	if(!uarmg) if(leftfall || rightfall)
-#ifdef POLYSELF
-				if(!nolimbs(uasmon))
-#endif
-						{
+	if (!uarmg && (leftfall || rightfall) && !nolimbs(uasmon)) {
 		/* changed so cursed rings don't fall off, GAN 10/30/86 */
 		Your("%s off your %s.",
 			(leftfall && rightfall) ? "rings slip" : "ring slips",
 			makeplural(body_part(FINGER)));
 		xfl++;
-		if(leftfall) {
+		if (leftfall) {
 			otmp = uleft;
 			Ring_off(uleft);
 			dropx(otmp);
 		}
-		if(rightfall) {
+		if (rightfall) {
 			otmp = uright;
 			Ring_off(uright);
 			dropx(otmp);
@@ -1337,12 +1346,13 @@ glibr()
 	if (otmp && !welded(otmp)) {
 		/* changed so cursed weapons don't fall, GAN 10/30/86 */
 		Your("%s %sslips from your %s.",
-			is_sword(otmp) ? "sword" :
+			is_sword(otmp) ? c_sword :
 				makesingular(oclass_names[(int)otmp->oclass]),
 			xfl ? "also " : "",
 			makeplural(body_part(HAND)));
 		setuwep((struct obj *)0);
-		dropx(otmp);
+		if (otmp->otyp != LOADSTONE || !otmp->cursed)
+			dropx(otmp);
 	}
 }
 
@@ -1368,7 +1378,7 @@ boolean acid_dmg;
 
 	if (otmph && otmph != uarmf) {
 	    if (otmph->greased) {
-		grease_protect(otmph,NULL,FALSE);
+		grease_protect(otmph,(char *)0,FALSE);
 		return;
 	    }
 	    if (otmph->oerodeproof ||
@@ -1399,9 +1409,7 @@ register struct obj *otmp;
 {
 	if(!otmp) return(0);
 	if(cursed(otmp)) return(0);
-#ifdef POLYSELF
 	if(otmp->oclass==RING_CLASS && nolimbs(uasmon)) return(0);
-#endif
 	if(welded(uwep) && (otmp==uarmg || otmp==uright || (otmp==uleft
 			&& bimanual(uwep))))
 		return(0);
@@ -1591,15 +1599,66 @@ reset_remarm()
 int
 doddoremarm()
 {
-	if(taking_off || takeoff_mask) {
-	    You("continue disrobing.");
-	    set_occupation(take_off, "disrobing", 0);
-	    return(take_off());
-	}
+    int result = 0;
 
-	(void) ggetobj("take off", select_off, 0);
-	if(takeoff_mask) return(take_off());
-	else		 return(0);
+    if (taking_off || takeoff_mask) {
+	You("continue disrobing.");
+	set_occupation(take_off, "disrobing", 0);
+	return(take_off());
+    } else if (!uwep && !uamul && !ublindf &&
+		!uleft && !uright && !wearing_armor()) {
+	You("are not wearing anything.");
+	return 0;
+    }
+
+    add_valid_menu_class(0); /* reset */
+    if (flags.menu_style != MENU_TRADITIONAL ||
+	    (result = ggetobj("take off", select_off, 0, FALSE)) < -1)
+	result = menu_remarm(result);
+
+    return takeoff_mask ? take_off() : 0;
+}
+
+static int
+menu_remarm(retry)
+int retry;
+{
+    int n, i = 0;
+    menu_item *pick_list;
+    boolean all_worn_categories = TRUE;
+
+    if (retry) {
+	all_worn_categories = (retry == -2);
+    } else if (flags.menu_style == MENU_FULL) {
+	all_worn_categories = FALSE;
+	n = query_category("What type of things do you want to take off?",
+			   invent, WORN_TYPES|ALL_TYPES, &pick_list, PICK_ANY);
+	if (!n) return 0;
+	for (i = 0; i < n; i++) {
+	    if (pick_list[i].item.a_int == ALL_TYPES_SELECTED)
+		all_worn_categories = TRUE;
+	    else
+		add_valid_menu_class(pick_list[i].item.a_int);
+	}
+	free((genericptr_t) pick_list);
+    } else if (flags.menu_style == MENU_COMBINATION) {
+	all_worn_categories = FALSE;
+	if (ggetobj("take off", select_off, 0, TRUE) == -2)
+	    all_worn_categories = TRUE;
+    }
+
+    n = query_objlist("What do you want to take off?", invent,
+			SIGNAL_NOMENU|USE_INVLET|INVORDER_SORT,
+			&pick_list, PICK_ANY,
+			all_worn_categories ? is_worn : is_worn_by_type);
+    if (n > 0) {
+	for (i = 0; i < n; i++)
+	    (void) select_off(pick_list[i].item.a_obj);
+	free((genericptr_t) pick_list);
+    } else if (n < 0) {
+	pline("There is nothing else you can remove or unwield.");
+    }
+    return 0;
 }
 
 int
@@ -1607,12 +1666,15 @@ destroy_arm(atmp)
 register struct obj *atmp;
 {
 	register struct obj *otmp;
+#define DESTROY_ARM(o) ((otmp = (o)) != 0 && \
+			(!atmp || atmp == otmp) && \
+			(!obj_resists(otmp, 0, 90)))
 
-	if((otmp = uarmc) && (!atmp || atmp == uarmc)) {
+	if (DESTROY_ARM(uarmc)) {
 		Your("cloak crumbles and turns to dust!");
 		(void) Cloak_off();
 		useup(otmp);
-	} else if((otmp = uarm) && (!atmp || atmp == uarm)) {
+	} else if (DESTROY_ARM(uarm)) {
 		/* may be disintegrated by spell or dragon breath... */
 		if (donning(otmp)) cancel_don();
 		Your("armor turns to dust and falls to the %s!",
@@ -1620,32 +1682,33 @@ register struct obj *atmp;
 		(void) Armor_gone();
 		useup(otmp);
 #ifdef TOURIST
-	} else if((otmp = uarmu) && (!atmp || atmp == uarmu)) {
+	} else if (DESTROY_ARM(uarmu)) {
 		Your("shirt crumbles into tiny threads and falls apart!");
 		useup(otmp);
 #endif
-	} else if((otmp = uarmh) && (!atmp || atmp == uarmh)) {
+	} else if (DESTROY_ARM(uarmh)) {
 		if (donning(otmp)) cancel_don();
 		Your("helmet turns to dust and is blown away!");
 		(void) Helmet_off();
 		useup(otmp);
-	} else if((otmp = uarmg) && (!atmp || atmp == uarmg)) {
+	} else if (DESTROY_ARM(uarmg)) {
 		if (donning(otmp)) cancel_don();
 		Your("gloves vanish!");
 		(void) Gloves_off();
 		useup(otmp);
 		selftouch("You");
-	} else if((otmp = uarmf) && (!atmp || atmp == uarmf)) {
+	} else if (DESTROY_ARM(uarmf)) {
 		if (donning(otmp)) cancel_don();
 		Your("boots disintegrate!");
 		(void) Boots_off();
 		useup(otmp);
-	} else if((otmp =uarms) && (!atmp || atmp == uarms)) {
+	} else if (DESTROY_ARM(uarms)) {
 		Your("shield crumbles away!");
 		(void) Shield_off();
 		useup(otmp);
 	} else	return(0);		/* could not destroy anything */
 
+#undef DESTROY_ARM
 	return(1);
 }
 

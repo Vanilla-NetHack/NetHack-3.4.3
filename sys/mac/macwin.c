@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)macwin.c	3.1	93/07/09		  */
+/*	SCCS Id: @(#)macwin.c	3.2	96/01/15	*/
 /* Copyright (c) Jon W{tte, Hao-Yang Wang, Jonathan Handler 1992. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -17,6 +17,7 @@
 
 #include "hack.h"
 #include "func_tab.h"
+#include "macwin.h"
 #include "mactty.h"
 #include "wintty.h"
 
@@ -24,8 +25,10 @@
 #include <dialogs.h>
 #include <textedit.h>
 #include <menus.h>
-#ifndef THINK_C
+#if defined(applec)
 #include <sysequ.h>
+#elif defined(__MWERKS__)
+#include <LowMem.h>
 #else
 #include <LoMem.h>
 #endif
@@ -42,9 +45,33 @@
 
 static short kApplicInFront = 1;
 
-NhWindow * theWindows = (NhWindow *) NULL ;
+NhWindow * theWindows = (NhWindow *) 0 ;
 
-extern pascal short tty_environment_changed ( WindowPtr ) ;
+static Boolean ClosingWindowChar(const int c);
+static Boolean in_topl_mode(void);
+static void topl_flash_resp(int resp_idx);
+static void topl_set_def(int new_def_idx);
+static void adjust_window_pos(NhWindow *aWin, WindowPtr theWindow, short w);
+static void mac_cliparound (int x, int y);
+
+
+#ifndef USESROUTINEDESCRIPTORS /* not using universal headers */
+  /* Cast everything in terms of the new Low Memory function calls. */
+# if defined(applec)
+#  define LMGetCurStackBase()	(*(long *) CurStackBase)
+#  define LMGetDefltStack()		(*(long *) DefltStack)
+#  define LMGetKeyThresh()		(*(short *) KeyThresh)
+#  define LMGetKeyRepThresh()	(*(short *) KeyRepThresh)
+# elif defined(THINK_C)
+#  define LMGetCurStackBase()	CurStackBase
+#  define LMGetDefltStack()		(*(long *) DefltStack)
+#  define LMGetKeyThresh()		(*(short *) KeyThresh)
+#  define LMGetKeyRepThresh()	(*(short *) KeyRepThresh)
+# else
+#  error /* need to define LM functions for this compiler */
+# endif
+#endif /* !USEROUTINEDESCRIPTORS (universal headers) */
+
 
 /*
  * Borrowed from the Mac tty port
@@ -76,7 +103,7 @@ char	 topl_resp[10] = "";
  * inSelect means we have a menu window up for selection or
  * something similar. It makes the window with win number ==
  * inSelect a movable modal (unfortunately without the border)
- * and clicking the close box forces an ESC into the key
+ * and clicking the close box forces an RET into the key
  * buffer. Don't forget to set inSelect to WIN_ERR when you're
  * done...
  */
@@ -100,8 +127,7 @@ static int clicked_mod ;
 
 static Boolean cursor_locked = false ;
 
-extern void dprintf ( char * , ... ) ;
-
+static ControlActionUPP UpUPP, DownUPP;		/* scrolling callbacks, initialized in InitMac */
 
 void
 lock_mouse_cursor(Boolean new_cursor_locked)
@@ -140,7 +166,7 @@ AddToKeyQueue ( int ch , Boolean force )
 /*
  * Cursor movement
  */
-RgnHandle gMouseRgn = (RgnHandle) NULL ;
+RgnHandle gMouseRgn = (RgnHandle) 0 ;
 
 /*
  * _Gestalt madness - we rely heavily on the _Gestalt glue, since we
@@ -157,7 +183,7 @@ Boolean small_screen;
  * Async flag for keeping track of scrollbars...
  * Used by InvalScrollBar ( )
  */
-static NhWindow * asyDSC = (NhWindow *) NULL ;
+static NhWindow * asyDSC = (NhWindow *) 0 ;
 
 /*
  * The font to be used in the text window
@@ -186,36 +212,12 @@ MenuHandle helpMenu ;
 # undef NHW_BASE
 #endif
 #define NHW_BASE 0
-extern winid BASE_WINDOW ; // Was: , WIN_MAP , WIN_MESSAGE , WIN_INVEN , WIN_STATUS ;
 
-void NDECL(port_help);
-
-int NDECL(SanePositions);
-Boolean FDECL(RetrieveWinPos, (WindowPtr,short *,short *));
-void NDECL ( InitMac ) ;
-void NDECL(InitRes);
-void FDECL(GeneralKey, ( EventRecord * theEvent , WindowPtr theWindow ));
-void FDECL(HandleKey, ( EventRecord * theEvent ));
-void FDECL(HandleClick, ( EventRecord * theEvent ));
-void FDECL(HandleUpdate, ( EventRecord * theEvent ));
-void FDECL(HandleEvent, ( EventRecord * theEvent ));
-void FDECL(WindowGoAway, ( EventRecord *, WindowPtr));
-void NDECL(DimMenuBar);
-void NDECL(UndimMenuBar);
-int FDECL(filter_scroll_key,(const int, NhWindow *));
-
-void SetFrameItem ( DialogPtr , short , short ) ;
-void FlashButton ( DialogPtr , short ) ;
-
-void trans_num_keys ( EventRecord * ) ;
-
-#ifndef THINK_C
-/*
- * Why aren't these declared when including hack.h - I thought
- * they were...
- */
-void FDECL(putsym, ( winid win , int x , int y , CHAR_P sym ));
-#endif
+static void FDECL(GeneralKey, ( EventRecord * theEvent , WindowPtr theWindow ));
+static void FDECL(HandleKey, ( EventRecord * theEvent ));
+static void FDECL(HandleClick, ( EventRecord * theEvent ));
+static void FDECL(HandleUpdate, ( EventRecord * theEvent ));
+static int FDECL(filter_scroll_key,(const int, NhWindow *));
 
 #define NUM_FUNCS 6
 static void FDECL(macKeyNull, ( EventRecord * , WindowPtr )) ;
@@ -242,14 +244,13 @@ static void FDECL(macCursorTerm, ( EventRecord * , WindowPtr , RgnHandle )) ;
 static void FDECL(macCursorMenu, ( EventRecord * , WindowPtr , RgnHandle )) ;
 static void FDECL(macCursorText, ( EventRecord * , WindowPtr , RgnHandle )) ;
 
-void NDECL(UpdateMenus);
-void FDECL(DoMenu, (long choise));
 
 static void FDECL (DrawScrollbar, ( NhWindow * , WindowPtr ));
 static void FDECL (InvalScrollBar, ( NhWindow * ));
 static void FDECL(DoScrollBar,(Point, short, ControlHandle, NhWindow *, WindowPtr));
 static pascal void FDECL(Up, (ControlHandle, short));
 static pascal void FDECL(Down,(ControlHandle, short));
+
 
 typedef void ( * CbFunc ) ( EventRecord * , WindowPtr ) ;
 typedef void ( * CbCursFunc ) ( EventRecord * , WindowPtr , RgnHandle ) ;
@@ -299,16 +300,14 @@ InitMac( void )
 	long l ;
 	long applLimit;
 
-#ifdef applec
+#ifdef MAC68K
+ #ifdef applec
 	UnloadSeg((Ptr) _DataInit);
+ #endif
 #endif
 
-	if ( * ( long * ) DefltStack < 50 * 1024L ) {
-#ifdef THINK_C
-		applLimit = (long) CurStackBase - (50 * 1024L);
-#else
-		applLimit = (* (long *) CurStackBase) - (50 * 1024L);
-#endif
+	if ( LMGetDefltStack() < 50 * 1024L ) {
+		applLimit = (long) LMGetCurStackBase() - (50 * 1024L);
 		SetApplLimit ( ( void * ) applLimit ) ;
 	}
 	MaxApplZone ( ) ;
@@ -321,16 +320,21 @@ InitMac( void )
 	InitMenus ( ) ;
 	InitDialogs ( ( ResumeProcPtr ) 0L ) ;
 	TEInit ( ) ;
+
+#if defined(MAC68K) && !defined(__MWERKS__)
 	InitSegMgmt( itworked );	/* itworked is always in the main segment */
-	
+#endif
+
 	attemptingto("start up");
 
 	if ( Gestalt ( gestaltOSAttr , & l ) ) {
 		macFlags . processes = 0 ;
 		macFlags . tempMem = 0 ;
+		macFlags . hasDebugger = 0 ;
 	} else {
 		macFlags . processes = ( l & ( 1 << gestaltLaunchControl ) ) ? 1 : 0 ;
 		macFlags . tempMem = ( l & ( 1 << gestaltRealTempMemory ) ) ? 1 : 0 ;
+		macFlags . hasDebugger = ( l & ( 1 << gestaltSysDebuggerSupport ) ) ? 1 : 0 ;
 	}
 	if ( Gestalt ( gestaltQuickdrawVersion , & l ) ) {
 		macFlags . color = 0 ;
@@ -376,6 +380,9 @@ InitMac( void )
 	gMouseRgn = NewRgn ( ) ;
 	InitCursor ( ) ;
 	ObscureCursor ( ) ;
+	
+	UpUPP = NewControlActionProc(Up);
+	DownUPP = NewControlActionProc(Down);
 }
 
 
@@ -528,7 +535,7 @@ got1 :
 
 	aWin -> windowTextLen = 0L ;
 	aWin -> clear = 0 ; /* Yes, we need to inval the area on a clear */
-	aWin -> scrollBar = (ControlHandle) NULL ;
+	aWin -> scrollBar = (ControlHandle) 0 ;
 
 	dprintf ( "Created window type %d" , type ) ;
 	aWin -> kind = type ;
@@ -569,10 +576,11 @@ got1 :
 		error ( "NewHandle failed in create_nhwindow (%ld bytes)" ,
 			( long ) TEXT_BLOCK ) ;
 		DisposeWindow ( aWin -> theWindow ) ;
-		aWin -> theWindow = (WindowPtr) NULL ;
+		aWin -> theWindow = (WindowPtr) 0 ;
 		return WIN_ERR ;
 	}
 	aWin -> lin = 0 ;
+	aWin -> menuChar = 'a' ;
 	clear_nhwindow ( i ) ;
 
 /*HARDCODED*/
@@ -625,7 +633,7 @@ got1 :
 		r . top -= 1 ;
 		r . right += 1 ;
 		bool = ( r . bottom > r . top + 50 ) ;
-		aWin -> scrollBar = NewControl ( aWin -> theWindow , & r , "\P" ,
+		aWin -> scrollBar = NewControl ( aWin -> theWindow , & r , "\p" ,
 			bool , 0 , 0 , 0 , 16 , 0L ) ;
 	}
 	aWin -> scrollPos = 0 ;
@@ -676,7 +684,7 @@ InitRes ( void )
 
 
 void
-mac_init_nhwindows ( void )
+mac_init_nhwindows ( int *argcp, char **argv )
 {
 	int i ;
 
@@ -691,7 +699,7 @@ mac_init_nhwindows ( void )
 	mustwork(MemError());
 
 	for ( i = 0 ; i < NUM_MACWINDOWS ; i ++ ) {
-		theWindows [ i ] . theWindow = (WindowPtr) NULL ;
+		theWindows [ i ] . theWindow = (WindowPtr) 0 ;
 	}
 	for ( i = 0 ; i < QUEUE_LEN ; i ++ ) {
 		keyQueue [ i ] = 0 ;
@@ -699,7 +707,7 @@ mac_init_nhwindows ( void )
 
 	DimMenuBar ( ) ;
 
-	tty_init_nhwindows();
+	tty_init_nhwindows(argcp, argv);
 	flags.window_inited = TRUE;
 
 	/* Some ugly hacks to make both interfaces happy */
@@ -713,10 +721,10 @@ mac_nhbell ( void )
 {
 	Handle h ;
 
-	if ( h = GetNamedResource ( 'snd ' , "\PNetHack Bell" ) ) {
+	if ( h = GetNamedResource ( 'snd ' , "\pNetHack Bell" ) ) {
 
 		HLock ( h ) ;
-		SndPlay ( ( SndChannelPtr ) NULL , h , 0 ) ;
+		SndPlay ( ( SndChannelPtr ) 0 , (SndListHandle) h , 0 ) ;
 		ReleaseResource ( h ) ;
 
 	} else {
@@ -787,7 +795,7 @@ short val , lin ;
 		aWin -> scrollPos = val ;
 	}
 	if ( aWin == asyDSC ) {
-		asyDSC = (NhWindow *) NULL ;
+		asyDSC = (NhWindow *) 0 ;
 	}
 }
 
@@ -873,7 +881,7 @@ mac_clear_nhwindow ( winid win )
 }
 
 
-Boolean
+static Boolean
 ClosingWindowChar(const int c) {
 	return  c == CHAR_ESC || c == CHAR_BLANK || c == CHAR_LF || c == CHAR_CR ||
 			c == 'q' ;
@@ -894,7 +902,7 @@ topl_resp_rect(int resp_idx, Rect *r)
 }
 
 
-Boolean
+static Boolean
 in_topl_mode(void)
 {
 	return top_line &&
@@ -925,6 +933,8 @@ enter_topl_mode(char *query)
 void
 leave_topl_mode(char *answer)
 {
+	char *ap, *bp;
+
 	int ans_len = (*top_line)->teLength - topl_query_len;
 	NhWindow *aWin = theWindows + WIN_MESSAGE;
 
@@ -934,6 +944,16 @@ leave_topl_mode(char *answer)
 	BlockMove(*(*top_line)->hText + topl_query_len, answer, ans_len);
 	answer[ans_len] = '\0';
 
+	/* remove unprintables from the answer */
+	for (ap = bp = answer; *ap; ap++) {
+		if (*ap >= ' ' && *ap < 128) {
+			if (bp != ap)
+				*bp = *ap;
+			bp++;
+		}
+	}
+	*bp = 0;
+	
 	if ( aWin -> windowTextLen > 0 &&
 		 ( * aWin -> windowText ) [ aWin -> windowTextLen - 1 ] == CHAR_CR ) {
 		-- aWin -> windowTextLen ;
@@ -1012,7 +1032,7 @@ topl_ext_key(unsigned char ch)
 		default: {
 			int com_index = -1, oindex = 0;
 			TEInsert(&ch, 1, top_line);
-			while(extcmdlist[oindex].ef_txt != NULL){
+			while(extcmdlist[oindex].ef_txt != (char *)0){
 				if(!strncmpi(*(*top_line)->hText + topl_query_len,
 							 extcmdlist[oindex].ef_txt,
 							 (*top_line)->teLength - topl_query_len))
@@ -1030,7 +1050,7 @@ topl_ext_key(unsigned char ch)
 }
 
 
-void
+static void
 topl_flash_resp(int resp_idx)
 {
 	long dont_care;
@@ -1044,7 +1064,7 @@ topl_flash_resp(int resp_idx)
 }
 
 
-void
+static void
 topl_set_def(int new_def_idx)
 {
 	Rect frame;
@@ -1145,7 +1165,7 @@ topl_resp_key(char ch)
 }
 
 
-void
+static void
 adjust_window_pos(NhWindow *aWin, WindowPtr theWindow, short w)
 {
 #ifdef THINK_C
@@ -1208,7 +1228,7 @@ mac_display_nhwindow ( winid win , BOOLEAN_P f )
 	}
 
 	if ( f && inSelect == WIN_ERR && win == WIN_MESSAGE ) {
-		topl_set_resp ( NULL , 0 ) ;
+		topl_set_resp ( (char *)0 , 0 ) ;
 		if ( aWin -> windowTextLen > 0 &&
 			 ( * aWin -> windowText ) [ aWin -> windowTextLen - 1 ] == CHAR_CR ) {
 			-- aWin -> windowTextLen ;
@@ -1326,8 +1346,8 @@ mac_destroy_nhwindow ( winid win )
 		if ( aWin -> windowText ) {
 			DisposHandle ( aWin -> windowText ) ;
 		}
-		aWin -> theWindow = (WindowPtr) NULL ;
-		aWin -> windowText = (Handle) NULL ;
+		aWin -> theWindow = (WindowPtr) 0 ;
+		aWin -> windowText = (Handle) 0 ;
 	}
 }
 
@@ -1360,7 +1380,7 @@ trans_num_keys(EventRecord *theEvent)
 
 
 /*
- * Note; theWindow may very well be NULL here, since keyDown may call
+ * Note; theWindow may very well be null here, since keyDown may call
  * it when theres no window !!!
  */
 void
@@ -1398,9 +1418,33 @@ macKeyTerm ( EventRecord * theEvent , WindowPtr theWindow )
 static void
 macKeyMenu ( EventRecord * theEvent , WindowPtr theWindow )
 {
-	if ( filter_scroll_key ( theEvent -> message & 0xff ,
-		GetNhWin ( theWindow ) ) ) {
-		GeneralKey ( theEvent , theWindow ) ;
+	NhWindow *aWin = GetNhWin(theWindow);
+	int ch = theEvent->message & 0xff;
+	int l;
+	Rect r;
+
+	if (aWin) {
+		for (l = 0; l < aWin->lin; l++)
+			if (aWin->itemChars[l] == ch) {
+				aWin->itemSelected[l] = !aWin->itemSelected[l];
+				if (aWin->how != PICK_ANY)	/* pick one or pick none */
+					AddToKeyQueue(CHAR_CR, 1);
+				break;
+			}
+
+		if (l < aWin->lin && l >= aWin->scrollPos /*&& l < ??? */) {
+			SetPort(theWindow);
+			r = theWindow->portRect;
+			if (aWin->scrollBar)
+				r.right -= SBARWIDTH;			
+			r.top = l * aWin->charHeight;
+			r.bottom = (l + 1) * aWin->charHeight;
+			InvertRect(&r);
+		}
+
+		/* add key if didn't find it in menu and not filtered */
+		if (l == aWin->lin && filter_scroll_key (ch, aWin))
+			GeneralKey (theEvent, theWindow);
 	}
 }
 
@@ -1483,14 +1527,15 @@ macClickTerm ( EventRecord * theEvent , WindowPtr theWindow )
 			while (WaitMouseUp())
 				SystemTask();
 		else if (!shift_down)
-			gNextClickRepeat = TickCount() + *(short *)KeyThresh;
+			gNextClickRepeat = TickCount() + LMGetKeyThresh();
+
 		gClickedToMove = TRUE;
 		clicked_pos = where;
 	}
 }
 
 static amtToScroll = 0 ;
-static NhWindow * winToScroll = (NhWindow *) NULL ;
+static NhWindow * winToScroll = (NhWindow *) 0 ;
 
 static pascal void
 Up ( ControlHandle theBar , short part )
@@ -1572,25 +1617,25 @@ static void
 DoScrollBar ( Point p , short code , ControlHandle theBar , NhWindow * aWin ,
 	WindowPtr theWindow )
 {
-	pascal void ( * func ) ( ControlHandle , short ) = 0 ;
+	ControlActionUPP func;
 
 	winToScroll = aWin ;
 	switch ( code ) {
 	case inUpButton :
-		func = Up ;
+		func = UpUPP ;
 		amtToScroll = 1 ;
 		break ;
 	case inDownButton :
-		func = Down ;
+		func = DownUPP ;
 		amtToScroll = 1 ;
 		break ;
 	case inPageUp :
-		func = Up ;
+		func = UpUPP ;
 		amtToScroll = ( theWindow -> portRect . bottom - theWindow ->
 			portRect . top ) / aWin -> charHeight ;
 		break ;
 	case inPageDown :
-		func = Down ;
+		func = DownUPP ;
 		amtToScroll = ( theWindow -> portRect . bottom - theWindow ->
 			portRect . top ) / aWin -> charHeight ;
 		break ;
@@ -1598,7 +1643,7 @@ DoScrollBar ( Point p , short code , ControlHandle theBar , NhWindow * aWin ,
 		break ;
 	}
 
-	( void ) TrackControl ( theBar , p , ( ProcPtr ) func );
+	( void ) TrackControl ( theBar , p , func );
 	if ( ! func ) {
 		if ( aWin -> scrollPos != GetCtlValue ( theBar ) ) {
 			aWin -> scrollPos = GetCtlValue ( theBar ) ;
@@ -1670,6 +1715,8 @@ macClickMenu ( EventRecord * theEvent , WindowPtr theWindow )
 	}
 	r . top = r . bottom = 0 ;
 	if ( inSelect != WIN_ERR ) {
+		/* As an expansion, we could select all lines between the start */
+		/* (button down) and end (button up) events. */
 		do {
 			SystemTask ( ) ;
 			GetMouse ( & p ) ;
@@ -1683,6 +1730,7 @@ macClickMenu ( EventRecord * theEvent , WindowPtr theWindow )
 					hiRow = -1 ;
 			}
 			if ( hiRow != loRow ) {
+				/* deselect old */
 				if ( loRow > -1 && aWin -> itemChars [ loRow + aWin ->
 					scrollPos ] ) {
 					r . top = loRow * aWin -> charHeight ;
@@ -1690,6 +1738,7 @@ macClickMenu ( EventRecord * theEvent , WindowPtr theWindow )
 					InvertRect ( & r ) ;
 				}
 				loRow = hiRow ;
+				/* select new */
 				if ( loRow > -1 && aWin -> itemChars [ loRow + aWin ->
 					scrollPos ] ) {
 					r . top = loRow * aWin -> charHeight ;
@@ -1699,8 +1748,10 @@ macClickMenu ( EventRecord * theEvent , WindowPtr theWindow )
 			}
 		} while ( StillDown ( ) ) ;
 		if ( loRow > -1 && aWin -> itemChars [ loRow + aWin -> scrollPos ] ) {
-			InvertRect ( & r ) ;
-			AddToKeyQueue ( aWin -> itemChars [ loRow + aWin -> scrollPos ] , 1 ) ;
+			aWin -> itemSelected [ loRow + aWin -> scrollPos ] = 
+				!aWin -> itemSelected [ loRow + aWin -> scrollPos ] ;
+			if ( aWin -> how != PICK_ANY )	/* pick one or pick none */
+				AddToKeyQueue( CHAR_CR , 1 ) ;
 		}
 	}
 }
@@ -1913,12 +1964,12 @@ macUpdateMenu ( EventRecord * theEvent , WindowPtr theWindow )
 	vis = ( r2 . bottom > r2 . top + 50 ) ;
 	DrawControls ( theWindow ) ;
 
-	h = (RgnHandle) NULL ;
+	h = (RgnHandle) 0 ;
 	if ( vis && ( h = NewRgn ( ) ) ) {
 		RgnHandle tmp = NewRgn ( ) ;
 		if ( ! tmp ) {
 			DisposeRgn ( h ) ;
-			h = (RgnHandle) NULL ;
+			h = (RgnHandle) 0 ;
 		} else {
 			GetClip ( h ) ;
 			RectRgn ( tmp , & r2 ) ;
@@ -1959,12 +2010,12 @@ macUpdateText ( EventRecord * theEvent , WindowPtr theWindow )
 	vis = ( r2 . bottom > r2 . top + 50 ) ;
 	DrawControls ( theWindow ) ;
 
-	h = (RgnHandle) NULL ;
+	h = (RgnHandle) 0 ;
 	if ( vis && ( h = NewRgn ( ) ) ) {
 		RgnHandle tmp = NewRgn ( ) ;
 		if ( ! tmp ) {
 			DisposeRgn ( h ) ;
-			h = (RgnHandle) NULL ;
+			h = (RgnHandle) 0 ;
 		} else {
 			GetClip ( h ) ;
 			RectRgn ( tmp , & r2 ) ;
@@ -2033,7 +2084,7 @@ macCursorTerm ( EventRecord * theEvent , WindowPtr theWindow , RgnHandle mouseRg
 	GlobalToLocal ( & where ) ;
 
 	if ( cursor_locked )
-		dir = NULL ;
+		dir = (char *)0 ;
 	else {
 		dir_bas = flags . num_pad ? (char *) ndir : (char *) sdir ;
 		dir = strchr ( dir_bas , click_to_cmd ( where . h / nhw -> charWidth + 1 ,
@@ -2089,18 +2140,14 @@ macCursorText ( EventRecord * theEvent , WindowPtr theWindow , RgnHandle mouseRg
 void
 UpdateMenus ( void )
 {
-	extern void AdjustMenus(short);
-
 	AdjustMenus(0);
 }
 
 
 void
-DoMenu ( long choise )
+DoMenu ( long choice )
 {
-	extern void DoMenuEvt(long);
-
-	DoMenuEvt(choise);
+	DoMenuEvt(choice);
 }
 
 
@@ -2128,7 +2175,7 @@ dispatchKey :
 		if ( theWindow ) {
 			GetNhWin ( theWindow ) -> keyFunc ( theEvent , theWindow ) ;
 		} else {
-			GeneralKey ( theEvent , (WindowPtr) NULL ) ;
+			GeneralKey ( theEvent , (WindowPtr) 0 ) ;
 		}
 	}
 }
@@ -2314,7 +2361,7 @@ WindowGoAway ( EventRecord * theEvent, WindowPtr theWindow )
 		if ( inSelect == WIN_ERR || aWin - theWindows != inSelect ) {
 			destroy_nhwindow ( aWin - theWindows ) ;
 		} else {
-			AddToKeyQueue ( '\033' , 1 ) ;
+			AddToKeyQueue ( CHAR_CR , 1 ) ;
 		}
 	}
 }
@@ -2322,8 +2369,6 @@ WindowGoAway ( EventRecord * theEvent, WindowPtr theWindow )
 void
 DimMenuBar ( void )
 {
-	extern void AdjustMenus(short);
-
 	AdjustMenus(1);
 }
 
@@ -2331,8 +2376,6 @@ DimMenuBar ( void )
 void
 UndimMenuBar ( void )
 {
-	extern void AdjustMenus(short);
-
 	AdjustMenus(0);
 }
 
@@ -2432,19 +2475,19 @@ NhWindow * nhw = flags . window_inited ? theWindows + WIN_MAP : (NhWindow *) nil
 		if ( nhw ) {
 			SetPort ( nhw -> theWindow ) ;
 			if ( WaitMouseUp ( ) ) {
-			unsigned long tick = TickCount ( ) ;
+				unsigned long tick = TickCount ( ) ;
 
 				if ( tick >= gNextClickRepeat ) {
-				Point where ;
+					Point where ;
 
 					GetMouse ( & where ) ;
 					SetPt ( & clicked_pos , where . h / nhw -> charWidth ,
 											where . v / nhw -> charHeight ) ;
 					gClickedToMove = TRUE ;
-					gNextClickRepeat = tick + * ( short * ) KeyRepThresh ;
+					gNextClickRepeat = tick + LMGetKeyRepThresh();
 				}
-				if ( doDawdle > * ( short * ) KeyRepThresh ) {
-					doDawdle = * ( short * ) KeyRepThresh ;
+				if ( doDawdle > LMGetKeyRepThresh() ) {
+					doDawdle = LMGetKeyRepThresh() ;
 				}
 			} else {
 				gNextClickRepeat = 0xffffffff ;
@@ -2494,7 +2537,7 @@ mac_mark_synch( void )
 }
 
 
-void
+static void
 mac_cliparound ( int x , int y )
 {
 	/* TODO */
@@ -2680,17 +2723,34 @@ mac_start_menu ( winid win )
 
 
 void
-mac_add_menu ( winid win , CHAR_P menuChar , int attr , const char * str )
+mac_add_menu ( winid win , int glyph, const anything *any , CHAR_P menuChar , int attr , const char * inStr , int preselected)
 {
 	long addSize ;
 	int newWid ;
 	NhWindow * aWin = & theWindows [ win ] ;
+	const char *str;
+	char locStr[BUFSZ];
 
-	if ( ! str || aWin -> lin >= NUM_MENU_ITEMS )
+	if ( ! inStr || aWin -> lin >= NUM_MENU_ITEMS )
 		return ;
 
 	SetPort ( aWin -> theWindow ) ;
+	if ( any->a_void != 0 && menuChar == 0 ) {
+		menuChar = aWin->menuChar++;
+		if (menuChar == 'z')
+			aWin->menuChar = 'A';
+	}
+	
+	if ( any->a_void != 0 ) {
+		Sprintf(locStr, "%c - %s", menuChar, inStr);
+		str = locStr;
+	} else
+		str = inStr;
+
 	aWin -> itemChars [ aWin -> lin ] = menuChar ;
+/*	aWin -> itemSelected [ aWin -> lin ] = preselected; */
+	aWin -> itemSelected [ aWin -> lin ] = FALSE ;
+	aWin -> itemIdentifiers [ aWin -> lin ] = *any ;
 
 	addSize = strlen ( str ) ;
 	newWid = TextWidth ( str , 0 , addSize ) ;
@@ -2702,21 +2762,16 @@ mac_add_menu ( winid win , CHAR_P menuChar , int attr , const char * str )
 
 /*
  * End a menu in this window, window must a type NHW_MENU.
- * ch is the value to return if the menu is canceled,
  * str is a list of cancel characters (values that may be input)
  * morestr is a prompt to display, rather than the default.
  * str and morestr might be ignored by some ports.
  */
 void
-mac_end_menu ( winid win , CHAR_P ch , const char * str , const char * morestr )
+mac_end_menu ( winid win , const char * morestr )
 {
 	unsigned char buf [ 256 ] ;
 	int len ;
 	NhWindow * aWin = & theWindows [ win ] ;
-
-	strncpy ( aWin -> cancelStr , str , NUM_CANCEL_ITEMS ) ;
-	aWin -> cancelStr [ NUM_CANCEL_ITEMS - 1 ] = 0 ;
-	aWin -> cancelChar = ch ;
 
 	buf [ 0 ] = 0 ;
 	if ( morestr ) {
@@ -2731,12 +2786,13 @@ mac_end_menu ( winid win , CHAR_P ch , const char * str , const char * morestr )
 }
 
 
-char
-mac_select_menu ( winid win )
+int
+mac_select_menu ( winid win , int how , menu_item **selected_list )
 {
-	int c , l ;
+	int c , l , n;
 	NhWindow * aWin = & theWindows [ win ] ;
 	WindowPtr theWin = aWin -> theWindow ;
+	Boolean done;
 
 	inSelect = win ;
 
@@ -2749,25 +2805,49 @@ mac_select_menu ( winid win )
 	ShowWindow ( theWin ) ;
 	InvalRect ( & ( theWin -> portRect ) ) ;
 
+	aWin->how = (short) how;
+	done = FALSE;
 	do {
-		c = nhgetch ( ) ;
-		for ( l = 0 ; l < aWin -> lin ; l ++ ) {
-			if ( aWin -> itemChars [ l ] == c )
-				goto done ;
+		c = nhgetch();
+		if (c == CHAR_ESC) {
+			/* deselect everything */
+			for ( n = l = 0 ; l < aWin->lin ; l++ )
+				aWin->itemSelected[l] = FALSE;
+			done = TRUE;
+		} else if (ClosingWindowChar(c)) {
+			done = TRUE;
+		} else {
+			for (l = 0; l < aWin->lin; l++) {
+				if ( aWin -> itemChars [ l ] == c ) {
+					aWin->itemSelected[l] = !aWin->itemSelected[l];
+					if (how == PICK_ONE) done = TRUE;
+					break;
+				}
+			}
 		}
-		if ( ClosingWindowChar ( c ) ) {
-			c = aWin -> cancelChar ;
-		}
-	} while ( ! strchr ( aWin -> cancelStr , c ) &&
-		c != aWin -> cancelChar ) ;
-
-done :
+	} while ( ! done ) ;
 
 	HideWindow ( theWin ) ;
 
+	/* count # selected */
+	for ( n = l = 0 ; l < aWin->lin ; l++ )
+		if (aWin->itemSelected[l]) n++;
+
+	if (n) {
+		menu_item *mp;
+		*selected_list = mp = (menu_item *) alloc(n * sizeof(menu_item));
+		for (l = 0; l < aWin->lin; l++ )
+			if ( aWin->itemSelected[l]) {
+				mp->item = aWin->itemIdentifiers[l];
+				mp->count = -1L;
+				mp++;
+			}
+	} else
+		*selected_list = 0;
+
 	inSelect = WIN_ERR ;
 
-	return c ;
+	return n;
 }
 
 
@@ -2868,7 +2948,7 @@ FlashButton ( DialogPtr dlog , short item )
 	}
 }
 
-
+#if 0		/* I can't find anything that uses this function */
 pascal Boolean
 CharacterDialogFilter ( DialogPtr dp , EventRecord * ev , short * item )
 {
@@ -2922,7 +3002,7 @@ CharacterDialogFilter ( DialogPtr dp , EventRecord * ev , short * item )
 	}
 	for ( ix = 3 ; ix ; ix ++ ) {
 
-		h = ( Handle ) NULL ;
+		h = ( Handle ) 0 ;
 		k = 0 ;
 		GetDItem ( dp , ix , & k , & h , & r ) ;
 		if ( ! k || ! h ) {
@@ -2943,6 +3023,7 @@ CharacterDialogFilter ( DialogPtr dp , EventRecord * ev , short * item )
 /*NOTREACHED*/
 	return 0 ;
 }
+#endif /* 0 */
 
 
 void
@@ -3019,11 +3100,15 @@ struct window_procs mac_procs = {
     mac_add_menu,
     mac_end_menu,
     mac_select_menu,
+    genl_message_menu,
     mac_update_inventory,
     mac_mark_synch,
     mac_wait_synch,
 #ifdef CLIPPING
     mac_cliparound,
+#endif
+#ifdef POSITIONBAR
+    donull,
 #endif
     mac_print_glyph,
     mac_raw_print,
@@ -3034,9 +3119,7 @@ struct window_procs mac_procs = {
     mac_doprev_message,
     mac_yn_function,
     mac_getlin,
-#ifdef COM_COMPL
     mac_get_ext_cmd,
-#endif /* COM_COMPL */
     mac_number_pad,
     mac_delay_output,
 #ifdef CHANGE_COLOR

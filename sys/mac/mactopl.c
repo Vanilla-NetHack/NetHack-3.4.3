@@ -3,29 +3,18 @@
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
+#include "macwin.h"
 #include <Dialogs.h>
 #include <OSUtils.h>
 #include <Packages.h>
 
-// char FDECL(yn_function,(const char *, const char *, CHAR_P));
+static char queued_resp(char *resp);
+static pascal Boolean YNAQFilter(DialogPtr dp, EventRecord *ev , short *itemHit);
+static pascal Boolean OneCharDLOGFilter(DialogPtr dp, EventRecord *ev, short *item);
+static char topl_yn_function(const char *query, const char *resp, char def);
+static char popup_yn_function(const char *query, const char *resp, char def);
 
-int FDECL ( try_key_queue , ( char * ) ) ;
-
-extern void SetFrameItem ( DialogPtr , short , short ) ;
-extern void FlashButton ( DialogPtr , short ) ;
-
-extern char * PtoCstr ( unsigned char * ) ;
-extern unsigned char * CtoPstr ( char * ) ;
-
-void FDECL ( enter_topl_mode , ( char * ) ) ;
-void FDECL ( leave_topl_mode , ( char * ) ) ;
-void FDECL ( topl_set_resp , ( char * , char ) ) ;
-
-extern winid inSelect ;
-extern short frame_corner ;
-
-
-char
+static char
 queued_resp(char *resp)
 {
 	char buf[30];
@@ -48,7 +37,7 @@ queued_resp(char *resp)
 
 static int yn_user_item [ ] = { 5 , 6 , 7 , 8 } ;
 static short gEnterItem , gEscItem ;
-static const char * gRespStr = NULL ;
+static const char * gRespStr = (const char *)0 ;
 static char gDef = 0 ;
 static short dlogID ;
 
@@ -103,7 +92,7 @@ set_yn_number(DialogPtr dp)
 }
 
 
-pascal Boolean
+static pascal Boolean
 YNAQFilter ( DialogPtr dp , EventRecord * ev , short * itemHit )
 {
 	unsigned char code ;
@@ -198,7 +187,7 @@ do_question_dialog ( char * query , int dlog , int defbut , char * resp )
 
 	dlogID = dlog ;
 	strcpy ( (char *) p , query ) ;
-	ParamText ( CtoPstr ( (char *) p ) , (uchar *) NULL , (uchar *) NULL , (uchar *) NULL ) ;
+	ParamText ( CtoPstr ( (char *) p ) , (uchar *) 0 , (uchar *) 0 , (uchar *) 0 ) ;
 	dp = mv_get_new_dialog ( dlog ) ;
 	if ( ! dp ) {
 
@@ -220,7 +209,7 @@ do_question_dialog ( char * query , int dlog , int defbut , char * resp )
 }
 
 
-pascal Boolean
+static pascal Boolean
 OneCharDLOGFilter ( DialogPtr dp , EventRecord * ev , short * item )
 {
 	char ch ;
@@ -313,7 +302,7 @@ char def ;
 		strcat ( ( char * ) pQuery , resp ) ;
 		strcat ( ( char * ) pQuery , ")" ) ;
 	}
-	ParamText ( CtoPstr ( (char *) pQuery ) , (uchar *) NULL , (uchar *) NULL , (uchar *) NULL ) ;
+	ParamText ( CtoPstr ( (char *) pQuery ) , (uchar *) 0 , (uchar *) 0 , (uchar *) 0 ) ;
 	GetDItem ( dp , 4 , & k , & h , & r ) ;
 	SetIText ( h , com ) ;
 	SelIText ( dp , 4 , 0 , 0x7fff ) ;
@@ -373,10 +362,8 @@ char def ;
 }
 
 
-char
-topl_yn_function(query,resp, def)
-const char *query,*resp;
-char def;
+static char
+topl_yn_function(const char *query, const char *resp, char def)
 {
 	char buf[30];
 	char c = queued_resp((char *) resp);
@@ -401,24 +388,20 @@ char def;
 }
 
 
-char
-popup_yn_function(query,resp, def)
-const char *query,*resp;
-char def;
+static char
+popup_yn_function(const char *query, const char *resp, char def)
 {
-	char ch [ 2 ] ;
+	char ch ;
 
-	if ( ch [ 0 ] = ynaq_dialog ( query , resp , def ) ) {
-
-		return ch [ 0 ] ;
-	}
+	if ( ch = ynaq_dialog ( query , resp , def ) )
+		return ch ;
 
 	return topl_yn_function(query, resp, def);
 }
 
 
 char
-mac_yn_function(query,resp, def)
+mac_yn_function(query, resp, def)
 const char *query,*resp;
 char def;
 /*

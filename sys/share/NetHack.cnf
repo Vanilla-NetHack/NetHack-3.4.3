@@ -1,5 +1,5 @@
-#	SCSS Id: @(#)Nethack.cnf	3.1	    93/03/26
-#	Copyright (c) NetHack PC Development Team 1990, 1991, 1992, 1993
+#	SCSS Id: @(#)Nethack.cnf	3.2	    96/02/16
+#	Copyright (c) NetHack PC Development Team 1993, 1996
 #	NetHack may be freely redistributed.  See license for details.
 #
 # A '#' at the beginning of a line means the rest of the line is a comment.
@@ -22,8 +22,22 @@
 # very IBM-compatible, and NetHack doesn't work, try commenting out this line.
 #
 OPTIONS=rawio,BIOS,IBMgraphics
+# To use VGA graphical tiles on an MS-DOS PC with VGA or better, use:
+#OPTIONS=video:autodetect
+# Some versions of NetHack use the pc speaker to play the notes given when
+# playing music instruments in NetHack.  To use this feature, if available,
+# uncomment the following line:
+#OPTIONS=soundcard:autodetect
 # DEC Rainbows will hang if rawio is set, so they should instead use:
 #OPTIONS=BIOS,DECgraphics
+# If your machine is NEC PC-9800, use:
+#OPTIONS=rawio,BIOS,video:default
+#
+#
+# General options.  You might also set "silent" so as not to attract
+# the boss's attention.
+#
+OPTIONS=time,noshowexp,number_pad,lit_corridor,rest_on_space
 #
 #
 # Some options to set personal preferences.  Uncomment and change these to
@@ -31,18 +45,19 @@ OPTIONS=rawio,BIOS,IBMgraphics
 # configuration, options like these should not be set.
 #
 #OPTIONS=name:Janet-V,female,dogname:Fido,catname:Morris,fruit:apricot
-#OPTIONS=packorder:")[%?+/=!(*0_`,scores:10 top/2 around/own
-#
-#
-# Other general options.  You might also set "silent" so as not to attract
-# the boss's attention.
-#
-OPTIONS=time,rest_on_space,noautopickup,number_pad
+#OPTIONS=autopickup,pickup_types:$"=/!?+
+#OPTIONS=packorder:")[%?+/=!(*0_`
+#OPTIONS=scores:10 top/2 around/own
+#OPTIONS=nolegacy,noverbose
+#OPTIONS=menustyle:traditional
 
 
 # *** HARD DISK CONFIGURATION ***
 #
-HACKDIR=c:\games\nethack
+#HACKDIR=c:\games\nethack
+# 
+# Note: Under MSDOS ports HACKDIR defaults to the location 
+#       of the NetHack.exe file. Setting HACKDIR above will override that.
 #
 #   LEVELS and SAVE default to HACKDIR
 #
@@ -68,62 +83,39 @@ SAVE=;n
 
 # *** CHARACTER GRAPHICS ***
 #
-# The 69 GRAPHICS characters (0-68) are:
-#
-# stone,
-# walls: vertical, horizontal,
-#	 4 corners: top left, top right, bottom left, bottom right,
-#	 cross wall,
-#	 4 T walls: upward, downward, left, right,
-# doors: no door,
-#	 open doors: vertical, horizontal,
-#	 closed doors: vertical, horizontal,
-# floor,
-# corridors: unlit, lit,
-# stairs up, stairs down, ladder up, ladder down,
-# trap, web, altar, throne, sink, fountain, pool/moat, ice, lava,
-# lowered drawbridge: vertical, horizontal,
-# raised drawbridge: vertical, horizontal,
-# air, cloud, water,
-# 4 beams: vertical, horizontal, left slant, right slant,
-# digging beam, camera flash beam, left boomerang, right boomerang,
-# 4 magic shield display symbols,
-# 8 swallowed: top left/middle/right, mid left/right, bottom left/mid/right,
-# 9 explosion: [3 rows (top, middle, bottom) of 3 characters]
-#
-# If you specify fewer that 69 ASCII values, the remaining characters will be
-# set to their respective defaults:
-#	   ' '  |   -   -   -   -   -   -   -   -
-#           |   |   .   -   |   +   +   .   #   #
-#	    <   >   <   >   ^   "   _   \   #   {
-#	    }   .   }   .   .   #   #  ' '  #   }
-#	    |   -   \   /   *   !   )   (   0   #
-#	    @   *   /   -   \   |   |   \   -   /
-#	    /   -   \   |  ' '  |   \   -   /
+# See the on-line help or the Guidebook for which symbols are in which
+# positions.
 #
 # If you merely set the IBMgraphics option as above, NetHack will use IBM
 # extended ASCII for dungeon characters.  If you don't like the selections,
-# you can make up your own via the graphics option, but you should still set
-# IBMgraphics if you are using IBM graphics characters to get the correct
+# you can make up your own via these graphics options, but you should still
+# set IBMgraphics if you are using IBM graphics characters to get the correct
 # processing.
 #
 # An example using the IBM graphics character set:
-#GRAPHICS= 032 179 196 218 191 192 217 197 193 194 \
+#DUNGEON=  032 179 196 218 191 192 217 197 193 194 \
 #	   180 195 249 239 239 254 254 249 177 177 \
-#	   060 062 060 062 094 157 220 190 035 244 \
-#	   247 249 247 042 042 186 205 046 035 247 \
-#	   179 196 092 047 042 033 041 040 048 035 \
-#	   064 042 047 045 092 058 058 092 045 047 \
-#	   047 045 092 058 032 058 092 045 047
-# An alternative:
-#GRAPHICS= 032 186 205 201 187 200 188 206 202 203 \
-#	   185 204 249 239 239 254 254 249 177 177 \
-#	   060 062 060 062 094 034 095 092 035 244 \
-#	   247 249 247 042 042 179 196 046 035 247 \
-#	   179 196 092 047 042 033 041 040 048 035 \
-#	   064 042 047 045 092 058 058 092 045 047 \
+#	   060 062 060 062 220 190 035 244 247 249 \
+#	   247 042 042 186 205 046 035 247
+#
+#TRAPS=    094 094 094 094 094 094 094 094 094 094 \
+#	   094 094 094 094 232 232 232 157 094 094 \
+#	   094 094
+#
+#EFFECTS=  179 196 092 047 042 033 041 040	   \
+#	   048 035 064 042			   \
+#	   047 045 092 058 058 092 045 047	   \
 #	   047 045 092 058 032 058 092 045 047
 #
+# Some alternatives:
+#DUNGEON=  032 186 205 201 187 200 188 206 202 203 \
+#	   185 204 249 239 239 254 254 249 177 177 \
+#	   060 062 060 062 095 092 035 244 247 249 \
+#	   247 042 042 179 196 046 035 247
+#
+#TRAPS=    094 094 094 094 094 094 094 094 094 094 \
+#	   094 094 094 094 094 034 094 094 094 094 \
+#	   094 094
 
 #
 # Using the DEC Rainbow/ANSI line-drawing character set:
@@ -131,10 +123,13 @@ SAVE=;n
 # If you have compiled with TERMLIB, merely set the DECgraphics option as
 # above.  NetHack will then switch into the VTxxx line-drawing character set
 # (aka ANSI ruling character set '0') for dungeon characters.  If you don't
-# like the selections, you can make up your own via the graphics option,
+# like the selections, you can make up your own via the graphics options,
 # adding 128 to the value of any line-drawing character you want to use.
 # (But you should still set DECgraphics to get the correct processing.)
+
+# *** VIDEOCOLORS AND VIDEOSHADES ***
 #
-#GRAPHICS= 032 248 241 236 235 237 234 238 246 247 \
-#	   245 244 248 241 092 047 254 241 248 043 \
-#	   254 225
+# While playing on NEC PC-9800, default game display may be difficult to
+# read.  Try following setting.
+#
+#OPTIONS=videocolors:4-2-6-1-5-3-4-2-6-1-5-3,videoshades:normal-normal-normal

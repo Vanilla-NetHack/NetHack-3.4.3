@@ -1,11 +1,11 @@
-/*	SCCS Id: @(#)winmisc.c	3.1	93/02/04	*/
+/*	SCCS Id: @(#)winmisc.c	3.2	93/02/04	*/
 /* Copyright (c) Dean Luick, 1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
 /*
  * Misc. popup windows: player selection and extended commands.
- * 
- * 	+ Global functions: player_selection() and get_ext_cmd().
+ *
+ *	+ Global functions: player_selection() and get_ext_cmd().
  */
 
 #ifndef SYSV
@@ -37,10 +37,18 @@ extern const char *roles[];	/* from u_init.c */
 
 static Widget extended_command_popup;
 static Widget extended_command_form;
+static Widget *extended_commands = 0;
 static int extended_command_selected;	/* index of the selected command; */
 static int ps_selected;			/* index of selected role */
 #define PS_RANDOM (-50)
 #define PS_QUIT   (-75)
+
+#define EC_NCHARS 32
+static boolean ec_active = FALSE;
+static int ec_nchars = 0;
+static char ec_chars[EC_NCHARS];
+static Time ec_time;
+
 
 static const char extended_command_translations[] =
     "#override\n\
@@ -51,10 +59,13 @@ static const char player_select_translations[] =
      <Key>: ps_key()";
 
 
-static Widget FDECL(make_menu, (const char *,const char *,String,
+static void NDECL(ec_dismiss);
+static Widget FDECL(make_menu, (const char *,const char *,const char *,
 				const char *,XtCallbackProc,
 				const char *,XtCallbackProc,
-				int,char **,XtCallbackProc,Widget *));
+				int,const char **, Widget **,
+				XtCallbackProc,Widget *));
+static void NDECL(init_extended_commands_popup);
 
 
 /* Player Selection -------------------------------------------------------- */
@@ -134,7 +145,7 @@ X11_player_selection()
 		player_select_translations,
 		"quit", ps_quit,
 		"random", ps_random,
-		num_roles, roles, ps_select, &player_form);
+		num_roles, roles, 0, ps_select, &player_form);
 
     ps_selected = 0;
     positionpopup(popup, FALSE);
@@ -148,7 +159,7 @@ X11_player_selection()
 
     if (ps_selected == PS_QUIT) {
 	clearlocks();
-	X11_exit_nhwindows(NULL);
+	X11_exit_nhwindows((char *)0);
 	terminate(0);
     }
 
@@ -177,10 +188,16 @@ got_suffix:
 }
 
 
-void
-X11_get_ext_cmd(input)
-    char *input;
+int
+X11_get_ext_cmd()
 {
+    static Boolean initialized = False;
+
+    if (!initialized) {
+	init_extended_commands_popup();
+	initialized = True;
+    }
+
     extended_command_selected = -1;		/* reset selected value */
 
     positionpopup(extended_command_popup, FALSE); /* center on cursor */
@@ -190,10 +207,7 @@ X11_get_ext_cmd(input)
     /* The callbacks will enable the event loop exit. */
     (void) x_event(EXIT_ON_EXIT);
 
-    if (extended_command_selected < 0)
-	*input = '\0';
-    else
-	Strcpy(input, extcmdlist[extended_command_selected].ef_txt);
+    return extended_command_selected;
 }
 
 /* End global functions ===================================================== */
@@ -205,8 +219,22 @@ extend_select(w, client_data, call_data)
     Widget w;
     XtPointer client_data, call_data;
 {
-    extended_command_selected = (int) client_data;
+    int selected = (int) client_data;
+
+    if (extended_command_selected != selected) {
+	/* visibly deselect old one */
+	if (extended_command_selected >= 0)
+	    swap_fg_bg(extended_commands[extended_command_selected]);
+
+	/* select new one */
+	swap_fg_bg(extended_commands[selected]);
+	extended_command_selected = selected;
+    }
+
     nh_XtPopdown(extended_command_popup);
+    /* reset colors while popped down */
+    swap_fg_bg(extended_commands[extended_command_selected]);
+    ec_active = FALSE;
     exit_x_event = TRUE;		/* leave event loop */
 }
 
@@ -216,9 +244,7 @@ extend_dismiss(w, client_data, call_data)
     Widget w;
     XtPointer client_data, call_data;
 {
-    extended_command_selected = -1;	/* dismiss */
-    nh_XtPopdown(extended_command_popup);
-    exit_x_event = TRUE;		/* leave event loop */
+    ec_dismiss();
 }
 
 /* ARGSUSED */
@@ -239,8 +265,18 @@ ec_delete(w, event, params, num_params)
     String *params;
     Cardinal *num_params;
 {
+    ec_dismiss();
+}
+
+static void
+ec_dismiss()
+{
+    /* unselect while still visible */
+    if (extended_command_selected >= 0)
+	swap_fg_bg(extended_commands[extended_command_selected]);
     extended_command_selected = -1;	/* dismiss */
     nh_XtPopdown(extended_command_popup);
+    ec_active = FALSE;
     exit_x_event = TRUE;		/* leave event loop */
 }
 
@@ -253,55 +289,68 @@ ec_key(w, event, params, num_params)
     Cardinal *num_params;
 {
     char ch;
-    int i, mark;
+    int i;
+    XKeyEvent *xkey = (XKeyEvent *) event;
 
-    ch = key_event_to_char((XKeyEvent *) event);
+    ch = key_event_to_char(xkey);
 
     if (ch == '\0') {	/* don't accept nul char/modifier event */
 	/* don't beep */
 	return;
-    }
-    if (index(quitchars, ch)) {
-	extended_command_selected = -1;	/* dismiss */
-	goto ec_key_done;
-    }
-
-    /*
-     * Note: this depends on the fact that the help option "?" is known
-     * to be last and not counted.
-     */
-    for (mark = -1, i = 0; extcmdlist[i].ef_txt; i++) {
-	if (extcmdlist[i].ef_txt[0] == '?') continue;
-
-	if (ch == extcmdlist[i].ef_txt[0]) {
-	    if (mark != -1) {
-		X11_nhbell(); /* another command with the same first letter */
-		return;
-	    }
-	    mark = i;
+    } else if (index("\033\n\r", ch)) {
+	if (ch == '\033') {
+	    /* unselect while still visible */
+	    if (extended_command_selected >= 0)
+		swap_fg_bg(extended_commands[extended_command_selected]);
+	    extended_command_selected = -1;	/* dismiss */
 	}
-    }
-    if (mark == -1) {
-	X11_nhbell();
+
+	nh_XtPopdown(extended_command_popup);
+	/* unselect while invisible */
+	if (extended_command_selected >= 0)
+	    swap_fg_bg(extended_commands[extended_command_selected]);
+
+	exit_x_event = TRUE;		/* leave event loop */
+	ec_active = FALSE;
 	return;
     }
 
-    /*
-     * It would be nice if we could set the selected command before
-     * we pop the window down....  Maybe when I figure out how to do
-     * it.
-     */
-    extended_command_selected = mark;
-ec_key_done:
-    nh_XtPopdown(extended_command_popup);
-    exit_x_event = TRUE;		/* leave event loop */
+    /* too much time has elapsed */
+    if ((xkey->time - ec_time) > 500)
+	ec_active = FALSE;
+
+    if (!ec_active) {
+	ec_nchars = 0;
+	ec_active = TRUE;
+    }
+
+    ec_time = xkey->time;
+    ec_chars[ec_nchars++] = ch;
+    if (ec_nchars >= EC_NCHARS)
+	ec_nchars = EC_NCHARS-1;	/* don't overflow */
+
+    for (i = 0; extcmdlist[i].ef_txt; i++) {
+	if (extcmdlist[i].ef_txt[0] == '?') continue;
+
+	if (!strncmp(ec_chars, extcmdlist[i].ef_txt, ec_nchars)) {
+	    if (extended_command_selected != i) {
+		/* I should use set() and unset() actions, but how do */
+		/* I send the an action to the widget? */
+		if (extended_command_selected >= 0)
+		    swap_fg_bg(extended_commands[extended_command_selected]);
+		extended_command_selected = i;
+		swap_fg_bg(extended_commands[extended_command_selected]);
+	    }
+	    break;
+	}
+    }
 }
 
 /*
  * Use our own home-brewed version menu because simpleMenu is designed to
  * be used from a menubox.
  */
-void
+static void
 init_extended_commands_popup()
 {
     int i, num_commands;
@@ -315,7 +364,8 @@ init_extended_commands_popup()
     if (strcmp(extcmdlist[num_commands-1].ef_txt, "?") == 0)
 	--num_commands;
 
-    command_list = (const char **) alloc(num_commands * sizeof(char *));
+    command_list =
+		(const char **) alloc((unsigned)num_commands * sizeof(char *));
 
     for (i = 0; i < num_commands; i++)
 	command_list[i] = extcmdlist[i].ef_txt;
@@ -325,8 +375,8 @@ init_extended_commands_popup()
 				extended_command_translations,
 				"dismiss", extend_dismiss,
 				"help", extend_help,
-				num_commands, command_list, extend_select,
-				&extended_command_form);
+				num_commands, command_list, &extended_commands,
+				extend_select, &extended_command_form);
 
     free((char *)command_list);
 }
@@ -335,10 +385,10 @@ init_extended_commands_popup()
 
 /*
  * Create a popup widget of the following form:
- * 
+ *
  *		      popup_label
  *		----------- ------------
- * 		|left_name| |right_name|
+ *		|left_name| |right_name|
  *		----------- ------------
  *		------------------------
  *		|	name1	       |
@@ -356,16 +406,17 @@ static Widget
 make_menu(popup_name, popup_label, popup_translations,
 		left_name, left_callback,
 		right_name, right_callback,
-		num_names, widget_names, name_callback, formp)
+		num_names, widget_names, command_widgets, name_callback, formp)
     const char	   *popup_name;
     const char	   *popup_label;
-    String	   popup_translations;
+    const char	   *popup_translations;
     const char	   *left_name;
     XtCallbackProc left_callback;
     const char	   *right_name;
     XtCallbackProc right_callback;
     int		   num_names;
-    char	   **widget_names;
+    const char	   **widget_names;	/* return array of command widgets */
+    Widget	   **command_widgets;
     XtCallbackProc name_callback;
     Widget	   *formp;	/* return */
 {
@@ -378,7 +429,7 @@ make_menu(popup_name, popup_label, popup_translations,
     int distance, skip;
 
 
-    commands = (Widget *) alloc(num_names * sizeof(Widget));
+    commands = (Widget *) alloc((unsigned)num_names * sizeof(Widget));
 
 
     num_args = 0;
@@ -501,7 +552,10 @@ make_menu(popup_name, popup_label, popup_translations,
 	XtSetValues(*curr, args, ONE);
     }
 
-    free((char *) commands);
+    if (command_widgets)
+	*command_widgets = commands;
+    else
+	free((char *) commands);
 
     XtRealizeWidget(popup);
     XSetWMProtocols(XtDisplay(popup), XtWindow(popup), &wm_delete_window, 1);

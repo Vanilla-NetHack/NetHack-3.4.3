@@ -1,42 +1,46 @@
-/*    SCCS Id: @(#)amitty.c     3.1    93/01/08
-/*    Copyright (c) Kenneth Lorber, Bethesda, Maryland 1993	  */
+/*    SCCS Id: @(#)amitty.c     3.2    96/02/04
+/*    Copyright (c) Kenneth Lorber, Bethesda, Maryland 1993,1996  */
 /* NetHack may be freely redistributed.  See license for details. */
 
-/* TTY-specific code for the Amiga */
-
-/* Still to do:
- * add command line switches for enough control to use as BBS door
- * add realy termcap handling - currently requires ANSI_DEFAULT
- * fix tids everywhere
- * fix commented out code that tries (and fails) to avoid problems with
- *  typeahead - we may need to resort to basic packet I/O. Sigh.
- * prototype and related cleanup
+/* TTY-specific code for the Amiga
+ * This is still experimental.
+ * Still to do:
+ * add real termcap handling - currently requires ANSI_DEFAULT
  */
 
 #include "hack.h"
 #include "termcap.h"
 #include <stdio.h>
 
-void NDECL( get_scr_size );
+#ifdef _DCC
+# define getch() getchar()
+#endif
+#ifdef __SASC_60
+# include <clib/dos_protos.h>
+#endif
+
 void NDECL( tty_change_color );
 char *NDECL( tty_get_color_string );
 
 #ifdef TTY_GRAPHICS
+
+extern long afh_in;
+
 void settty(const char *s){
 	end_screen();
 	if(s)raw_print(s);
 	flags.cbreak=ON;	/* this is too easy: probably wrong */
-#if 0 /* should be version>=36 */
-	if(IsInteractive(Input())){
-		SetMode(Input(),0);	/* con mode */
-	}
+#if 1 /* should be version>=36 */
+/*	if(IsInteractive(afh_in)){ */
+		SetMode(afh_in,0);	/* con mode */
+/*	} */
 #endif
 }
 void gettty(){
-#if 0 /* should be VERSION >=36 */
-	if(IsInteractive(Input())){
-		SetMode(Input(),1);	/* raw mode */
-	}
+#if 1 /* should be VERSION >=36 */
+/*	if(IsInteractive(afh_in)){ */
+		SetMode(afh_in,1);	/* raw mode */
+/*	} */
 #endif
 }
 void setftty(){
@@ -45,13 +49,8 @@ void setftty(){
 char kill_char='X'-'@';
 char erase_char='\b';
 tgetch(){
-#if 1
-	int x=getch();		/* can't use getch() - typeahead ends up stalling the
-				 * game (since it's a con:) */
-#else
-	int x;
-	Read(Input(),&x,1);
-#endif
+	char x;
+	Read(afh_in,&x,1);
 	return (x=='\r')?'\n':x;
 }
 void get_scr_size(){

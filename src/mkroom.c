@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mkroom.c	3.1	93/04/04	*/
+/*	SCCS Id: @(#)mkroom.c	3.2	93/04/04	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -22,9 +22,7 @@ static void NDECL(mkshop), FDECL(mkzoo,(int)), NDECL(mkswamp);
 static void NDECL(mktemple);
 static coord * FDECL(shrine_pos, (int));
 static struct permonst * NDECL(morguemon);
-#ifdef ARMY
 static struct permonst * NDECL(squadmon);
-#endif
 static void FDECL(save_room, (int,struct mkroom *));
 static void FDECL(rest_room, (int,struct mkroom *));
 #endif /* OVLB */
@@ -95,12 +93,10 @@ mkshop()
 				mkzoo(COURT);
 				return;
 			}
-#ifdef ARMY
 			if(*ep == 's' || *ep == 'S'){
 				mkzoo(BARRACKS);
 				return;
 			}
-#endif /* ARMY */
 			if(*ep == '_'){
 				mktemple();
 				return;
@@ -277,12 +273,10 @@ struct mkroom *sroom;
 		    continue;
 		mon = makemon(
 		    (type == COURT) ? courtmon() :
-#ifdef ARMY
 		    (type == BARRACKS) ? squadmon() :
-#endif
 		    (type == MORGUE) ? morguemon() :
 		    (type == BEEHIVE) ?
-			(sx == tx && sy == ty ? &mons[PM_QUEEN_BEE] : 
+			(sx == tx && sy == ty ? &mons[PM_QUEEN_BEE] :
 			 &mons[PM_KILLER_BEE]) :
 		    (struct permonst *) 0,
 		   sx, sy);
@@ -317,28 +311,28 @@ struct mkroom *sroom;
 			if(!rn2(3))
 			    (void) mksobj_at(LUMP_OF_ROYAL_JELLY, sx, sy, TRUE);
 			break;
-#ifdef ARMY
 		    case BARRACKS:
 			if(!rn2(20))	/* the payroll and some loot */
 			    (void) mksobj_at((rn2(3)) ? LARGE_BOX : CHEST,
 					     sx, sy, TRUE);
 			break;
-#endif
 		}
 	    }
 	switch (type) {
 	      case COURT:
+		{
+		  struct obj *chest;
 		  levl[tx][ty].typ = THRONE;
 		  (void) somexy(sroom, &mm);
 		  mkgold((long) rn1(50 * level_difficulty(),10), mm.x, mm.y);
-		  (void) mksobj_at(CHEST, mm.x, mm.y, TRUE); /* the royal coffers */
+		  chest = mksobj_at(CHEST, mm.x, mm.y, TRUE); /* the royal coffers */
+		  chest->spe = 2; /* so it can be found later */
 		  level.flags.has_court = 1;
 		  break;
-#ifdef ARMY
+		}
 	      case BARRACKS:
 		  level.flags.has_barracks = 1;
 		  break;
-#endif
 	      case ZOO:
 		  level.flags.has_zoo = 1;
 		  break;
@@ -390,7 +384,7 @@ mkswamp()	/* Michiel Huisjes & Fred de Wilde */
 	register struct mkroom *sroom;
 	register int sx,sy,i,eelct = 0;
 
-	for(i=0; i<5; i++) {		/* 5 tries */
+	for(i=0; i<5; i++) {		/* turn up to 5 rooms swampy */
 		sroom = &rooms[rn2(nroom)];
 		if(sroom->hx < 0 || sroom->rtype != OROOM ||
 		   has_upstairs(sroom) || has_dnstairs(sroom))
@@ -411,7 +405,7 @@ mkswamp()	/* Michiel Huisjes & Fred de Wilde */
 						sx, sy);
 			    eelct++;
 			}
-		    } else 
+		    } else
 			if(!rn2(4))	/* swamps tend to be moldy */
 			    (void) makemon(mkclass(S_FUNGUS,0), sx, sy);
 		}
@@ -451,7 +445,7 @@ mktemple()
 	lev->typ = ALTAR;
 	lev->altarmask = induced_align(80);
 	priestini(&u.uz, sroom, shrine_spot->x, shrine_spot->y, FALSE);
- 	lev->altarmask |= AM_SHRINE;
+	lev->altarmask |= AM_SHRINE;
 	level.flags.has_temple = 1;
 }
 
@@ -567,11 +561,11 @@ you_lose:	;
 	return TRUE;
 }
 
-/* 
+/*
  * Search for a special room given its type (zoo, court, etc...)
- * 	Special values :
- * 		- ANY_SHOP
- * 		- ANY_TYPE
+ *	Special values :
+ *		- ANY_SHOP
+ *		- ANY_TYPE
  */
 
 struct mkroom *
@@ -611,8 +605,7 @@ courtmon()
 	else			return(mkclass(S_KOBOLD,0));
 }
 
-#ifdef ARMY
-#define	    NSTYPES	(PM_CAPTAIN-PM_SOLDIER+1)
+#define NSTYPES (PM_CAPTAIN - PM_SOLDIER + 1)
 
 static struct {
     unsigned	pm;
@@ -624,24 +617,26 @@ static struct {
 static struct permonst *
 squadmon()		/* return soldier types. */
 {
-	register struct permonst *ptr;
-	register int	i, cpro, sel_prob = rnd(80+level_difficulty());
+	int sel_prob, i, cpro, mndx;
 
-	for(cpro = i = 0; i < NSTYPES; i++)
-	    if((cpro += squadprob[i].prob) > sel_prob) {
+	sel_prob = rnd(80+level_difficulty());
 
-		ptr = &mons[squadprob[i].pm];
+	cpro = 0;
+	for (i = 0; i < NSTYPES; i++) {
+	    cpro += squadprob[i].prob;
+	    if (cpro > sel_prob) {
+		mndx = squadprob[i].pm;
 		goto gotone;
 	    }
-	ptr = &mons[squadprob[rn2(NSTYPES)].pm];
+	}
+	mndx = squadprob[rn2(NSTYPES)].pm;
 gotone:
-	if(!(ptr->geno & (G_GENOD | G_EXTINCT)))  return(ptr);
+	if (!(mvitals[mndx].mvflags & G_GONE)) return(&mons[mndx]);
 	else			    return((struct permonst *) 0);
 }
-#endif /* ARMY */
 
-/* 
- * save_room : A recursive function that saves a room and its subrooms 
+/*
+ * save_room : A recursive function that saves a room and its subrooms
  * (if any).
  */
 
@@ -651,7 +646,7 @@ int	fd;
 struct mkroom *r;
 {
 	short i;
-	/* 
+	/*
 	 * Well, I really should write only useful informations instead
 	 * of writing the whole structure. That is I should not write
 	 * the subrooms pointers, but who cares ?
@@ -661,7 +656,7 @@ struct mkroom *r;
 	    save_room(fd, r->sbrooms[i]);
 }
 
-/* 
+/*
  * save_rooms : Save all the rooms on disk!
  */
 
@@ -691,7 +686,7 @@ struct mkroom *r;
 	}
 }
 
-/* 
+/*
  * rest_rooms : That's for restore rooms. Read the rooms structure from
  * the disk.
  */

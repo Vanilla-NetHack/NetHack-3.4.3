@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)global.h	3.1	92/01/04	*/
+/*	SCCS Id: @(#)global.h	3.2	96/03/28	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -8,7 +8,7 @@
 #include <stdio.h>
 
 
-/*#define BETA		/* if a beta-test copy  [MRS] */
+/* #define BETA		/* if a beta-test copy	[MRS] */
 
 /*
  * Files expected to exist in the playground directory.
@@ -101,7 +101,7 @@ typedef xchar	boolean;		/* 0 or 1 */
 #  define ALIGNTYP_P int
 # endif
 #endif
-#if defined(ULTRIX_PROTO) && !defined(__GNUC__)
+#if defined(ULTRIX_PROTO) && !defined(__STDC__)
 /* The ultrix 2.0 and 2.1 compilers (on Ultrix 4.0 and 4.2 respectively) can't
  * handle "struct obj *" constructs in prototypes.  Their bugs are different,
  * but both seem to work if we put "void*" in the prototype instead.  This
@@ -118,7 +118,6 @@ typedef xchar	boolean;		/* 0 or 1 */
 
 #define SIZE(x)	(int)(sizeof(x) / sizeof(x[0]))
 
-typedef int winid;		/* a window identifier */
 
 /* A limit for some NetHack int variables.  It need not, and for comparable
  * scoring should not, depend on the actual limit on integers for a
@@ -142,35 +141,35 @@ typedef int winid;		/* a window identifier */
 #endif
 
 #if defined(VMS) && !defined(VMSCONF_H)
-# include "vmsconf.h"
+#include "vmsconf.h"
 #endif
 
 #if defined(UNIX) && !defined(UNIXCONF_H)
-# include "unixconf.h"
+#include "unixconf.h"
 #endif
 
 #if defined(OS2) && !defined(OS2CONF_H)
-# include "os2conf.h"
+#include "os2conf.h"
 #endif
 
 #if defined(MSDOS) && !defined(PCCONF_H)
-# include "pcconf.h"
+#include "pcconf.h"
 #endif
 
 #if defined(TOS) && !defined(TOSCONF_H)
-# include "tosconf.h"
+#include "tosconf.h"
 #endif
 
 #if defined(AMIGA) && !defined(AMICONF_H)
-# include "amiconf.h"
+#include "amiconf.h"
 #endif
 
 #if defined(MAC) && ! defined(MACCONF_H)
-# include "macconf.h"
+#include "macconf.h"
 #endif
 
 #if defined(WIN32) && !defined(NTCONF_H)
-# include "ntconf.h"
+#include "ntconf.h"
 #endif
 
 /* Displayable name of this port; don't redefine if defined in *conf.h */
@@ -182,10 +181,19 @@ typedef int winid;		/* a window identifier */
 #  define PORT_ID	"Mac"
 # endif
 # ifdef MSDOS
-#  ifdef PC9801
-#   define PORT_ID	"PC-9801"
+#  ifdef PC9800
+#  define PORT_ID	"PC-9800"
 #  else
-#   define PORT_ID	"PC"
+#  define PORT_ID	"PC"
+#  endif
+#  ifdef DJGPP
+#  define PORT_SUB_ID	"djgpp"
+#  else
+#   ifdef OVERLAY
+#  define PORT_SUB_ID	"overlaid"
+#   else
+#  define PORT_SUB_ID	"non-overlaid"
+#   endif
 #  endif
 # endif
 # ifdef OS2
@@ -200,14 +208,63 @@ typedef int winid;		/* a window identifier */
 # ifdef VMS
 #  define PORT_ID	"VMS"
 # endif
-# ifdef WIN32CON
-#  define PORT_ID	"NT-Console"
+# ifdef WIN32
+#  define PORT_ID	"NT"
 # endif
 #endif
 
 #if defined(MICRO) && !defined(AMIGA) && !defined(TOS) && !defined(OS2_HPFS)
 #define SHORT_FILENAMES		/* filenames are 8.3 */
 #endif
+
+/*
+ * This must follow the include of macconf.h because EXIT_SUCCESS is defined
+ * in one of the header files and we get a duplicate define.
+ */
+#ifdef VMS
+/* vms_exit() (sys/vms/vmsmisc.c) expects the non-VMS EXIT_xxx values below.
+ * these definitions allow all systems to be treated uniformly, provided
+ * main() routines do not terminate with return(), whose value is not
+ * so massaged.
+ */
+# ifdef EXIT_SUCCESS
+#  undef EXIT_SUCCESS
+# endif
+# ifdef EXIT_FAILURE
+#  undef EXIT_FAILURE
+# endif
+#endif
+
+#ifndef EXIT_SUCCESS
+# define EXIT_SUCCESS 0
+#endif
+#ifndef EXIT_FAILURE
+# define EXIT_FAILURE 1
+#endif
+
+#if defined(X11_GRAPHICS) || defined(AMII_GRAPHICS)
+# ifndef USE_TILES
+#  define USE_TILES		/* glyph2tile[] will be available */
+# endif
+#endif
+
+
+/* primitive memory leak debugging; see alloc.c */
+#ifdef MONITOR_HEAP
+extern long *FDECL(nhalloc, (unsigned int,const char *,int));
+extern void FDECL(nhfree, (genericptr_t,const char *,int));
+# ifndef __FILE__
+#  define __FILE__ ""
+# endif
+# ifndef __LINE__
+#  define __LINE__ 0
+# endif
+# define alloc(a) nhalloc(a,__FILE__,(int)__LINE__)
+# define free(a) nhfree(a,__FILE__,(int)__LINE__)
+#else	/* !MONITOR_HEAP */
+extern long *FDECL(alloc, (unsigned int));		/* alloc.c */
+#endif
+
 
 /*
  * Configurable internal parameters.
@@ -221,8 +278,8 @@ typedef int winid;		/* a window identifier */
 #define COLNO	80
 #define ROWNO	21
 
-#define MAXNROFROOMS	20	/* max number of rooms per level */
-#define MAX_SUBROOMS	16	/* max # of subrooms in a given room */
+#define MAXNROFROOMS	40	/* max number of rooms per level */
+#define MAX_SUBROOMS	24	/* max # of subrooms in a given room */
 #define DOORMAX		120	/* max number of doors per level */
 
 #define BUFSZ		256	/* for getlin buffers */
@@ -231,6 +288,8 @@ typedef int winid;		/* a window identifier */
 #define PL_NSIZ		32	/* name of player, ghost, shopkeeper */
 #define PL_CSIZ		20	/* sizeof pl_character */
 #define PL_FSIZ		32	/* fruit name */
+#define PL_PSIZ		63	/* player-given names for pets, other
+				 * monsters, objects */
 
 #define MAXDUNGEON	10	/* current maximum number of dungeons */
 #define MAXLEVEL	30	/* max number of levels in one dungeon */

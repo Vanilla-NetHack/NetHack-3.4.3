@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)display.h	3.1	92/07/11		  */
+/*	SCCS Id: @(#)display.h	3.2	95/04/23	*/
 /* Copyright (c) Dean Luick, with acknowledgements to Kevin Darcy */
 /* and Dave Cohrs, 1990.					  */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -20,23 +20,23 @@
 
 /*
  * sensemon()
- *  
+ *
  * Returns true if the hero can sense the given monster.  This includes
  * monsters that are hiding or mimicing other monsters.
  */
 #define sensemon(mon) (		/* The hero can always sense a monster IF:  */\
     (!mindless(mon->data)) &&	/* 1. the monster has a brain to sense AND  */\
       ((Blind && Telepat) ||	/* 2a. hero is blind and telepathic OR      */\
-    				/* 2b. hero is wearing a telepathy inducing */\
+				/* 2b. hero is using a telepathy inducing   */\
 				/*	 object and in range		    */\
-      ((HTelepat & (WORN_HELMET|WORN_AMUL|W_ART)) &&			      \
+      ((HTelepat & ~INTRINSIC) &&					      \
 	(distu(mon->mx, mon->my) <= (BOLT_LIM * BOLT_LIM))))		      \
 )
 
 
 /*
  * mon_visible()
- *  
+ *
  * Returns true if the hero can see the monster.  It is assumed that the
  * hero can physically see the location of the monster.  The function
  * vobj_at() returns a pointer to an object that the hero can see there.
@@ -44,27 +44,31 @@
 #define mon_visible(mon) (		/* The hero can see the monster	    */\
 					/* IF the monster		    */\
     (!mon->minvis || See_invisible) &&	/* 1. is not invisible AND	    */\
-    (!mon->mundetected)			/* 2. not an undetected hider	    */\
+    (!mon->mundetected)	&&		/* 2. not an undetected hider	    */\
+    (!(mon->mburied || u.uburied))	/* 3. neither you or it is buried   */\
 )
 
 
 /*
  * canseemon()
- *  
+ *
  * This is the globally used canseemon().  It is not called within the display
- * routines.
+ * routines.  Like mon_visible(), but it checks to see if the hero sees the
+ * location instead of assuming it.  (And also considers worms.)
  */
-#define canseemon(mon) (cansee(mon->mx, mon->my) && mon_visible(mon))
+#define canseemon(mon) ((mon->wormno ? worm_known(mon) : \
+	cansee(mon->mx, mon->my)) && mon_visible(mon))
 
 
 /*
  * canspotmon(mon)
  *
- * This is sensemon() or mon_visible() except that hiding under objects
- * is considered irrelevant for this special case.
+ * This function checks whether you can either see a monster or sense it by
+ * telepathy, and is what you usually call for monsters about which nothing is
+ * known.
  */
 #define canspotmon(mon)	\
-	(mon && ((!Blind && (!mon->minvis || See_invisible)) || sensemon(mon)))
+	(canseemon(mon) || sensemon(mon))
 
 /*
  * is_safepet(mon)
@@ -79,33 +83,29 @@
 
 /*
  * canseeself()
- *  
+ *
  * This returns true if the hero can see her/himself.
  *
  * The u.uswallow check assumes that you can see yourself even if you are
  * invisible.  If not, then we don't need the check.
  */
-#ifdef POLYSELF
 #define canseeself()	(Blind || u.uswallow || (!Invisible && !u.uundetected))
-#else
-#define canseeself()	(Blind || u.uswallow || !Invisible)
-#endif
 
 
 /*
  * random_monster()
  * random_object()
- *  
+ *
  * Respectively return a random monster or object number.
  */
 #define random_monster() rn2(NUMMONS)
-#define random_object()  (rn2(NROFOBJECTS) + 1)
+#define random_object()  (rn2(NUM_OBJECTS-1) + 1)
 
 
 /*
  * what_obj()
  * what_mon()
- *  
+ *
  * If hallucinating, choose a random object/monster, otherwise, use the one
  * given.
  */
@@ -116,7 +116,7 @@
 /*
  * covers_objects()
  * covers_traps()
- *  
+ *
  * These routines are true if what is really at the given location will
  * "cover" any objects or traps that might be there.
  */
@@ -131,8 +131,9 @@
  */
 #define DISP_BEAM   (-1)  /* Keep all glyphs showing & clean up at end. */
 #define DISP_FLASH  (-2)  /* Clean up each glyph before displaying new one. */
-#define DISP_CHANGE (-3)  /* Change glyph. */
-#define DISP_END    (-4)  /* Clean up. */
+#define DISP_ALWAYS (-3)  /* Like flash, but still displayed if not visible. */
+#define DISP_CHANGE (-4)  /* Change glyph. */
+#define DISP_END    (-5)  /* Clean up. */
 
 
 /* Total number of cmap indices in the sheild_static[] array. */
@@ -141,21 +142,14 @@
 
 /*
  *  display_self()
- *  
+ *
  *  Display the hero.  This has degenerated down to this.  Perhaps there is
  *  more needed here, but I can't think of any cases.
  */
-#ifdef POLYSELF
 #define display_self()						\
     show_glyph(u.ux, u.uy,					\
 	u.usym == 0 ? objnum_to_glyph(GOLD_PIECE) :		\
-	monnum_to_glyph((u.umonnum < 0 ? u.umonster : u.umonnum)))
-#else
-#define display_self()						\
-    show_glyph(u.ux, u.uy,					\
-	u.usym == 0 ? objnum_to_glyph(GOLD_PIECE) :		\
-	monnum_to_glyph(u.umonster))
-#endif
+	monnum_to_glyph((Upolyd ? u.umonnum : u.umonster)))
 
 
 /*
@@ -176,10 +170,7 @@
  *
  * corpse	One for each monster.  Count: NUMMONS
  *
- * object	One for each object.  Count: NROFOBJECTS+1 (we need the +1
- *		because NROFOBJECTS does not include the illegal object)
- *
- * trap		One for each trap type.  Count: TRAPNUM
+ * object	One for each object.  Count: NUM_OBJECTS
  *
  * cmap		One for each entry in the character map.  The character map
  *		is the dungeon features and other miscellaneous things.
@@ -198,16 +189,16 @@
  */
 #define NUM_ZAP	8	/* number of zap beam types */
 
-#define GLYPH_MON_OFF  	  0
-#define GLYPH_PET_OFF 	  (NUMMONS        + GLYPH_MON_OFF)
-#define GLYPH_BODY_OFF 	  (NUMMONS        + GLYPH_PET_OFF)
-#define GLYPH_OBJ_OFF 	  (NUMMONS        + GLYPH_BODY_OFF)
-#define GLYPH_TRAP_OFF	  (NROFOBJECTS+1  + GLYPH_OBJ_OFF)
-#define GLYPH_CMAP_OFF	  (TRAPNUM        + GLYPH_TRAP_OFF)
+#define GLYPH_MON_OFF	  0
+#define GLYPH_PET_OFF	  (NUMMONS        + GLYPH_MON_OFF)
+#define GLYPH_BODY_OFF	  (NUMMONS        + GLYPH_PET_OFF)
+#define GLYPH_OBJ_OFF	  (NUMMONS        + GLYPH_BODY_OFF)
+#define GLYPH_CMAP_OFF	  (NUM_OBJECTS	  + GLYPH_OBJ_OFF)
 #define GLYPH_ZAP_OFF	  (MAXPCHARS      + GLYPH_CMAP_OFF)
 #define GLYPH_SWALLOW_OFF ((NUM_ZAP << 2) + GLYPH_ZAP_OFF)
 
-#define MAX_GLYPH 	  ((NUMMONS << 3) + GLYPH_SWALLOW_OFF)
+#define MAX_GLYPH	  ((NUMMONS << 3) + GLYPH_SWALLOW_OFF)
+#define NO_GLYPH MAX_GLYPH
 
 
 #define mon_to_glyph(mon) ((int) what_mon(monsndx((mon)->data))+GLYPH_MON_OFF)
@@ -224,8 +215,8 @@
 	    (int) (obj)->corpsenm + GLYPH_BODY_OFF :			      \
 	    (int) (obj)->otyp + GLYPH_OBJ_OFF))
 
-#define trap_to_glyph(trap)	((int) (trap)->ttyp + GLYPH_TRAP_OFF)
 #define cmap_to_glyph(cmap_idx)	((int) (cmap_idx)   + GLYPH_CMAP_OFF)
+#define trap_to_glyph(trap) cmap_to_glyph(trap_to_defsym((trap)->ttyp))
 
 /* Not affected by hallucination.  Gives a generic body for CORPSE */
 #define objnum_to_glyph(onum)	((int) (onum) + GLYPH_OBJ_OFF)
@@ -247,7 +238,7 @@
 				glyph - GLYPH_MON_OFF : glyph - GLYPH_PET_OFF))
 #define glyph_to_obj(glyph)	((int) ((glyph) < GLYPH_OBJ_OFF ?	      \
 				CORPSE : (glyph) - GLYPH_OBJ_OFF))
-#define glyph_to_trap(glyph)	((int) (glyph) - GLYPH_TRAP_OFF)
+#define glyph_to_trap(glyph)	((int) defsym_to_trap((glyph) - GLYPH_CMAP_OFF))
 #define glyph_to_cmap(glyph)	((int) (glyph) - GLYPH_CMAP_OFF)
 #define glyph_to_swallow(glyph) (((glyph) - GLYPH_SWALLOW_OFF) & 0x7)
 
@@ -257,10 +248,13 @@
  */
 #define glyph_is_monster(glyph)						      \
     ((glyph) >= GLYPH_MON_OFF && (glyph) < GLYPH_BODY_OFF)
+#define glyph_is_pet(glyph)						      \
+    ((glyph) >= GLYPH_PET_OFF && (glyph) < GLYPH_BODY_OFF)
 #define glyph_is_object(glyph)						      \
-    ((glyph) >= GLYPH_BODY_OFF && (glyph) < GLYPH_TRAP_OFF)
+    ((glyph) >= GLYPH_BODY_OFF && (glyph) < GLYPH_CMAP_OFF)
 #define glyph_is_trap(glyph)						      \
-    ((glyph) >= GLYPH_TRAP_OFF && (glyph) < GLYPH_CMAP_OFF)
+    ((glyph) >= (GLYPH_CMAP_OFF+trap_to_defsym(1)) &&			      \
+     (glyph) <  (GLYPH_CMAP_OFF+trap_to_defsym(1)+TRAPNUM))
 #define glyph_is_cmap(glyph)						      \
     ((glyph) >= GLYPH_CMAP_OFF && (glyph) < GLYPH_ZAP_OFF)
 #define glyph_is_swallow(glyph) \

@@ -14,10 +14,10 @@ static struct NewScreen NewScreenStructure = {
 #define NEWSCREENSTRUCTURE NewScreenStructure
 
 static USHORT Palette[] = {
-	0x0999,
+	0x0AAA,
 	0x0002,
 	0x0FFF,
-	0x006B
+	0x016A
 #define PaletteColorCount 4
 };
 
@@ -479,8 +479,8 @@ static struct NewWindow Quest_NewWindowStructure2 = {
 
 static SHORT Options_BorderVectors5[] = {
 	0,0,
-	48,0,
-	48,11,
+	72,0,
+	72,11,
 	0,11,
 	0,0
 };
@@ -493,47 +493,34 @@ static struct Border Options_Border5 = {
 };
 
 static struct IntuiText Options_IText15 = {
-	1,0,JAM2,
-	8,2,
+	3,0,JAM2,
+	15,1,
 	NULL,
-	"Null",
+	"CANCEL",
 	NULL
 };
 
-static struct Gadget Options_Gadget47 = {
+static struct Gadget Options_Gadget7 = {
 	NULL,
-	536,41,
-	47,10,
-	NULL,
-	RELVERIFY+TOGGLESELECT,
+	-96,-15,
+	71,10,
+	GRELBOTTOM+GRELRIGHT,
+	RELVERIFY,
 	BOOLGADGET,
 	(APTR)&Options_Border5,
 	NULL,
 	&Options_IText15,
 	NULL,
 	NULL,
-	GADONULL,
-	NULL
-};
-
-static UBYTE Options_Options_PetTypeSIBuff[70];
-static struct StringInfo Options_Options_PetTypeSInfo = {
-	Options_Options_PetTypeSIBuff,
-	UNDOBUFFER,
-	0,
-	70,
-	0,
-	0,0,0,0,0,
-	0,
-	0,
+	GADOPTCANCEL,
 	NULL
 };
 
 static SHORT Options_BorderVectors6[] = {
 	0,0,
-	149,0,
-	149,10,
-	0,10,
+	72,0,
+	72,11,
+	0,11,
 	0,0
 };
 static struct Border Options_Border6 = {
@@ -544,1769 +531,117 @@ static struct Border Options_Border6 = {
 	NULL
 };
 
-static struct Gadget Options_PetType = {
-	&Options_Gadget47,
-	435,134,
-	148,9,
-	NULL,
-	RELVERIFY+STRINGCENTER,
-	STRGADGET,
-	(APTR)&Options_Border6,
-	NULL,
-	NULL,
-	NULL,
-	(APTR)&Options_Options_PetTypeSInfo,
-	GADOPETTYPE,
-	NULL
-};
-
-static UBYTE Options_Options_ScoreSIBuff[70];
-static struct StringInfo Options_Options_ScoreSInfo = {
-	Options_Options_ScoreSIBuff,
-	UNDOBUFFER,
-	0,
-	70,
-	0,
-	0,0,0,0,0,
-	0,
-	0,
-	NULL
-};
-
-static SHORT Options_BorderVectors7[] = {
-	0,0,
-	149,0,
-	149,10,
-	0,10,
-	0,0
-};
-static struct Border Options_Border7 = {
-	-1,-1,
-	3,0,JAM1,
-	5,
-	Options_BorderVectors7,
-	NULL
-};
-
-static struct Gadget Options_Score = {
-	&Options_PetType,
-	435,121,
-	148,9,
-	NULL,
-	RELVERIFY+STRINGCENTER,
-	STRGADGET,
-	(APTR)&Options_Border7,
-	NULL,
-	NULL,
-	NULL,
-	(APTR)&Options_Options_ScoreSInfo,
-	GADOSCORE,
-	NULL
-};
-
-static UBYTE Options_Options_PaletteSIBuff[70];
-static struct StringInfo Options_Options_PaletteSInfo = {
-	Options_Options_PaletteSIBuff,
-	UNDOBUFFER,
-	0,
-	70,
-	0,
-	0,0,0,0,0,
-	0,
-	0,
-	NULL
-};
-
-static SHORT Options_BorderVectors8[] = {
-	0,0,
-	149,0,
-	149,10,
-	0,10,
-	0,0
-};
-static struct Border Options_Border8 = {
-	-1,-1,
-	3,0,JAM1,
-	5,
-	Options_BorderVectors8,
-	NULL
-};
-
-static struct Gadget Options_Palette = {
-	&Options_Score,
-	435,108,
-	148,9,
-	NULL,
-	RELVERIFY+STRINGCENTER,
-	STRGADGET,
-	(APTR)&Options_Border8,
-	NULL,
-	NULL,
-	NULL,
-	(APTR)&Options_Options_PaletteSInfo,
-	GADOPALETTE,
-	NULL
-};
-
-static UBYTE Options_Options_MsgHistorySIBuff[15];
-static struct StringInfo Options_Options_MsgHistorySInfo = {
-	Options_Options_MsgHistorySIBuff,
-	UNDOBUFFER,
-	0,
-	15,
-	0,
-	0,0,0,0,0,
-	0,
-	0,
-	NULL
-};
-
-static SHORT Options_BorderVectors9[] = {
-	0,0,
-	149,0,
-	149,10,
-	0,10,
-	0,0
-};
-static struct Border Options_Border9 = {
-	-1,-1,
-	3,0,JAM1,
-	5,
-	Options_BorderVectors9,
-	NULL
-};
-
-static struct Gadget Options_MsgHistory = {
-	&Options_Palette,
-	435,95,
-	148,9,
-	NULL,
-	RELVERIFY+STRINGCENTER+LONGINT,
-	STRGADGET,
-	(APTR)&Options_Border9,
-	NULL,
-	NULL,
-	NULL,
-	(APTR)&Options_Options_MsgHistorySInfo,
-	GADOMSGHISTORY,
-	NULL
-};
-
-static UBYTE Options_Options_WindowTypeSIBuff[70];
-static struct StringInfo Options_Options_WindowTypeSInfo = {
-	Options_Options_WindowTypeSIBuff,
-	UNDOBUFFER,
-	0,
-	70,
-	0,
-	0,0,0,0,0,
-	0,
-	0,
-	NULL
-};
-
-static SHORT Options_BorderVectors10[] = {
-	0,0,
-	149,0,
-	149,10,
-	0,10,
-	0,0
-};
-static struct Border Options_Border10 = {
-	-1,-1,
-	3,0,JAM1,
-	5,
-	Options_BorderVectors10,
-	NULL
-};
-
-static struct Gadget Options_WindowType = {
-	&Options_MsgHistory,
-	435,82,
-	148,9,
-	NULL,
-	RELVERIFY+STRINGCENTER,
-	STRGADGET,
-	(APTR)&Options_Border10,
-	NULL,
-	NULL,
-	NULL,
-	(APTR)&Options_Options_WindowTypeSInfo,
-	GADOWINDOWTYPE,
-	NULL
-};
-
-static UBYTE Options_Options_PickupTypesSIBuff[70];
-static struct StringInfo Options_Options_PickupTypesSInfo = {
-	Options_Options_PickupTypesSIBuff,
-	UNDOBUFFER,
-	0,
-	70,
-	0,
-	0,0,0,0,0,
-	0,
-	0,
-	NULL
-};
-
-static SHORT Options_BorderVectors11[] = {
-	0,0,
-	149,0,
-	149,10,
-	0,10,
-	0,0
-};
-static struct Border Options_Border11 = {
-	-1,-1,
-	3,0,JAM1,
-	5,
-	Options_BorderVectors11,
-	NULL
-};
-
-static struct Gadget Options_PickupTypes = {
-	&Options_WindowType,
-	435,69,
-	148,9,
-	NULL,
-	RELVERIFY+STRINGCENTER,
-	STRGADGET,
-	(APTR)&Options_Border11,
-	NULL,
-	NULL,
-	NULL,
-	(APTR)&Options_Options_PickupTypesSInfo,
-	GADOPICKUPTYPES,
-	NULL
-};
-
-static UBYTE Options_Options_NameSIBuff[70];
-static struct StringInfo Options_Options_NameSInfo = {
-	Options_Options_NameSIBuff,
-	UNDOBUFFER,
-	0,
-	70,
-	0,
-	0,0,0,0,0,
-	0,
-	0,
-	NULL
-};
-
-static SHORT Options_BorderVectors12[] = {
-	0,0,
-	149,0,
-	149,10,
-	0,10,
-	0,0
-};
-static struct Border Options_Border12 = {
-	-1,-1,
-	3,0,JAM1,
-	5,
-	Options_BorderVectors12,
-	NULL
-};
-
-static struct Gadget Options_Name = {
-	&Options_PickupTypes,
-	97,134,
-	148,9,
-	NULL,
-	RELVERIFY+STRINGCENTER,
-	STRGADGET,
-	(APTR)&Options_Border12,
-	NULL,
-	NULL,
-	NULL,
-	(APTR)&Options_Options_NameSInfo,
-	GADONAME,
-	NULL
-};
-
-static SHORT Options_BorderVectors13[] = {
-	0,0,
-	91,0,
-	91,11,
-	0,11,
-	0,0
-};
-static struct Border Options_Border13 = {
-	-1,-1,
-	3,0,JAM1,
-	5,
-	Options_BorderVectors13,
-	NULL
-};
-
 static struct IntuiText Options_IText16 = {
-	1,0,JAM2,
-	5,2,
-	NULL,
-	"Checkpoint",
-	NULL
-};
-
-static struct Gadget Options_Gadget39 = {
-	&Options_Name,
-	309,27,
-	90,10,
-	SELECTED,
-	RELVERIFY+TOGGLESELECT,
-	BOOLGADGET,
-	(APTR)&Options_Border13,
-	NULL,
-	&Options_IText16,
-	NULL,
-	NULL,
-	GADOCHKPOINT,
-	NULL
-};
-
-static SHORT Options_BorderVectors14[] = {
-	0,0,
-	91,0,
-	91,11,
-	0,11,
-	0,0
-};
-static struct Border Options_Border14 = {
-	-1,-1,
-	3,0,JAM1,
-	5,
-	Options_BorderVectors14,
-	NULL
-};
-
-static struct IntuiText Options_IText17 = {
-	1,0,JAM2,
-	5,2,
-	NULL,
-	"Show Score",
-	NULL
-};
-
-static struct Gadget Options_Gadget38 = {
-	&Options_Gadget39,
-	493,55,
-	90,10,
-	NULL,
-	RELVERIFY+TOGGLESELECT,
-	BOOLGADGET,
-	(APTR)&Options_Border14,
-	NULL,
-	&Options_IText17,
-	NULL,
-	NULL,
-	GADOSHOWSCORE,
-	NULL
-};
-
-static SHORT Options_BorderVectors15[] = {
-	0,0,
-	128,0,
-	128,11,
-	0,11,
-	0,0
-};
-static struct Border Options_Border15 = {
-	-1,-1,
-	3,0,JAM1,
-	5,
-	Options_BorderVectors15,
-	NULL
-};
-
-static struct IntuiText Options_IText18 = {
-	1,0,JAM2,
-	5,2,
-	NULL,
-	"Show Experience",
-	NULL
-};
-
-static struct Gadget Options_Gadget37 = {
-	&Options_Gadget38,
-	357,55,
-	127,10,
-	NULL,
-	RELVERIFY+TOGGLESELECT,
-	BOOLGADGET,
-	(APTR)&Options_Border15,
-	NULL,
-	&Options_IText18,
-	NULL,
-	NULL,
-	GADOSHOWEXP,
-	NULL
-};
-
-static SHORT Options_BorderVectors16[] = {
-	0,0,
-	105,0,
-	105,11,
-	0,11,
-	0,0
-};
-static struct Border Options_Border16 = {
-	-1,-1,
-	3,0,JAM1,
-	5,
-	Options_BorderVectors16,
-	NULL
-};
-
-static struct IntuiText Options_IText19 = {
-	1,0,JAM2,
-	5,2,
-	NULL,
-	"Lit Corridor",
-	NULL
-};
-
-static struct Gadget Options_Gadget36 = {
-	&Options_Gadget37,
-	9,13,
-	104,10,
-	NULL,
-	RELVERIFY+TOGGLESELECT,
-	BOOLGADGET,
-	(APTR)&Options_Border16,
-	NULL,
-	&Options_IText19,
-	NULL,
-	NULL,
-	GADOLITCORRIDOR,
-	NULL
-};
-
-static SHORT Options_BorderVectors17[] = {
-	0,0,
-	60,0,
-	60,11,
-	0,11,
-	0,0
-};
-static struct Border Options_Border17 = {
-	-1,-1,
-	3,0,JAM1,
-	5,
-	Options_BorderVectors17,
-	NULL
-};
-
-static struct IntuiText Options_IText20 = {
-	1,0,JAM2,
-	5,2,
-	NULL,
-	"Legacy",
-	NULL
-};
-
-static struct Gadget Options_Gadget35 = {
-	&Options_Gadget36,
-	288,55,
-	59,10,
-	SELECTED,
-	RELVERIFY+TOGGLESELECT,
-	BOOLGADGET,
-	(APTR)&Options_Border17,
-	NULL,
-	&Options_IText20,
-	NULL,
-	NULL,
-	GADOLEGACY,
-	NULL
-};
-
-static SHORT Options_BorderVectors18[] = {
-	0,0,
-	115,0,
-	115,11,
-	0,11,
-	0,0
-};
-static struct Border Options_Border18 = {
-	-1,-1,
-	3,0,JAM1,
-	5,
-	Options_BorderVectors18,
-	NULL
-};
-
-static struct IntuiText Options_IText21 = {
-	1,0,JAM2,
-	5,2,
-	NULL,
-	"Highlight Pet",
-	NULL
-};
-
-static struct Gadget Options_Gadget34 = {
-	&Options_Gadget35,
-	9,55,
-	114,10,
-	NULL,
-	RELVERIFY+TOGGLESELECT,
-	BOOLGADGET,
-	(APTR)&Options_Border18,
-	NULL,
-	&Options_IText21,
-	NULL,
-	NULL,
-	GADOHILITEPET,
-	NULL
-};
-
-static SHORT Options_BorderVectors19[] = {
-	0,0,
-	56,0,
-	56,11,
-	0,11,
-	0,0
-};
-static struct Border Options_Border19 = {
-	-1,-1,
-	1,0,JAM1,
-	5,
-	Options_BorderVectors19,
-	NULL
-};
-
-static struct IntuiText Options_IText22 = {
-	1,0,JAM2,
-	11,2,
+	3,0,JAM2,
+	21,1,
 	NULL,
 	"OKAY",
 	NULL
 };
 
-static struct Gadget Options_Gadget33 = {
-	&Options_Gadget34,
-	13,146,
-	55,10,
-	NULL,
-	RELVERIFY,
-	BOOLGADGET,
-	(APTR)&Options_Border19,
-	NULL,
-	&Options_IText22,
-	NULL,
-	NULL,
-	GADOOKAY,
-	NULL
-};
-
-static SHORT Options_BorderVectors20[] = {
-	0,0,
-	56,0,
-	56,11,
-	0,11,
-	0,0
-};
-static struct Border Options_Border20 = {
-	-1,-1,
-	1,0,JAM1,
-	5,
-	Options_BorderVectors20,
-	NULL
-};
-
-static struct IntuiText Options_IText23 = {
-	1,0,JAM2,
-	3,2,
-	NULL,
-	"CANCEL",
-	NULL
-};
-
-static struct Gadget Options_Gadget32 = {
-	&Options_Gadget33,
-	528,147,
-	55,10,
-	NULL,
-	RELVERIFY,
-	BOOLGADGET,
-	(APTR)&Options_Border20,
-	NULL,
-	&Options_IText23,
-	NULL,
-	NULL,
-	GADOCANCEL,
-	NULL
-};
-
-static SHORT Options_BorderVectors21[] = {
-	0,0,
-	111,0,
-	111,11,
-	0,11,
-	0,0
-};
-static struct Border Options_Border21 = {
-	-1,-1,
-	3,0,JAM1,
-	5,
-	Options_BorderVectors21,
-	NULL
-};
-
-static struct IntuiText Options_IText24 = {
-	1,0,JAM2,
-	3,2,
-	NULL,
-	"Ask Save Disk",
-	NULL
-};
-
-static struct Gadget Options_Gadget31 = {
-	&Options_Gadget32,
-	473,27,
-	110,10,
-	NULL,
-	RELVERIFY+TOGGLESELECT,
-	BOOLGADGET,
-	(APTR)&Options_Border21,
-	NULL,
-	&Options_IText24,
-	NULL,
-	NULL,
-	GADOASKSAVE,
-	NULL
-};
-
-static UBYTE Options_Options_ObjectsSIBuff[70];
-static struct StringInfo Options_Options_ObjectsSInfo = {
-	Options_Options_ObjectsSIBuff,
-	UNDOBUFFER,
-	0,
-	70,
-	0,
-	0,0,0,0,0,
-	0,
-	0,
-	NULL
-};
-
-static SHORT Options_BorderVectors22[] = {
-	0,0,
-	149,0,
-	149,10,
-	0,10,
-	0,0
-};
-static struct Border Options_Border22 = {
-	-1,-1,
-	3,0,JAM1,
-	5,
-	Options_BorderVectors22,
-	NULL
-};
-
-static struct Gadget Options_Objects = {
-	&Options_Gadget31,
-	97,121,
-	148,9,
-	NULL,
-	RELVERIFY+STRINGCENTER,
-	STRGADGET,
-	(APTR)&Options_Border22,
-	NULL,
-	NULL,
-	NULL,
-	(APTR)&Options_Options_ObjectsSInfo,
-	GADOOBJECTS,
-	NULL
-};
-
-static SHORT Options_BorderVectors23[] = {
-	0,0,
-	55,0,
-	55,11,
-	0,11,
-	0,0
-};
-static struct Border Options_Border23 = {
-	-1,-1,
-	3,0,JAM1,
-	5,
-	Options_BorderVectors23,
-	NULL
-};
-
-static struct IntuiText Options_IText25 = {
-	1,0,JAM2,
-	3,2,
-	NULL,
-	"Female",
-	NULL
-};
-
-static struct Gadget Options_Gadget29 = {
-	&Options_Objects,
-	473,13,
-	54,10,
-	NULL,
-	RELVERIFY+TOGGLESELECT,
-	BOOLGADGET,
-	(APTR)&Options_Border23,
-	NULL,
-	&Options_IText25,
-	NULL,
-	NULL,
-	GADOFEMALE,
-	NULL
-};
-
-static UBYTE Options_Options_FruitSIBuff[70];
-static struct StringInfo Options_Options_FruitSInfo = {
-	Options_Options_FruitSIBuff,
-	UNDOBUFFER,
-	0,
-	70,
-	0,
-	0,0,0,0,0,
-	0,
-	0,
-	NULL
-};
-
-static SHORT Options_BorderVectors24[] = {
-	0,0,
-	149,0,
-	149,10,
-	0,10,
-	0,0
-};
-static struct Border Options_Border24 = {
-	-1,-1,
-	3,0,JAM1,
-	5,
-	Options_BorderVectors24,
-	NULL
-};
-
-static struct Gadget Options_Fruit = {
-	&Options_Gadget29,
-	97,108,
-	148,9,
-	NULL,
-	RELVERIFY+STRINGCENTER,
-	STRGADGET,
-	(APTR)&Options_Border24,
-	NULL,
-	NULL,
-	NULL,
-	(APTR)&Options_Options_FruitSInfo,
-	GADOFRUIT,
-	NULL
-};
-
-static UBYTE Options_Options_DogNameSIBuff[70];
-static struct StringInfo Options_Options_DogNameSInfo = {
-	Options_Options_DogNameSIBuff,
-	UNDOBUFFER,
-	0,
-	70,
-	0,
-	0,0,0,0,0,
-	0,
-	0,
-	NULL
-};
-
-static SHORT Options_BorderVectors25[] = {
-	0,0,
-	149,0,
-	149,10,
-	0,10,
-	0,0
-};
-static struct Border Options_Border25 = {
-	-1,-1,
-	3,0,JAM1,
-	5,
-	Options_BorderVectors25,
-	NULL
-};
-
-static struct Gadget Options_DogName = {
-	&Options_Fruit,
-	97,95,
-	148,9,
-	NULL,
-	RELVERIFY+STRINGCENTER,
-	STRGADGET,
-	(APTR)&Options_Border25,
-	NULL,
-	NULL,
-	NULL,
-	(APTR)&Options_Options_DogNameSInfo,
-	GADODOGNAME,
-	NULL
-};
-
-static UBYTE Options_Options_CatNameSIBuff[70];
-static struct StringInfo Options_Options_CatNameSInfo = {
-	Options_Options_CatNameSIBuff,
-	UNDOBUFFER,
-	0,
-	70,
-	0,
-	0,0,0,0,0,
-	0,
-	0,
-	NULL
-};
-
-static SHORT Options_BorderVectors26[] = {
-	0,0,
-	149,0,
-	149,10,
-	0,10,
-	0,0
-};
-static struct Border Options_Border26 = {
-	-1,-1,
-	3,0,JAM1,
-	5,
-	Options_BorderVectors26,
-	NULL
-};
-
-static struct Gadget Options_CatName = {
-	&Options_DogName,
-	97,82,
-	148,9,
-	NULL,
-	RELVERIFY+STRINGCENTER,
-	STRGADGET,
-	(APTR)&Options_Border26,
-	NULL,
-	NULL,
-	NULL,
-	(APTR)&Options_Options_CatNameSInfo,
-	GADOCATNAME,
-	NULL
-};
-
-static UBYTE Options_Options_PackOrderSIBuff[70];
-static struct StringInfo Options_Options_PackOrderSInfo = {
-	Options_Options_PackOrderSIBuff,
-	UNDOBUFFER,
-	0,
-	70,
-	0,
-	0,0,0,0,0,
-	0,
-	0,
-	NULL
-};
-
-static SHORT Options_BorderVectors27[] = {
-	0,0,
-	149,0,
-	149,10,
-	0,10,
-	0,0
-};
-static struct Border Options_Border27 = {
-	-1,-1,
-	3,0,JAM1,
-	5,
-	Options_BorderVectors27,
-	NULL
-};
-
-static struct Gadget Options_PackOrder = {
-	&Options_CatName,
-	97,69,
-	148,9,
-	NULL,
-	RELVERIFY+STRINGCENTER,
-	STRGADGET,
-	(APTR)&Options_Border27,
-	NULL,
-	NULL,
-	NULL,
-	(APTR)&Options_Options_PackOrderSInfo,
-	GADOPACKORDER,
-	NULL
-};
-
-static SHORT Options_BorderVectors28[] = {
-	0,0,
-	61,0,
-	61,11,
-	0,11,
-	0,0
-};
-static struct Border Options_Border28 = {
-	-1,-1,
-	3,0,JAM1,
-	5,
-	Options_BorderVectors28,
-	NULL
-};
-
-static struct IntuiText Options_IText26 = {
-	1,0,JAM2,
-	2,2,
-	NULL,
-	"Verbose",
-	NULL
-};
-
-static struct Gadget Options_Gadget24 = {
-	&Options_PackOrder,
-	406,27,
-	60,10,
-	NULL,
-	RELVERIFY+TOGGLESELECT,
-	BOOLGADGET,
-	(APTR)&Options_Border28,
-	NULL,
-	&Options_IText26,
-	NULL,
-	NULL,
-	GADOVERBOSE,
-	NULL
-};
-
-static SHORT Options_BorderVectors29[] = {
-	0,0,
-	86,0,
-	86,11,
-	0,11,
-	0,0
-};
-static struct Border Options_Border29 = {
-	-1,-1,
-	3,0,JAM1,
-	5,
-	Options_BorderVectors29,
-	NULL
-};
-
-static struct IntuiText Options_IText27 = {
-	1,0,JAM2,
-	2,2,
-	NULL,
-	"Tomb Stone",
-	NULL
-};
-
-static struct Gadget Options_Gadget23 = {
-	&Options_Gadget24,
-	380,13,
-	85,10,
-	NULL,
-	RELVERIFY+TOGGLESELECT,
-	BOOLGADGET,
-	(APTR)&Options_Border29,
-	NULL,
-	&Options_IText27,
-	NULL,
-	NULL,
-	GADOTOMBSTONE,
-	NULL
-};
-
-static SHORT Options_BorderVectors30[] = {
-	0,0,
-	58,0,
-	58,11,
-	0,11,
-	0,0
-};
-static struct Border Options_Border30 = {
-	-1,-1,
-	3,0,JAM1,
-	5,
-	Options_BorderVectors30,
-	NULL
-};
-
-static struct IntuiText Options_IText28 = {
-	1,0,JAM2,
-	11,2,
-	NULL,
-	"Time",
-	NULL
-};
-
-static struct Gadget Options_Gadget22 = {
-	&Options_Gadget23,
-	9,27,
-	57,10,
-	NULL,
-	RELVERIFY+TOGGLESELECT,
-	BOOLGADGET,
-	(APTR)&Options_Border30,
-	NULL,
-	&Options_IText28,
-	NULL,
-	NULL,
-	GADOTIME,
-	NULL
-};
-
-static SHORT Options_BorderVectors31[] = {
-	0,0,
-	78,0,
-	78,11,
-	0,11,
-	0,0
-};
-static struct Border Options_Border31 = {
-	-1,-1,
-	3,0,JAM1,
-	5,
-	Options_BorderVectors31,
-	NULL
-};
-
-static struct IntuiText Options_IText29 = {
-	1,0,JAM2,
-	3,2,
-	NULL,
-	"Stand Out",
-	NULL
-};
-
-static struct Gadget Options_Gadget21 = {
-	&Options_Gadget22,
-	452,41,
-	77,10,
-	NULL,
-	RELVERIFY+TOGGLESELECT,
-	BOOLGADGET,
-	(APTR)&Options_Border31,
-	NULL,
-	&Options_IText29,
-	NULL,
-	NULL,
-	GADOSTANDOUT,
-	NULL
-};
-
-static SHORT Options_BorderVectors32[] = {
-	0,0,
-	48,0,
-	48,11,
-	0,11,
-	0,0
-};
-static struct Border Options_Border32 = {
-	-1,-1,
-	3,0,JAM1,
-	5,
-	Options_BorderVectors32,
-	NULL
-};
-
-static struct IntuiText Options_IText30 = {
-	1,0,JAM2,
-	3,2,
-	NULL,
-	"Sound",
-	NULL
-};
-
-static struct Gadget Options_Gadget20 = {
-	&Options_Gadget21,
-	536,13,
-	47,10,
-	NULL,
-	RELVERIFY+TOGGLESELECT,
-	BOOLGADGET,
-	(APTR)&Options_Border32,
-	NULL,
-	&Options_IText30,
-	NULL,
-	NULL,
-	GADOSOUND,
-	NULL
-};
-
-static SHORT Options_BorderVectors33[] = {
-	0,0,
-	79,0,
-	79,11,
-	0,11,
-	0,0
-};
-static struct Border Options_Border33 = {
-	-1,-1,
-	3,0,JAM1,
-	5,
-	Options_BorderVectors33,
-	NULL
-};
-
-static struct IntuiText Options_IText31 = {
-	1,0,JAM2,
-	3,2,
-	NULL,
-	"Sort Pack",
-	NULL
-};
-
-static struct Gadget Options_Gadget19 = {
-	&Options_Gadget20,
-	366,41,
-	78,10,
-	NULL,
-	RELVERIFY+TOGGLESELECT,
-	BOOLGADGET,
-	(APTR)&Options_Border33,
-	NULL,
-	&Options_IText31,
-	NULL,
-	NULL,
-	GADOSORTPACK,
-	NULL
-};
-
-static SHORT Options_BorderVectors34[] = {
-	0,0,
-	70,0,
-	70,11,
-	0,11,
-	0,0
-};
-static struct Border Options_Border34 = {
-	-1,-1,
-	3,0,JAM1,
-	5,
-	Options_BorderVectors34,
-	NULL
-};
-
-static struct IntuiText Options_IText32 = {
-	1,0,JAM2,
-	2,2,
-	NULL,
-	"Safe Pet",
-	NULL
-};
-
-static struct Gadget Options_Gadget18 = {
-	&Options_Gadget19,
-	288,41,
-	69,10,
-	NULL,
-	RELVERIFY+TOGGLESELECT,
-	BOOLGADGET,
-	(APTR)&Options_Border34,
-	NULL,
-	&Options_IText32,
-	NULL,
-	NULL,
-	GADOSAFEPET,
-	NULL
-};
-
-static SHORT Options_BorderVectors35[] = {
-	0,0,
-	55,0,
-	55,11,
-	0,11,
-	0,0
-};
-static struct Border Options_Border35 = {
-	-1,-1,
-	3,0,JAM1,
-	5,
-	Options_BorderVectors35,
-	NULL
-};
-
-static struct IntuiText Options_IText33 = {
-	1,0,JAM2,
-	4,2,
-	NULL,
-	"Silent",
-	NULL
-};
-
-static struct Gadget Options_Gadget17 = {
-	&Options_Gadget18,
-	319,13,
-	54,10,
-	NULL,
-	RELVERIFY+TOGGLESELECT,
-	BOOLGADGET,
-	(APTR)&Options_Border35,
-	NULL,
-	&Options_IText33,
-	NULL,
-	NULL,
-	GADOSILENT,
-	NULL
-};
-
-static SHORT Options_BorderVectors36[] = {
-	0,0,
-	112,0,
-	112,11,
-	0,11,
-	0,0
-};
-static struct Border Options_Border36 = {
-	-1,-1,
-	3,0,JAM1,
-	5,
-	Options_BorderVectors36,
-	NULL
-};
-
-static struct IntuiText Options_IText34 = {
-	1,0,JAM2,
-	3,2,
-	NULL,
-	"Rest On Space",
-	NULL
-};
-
-static struct Gadget Options_Gadget16 = {
-	&Options_Gadget17,
-	201,13,
-	111,10,
-	NULL,
-	RELVERIFY+TOGGLESELECT,
-	BOOLGADGET,
-	(APTR)&Options_Border36,
-	NULL,
-	&Options_IText34,
-	NULL,
-	NULL,
-	GADORESTONSPACE,
-	NULL
-};
-
-static SHORT Options_BorderVectors37[] = {
-	0,0,
-	109,0,
-	109,11,
-	0,11,
-	0,0
-};
-static struct Border Options_Border37 = {
-	-1,-1,
-	3,0,JAM1,
-	5,
-	Options_BorderVectors37,
-	NULL
-};
-
-static struct IntuiText Options_IText35 = {
-	1,0,JAM2,
-	5,2,
-	NULL,
-	"Auto Pick Up",
-	NULL
-};
-
-static struct Gadget Options_Gadget15 = {
-	&Options_Gadget16,
-	9,41,
-	108,10,
-	NULL,
-	RELVERIFY+TOGGLESELECT,
-	BOOLGADGET,
-	(APTR)&Options_Border37,
-	NULL,
-	&Options_IText35,
-	NULL,
-	NULL,
-	GADOPICKUP,
-	NULL
-};
-
-static SHORT Options_BorderVectors38[] = {
-	0,0,
-	86,0,
-	86,11,
-	0,11,
-	0,0
-};
-static struct Border Options_Border38 = {
-	-1,-1,
-	3,0,JAM1,
-	5,
-	Options_BorderVectors38,
-	NULL
-};
-
-static struct IntuiText Options_IText36 = {
-	1,0,JAM2,
-	3,2,
-	NULL,
-	"Number Pad",
-	NULL
-};
-
-static struct Gadget Options_Gadget14 = {
-	&Options_Gadget15,
-	195,41,
-	85,10,
-	NULL,
-	RELVERIFY+TOGGLESELECT,
-	BOOLGADGET,
-	(APTR)&Options_Border38,
-	NULL,
-	&Options_IText36,
-	NULL,
-	NULL,
-	GADONUMBERPAD,
-	NULL
-};
-
-static SHORT Options_BorderVectors39[] = {
-	0,0,
-	43,0,
-	43,11,
-	0,11,
-	0,0
-};
-static struct Border Options_Border39 = {
-	-1,-1,
-	3,0,JAM1,
-	5,
-	Options_BorderVectors39,
-	NULL
-};
-
-static struct IntuiText Options_IText37 = {
-	1,0,JAM2,
-	6,2,
-	NULL,
-	"News",
-	NULL
-};
-
-static struct Gadget Options_Gadget13 = {
-	&Options_Gadget14,
-	73,27,
-	42,10,
-	NULL,
-	RELVERIFY+TOGGLESELECT,
-	BOOLGADGET,
-	(APTR)&Options_Border39,
-	NULL,
-	&Options_IText37,
-	NULL,
-	NULL,
-	GADONEWS,
-	NULL
-};
-
-static SHORT Options_BorderVectors40[] = {
-	0,0,
-	62,0,
-	62,11,
-	0,11,
-	0,0
-};
-static struct Border Options_Border40 = {
-	-1,-1,
-	3,0,JAM1,
-	5,
-	Options_BorderVectors40,
-	NULL
-};
-
-static struct IntuiText Options_IText38 = {
-	1,0,JAM2,
-	2,2,
-	NULL,
-	"Ignintr",
-	NULL
-};
-
-static struct Gadget Options_Gadget12 = {
-	&Options_Gadget13,
-	125,41,
-	61,10,
-	NULL,
-	RELVERIFY+TOGGLESELECT,
-	BOOLGADGET,
-	(APTR)&Options_Border40,
-	NULL,
-	&Options_IText38,
-	NULL,
-	NULL,
-	GADOIGNINTR,
-	NULL
-};
-
-static SHORT Options_BorderVectors41[] = {
-	0,0,
-	43,0,
-	43,11,
-	0,11,
-	0,0
-};
-static struct Border Options_Border41 = {
-	-1,-1,
-	3,0,JAM1,
-	5,
-	Options_BorderVectors41,
-	NULL
-};
-
-static struct IntuiText Options_IText39 = {
-	1,0,JAM2,
-	5,2,
-	NULL,
-	"Help",
-	NULL
-};
-
-static struct Gadget Options_Gadget11 = {
-	&Options_Gadget12,
-	125,27,
-	42,10,
-	NULL,
-	RELVERIFY+TOGGLESELECT,
-	BOOLGADGET,
-	(APTR)&Options_Border41,
-	NULL,
-	&Options_IText39,
-	NULL,
-	NULL,
-	GADOHELP,
-	NULL
-};
-
-static SHORT Options_BorderVectors42[] = {
-	0,0,
-	58,0,
-	58,11,
-	0,11,
-	0,0
-};
-static struct Border Options_Border42 = {
-	-1,-1,
-	3,0,JAM1,
-	5,
-	Options_BorderVectors42,
-	NULL
-};
-
-static struct IntuiText Options_IText40 = {
-	1,0,JAM2,
-	9,2,
-	NULL,
-	"Flush",
-	NULL
-};
-
-static struct Gadget Options_Gadget10 = {
-	&Options_Gadget11,
-	175,27,
-	57,10,
-	NULL,
-	RELVERIFY+TOGGLESELECT,
-	BOOLGADGET,
-	(APTR)&Options_Border42,
-	NULL,
-	&Options_IText40,
-	NULL,
-	NULL,
-	GADOFLUSH,
-	NULL
-};
-
-static SHORT Options_BorderVectors43[] = {
-	0,0,
-	62,0,
-	62,11,
-	0,11,
-	0,0
-};
-static struct Border Options_Border43 = {
-	-1,-1,
-	3,0,JAM1,
-	5,
-	Options_BorderVectors43,
-	NULL
-};
-
-static struct IntuiText Options_IText41 = {
-	1,0,JAM2,
-	7,2,
-	NULL,
-	"Fixinv",
-	NULL
-};
-
-static struct Gadget Options_Gadget9 = {
-	&Options_Gadget10,
-	239,27,
-	61,10,
-	NULL,
-	RELVERIFY+TOGGLESELECT,
-	BOOLGADGET,
-	(APTR)&Options_Border43,
-	NULL,
-	&Options_IText41,
-	NULL,
-	NULL,
-	GADOFIXINV,
-	NULL
-};
-
-static SHORT Options_BorderVectors44[] = {
-	0,0,
-	69,0,
-	69,11,
-	0,11,
-	0,0
-};
-static struct Border Options_Border44 = {
-	-1,-1,
-	3,0,JAM1,
-	5,
-	Options_BorderVectors44,
-	NULL
-};
-
-static struct IntuiText Options_IText42 = {
-	1,0,JAM2,
-	2,2,
-	NULL,
-	"Disclose",
-	NULL
-};
-
-static struct Gadget Options_Gadget8 = {
-	&Options_Gadget9,
-	123,13,
-	68,10,
-	NULL,
-	RELVERIFY+TOGGLESELECT,
-	BOOLGADGET,
-	(APTR)&Options_Border44,
-	NULL,
-	&Options_IText42,
-	NULL,
-	NULL,
-	GADODISCLOSE,
-	NULL
-};
-
-static SHORT Options_BorderVectors45[] = {
-	0,0,
-	78,0,
-	78,11,
-	0,11,
-	0,0
-};
-static struct Border Options_Border45 = {
-	-1,-1,
-	3,0,JAM1,
-	5,
-	Options_BorderVectors45,
-	NULL
-};
-
-static struct IntuiText Options_IText43 = {
-	1,0,JAM2,
-	9,2,
-	NULL,
-	"Confirm",
-	NULL
-};
-
-static struct Gadget Options_Gadget7 = {
-	&Options_Gadget8,
-	202,55,
-	77,10,
-	NULL,
-	RELVERIFY+TOGGLESELECT,
-	BOOLGADGET,
-	(APTR)&Options_Border45,
-	NULL,
-	&Options_IText43,
-	NULL,
-	NULL,
-	GADOCONFIRM,
-	NULL
-};
-
-static SHORT Options_BorderVectors46[] = {
-	0,0,
-	63,0,
-	63,11,
-	0,11,
-	0,0
-};
-static struct Border Options_Border46 = {
-	-1,-1,
-	3,0,JAM1,
-	5,
-	Options_BorderVectors46,
-	NULL
-};
-
-static struct IntuiText Options_IText44 = {
-	1,0,JAM2,
-	11,2,
-	NULL,
-	"Color",
-	NULL
-};
-
 static struct Gadget Options_Gadget6 = {
 	&Options_Gadget7,
-	132,55,
-	62,10,
-	NULL,
-	RELVERIFY+TOGGLESELECT,
+	13,-15,
+	71,10,
+	GRELBOTTOM,
+	RELVERIFY,
 	BOOLGADGET,
-	(APTR)&Options_Border46,
+	(APTR)&Options_Border6,
 	NULL,
-	&Options_IText44,
+	&Options_IText16,
 	NULL,
 	NULL,
-	GADOCOLOR,
+	GADOPTOKAY,
 	NULL
 };
 
 #define Options_GadgetList3 Options_Gadget6
 
-static struct IntuiText Options_IText56 = {
-	3,0,JAM2,
-	360,136,
+static struct IntuiText Options_IText17 = {
+	3,1,COMPLEMENT,
+	0,0,
 	NULL,
-	"Pet Type:",
+	"Cancel",
 	NULL
 };
 
-static struct IntuiText Options_IText55 = {
-	3,0,JAM2,
-	328,71,
+static struct MenuItem Options_MenuItem12 = {
 	NULL,
-	"Pickup Types:",
-	&Options_IText56
+	0,8,
+	82,8,
+	ITEMTEXT+COMMSEQ+ITEMENABLED+HIGHCOMP,
+	0,
+	(APTR)&Options_IText17,
+	NULL,
+	'C',
+	NULL,
+	MENUNULL
 };
 
-static struct IntuiText Options_IText54 = {
-	3,0,JAM2,
-	336,97,
+static struct IntuiText Options_IText18 = {
+	3,1,COMPLEMENT,
+	0,0,
 	NULL,
-	"Msg History:",
-	&Options_IText55
+	"Save",
+	NULL
 };
 
-static struct IntuiText Options_IText53 = {
-	3,0,JAM2,
-	336,84,
+static struct MenuItem Options_MenuItem11 = {
+	&Options_MenuItem12,
+	0,0,
+	82,8,
+	ITEMTEXT+COMMSEQ+ITEMENABLED+HIGHCOMP,
+	0,
+	(APTR)&Options_IText18,
 	NULL,
-	"Window Type:",
-	&Options_IText54
+	'S',
+	NULL,
+	MENUNULL
 };
 
-static struct IntuiText Options_IText52 = {
-	3,0,JAM2,
-	368,110,
+static struct Menu Options_Menu2 = {
 	NULL,
-	"Palette:",
-	&Options_IText53
+	0,0,
+	56,0,
+	MENUENABLED,
+	"Project",
+	&Options_MenuItem11
 };
 
-static struct IntuiText Options_IText51 = {
-	3,0,JAM2,
-	384,123,
-	NULL,
-	"Score:",
-	&Options_IText52
-};
-
-static struct IntuiText Options_IText50 = {
-	3,0,JAM2,
-	55,135,
-	NULL,
-	"Name:",
-	&Options_IText51
-};
-
-static struct IntuiText Options_IText49 = {
-	3,0,JAM2,
-	31,122,
-	NULL,
-	"Objects:",
-	&Options_IText50
-};
-
-static struct IntuiText Options_IText48 = {
-	3,0,JAM2,
-	47,109,
-	NULL,
-	"Fruit:",
-	&Options_IText49
-};
-
-static struct IntuiText Options_IText47 = {
-	3,0,JAM2,
-	23,96,
-	NULL,
-	"Dog Name:",
-	&Options_IText48
-};
-
-static struct IntuiText Options_IText46 = {
-	3,0,JAM2,
-	23,83,
-	NULL,
-	"Cat Name:",
-	&Options_IText47
-};
-
-static struct IntuiText Options_IText45 = {
-	3,0,JAM2,
-	7,70,
-	NULL,
-	"Pack Order:",
-	&Options_IText46
-};
-
-#define Options_IntuiTextList3 Options_IText45
+#define Options_MenuList3 Options_Menu2
 
 static struct NewWindow Options_NewWindowStructure3 = {
-	29,39,
-	593,161,
+	0,21,
+	640,156,
 	0,1,
-	GADGETUP+CLOSEWINDOW+RAWKEY+DISKINSERTED+DISKREMOVED+ACTIVEWINDOW+VANILLAKEY,
-	WINDOWDRAG+WINDOWDEPTH+WINDOWCLOSE+ACTIVATE+NOCAREREFRESH,
+	SIZEVERIFY+NEWSIZE+MOUSEBUTTONS+GADGETDOWN+GADGETUP+MENUPICK+CLOSEWINDOW+RAWKEY+DISKINSERTED+DISKREMOVED+ACTIVEWINDOW+VANILLAKEY,
+	WINDOWSIZING+WINDOWDRAG+WINDOWDEPTH+WINDOWCLOSE+ACTIVATE+NOCAREREFRESH,
 	&Options_Gadget6,
 	NULL,
 	"Edit Options",
 	NULL,
 	NULL,
-	5,5,
+	200,50,
 	-1,-1,
 	CUSTOMSCREEN
 };
 
-static SHORT Conf_BorderVectors47[] = {
+static SHORT Conf_BorderVectors7[] = {
 	0,0,
 	52,0,
 	52,11,
 	0,11,
 	0,0
 };
-static struct Border Conf_Border47 = {
+static struct Border Conf_Border7 = {
 	-1,-1,
 	2,0,JAM1,
 	5,
-	Conf_BorderVectors47,
+	Conf_BorderVectors7,
 	NULL
 };
 
-static struct IntuiText Conf_IText57 = {
+static struct IntuiText Conf_IText19 = {
 	1,0,JAM2,
 	10,2,
 	NULL,
@@ -2314,38 +649,38 @@ static struct IntuiText Conf_IText57 = {
 	NULL
 };
 
-static struct Gadget Conf_Gadget55 = {
+static struct Gadget Conf_Gadget15 = {
 	NULL,
 	73,85,
 	51,10,
 	NULL,
 	RELVERIFY,
 	BOOLGADGET,
-	(APTR)&Conf_Border47,
+	(APTR)&Conf_Border7,
 	NULL,
-	&Conf_IText57,
+	&Conf_IText19,
 	NULL,
 	NULL,
 	GADCONFSAVE,
 	NULL
 };
 
-static SHORT Conf_BorderVectors48[] = {
+static SHORT Conf_BorderVectors8[] = {
 	0,0,
 	52,0,
 	52,11,
 	0,11,
 	0,0
 };
-static struct Border Conf_Border48 = {
+static struct Border Conf_Border8 = {
 	-1,-1,
 	2,0,JAM1,
 	5,
-	Conf_BorderVectors48,
+	Conf_BorderVectors8,
 	NULL
 };
 
-static struct IntuiText Conf_IText58 = {
+static struct IntuiText Conf_IText20 = {
 	1,0,JAM2,
 	10,2,
 	NULL,
@@ -2353,16 +688,16 @@ static struct IntuiText Conf_IText58 = {
 	NULL
 };
 
-static struct Gadget Conf_Gadget54 = {
-	&Conf_Gadget55,
+static struct Gadget Conf_Gadget14 = {
+	&Conf_Gadget15,
 	9,85,
 	51,10,
 	NULL,
 	RELVERIFY,
 	BOOLGADGET,
-	(APTR)&Conf_Border48,
+	(APTR)&Conf_Border8,
 	NULL,
-	&Conf_IText58,
+	&Conf_IText20,
 	NULL,
 	NULL,
 	GADCONFLOAD,
@@ -2383,29 +718,29 @@ static struct StringInfo Conf_Conf_ConfigNameSInfo = {
 	NULL
 };
 
-static SHORT Conf_BorderVectors49[] = {
+static SHORT Conf_BorderVectors9[] = {
 	0,0,
 	242,0,
 	242,10,
 	0,10,
 	0,0
 };
-static struct Border Conf_Border49 = {
+static struct Border Conf_Border9 = {
 	-1,-1,
 	1,0,JAM1,
 	5,
-	Conf_BorderVectors49,
+	Conf_BorderVectors9,
 	NULL
 };
 
 static struct Gadget Conf_ConfigName = {
-	&Conf_Gadget54,
+	&Conf_Gadget14,
 	151,100,
 	241,9,
 	NULL,
 	RELVERIFY+STRINGCENTER,
 	STRGADGET,
-	(APTR)&Conf_Border49,
+	(APTR)&Conf_Border9,
 	NULL,
 	NULL,
 	NULL,
@@ -2427,18 +762,18 @@ static struct StringInfo Conf_Conf_StrSaveSInfo = {
 	NULL
 };
 
-static SHORT Conf_BorderVectors50[] = {
+static SHORT Conf_BorderVectors10[] = {
 	0,0,
 	312,0,
 	312,10,
 	0,10,
 	0,0
 };
-static struct Border Conf_Border50 = {
+static struct Border Conf_Border10 = {
 	-1,-1,
 	3,0,JAM1,
 	5,
-	Conf_BorderVectors50,
+	Conf_BorderVectors10,
 	NULL
 };
 
@@ -2449,7 +784,7 @@ static struct Gadget Conf_StrSave = {
 	NULL,
 	RELVERIFY,
 	STRGADGET,
-	(APTR)&Conf_Border50,
+	(APTR)&Conf_Border10,
 	NULL,
 	NULL,
 	NULL,
@@ -2471,18 +806,18 @@ static struct StringInfo Conf_Conf_StrLevelsSInfo = {
 	NULL
 };
 
-static SHORT Conf_BorderVectors51[] = {
+static SHORT Conf_BorderVectors11[] = {
 	0,0,
 	312,0,
 	312,10,
 	0,10,
 	0,0
 };
-static struct Border Conf_Border51 = {
+static struct Border Conf_Border11 = {
 	-1,-1,
 	3,0,JAM1,
 	5,
-	Conf_BorderVectors51,
+	Conf_BorderVectors11,
 	NULL
 };
 
@@ -2493,7 +828,7 @@ static struct Gadget Conf_StrLevels = {
 	NULL,
 	RELVERIFY,
 	STRGADGET,
-	(APTR)&Conf_Border51,
+	(APTR)&Conf_Border11,
 	NULL,
 	NULL,
 	NULL,
@@ -2515,18 +850,18 @@ static struct StringInfo Conf_Conf_StrPathSInfo = {
 	NULL
 };
 
-static SHORT Conf_BorderVectors52[] = {
+static SHORT Conf_BorderVectors12[] = {
 	0,0,
 	311,0,
 	311,10,
 	0,10,
 	0,0
 };
-static struct Border Conf_Border52 = {
+static struct Border Conf_Border12 = {
 	-1,-1,
 	3,0,JAM1,
 	5,
-	Conf_BorderVectors52,
+	Conf_BorderVectors12,
 	NULL
 };
 
@@ -2537,7 +872,7 @@ static struct Gadget Conf_StrPath = {
 	NULL,
 	RELVERIFY,
 	STRGADGET,
-	(APTR)&Conf_Border52,
+	(APTR)&Conf_Border12,
 	NULL,
 	NULL,
 	NULL,
@@ -2559,18 +894,18 @@ static struct StringInfo Conf_Conf_StrPensSInfo = {
 	NULL
 };
 
-static SHORT Conf_BorderVectors53[] = {
+static SHORT Conf_BorderVectors13[] = {
 	0,0,
 	312,0,
 	312,10,
 	0,10,
 	0,0
 };
-static struct Border Conf_Border53 = {
+static struct Border Conf_Border13 = {
 	-1,-1,
 	3,0,JAM1,
 	5,
-	Conf_BorderVectors53,
+	Conf_BorderVectors13,
 	NULL
 };
 
@@ -2581,7 +916,7 @@ static struct Gadget Conf_StrPens = {
 	NULL,
 	RELVERIFY,
 	STRGADGET,
-	(APTR)&Conf_Border53,
+	(APTR)&Conf_Border13,
 	NULL,
 	NULL,
 	NULL,
@@ -2603,18 +938,18 @@ static struct StringInfo Conf_Conf_StrHackdirSInfo = {
 	NULL
 };
 
-static SHORT Conf_BorderVectors54[] = {
+static SHORT Conf_BorderVectors14[] = {
 	0,0,
 	312,0,
 	312,10,
 	0,10,
 	0,0
 };
-static struct Border Conf_Border54 = {
+static struct Border Conf_Border14 = {
 	-1,-1,
 	3,0,JAM1,
 	5,
-	Conf_BorderVectors54,
+	Conf_BorderVectors14,
 	NULL
 };
 
@@ -2625,7 +960,7 @@ static struct Gadget Conf_StrHackdir = {
 	NULL,
 	RELVERIFY,
 	STRGADGET,
-	(APTR)&Conf_Border54,
+	(APTR)&Conf_Border14,
 	NULL,
 	NULL,
 	NULL,
@@ -2636,7 +971,7 @@ static struct Gadget Conf_StrHackdir = {
 
 #define Conf_GadgetList4 Conf_StrHackdir
 
-static struct IntuiText Conf_IText64 = {
+static struct IntuiText Conf_IText26 = {
 	1,0,JAM2,
 	10,101,
 	NULL,
@@ -2644,47 +979,47 @@ static struct IntuiText Conf_IText64 = {
 	NULL
 };
 
-static struct IntuiText Conf_IText63 = {
+static struct IntuiText Conf_IText25 = {
 	3,0,JAM2,
 	7,72,
 	NULL,
 	"Save Dir:",
-	&Conf_IText64
+	&Conf_IText26
 };
 
-static struct IntuiText Conf_IText62 = {
+static struct IntuiText Conf_IText24 = {
 	3,0,JAM2,
 	23,58,
 	NULL,
 	"Levels:",
-	&Conf_IText63
+	&Conf_IText25
 };
 
-static struct IntuiText Conf_IText61 = {
+static struct IntuiText Conf_IText23 = {
 	3,0,JAM2,
 	39,44,
 	NULL,
 	"Pens:",
-	&Conf_IText62
+	&Conf_IText24
 };
 
-static struct IntuiText Conf_IText60 = {
+static struct IntuiText Conf_IText22 = {
 	3,0,JAM2,
 	15,30,
 	NULL,
 	"Hackdir:",
-	&Conf_IText61
+	&Conf_IText23
 };
 
-static struct IntuiText Conf_IText59 = {
+static struct IntuiText Conf_IText21 = {
 	3,0,JAM2,
 	39,16,
 	NULL,
 	"Path:",
-	&Conf_IText60
+	&Conf_IText22
 };
 
-#define Conf_IntuiTextList4 Conf_IText59
+#define Conf_IntuiTextList4 Conf_IText21
 
 static struct NewWindow Conf_NewWindowStructure4 = {
 	126,60,
@@ -2702,22 +1037,22 @@ static struct NewWindow Conf_NewWindowStructure4 = {
 	CUSTOMSCREEN
 };
 
-static SHORT Str_BorderVectors55[] = {
+static SHORT Str_BorderVectors15[] = {
 	0,0,
 	57,0,
 	57,11,
 	0,11,
 	0,0
 };
-static struct Border Str_Border55 = {
+static struct Border Str_Border15 = {
 	-1,-1,
 	3,0,JAM1,
 	5,
-	Str_BorderVectors55,
+	Str_BorderVectors15,
 	NULL
 };
 
-static struct IntuiText Str_IText65 = {
+static struct IntuiText Str_IText27 = {
 	3,0,JAM2,
 	4,2,
 	NULL,
@@ -2725,16 +1060,16 @@ static struct IntuiText Str_IText65 = {
 	NULL
 };
 
-static struct Gadget Str_Gadget57 = {
+static struct Gadget Str_Gadget17 = {
 	NULL,
 	9,15,
 	56,10,
 	NULL,
 	RELVERIFY,
 	BOOLGADGET,
-	(APTR)&Str_Border55,
+	(APTR)&Str_Border15,
 	NULL,
-	&Str_IText65,
+	&Str_IText27,
 	NULL,
 	NULL,
 	GADSTRCANCEL,
@@ -2754,29 +1089,29 @@ static struct StringInfo Str_Str_StringSInfo = {
 	NULL
 };
 
-static SHORT Str_BorderVectors56[] = {
+static SHORT Str_BorderVectors16[] = {
 	0,0,
 	439,0,
 	439,11,
 	0,11,
 	0,0
 };
-static struct Border Str_Border56 = {
+static struct Border Str_Border16 = {
 	-1,-1,
 	3,0,JAM1,
 	5,
-	Str_BorderVectors56,
+	Str_BorderVectors16,
 	NULL
 };
 
 static struct Gadget Str_String = {
-	&Str_Gadget57,
+	&Str_Gadget17,
 	77,15,
 	438,10,
 	NULL,
 	RELVERIFY+STRINGCENTER,
 	STRGADGET,
-	(APTR)&Str_Border56,
+	(APTR)&Str_Border16,
 	NULL,
 	NULL,
 	NULL,
@@ -2803,22 +1138,22 @@ static struct NewWindow Str_NewWindowStructure5 = {
 	CUSTOMSCREEN
 };
 
-static SHORT Info_BorderVectors57[] = {
+static SHORT Info_BorderVectors17[] = {
 	0,0,
 	72,0,
 	72,10,
 	0,10,
 	0,0
 };
-static struct Border Info_Border57 = {
+static struct Border Info_Border17 = {
 	-1,-1,
 	3,0,JAM1,
 	5,
-	Info_BorderVectors57,
+	Info_BorderVectors17,
 	NULL
 };
 
-static struct IntuiText Info_IText66 = {
+static struct IntuiText Info_IText28 = {
 	3,0,JAM2,
 	24,1,
 	NULL,
@@ -2826,38 +1161,38 @@ static struct IntuiText Info_IText66 = {
 	NULL
 };
 
-static struct Gadget Info_Gadget69 = {
+static struct Gadget Info_Gadget29 = {
 	NULL,
 	247,78,
 	71,9,
 	NULL,
 	RELVERIFY,
 	BOOLGADGET,
-	(APTR)&Info_Border57,
+	(APTR)&Info_Border17,
 	NULL,
-	&Info_IText66,
+	&Info_IText28,
 	NULL,
 	NULL,
 	GADUSEINFO,
 	NULL
 };
 
-static SHORT Info_BorderVectors58[] = {
+static SHORT Info_BorderVectors18[] = {
 	0,0,
 	72,0,
 	72,10,
 	0,10,
 	0,0
 };
-static struct Border Info_Border58 = {
+static struct Border Info_Border18 = {
 	-1,-1,
 	3,0,JAM1,
 	5,
-	Info_BorderVectors58,
+	Info_BorderVectors18,
 	NULL
 };
 
-static struct IntuiText Info_IText67 = {
+static struct IntuiText Info_IText29 = {
 	3,0,JAM2,
 	20,1,
 	NULL,
@@ -2865,38 +1200,38 @@ static struct IntuiText Info_IText67 = {
 	NULL
 };
 
-static struct Gadget Info_Gadget68 = {
-	&Info_Gadget69,
+static struct Gadget Info_Gadget28 = {
+	&Info_Gadget29,
 	474,78,
 	71,9,
 	NULL,
 	RELVERIFY,
 	BOOLGADGET,
-	(APTR)&Info_Border58,
+	(APTR)&Info_Border18,
 	NULL,
-	&Info_IText67,
+	&Info_IText29,
 	NULL,
 	NULL,
 	GADQUITINFO,
 	NULL
 };
 
-static SHORT Info_BorderVectors59[] = {
+static SHORT Info_BorderVectors19[] = {
 	0,0,
 	72,0,
 	72,10,
 	0,10,
 	0,0
 };
-static struct Border Info_Border59 = {
+static struct Border Info_Border19 = {
 	-1,-1,
 	3,0,JAM1,
 	5,
-	Info_BorderVectors59,
+	Info_BorderVectors19,
 	NULL
 };
 
-static struct IntuiText Info_IText68 = {
+static struct IntuiText Info_IText30 = {
 	3,0,JAM2,
 	21,1,
 	NULL,
@@ -2904,38 +1239,38 @@ static struct IntuiText Info_IText68 = {
 	NULL
 };
 
-static struct Gadget Info_Gadget67 = {
-	&Info_Gadget68,
+static struct Gadget Info_Gadget27 = {
+	&Info_Gadget28,
 	11,78,
 	71,9,
 	NULL,
 	RELVERIFY,
 	BOOLGADGET,
-	(APTR)&Info_Border59,
+	(APTR)&Info_Border19,
 	NULL,
-	&Info_IText68,
+	&Info_IText30,
 	NULL,
 	NULL,
 	GADSAVEINFO,
 	NULL
 };
 
-static SHORT Info_BorderVectors60[] = {
+static SHORT Info_BorderVectors20[] = {
 	0,0,
 	60,0,
 	60,11,
 	0,11,
 	0,0
 };
-static struct Border Info_Border60 = {
+static struct Border Info_Border20 = {
 	-1,-1,
 	3,0,JAM1,
 	5,
-	Info_BorderVectors60,
+	Info_BorderVectors20,
 	NULL
 };
 
-static struct IntuiText Info_IText69 = {
+static struct IntuiText Info_IText31 = {
 	3,0,JAM2,
 	18,1,
 	NULL,
@@ -2943,38 +1278,38 @@ static struct IntuiText Info_IText69 = {
 	NULL
 };
 
-static struct Gadget Info_Gadget66 = {
-	&Info_Gadget67,
+static struct Gadget Info_Gadget26 = {
+	&Info_Gadget27,
 	78,46,
 	59,10,
 	NULL,
 	RELVERIFY,
 	BOOLGADGET,
-	(APTR)&Info_Border60,
+	(APTR)&Info_Border20,
 	NULL,
-	&Info_IText69,
+	&Info_IText31,
 	NULL,
 	NULL,
 	GADDELTOOL,
 	NULL
 };
 
-static SHORT Info_BorderVectors61[] = {
+static SHORT Info_BorderVectors21[] = {
 	0,0,
 	59,0,
 	59,11,
 	0,11,
 	0,0
 };
-static struct Border Info_Border61 = {
+static struct Border Info_Border21 = {
 	-1,-1,
 	3,0,JAM1,
 	5,
-	Info_BorderVectors61,
+	Info_BorderVectors21,
 	NULL
 };
 
-static struct IntuiText Info_IText70 = {
+static struct IntuiText Info_IText32 = {
 	3,0,JAM2,
 	18,1,
 	NULL,
@@ -2982,23 +1317,23 @@ static struct IntuiText Info_IText70 = {
 	NULL
 };
 
-static struct Gadget Info_Gadget65 = {
-	&Info_Gadget66,
+static struct Gadget Info_Gadget25 = {
+	&Info_Gadget26,
 	12,46,
 	58,10,
 	NULL,
 	RELVERIFY,
 	BOOLGADGET,
-	(APTR)&Info_Border61,
+	(APTR)&Info_Border21,
 	NULL,
-	&Info_IText70,
+	&Info_IText32,
 	NULL,
 	NULL,
 	GADADDTOOL,
 	NULL
 };
 
-static struct IntuiText Info_IText71 = {
+static struct IntuiText Info_IText33 = {
 	3,0,JAM2,
 	6,1,
 	NULL,
@@ -3007,7 +1342,7 @@ static struct IntuiText Info_IText71 = {
 };
 
 static struct Gadget Info_EditOpts = {
-	&Info_Gadget65,
+	&Info_Gadget25,
 	397,47,
 	148,10,
 	NULL,
@@ -3015,25 +1350,25 @@ static struct Gadget Info_EditOpts = {
 	BOOLGADGET,
 	NULL,
 	NULL,
-	&Info_IText71,
+	&Info_IText33,
 	NULL,
 	NULL,
 	GADEDITOPTS,
 	NULL
 };
 
-static SHORT Info_BorderVectors62[] = {
+static SHORT Info_BorderVectors22[] = {
 	0,0,
 	14,0,
 	14,7,
 	0,7,
 	0,0
 };
-static struct Border Info_Border62 = {
+static struct Border Info_Border22 = {
 	-1,-1,
 	3,0,JAM1,
 	5,
-	Info_BorderVectors62,
+	Info_BorderVectors22,
 	NULL
 };
 
@@ -3044,7 +1379,7 @@ static struct Gadget Info_ToolDown = {
 	NULL,
 	RELVERIFY,
 	BOOLGADGET,
-	(APTR)&Info_Border62,
+	(APTR)&Info_Border22,
 	NULL,
 	NULL,
 	NULL,
@@ -3053,18 +1388,18 @@ static struct Gadget Info_ToolDown = {
 	NULL
 };
 
-static SHORT Info_BorderVectors63[] = {
+static SHORT Info_BorderVectors23[] = {
 	0,0,
 	14,0,
 	14,7,
 	0,7,
 	0,0
 };
-static struct Border Info_Border63 = {
+static struct Border Info_Border23 = {
 	-1,-1,
 	3,0,JAM1,
 	5,
-	Info_BorderVectors63,
+	Info_BorderVectors23,
 	NULL
 };
 
@@ -3075,7 +1410,7 @@ static struct Gadget Info_ToolUp = {
 	NULL,
 	RELVERIFY,
 	BOOLGADGET,
-	(APTR)&Info_Border63,
+	(APTR)&Info_Border23,
 	NULL,
 	NULL,
 	NULL,
@@ -3097,22 +1432,22 @@ static struct StringInfo Info_Info_ToolTypesSInfo = {
 	NULL
 };
 
-static SHORT Info_BorderVectors64[] = {
+static SHORT Info_BorderVectors24[] = {
 	0,0,
 	430,0,
 	430,10,
 	0,10,
 	0,0
 };
-static struct Border Info_Border64 = {
+static struct Border Info_Border24 = {
 	-1,-1,
 	3,0,JAM1,
 	5,
-	Info_BorderVectors64,
+	Info_BorderVectors24,
 	NULL
 };
 
-static struct IntuiText Info_IText72 = {
+static struct IntuiText Info_IText34 = {
 	3,0,JAM2,
 	-110,1,
 	NULL,
@@ -3127,31 +1462,31 @@ static struct Gadget Info_ToolTypes = {
 	NULL,
 	RELVERIFY,
 	STRGADGET,
-	(APTR)&Info_Border64,
+	(APTR)&Info_Border24,
 	NULL,
-	&Info_IText72,
+	&Info_IText34,
 	NULL,
 	(APTR)&Info_Info_ToolTypesSInfo,
 	GADTOOLTYPES,
 	NULL
 };
 
-static SHORT Info_BorderVectors65[] = {
+static SHORT Info_BorderVectors25[] = {
 	0,0,
 	144,0,
 	144,12,
 	0,12,
 	0,0
 };
-static struct Border Info_Border65 = {
+static struct Border Info_Border25 = {
 	-1,-1,
 	3,0,JAM1,
 	5,
-	Info_BorderVectors65,
+	Info_BorderVectors25,
 	NULL
 };
 
-static struct IntuiText Info_IText73 = {
+static struct IntuiText Info_IText35 = {
 	3,0,JAM2,
 	-85,2,
 	NULL,
@@ -3166,9 +1501,9 @@ static struct Gadget Info_Class = {
 	GADGHBOX+GADGHIMAGE,
 	NULL,
 	BOOLGADGET,
-	(APTR)&Info_Border65,
+	(APTR)&Info_Border25,
 	NULL,
-	&Info_IText73,
+	&Info_IText35,
 	NULL,
 	NULL,
 	-1,
@@ -3188,22 +1523,22 @@ static struct StringInfo Info_Info_PlayerSInfo = {
 	NULL
 };
 
-static SHORT Info_BorderVectors66[] = {
+static SHORT Info_BorderVectors26[] = {
 	0,0,
 	197,0,
 	197,12,
 	0,12,
 	0,0
 };
-static struct Border Info_Border66 = {
+static struct Border Info_Border26 = {
 	-1,-1,
 	3,0,JAM1,
 	5,
-	Info_BorderVectors66,
+	Info_BorderVectors26,
 	NULL
 };
 
-static struct IntuiText Info_IText74 = {
+static struct IntuiText Info_IText36 = {
 	3,0,JAM2,
 	-101,2,
 	NULL,
@@ -3218,9 +1553,9 @@ static struct Gadget Info_Player = {
 	NULL,
 	RELVERIFY,
 	STRGADGET,
-	(APTR)&Info_Border66,
+	(APTR)&Info_Border26,
 	NULL,
-	&Info_IText74,
+	&Info_IText36,
 	NULL,
 	(APTR)&Info_Info_PlayerSInfo,
 	GADPLNAME,
@@ -3240,22 +1575,22 @@ static struct StringInfo Info_Info_CommentSInfo = {
 	NULL
 };
 
-static SHORT Info_BorderVectors67[] = {
+static SHORT Info_BorderVectors27[] = {
 	0,0,
 	466,0,
 	466,11,
 	0,11,
 	0,0
 };
-static struct Border Info_Border67 = {
+static struct Border Info_Border27 = {
 	-1,-1,
 	3,0,JAM1,
 	5,
-	Info_BorderVectors67,
+	Info_BorderVectors27,
 	NULL
 };
 
-static struct IntuiText Info_IText75 = {
+static struct IntuiText Info_IText37 = {
 	3,0,JAM2,
 	-70,1,
 	NULL,
@@ -3270,9 +1605,9 @@ static struct Gadget Info_Comment = {
 	NULL,
 	RELVERIFY+STRINGCENTER,
 	STRGADGET,
-	(APTR)&Info_Border67,
+	(APTR)&Info_Border27,
 	NULL,
-	&Info_IText75,
+	&Info_IText37,
 	NULL,
 	(APTR)&Info_Info_CommentSInfo,
 	-1,
@@ -3281,7 +1616,7 @@ static struct Gadget Info_Comment = {
 
 #define Info_GadgetList6 Info_Comment
 
-static struct IntuiText Info_IText76 = {
+static struct IntuiText Info_IText38 = {
 	3,1,COMPLEMENT,
 	19,0,
 	NULL,
@@ -3289,20 +1624,20 @@ static struct IntuiText Info_IText76 = {
 	NULL
 };
 
-static struct MenuItem Info_MenuItem23 = {
+static struct MenuItem Info_MenuItem25 = {
 	NULL,
 	0,96,
 	103,8,
 	CHECKIT+ITEMTEXT+ITEMENABLED+HIGHCOMP,
 	4095,
-	(APTR)&Info_IText76,
+	(APTR)&Info_IText38,
 	NULL,
 	NULL,
 	NULL,
 	MENUNULL
 };
 
-static struct IntuiText Info_IText77 = {
+static struct IntuiText Info_IText39 = {
 	3,1,COMPLEMENT,
 	19,0,
 	NULL,
@@ -3310,20 +1645,20 @@ static struct IntuiText Info_IText77 = {
 	NULL
 };
 
-static struct MenuItem Info_MenuItem22 = {
-	&Info_MenuItem23,
+static struct MenuItem Info_MenuItem24 = {
+	&Info_MenuItem25,
 	0,88,
 	103,8,
 	CHECKIT+ITEMTEXT+ITEMENABLED+HIGHCOMP,
 	6143,
-	(APTR)&Info_IText77,
+	(APTR)&Info_IText39,
 	NULL,
 	NULL,
 	NULL,
 	MENUNULL
 };
 
-static struct IntuiText Info_IText78 = {
+static struct IntuiText Info_IText40 = {
 	3,1,COMPLEMENT,
 	19,0,
 	NULL,
@@ -3331,20 +1666,20 @@ static struct IntuiText Info_IText78 = {
 	NULL
 };
 
-static struct MenuItem Info_MenuItem21 = {
-	&Info_MenuItem22,
+static struct MenuItem Info_MenuItem23 = {
+	&Info_MenuItem24,
 	0,80,
 	103,8,
 	CHECKIT+ITEMTEXT+ITEMENABLED+HIGHCOMP,
 	7167,
-	(APTR)&Info_IText78,
+	(APTR)&Info_IText40,
 	NULL,
 	NULL,
 	NULL,
 	MENUNULL
 };
 
-static struct IntuiText Info_IText79 = {
+static struct IntuiText Info_IText41 = {
 	3,1,COMPLEMENT,
 	19,0,
 	NULL,
@@ -3352,20 +1687,20 @@ static struct IntuiText Info_IText79 = {
 	NULL
 };
 
-static struct MenuItem Info_MenuItem20 = {
-	&Info_MenuItem21,
+static struct MenuItem Info_MenuItem22 = {
+	&Info_MenuItem23,
 	0,72,
 	103,8,
 	CHECKIT+ITEMTEXT+ITEMENABLED+HIGHCOMP,
 	7679,
-	(APTR)&Info_IText79,
+	(APTR)&Info_IText41,
 	NULL,
 	NULL,
 	NULL,
 	MENUNULL
 };
 
-static struct IntuiText Info_IText80 = {
+static struct IntuiText Info_IText42 = {
 	3,1,COMPLEMENT,
 	19,0,
 	NULL,
@@ -3373,20 +1708,20 @@ static struct IntuiText Info_IText80 = {
 	NULL
 };
 
-static struct MenuItem Info_MenuItem19 = {
-	&Info_MenuItem20,
+static struct MenuItem Info_MenuItem21 = {
+	&Info_MenuItem22,
 	0,64,
 	103,8,
 	CHECKIT+ITEMTEXT+ITEMENABLED+HIGHCOMP,
 	7935,
-	(APTR)&Info_IText80,
+	(APTR)&Info_IText42,
 	NULL,
 	NULL,
 	NULL,
 	MENUNULL
 };
 
-static struct IntuiText Info_IText81 = {
+static struct IntuiText Info_IText43 = {
 	3,1,COMPLEMENT,
 	19,0,
 	NULL,
@@ -3394,20 +1729,20 @@ static struct IntuiText Info_IText81 = {
 	NULL
 };
 
-static struct MenuItem Info_MenuItem18 = {
-	&Info_MenuItem19,
+static struct MenuItem Info_MenuItem20 = {
+	&Info_MenuItem21,
 	0,56,
 	103,8,
 	CHECKIT+ITEMTEXT+ITEMENABLED+HIGHCOMP,
 	8063,
-	(APTR)&Info_IText81,
+	(APTR)&Info_IText43,
 	NULL,
 	NULL,
 	NULL,
 	MENUNULL
 };
 
-static struct IntuiText Info_IText82 = {
+static struct IntuiText Info_IText44 = {
 	3,1,COMPLEMENT,
 	19,0,
 	NULL,
@@ -3415,20 +1750,20 @@ static struct IntuiText Info_IText82 = {
 	NULL
 };
 
-static struct MenuItem Info_MenuItem17 = {
-	&Info_MenuItem18,
+static struct MenuItem Info_MenuItem19 = {
+	&Info_MenuItem20,
 	0,48,
 	103,8,
 	CHECKIT+ITEMTEXT+ITEMENABLED+HIGHCOMP,
 	8127,
-	(APTR)&Info_IText82,
+	(APTR)&Info_IText44,
 	NULL,
 	NULL,
 	NULL,
 	MENUNULL
 };
 
-static struct IntuiText Info_IText83 = {
+static struct IntuiText Info_IText45 = {
 	3,1,COMPLEMENT,
 	19,0,
 	NULL,
@@ -3436,20 +1771,20 @@ static struct IntuiText Info_IText83 = {
 	NULL
 };
 
-static struct MenuItem Info_MenuItem16 = {
-	&Info_MenuItem17,
+static struct MenuItem Info_MenuItem18 = {
+	&Info_MenuItem19,
 	0,40,
 	103,8,
 	CHECKIT+ITEMTEXT+ITEMENABLED+HIGHCOMP,
 	8159,
-	(APTR)&Info_IText83,
+	(APTR)&Info_IText45,
 	NULL,
 	NULL,
 	NULL,
 	MENUNULL
 };
 
-static struct IntuiText Info_IText84 = {
+static struct IntuiText Info_IText46 = {
 	3,1,COMPLEMENT,
 	19,0,
 	NULL,
@@ -3457,20 +1792,20 @@ static struct IntuiText Info_IText84 = {
 	NULL
 };
 
-static struct MenuItem Info_MenuItem15 = {
-	&Info_MenuItem16,
+static struct MenuItem Info_MenuItem17 = {
+	&Info_MenuItem18,
 	0,32,
 	103,8,
 	CHECKIT+ITEMTEXT+ITEMENABLED+HIGHCOMP,
 	8175,
-	(APTR)&Info_IText84,
+	(APTR)&Info_IText46,
 	NULL,
 	NULL,
 	NULL,
 	MENUNULL
 };
 
-static struct IntuiText Info_IText85 = {
+static struct IntuiText Info_IText47 = {
 	3,1,COMPLEMENT,
 	19,0,
 	NULL,
@@ -3478,20 +1813,20 @@ static struct IntuiText Info_IText85 = {
 	NULL
 };
 
-static struct MenuItem Info_MenuItem14 = {
-	&Info_MenuItem15,
+static struct MenuItem Info_MenuItem16 = {
+	&Info_MenuItem17,
 	0,24,
 	103,8,
 	CHECKIT+ITEMTEXT+ITEMENABLED+HIGHCOMP,
 	8183,
-	(APTR)&Info_IText85,
+	(APTR)&Info_IText47,
 	NULL,
 	NULL,
 	NULL,
 	MENUNULL
 };
 
-static struct IntuiText Info_IText86 = {
+static struct IntuiText Info_IText48 = {
 	3,1,COMPLEMENT,
 	19,0,
 	NULL,
@@ -3499,20 +1834,20 @@ static struct IntuiText Info_IText86 = {
 	NULL
 };
 
-static struct MenuItem Info_MenuItem13 = {
-	&Info_MenuItem14,
+static struct MenuItem Info_MenuItem15 = {
+	&Info_MenuItem16,
 	0,16,
 	103,8,
 	CHECKIT+ITEMTEXT+ITEMENABLED+HIGHCOMP,
 	8187,
-	(APTR)&Info_IText86,
+	(APTR)&Info_IText48,
 	NULL,
 	NULL,
 	NULL,
 	MENUNULL
 };
 
-static struct IntuiText Info_IText87 = {
+static struct IntuiText Info_IText49 = {
 	3,1,COMPLEMENT,
 	19,0,
 	NULL,
@@ -3520,20 +1855,20 @@ static struct IntuiText Info_IText87 = {
 	NULL
 };
 
-static struct MenuItem Info_MenuItem12 = {
-	&Info_MenuItem13,
+static struct MenuItem Info_MenuItem14 = {
+	&Info_MenuItem15,
 	0,8,
 	103,8,
 	CHECKIT+ITEMTEXT+ITEMENABLED+HIGHCOMP,
 	8189,
-	(APTR)&Info_IText87,
+	(APTR)&Info_IText49,
 	NULL,
 	NULL,
 	NULL,
 	MENUNULL
 };
 
-static struct IntuiText Info_IText88 = {
+static struct IntuiText Info_IText50 = {
 	3,1,COMPLEMENT,
 	19,0,
 	NULL,
@@ -3541,29 +1876,29 @@ static struct IntuiText Info_IText88 = {
 	NULL
 };
 
-static struct MenuItem Info_MenuItem11 = {
-	&Info_MenuItem12,
+static struct MenuItem Info_MenuItem13 = {
+	&Info_MenuItem14,
 	0,0,
 	103,8,
 	CHECKIT+ITEMTEXT+ITEMENABLED+HIGHCOMP+CHECKED,
 	8190,
-	(APTR)&Info_IText88,
+	(APTR)&Info_IText50,
 	NULL,
 	NULL,
 	NULL,
 	MENUNULL
 };
 
-static struct Menu Info_Menu2 = {
+static struct Menu Info_Menu3 = {
 	NULL,
 	0,0,
 	70,0,
 	MENUENABLED,
 	"Character",
-	&Info_MenuItem11
+	&Info_MenuItem13
 };
 
-#define Info_MenuList6 Info_Menu2
+#define Info_MenuList6 Info_Menu3
 
 static struct NewWindow Info_NewWindowStructure6 = {
 	41,51,
@@ -3581,7 +1916,7 @@ static struct NewWindow Info_NewWindowStructure6 = {
 	CUSTOMSCREEN
 };
 
-static struct IntuiText Help1_IText89 = {
+static struct IntuiText Help1_IText51 = {
 	1,0,JAM2,
 	7,2,
 	NULL,
@@ -3589,7 +1924,7 @@ static struct IntuiText Help1_IText89 = {
 	NULL
 };
 
-static struct Gadget Help1_Gadget70 = {
+static struct Gadget Help1_Gadget30 = {
 	NULL,
 	12,34,
 	47,12,
@@ -3598,16 +1933,16 @@ static struct Gadget Help1_Gadget70 = {
 	BOOLGADGET,
 	NULL,
 	NULL,
-	&Help1_IText89,
+	&Help1_IText51,
 	NULL,
 	NULL,
 	GADHELPOKAY,
 	NULL
 };
 
-#define Help1_GadgetList7 Help1_Gadget70
+#define Help1_GadgetList7 Help1_Gadget30
 
-static struct IntuiText Help1_IText91 = {
+static struct IntuiText Help1_IText53 = {
 	3,0,JAM2,
 	10,22,
 	NULL,
@@ -3615,15 +1950,15 @@ static struct IntuiText Help1_IText91 = {
 	NULL
 };
 
-static struct IntuiText Help1_IText90 = {
+static struct IntuiText Help1_IText52 = {
 	3,0,JAM2,
 	9,13,
 	NULL,
 	"Click on NewGame Gadget or a Saved Game twice",
-	&Help1_IText91
+	&Help1_IText53
 };
 
-#define Help1_IntuiTextList7 Help1_IText90
+#define Help1_IntuiTextList7 Help1_IText52
 
 static struct NewWindow Help1_NewWindowStructure7 = {
 	134,60,
@@ -3631,7 +1966,7 @@ static struct NewWindow Help1_NewWindowStructure7 = {
 	0,1,
 	GADGETUP+CLOSEWINDOW+VANILLAKEY,
 	WINDOWDRAG+WINDOWDEPTH+WINDOWCLOSE+ACTIVATE+NOCAREREFRESH,
-	&Help1_Gadget70,
+	&Help1_Gadget30,
 	NULL,
 	"Help for Game Selection",
 	NULL,
@@ -3641,7 +1976,7 @@ static struct NewWindow Help1_NewWindowStructure7 = {
 	CUSTOMSCREEN
 };
 
-static struct IntuiText Help2_IText92 = {
+static struct IntuiText Help2_IText54 = {
 	1,0,JAM2,
 	7,2,
 	NULL,
@@ -3649,7 +1984,7 @@ static struct IntuiText Help2_IText92 = {
 	NULL
 };
 
-static struct Gadget Help2_Gadget71 = {
+static struct Gadget Help2_Gadget31 = {
 	NULL,
 	17,42,
 	47,10,
@@ -3658,16 +1993,16 @@ static struct Gadget Help2_Gadget71 = {
 	BOOLGADGET,
 	NULL,
 	NULL,
-	&Help2_IText92,
+	&Help2_IText54,
 	NULL,
 	NULL,
 	GADHELPOKAY,
 	NULL
 };
 
-#define Help2_GadgetList8 Help2_Gadget71
+#define Help2_GadgetList8 Help2_Gadget31
 
-static struct IntuiText Help2_IText95 = {
+static struct IntuiText Help2_IText57 = {
 	3,0,JAM2,
 	15,31,
 	NULL,
@@ -3675,23 +2010,23 @@ static struct IntuiText Help2_IText95 = {
 	NULL
 };
 
-static struct IntuiText Help2_IText94 = {
+static struct IntuiText Help2_IText56 = {
 	3,0,JAM2,
 	15,22,
 	NULL,
 	"selected game, or double click on a game to",
-	&Help2_IText95
+	&Help2_IText57
 };
 
-static struct IntuiText Help2_IText93 = {
+static struct IntuiText Help2_IText55 = {
 	3,0,JAM2,
 	15,13,
 	NULL,
 	"Use Menu button to select operation on the",
-	&Help2_IText94
+	&Help2_IText56
 };
 
-#define Help2_IntuiTextList8 Help2_IText93
+#define Help2_IntuiTextList8 Help2_IText55
 
 static struct NewWindow Help2_NewWindowStructure8 = {
 	139,60,
@@ -3699,7 +2034,7 @@ static struct NewWindow Help2_NewWindowStructure8 = {
 	0,1,
 	GADGETUP+CLOSEWINDOW+VANILLAKEY,
 	WINDOWDRAG+WINDOWDEPTH+WINDOWCLOSE+ACTIVATE+NOCAREREFRESH,
-	&Help2_Gadget71,
+	&Help2_Gadget31,
 	NULL,
 	"Help for Game Manipulation",
 	NULL,
@@ -3709,7 +2044,7 @@ static struct NewWindow Help2_NewWindowStructure8 = {
 	CUSTOMSCREEN
 };
 
-static struct IntuiText About_IText96 = {
+static struct IntuiText About_IText58 = {
 	1,0,JAM2,
 	40,2,
 	NULL,
@@ -3717,7 +2052,7 @@ static struct IntuiText About_IText96 = {
 	NULL
 };
 
-static struct Gadget About_Gadget72 = {
+static struct Gadget About_Gadget32 = {
 	NULL,
 	163,68,
 	109,10,
@@ -3726,16 +2061,16 @@ static struct Gadget About_Gadget72 = {
 	BOOLGADGET,
 	NULL,
 	NULL,
-	&About_IText96,
+	&About_IText58,
 	NULL,
 	NULL,
 	GADHELPOKAY,
 	NULL
 };
 
-#define About_GadgetList9 About_Gadget72
+#define About_GadgetList9 About_Gadget32
 
-static struct IntuiText About_IText105 = {
+static struct IntuiText About_IText67 = {
 	2,0,JAM2,
 	10,56,
 	NULL,
@@ -3743,71 +2078,71 @@ static struct IntuiText About_IText105 = {
 	NULL
 };
 
-static struct IntuiText About_IText104 = {
+static struct IntuiText About_IText66 = {
 	2,0,JAM2,
 	20,47,
 	NULL,
 	"HackWB is copyright Gregg Wonderly and Ken Lorber,",
-	&About_IText105
+	&About_IText67
 };
 
-static struct IntuiText About_IText103 = {
+static struct IntuiText About_IText65 = {
 	3,0,JAM2,
 	8,31,
 	NULL,
 	"finished by Gregg...",
-	&About_IText104
+	&About_IText66
 };
 
-static struct IntuiText About_IText102 = {
+static struct IntuiText About_IText64 = {
 	3,0,JAM2,
 	135,22,
 	NULL,
 	"The programming was started by Ken and",
-	&About_IText103
+	&About_IText65
 };
 
-static struct IntuiText About_IText101 = {
+static struct IntuiText About_IText63 = {
 	3,0,JAM2,
 	120,22,
 	NULL,
 	".",
-	&About_IText102
+	&About_IText64
 };
 
-static struct IntuiText About_IText100 = {
+static struct IntuiText About_IText62 = {
 	2,0,JAM2,
 	8,22,
 	NULL,
 	"Gregg Wonderly",
-	&About_IText101
+	&About_IText63
 };
 
-static struct IntuiText About_IText99 = {
+static struct IntuiText About_IText61 = {
 	3,0,JAM2,
 	396,13,
 	NULL,
 	"and",
-	&About_IText100
+	&About_IText62
 };
 
-static struct IntuiText About_IText98 = {
+static struct IntuiText About_IText60 = {
 	2,0,JAM2,
 	310,13,
 	NULL,
 	"Ken Lorber",
-	&About_IText99
+	&About_IText61
 };
 
-static struct IntuiText About_IText97 = {
+static struct IntuiText About_IText59 = {
 	3,0,JAM2,
 	8,13,
 	NULL,
 	"The NetHack WorkBench was designed by",
-	&About_IText98
+	&About_IText60
 };
 
-#define About_IntuiTextList9 About_IText97
+#define About_IntuiTextList9 About_IText59
 
 static struct NewWindow About_NewWindowStructure9 = {
 	89,60,
@@ -3815,7 +2150,7 @@ static struct NewWindow About_NewWindowStructure9 = {
 	0,1,
 	GADGETUP+CLOSEWINDOW+VANILLAKEY,
 	WINDOWDRAG+WINDOWDEPTH+WINDOWCLOSE+ACTIVATE+NOCAREREFRESH,
-	&About_Gadget72,
+	&About_Gadget32,
 	NULL,
 	"About the NetHack WorkBench",
 	NULL,
@@ -3825,26 +2160,26 @@ static struct NewWindow About_NewWindowStructure9 = {
 	CUSTOMSCREEN
 };
 
-static SHORT Help3_BorderVectors68[] = {
+static SHORT Help3_BorderVectors28[] = {
 	0,0,
 	489,0
 };
-static struct Border Help3_Border68 = {
+static struct Border Help3_Border28 = {
 	2,169,
 	1,0,JAM1,
 	2,
-	Help3_BorderVectors68,
+	Help3_BorderVectors28,
 	NULL
 };
 
-static struct Gadget Help3_Gadget75 = {
+static struct Gadget Help3_Gadget35 = {
 	NULL,
 	0,0,
 	1,1,
 	GADGHBOX+GADGHIMAGE,
 	NULL,
 	BOOLGADGET,
-	(APTR)&Help3_Border68,
+	(APTR)&Help3_Border28,
 	NULL,
 	NULL,
 	NULL,
@@ -3853,7 +2188,7 @@ static struct Gadget Help3_Gadget75 = {
 	NULL
 };
 
-static struct IntuiText Help3_IText106 = {
+static struct IntuiText Help3_IText68 = {
 	1,0,JAM2,
 	8,2,
 	NULL,
@@ -3861,8 +2196,8 @@ static struct IntuiText Help3_IText106 = {
 	NULL
 };
 
-static struct Gadget Help3_Gadget74 = {
-	&Help3_Gadget75,
+static struct Gadget Help3_Gadget34 = {
+	&Help3_Gadget35,
 	434,173,
 	47,10,
 	NULL,
@@ -3870,14 +2205,14 @@ static struct Gadget Help3_Gadget74 = {
 	BOOLGADGET,
 	NULL,
 	NULL,
-	&Help3_IText106,
+	&Help3_IText68,
 	NULL,
 	NULL,
 	GADHELPBKWD,
 	NULL
 };
 
-static struct IntuiText Help3_IText107 = {
+static struct IntuiText Help3_IText69 = {
 	1,0,JAM2,
 	8,2,
 	NULL,
@@ -3885,8 +2220,8 @@ static struct IntuiText Help3_IText107 = {
 	NULL
 };
 
-static struct Gadget Help3_Gadget73 = {
-	&Help3_Gadget74,
+static struct Gadget Help3_Gadget33 = {
+	&Help3_Gadget34,
 	12,173,
 	47,10,
 	NULL,
@@ -3894,14 +2229,14 @@ static struct Gadget Help3_Gadget73 = {
 	BOOLGADGET,
 	NULL,
 	NULL,
-	&Help3_IText107,
+	&Help3_IText69,
 	NULL,
 	NULL,
 	GADHELPFRWD,
 	NULL
 };
 
-#define Help3_GadgetList10 Help3_Gadget73
+#define Help3_GadgetList10 Help3_Gadget33
 
 static struct NewWindow Help3_NewWindowStructure10 = {
 	75,9,
@@ -3909,7 +2244,7 @@ static struct NewWindow Help3_NewWindowStructure10 = {
 	0,1,
 	GADGETDOWN+GADGETUP+CLOSEWINDOW+VANILLAKEY+INTUITICKS,
 	WINDOWDRAG+WINDOWDEPTH+WINDOWCLOSE+ACTIVATE+NOCAREREFRESH,
-	&Help3_Gadget73,
+	&Help3_Gadget33,
 	NULL,
 	"Help for Nethack WorkBench V3.1",
 	NULL,
@@ -3919,24 +2254,24 @@ static struct NewWindow Help3_NewWindowStructure10 = {
 	CUSTOMSCREEN
 };
 
-static SHORT Rst_BorderVectors69[] = {
+static SHORT Rst_BorderVectors29[] = {
 	0,0,
 	58,0,
 	58,11,
 	0,11,
 	0,0
 };
-static struct Border Rst_Border69 = {
+static struct Border Rst_Border29 = {
 	-1,-1,
 	3,0,JAM1,
 	5,
-	Rst_BorderVectors69,
+	Rst_BorderVectors29,
 	NULL
 };
 
-static struct IntuiText Rst_IText108 = {
+static struct IntuiText Rst_IText70 = {
 	1,0,JAM1,
-	5,1,
+	8,1,
 	NULL,
 	"Cancel",
 	NULL
@@ -3949,31 +2284,31 @@ static struct Gadget Rst_RestCancel = {
 	NULL,
 	RELVERIFY,
 	BOOLGADGET,
-	(APTR)&Rst_Border69,
+	(APTR)&Rst_Border29,
 	NULL,
-	&Rst_IText108,
+	&Rst_IText70,
 	NULL,
 	NULL,
 	GADRESTCAN,
 	NULL
 };
 
-static SHORT Rst_BorderVectors70[] = {
+static SHORT Rst_BorderVectors30[] = {
 	0,0,
 	58,0,
 	58,11,
 	0,11,
 	0,0
 };
-static struct Border Rst_Border70 = {
+static struct Border Rst_Border30 = {
 	-1,-1,
 	3,0,JAM1,
 	5,
-	Rst_BorderVectors70,
+	Rst_BorderVectors30,
 	NULL
 };
 
-static struct IntuiText Rst_IText109 = {
+static struct IntuiText Rst_IText71 = {
 	1,0,JAM1,
 	12,1,
 	NULL,
@@ -3988,9 +2323,9 @@ static struct Gadget Rst_RestOkay = {
 	NULL,
 	RELVERIFY,
 	BOOLGADGET,
-	(APTR)&Rst_Border70,
+	(APTR)&Rst_Border30,
 	NULL,
-	&Rst_IText109,
+	&Rst_IText71,
 	NULL,
 	NULL,
 	GADRESTOKAY,
@@ -4010,18 +2345,18 @@ static struct StringInfo Rst_Rst_RestOldSInfo = {
 	NULL
 };
 
-static SHORT Rst_BorderVectors71[] = {
+static SHORT Rst_BorderVectors31[] = {
 	0,0,
 	187,0,
 	187,10,
 	0,10,
 	0,0
 };
-static struct Border Rst_Border71 = {
+static struct Border Rst_Border31 = {
 	-1,-1,
 	3,0,JAM1,
 	5,
-	Rst_BorderVectors71,
+	Rst_BorderVectors31,
 	NULL
 };
 
@@ -4032,7 +2367,7 @@ static struct Gadget Rst_RestOld = {
 	NULL,
 	RELVERIFY+STRINGCENTER,
 	STRGADGET,
-	(APTR)&Rst_Border71,
+	(APTR)&Rst_Border31,
 	NULL,
 	NULL,
 	NULL,
@@ -4054,18 +2389,18 @@ static struct StringInfo Rst_Rst_RestDirSInfo = {
 	NULL
 };
 
-static SHORT Rst_BorderVectors72[] = {
+static SHORT Rst_BorderVectors32[] = {
 	0,0,
 	187,0,
 	187,10,
 	0,10,
 	0,0
 };
-static struct Border Rst_Border72 = {
+static struct Border Rst_Border32 = {
 	-1,-1,
 	3,0,JAM1,
 	5,
-	Rst_BorderVectors72,
+	Rst_BorderVectors32,
 	NULL
 };
 
@@ -4076,7 +2411,7 @@ static struct Gadget Rst_RestDir = {
 	NULL,
 	RELVERIFY+STRINGCENTER,
 	STRGADGET,
-	(APTR)&Rst_Border72,
+	(APTR)&Rst_Border32,
 	NULL,
 	NULL,
 	NULL,
@@ -4087,7 +2422,7 @@ static struct Gadget Rst_RestDir = {
 
 #define Rst_GadgetList11 Rst_RestDir
 
-static struct IntuiText Rst_IText111 = {
+static struct IntuiText Rst_IText73 = {
 	1,0,JAM1,
 	18,29,
 	NULL,
@@ -4095,15 +2430,15 @@ static struct IntuiText Rst_IText111 = {
 	NULL
 };
 
-static struct IntuiText Rst_IText110 = {
+static struct IntuiText Rst_IText72 = {
 	1,0,JAM1,
 	14,15,
 	NULL,
 	"Directory:",
-	&Rst_IText111
+	&Rst_IText73
 };
 
-#define Rst_IntuiTextList11 Rst_IText110
+#define Rst_IntuiTextList11 Rst_IText72
 
 static struct NewWindow Rst_NewWindowStructure11 = {
 	177,60,

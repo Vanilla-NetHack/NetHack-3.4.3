@@ -3,18 +3,13 @@
 /* NetHack may be freely redistributed.  See license for details.	*/
 
 #include "hack.h"
+#include "macwin.h"
 #include "wintty.h"
 #include "mactty.h"
 
 #include <stdarg.h>
 #include <Menus.h>
 
-extern void InitRes ( void ) ;
-extern Boolean small_screen ;
-extern void DoMenu ( long ) ;
-extern void UpdateMenus ( void ) ;
-extern int GetFromKeyQueue ( void ) ;
-extern void dprintf ( char * , ... ) ;
 
 
 #define POWER_LIMIT 22
@@ -53,23 +48,23 @@ static char _attrs_inverse [ 5 ] = {
 
 
 #if 0
-#define BLACK		0
-#define RED		1
-#define GREEN		2
-#define BROWN		3	/* on IBM, low-intensity yellow is brown */
-#define BLUE		4
-#define MAGENTA 	5
-#define CYAN		6
-#define GRAY		7	/* low-intensity white */
+#define CLR_BLACK	0
+#define CLR_RED		1
+#define CLR_GREEN	2
+#define CLR_BROWN	3	/* on IBM, low-intensity yellow is brown */
+#define CLR_BLUE	4
+#define CLR_MAGENTA 	5
+#define CLR_CYAN	6
+#define CLR_GRAY	7	/* low-intensity white */
 #define NO_COLOR	8
-#define ORANGE_COLORED	9	/* "orange" conflicts with the object */
-#define BRIGHT_GREEN	10
-#define YELLOW		11
-#define BRIGHT_BLUE	12
-#define BRIGHT_MAGENTA  13
-#define BRIGHT_CYAN	14
-#define WHITE		15
-#define MAXCOLORS	16
+#define CLR_ORANGE	9
+#define CLR_BRIGHT_GREEN 10
+#define CLR_YELLOW	11
+#define CLR_BRIGHT_BLUE	12
+#define CLR_BRIGHT_MAGENTA 13
+#define CLR_BRIGHT_CYAN	14
+#define CLR_WHITE	15
+#define CLR_MAX	16
 #endif
 
 static long _mt_colors [ 16 ] [ 2 ] = {
@@ -91,7 +86,7 @@ static long _mt_colors [ 16 ] [ 2 ] = {
 	{ 0x000000 , 0xffffff } , /* White */
 } ;
 
-static char _colors_inverse [ MAXCOLORS ] = {
+static char _colors_inverse [ CLR_MAX ] = {
 	1 , 0 , 0 , 0 ,
 	0 , 0 , 0 , 0 ,
 	0 , 0 , 0 , 0 ,
@@ -130,14 +125,14 @@ int cnt = 3 ;
 		inverse = rev ;
 	}
 
-	if ( color >= MAXCOLORS ) {
-		if ( color - MAXCOLORS >= 5 ) {
+	if ( color >= CLR_MAX ) {
+		if ( color - CLR_MAX >= 5 ) {
 			impossible ( "Changing too many colors" ) ;
 			return ;
 		}
-		_mt_attrs [ color - MAXCOLORS ] [ 0 ] = rgb ;
-		_mt_attrs [ color - MAXCOLORS ] [ 1 ] = inverse ;
-		_attrs_inverse [ color - MAXCOLORS ] = reverse ;
+		_mt_attrs [ color - CLR_MAX ] [ 0 ] = rgb ;
+		_mt_attrs [ color - CLR_MAX ] [ 1 ] = inverse ;
+		_attrs_inverse [ color - CLR_MAX ] = reverse ;
 	} else if ( color >= 0 ) {
 		_mt_colors [ color ] [ 0 ] = rgb ;
 		_mt_colors [ color ] [ 1 ] = inverse ;
@@ -148,7 +143,7 @@ int cnt = 3 ;
 }
 
 
-static char color_buf [ 5 * ( MAXCOLORS + 5 ) + 1 ] ;
+static char color_buf [ 5 * ( CLR_MAX + 5 ) + 1 ] ;
 
 char *
 tty_get_color_string ( void ) {
@@ -157,7 +152,7 @@ int count ;
 
 	color_buf [ 0 ] = 0 ;
 
-	for ( count = 0 ; count < MAXCOLORS ; count ++ ) {
+	for ( count = 0 ; count < CLR_MAX ; count ++ ) {
 	int flag = _colors_inverse [ count ] ? 1 : 0 ;
 
 		sprintf ( tmp , "%s%s%x%x%x" , count ? "/" : "" ,
@@ -188,7 +183,7 @@ extern struct DisplayDesc *ttyDisplay;	/* the tty display descriptor */
 char kill_char = 27 ;
 char erase_char = 8 ;
 
-WindowPtr _mt_window = (WindowPtr) NULL ;
+WindowPtr _mt_window = (WindowPtr) 0 ;
 static Boolean _mt_in_color = 0 ;
 
 
@@ -249,12 +244,12 @@ short hor , vert ;
 	SetOrigin ( -3 , -3 ) ;
 	font_num = 0 ;
 	font_size = ( flags.large_font && ! small_screen ) ? 12 : 9 ;
-	GetFNum ( "\PHackFont" , & font_num ) ;
+	GetFNum ( "\pHackFont" , & font_num ) ;
 	if ( font_num != 0 ) {
 		mustwork ( init_tty_number ( _mt_window , font_num , font_size ,
 			MT_WIDTH , MT_HEIGHT + 1 ) ) ;
 	} else {
-		mustwork ( init_tty_name ( _mt_window , "\PMonaco" , font_size ,
+		mustwork ( init_tty_name ( _mt_window , "\pMonaco" , font_size ,
 			MT_WIDTH , MT_HEIGHT + 1 ) ) ;
 	}
 
@@ -595,7 +590,7 @@ term_start_raw_bold ( void ) {
 
 void
 term_start_color ( int color ) {
-	if ( color >= 0 && color < MAXCOLORS ) {
+	if ( color >= 0 && color < CLR_MAX ) {
 		_mt_set_colors ( _mt_colors [ color ] ) ;
 	}
 }
@@ -639,7 +634,7 @@ gettty ( void ) {
 
 
 void
-settty ( char * str ) {
+settty ( const char * str ) {
 long flag ;
 
 	update_tty ( _mt_window ) ;
@@ -687,7 +682,7 @@ tty_end_screen ( void ) {
 
 
 int
-term_puts ( char * str ) {
+term_puts ( const char * str ) {
 	xputs ( str ) ;
 	return strlen ( str ) ;
 }

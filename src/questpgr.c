@@ -1,28 +1,19 @@
-/*	SCCS Id: @(#)questpgr.c	3.1	93/01/20	*/
+/*	SCCS Id: @(#)questpgr.c	3.2	95/08/04	*/
 /*	Copyright 1991, M. Stephenson		  */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
+#include "dlb.h"
 
-#ifdef MULDGN
 /*  quest-specific pager routines. */
 
 #include "qtext.h"
 
 #define QTEXT_FILE	"quest.dat"
-#if (defined(MICRO) && !defined(AMIGA)) || defined(THINK_C)
-# define RDMODE "rb"
-#else
-# define RDMODE "r"
-#endif
-
-#ifndef SEEK_SET
-# define SEEK_SET 0
-#endif
 
 /* #define DEBUG	/* uncomment for debugging */
 
-static void FDECL(Fread, (genericptr_t,int,int,FILE	*));
+static void FDECL(Fread, (genericptr_t,int,int,dlb *));
 static struct qtmsg * FDECL(construct_qtlist, (long));
 static unsigned NDECL(class_index);
 static const char * NDECL(intermed);
@@ -33,11 +24,11 @@ static struct qtmsg * FDECL(msg_in, (struct qtmsg *,int));
 static void FDECL(convert_arg, (CHAR_P));
 static void NDECL(convert_line);
 static void FDECL(deliver_by_pline, (struct qtmsg *));
-static void FDECL(deliver_by_window, (struct qtmsg *));
+static void FDECL(deliver_by_window, (struct qtmsg *,int));
 
 static char	in_line[80], cvt_buf[64], out_line[128];
 static struct	qtlists	qt_list;
-static	FILE	*msg_file;
+static dlb	*msg_file;
 
 #ifdef DEBUG
 static void NDECL(dump_qtlist);
@@ -52,8 +43,8 @@ dump_qtlist()	/* dump the character msg list to check appearance */
 		pline("msgnum %d: delivery %c",
 			msg->msgnum, msg->delivery);
 		more();
-		(void) fseek(msg_file, msg->offset, SEEK_SET);
-		deliver_by_window(msg);
+		(void) dlb_fseek(msg_file, msg->offset, SEEK_SET);
+		deliver_by_window(msg, NHW_TEXT);
 	}
 }
 #endif /* DEBUG */
@@ -62,11 +53,11 @@ static void
 Fread(ptr, size, nitems, stream)
 genericptr_t	ptr;
 int	size, nitems;
-FILE	*stream;
+dlb	*stream;
 {
 	int cnt;
 
-	if ((cnt = fread(ptr, size, nitems, stream)) != nitems) {
+	if ((cnt = dlb_fread(ptr, size, nitems, stream)) != nitems) {
 
 	    panic("PREMATURE EOF ON QUEST TEXT FILE!\nExpected %d bytes - got %d\n",
 		    (size * nitems), (size * cnt));
@@ -80,9 +71,10 @@ long	hdr_offset;
 	struct qtmsg *msg_list;
 	int	n_msgs;
 
-	(void) fseek(msg_file, hdr_offset, SEEK_SET);
+	(void) dlb_fseek(msg_file, hdr_offset, SEEK_SET);
 	Fread(&n_msgs, sizeof(int), 1, msg_file);
-	msg_list = (struct qtmsg *) alloc((n_msgs+1)*sizeof(struct qtmsg));
+	msg_list = (struct qtmsg *)
+		alloc((unsigned)(n_msgs+1)*sizeof(struct qtmsg));
 
 	/*
 	 * Load up the list.
@@ -101,7 +93,7 @@ load_qtlist()
 	char	qt_classes[N_HDR];
 	long	qt_offsets[N_HDR];
 
-	msg_file = fopen_datafile(QTEXT_FILE, RDMODE);
+	msg_file = dlb_fopen(QTEXT_FILE, RDBMODE);
 	if (!msg_file)
 	    panic("\rCANNOT OPEN QUEST TEXT FILE %s.", QTEXT_FILE);
 
@@ -136,6 +128,19 @@ load_qtlist()
 	return;	/* no ***DON'T*** close the msg_file */
 }
 
+/* called at program exit */
+void
+unload_qtlist()
+{
+	if (msg_file)
+	    (void) dlb_fclose(msg_file),  msg_file = 0;
+	if (qt_list.common)
+	    free((genericptr_t) qt_list.common),  qt_list.common = 0;
+	if (qt_list.chclass)
+	    free((genericptr_t) qt_list.chclass),  qt_list.chclass = 0;
+	return;
+}
+
 static struct qt_matrix {
 
 	const char *intermed;	/* intermediate goal text */
@@ -154,7 +159,7 @@ static struct qt_matrix {
 
 /* A */ { "the tomb of the Toltec Kings",
 	  "the College of Archeology",
-	  PM_LORD_CARNARVON, PM_MINION_OF_HUHETOL, PM_STUDENT,
+	  PM_LORD_CARNARVON, PM_MINION_OF_HUHETOTL, PM_STUDENT,
 	  0, PM_HUMAN_MUMMY, S_SNAKE, S_MUMMY,
 	  ART_ORB_OF_DETECTION },
 
@@ -200,7 +205,7 @@ static struct qt_matrix {
 	  PM_HUMAN_ZOMBIE, PM_WRAITH, S_ZOMBIE, S_WRAITH,
 	  ART_MITRE_OF_HOLINESS },
 
-/* R */ { "the Asassins' Guild Hall",
+/* R */ { "the Assassins' Guild Hall",
 	  "the Thieves' Guild Hall",
 	  PM_MASTER_OF_THIEVES, PM_MASTER_ASSASSIN, PM_THUG,
 	  PM_LEPRECHAUN, PM_GUARDIAN_NAGA, S_NYMPH, S_NAGA,
@@ -208,13 +213,13 @@ static struct qt_matrix {
 
 /* S */ { "the Shogun's Castle",
 	  "the castle of the Taro Clan",
-	  PM_LORD_SATO, PM_ASHIKAGA_TAKAUJI, PM_NINJA,
+	  PM_LORD_SATO, PM_ASHIKAGA_TAKAUJI, PM_ROSHI,
 	  PM_WOLF, PM_STALKER, S_DOG, S_STALKER,
 	  ART_TSURUGI_OF_MURAMASA },
 
 #ifdef TOURIST
 /* T */ { "the Thieves' Guild Hall",
-	  "the Traveller's Aid Office",
+	  "Ankh-Morpork",
 	  PM_TWOFLOWER, PM_MASTER_OF_THIEVES, PM_GUIDE,
 	  PM_GIANT_SPIDER, PM_FOREST_CENTAUR, S_SPIDER, S_CENTAUR,
 	  ART_YENDORIAN_EXPRESS_CARD },
@@ -262,6 +267,22 @@ class_index()
 	}
 }
 
+short
+quest_info(typ)
+int typ;
+{
+	struct qt_matrix *qt = &qt_matrix[class_index()];
+
+	switch (typ) {
+	    case 0:		return qt->artinum;
+	    case MS_LEADER:	return qt->ldrnum;
+	    case MS_NEMESIS:	return qt->neminum;
+	    case MS_GUARDIAN:	return qt->guardnum;
+	    default:		impossible("quest_info(%d)", typ);
+	}
+	return 0;
+}
+
 const char *
 ldrname()	/* return your class leader's name */
 {
@@ -305,7 +326,7 @@ boolean
 leaderless()	/* return true iff leader is dead */
 {
 	int i = qt_matrix[class_index()].ldrnum;
-	return((boolean)(u.nr_killed[i] > 0));
+	return (boolean)(mvitals[i].died > 0);
 }
 
 static struct qtmsg *
@@ -354,11 +375,11 @@ char c;
 			break;
 	    case 'H':	str = homebase();
 			break;
-	    case 'a':	str = align_str(u.ualignbase[0]);
+	    case 'a':	str = align_str(u.ualignbase[1]);
 			break;
 	    case 'A':	str = align_str(u.ualign.type);
 			break;
-	    case 'd':	str = u_gname();
+	    case 'd':	str = align_gname(u.ualignbase[1]);
 			break;
 	    case 'D':	str = align_gname(A_LAWFUL);
 			break;
@@ -382,9 +403,10 @@ static void
 convert_line()
 {
 	char *c, *cc;
+	char xbuf[BUFSZ];
 
 	cc = out_line;
-	for (c = xcrypt(in_line); *c; c++) {
+	for (c = xcrypt(in_line, xbuf); *c; c++) {
 
 	    *cc = 0;
 	    switch(*c) {
@@ -439,7 +461,7 @@ struct qtmsg *qt_msg;
 	long	size;
 
 	for (size = 0; size < qt_msg->size; size += (long)strlen(in_line)) {
-	    (void) fgets(in_line, 80, msg_file);
+	    (void) dlb_fgets(in_line, 80, msg_file);
 	    convert_line();
 	    pline(out_line);
 	}
@@ -447,14 +469,15 @@ struct qtmsg *qt_msg;
 }
 
 static void
-deliver_by_window(qt_msg)
+deliver_by_window(qt_msg, how)
 struct qtmsg *qt_msg;
+int how;
 {
 	long	size;
-	winid datawin = create_nhwindow(NHW_TEXT);
+	winid datawin = create_nhwindow(how);
 
 	for (size = 0; size < qt_msg->size; size += (long)strlen(in_line)) {
-	    (void) fgets(in_line, 80, msg_file);
+	    (void) dlb_fgets(in_line, 80, msg_file);
 	    convert_line();
 	    putstr(datawin, 0, out_line);
 	}
@@ -473,9 +496,10 @@ int	msgnum;
 		return;
 	}
 
-	(void) fseek(msg_file, qt_msg->offset, SEEK_SET);
+	(void) dlb_fseek(msg_file, qt_msg->offset, SEEK_SET);
 	if (qt_msg->delivery == 'p') deliver_by_pline(qt_msg);
-	else		     deliver_by_window(qt_msg);
+	else if (msgnum == 1) deliver_by_window(qt_msg, NHW_MENU);
+	else		     deliver_by_window(qt_msg, NHW_TEXT);
 	return;
 }
 
@@ -490,10 +514,10 @@ int	msgnum;
 		return;
 	}
 
-	(void) fseek(msg_file, qt_msg->offset, SEEK_SET);
+	(void) dlb_fseek(msg_file, qt_msg->offset, SEEK_SET);
 	if (qt_msg->delivery == 'p' && strcmp(windowprocs.name, "X11"))
 		deliver_by_pline(qt_msg);
-	else	deliver_by_window(qt_msg);
+	else	deliver_by_window(qt_msg, NHW_TEXT);
 	return;
 }
 
@@ -501,18 +525,18 @@ struct permonst *
 qt_montype()
 {
 	int class = class_index();
+	int qpm;
 
 	if (rn2(5)) {
-		if (qt_matrix[class].mtyp1 && rn2(5) &&
-			 !(mons[qt_matrix[class].mtyp1].geno & G_GENOD))
-				return(&mons[qt_matrix[class].mtyp1]);
+		qpm = qt_matrix[class].mtyp1;
+		if (qpm && rn2(5) && !(mvitals[qpm].mvflags & G_GENOD))
+			return(&mons[qpm]);
 		return(mkclass(qt_matrix[class].msym1,0));
 	}
-	if (qt_matrix[class].mtyp2 && rn2(5) &&
-		 !(mons[qt_matrix[class].mtyp1].geno & G_GENOD))
-			return(&mons[qt_matrix[class].mtyp2]);
+	qpm = qt_matrix[class].mtyp2;
+	if (qpm && rn2(5) && !(mvitals[qpm].mvflags & G_GENOD))
+		return(&mons[qpm]);
 	return(mkclass(qt_matrix[class].msym2,0));
 }
-#endif /* MULDGN */
 
 /*questpgr.c*/

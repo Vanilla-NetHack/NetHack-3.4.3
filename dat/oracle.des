@@ -1,3 +1,5 @@
+#	SCCS Id: @(#)oracle.des	3.2	95/10/07
+# NetHack may be freely redistributed.  See license for details.
 #
 # Oracle level
 #
@@ -22,9 +24,9 @@ FOUNTAIN: (0, 1)
 FOUNTAIN: (1, 0)
 FOUNTAIN: (1, 2)
 FOUNTAIN: (2, 1)
-MONSTER: '@', "oracle", (1,1)
+MONSTER: '@', "Oracle", (1,1)
 DOOR: false , nodoor , random, random
-  
+
 ROOM: "ordinary" , random, random, random, random
 STAIR: random, up
 OBJECT: random,random,random

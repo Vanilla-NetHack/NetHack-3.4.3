@@ -1,8 +1,8 @@
-/*	SCCS Id: @(#)options.c	3.1	93/06/27	*/
+/*	SCCS Id: @(#)options.c	3.2	96/02/14	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
-#ifdef OPTION_LISTS_ONLY	/* want option lists for external program */
+#ifdef OPTION_LISTS_ONLY	/* (AMIGA) external program for opt lists */
 #include "config.h"
 #include "objclass.h"
 #include "flag.h"
@@ -13,6 +13,8 @@ NEARDATA struct flag flags;	/* provide linkage */
 #include "termcap.h"
 #include <ctype.h>
 #endif
+
+#define WINTYPELEN 16
 
 /*
  *  NOTE:  If you add (or delete) an option, please update the short
@@ -26,6 +28,11 @@ static struct Bool_Opt
 	const char *name;
 	boolean	*addr, initvalue;
 } boolopt[] = {
+#ifdef AMIGA
+	{"altmeta", &flags.altmeta, TRUE},
+#else
+	{"altmeta", (boolean *)0, TRUE},
+#endif
 #ifdef MFLOPPY
 	{"asksavedisk", &flags.asksavedisk, FALSE},
 #else
@@ -56,6 +63,11 @@ static struct Bool_Opt
 	{"DECgraphics", &flags.DECgraphics, FALSE},
 #else
 	{"DECgraphics", (boolean *)0, FALSE},
+#endif
+#ifdef OPT_DISPMAP
+	{"fast_map", &flags.fast_map, TRUE},
+#else
+	{"fast_map", (boolean *)0, TRUE},
 #endif
 	{"female", &flags.female, FALSE},
 	{"fixinv", &flags.invlet_constant, TRUE},
@@ -88,6 +100,11 @@ static struct Bool_Opt
 #else
 	{"Macgraphics", (boolean *)0, FALSE},
 #endif
+#ifdef MAIL
+	{"mail", &flags.biff, TRUE},
+#else
+	{"mail", (boolean *)0, TRUE},
+#endif
 #ifdef NEWS
 	{"news", &flags.news, TRUE},
 #else
@@ -100,6 +117,7 @@ static struct Bool_Opt
 #else
 	{"page_wait", (boolean *)0, FALSE},
 #endif
+	{"perm_invent", &flags.perm_invent, FALSE},
 #ifdef MAC
 	{"popup_dialog", &flags.popup_dialog, FALSE},
 #else
@@ -112,6 +130,11 @@ static struct Bool_Opt
 #endif
 	{"rest_on_space", &flags.rest_on_space, FALSE},
 	{"safe_pet", &flags.safe_dog, TRUE},
+#ifdef WIZARD
+	{"sanity_check", &flags.sanity_check, FALSE},
+#else
+	{"sanity_check", (boolean *)0, FALSE},
+#endif
 #ifdef EXP_ON_BOTL
 	{"showexp", &flags.showexp, FALSE},
 #else
@@ -127,9 +150,15 @@ static struct Bool_Opt
 	{"sound", &flags.soundok, TRUE},
 	{"standout", &flags.standout, FALSE},
 	{"time", &flags.time, FALSE},
+#ifdef TIMED_DELAY
+	{"timed_delay", &flags.nap, TRUE},
+#else
+	{"timed_delay", (boolean *)0, FALSE},
+#endif
 	{"tombstone",&flags.tombstone, TRUE},
+	{"toptenwin",&flags.toptenwin, FALSE},
 	{"verbose", &flags.verbose, TRUE},
-	{NULL, (boolean *)0, FALSE}
+	{(char *)0, (boolean *)0, FALSE}
 };
 
 /* compound options, for option_help() and external programs like Amiga
@@ -137,37 +166,60 @@ static struct Bool_Opt
 static struct Comp_Opt
 {
 	const char *name, *descr;
+	int size;	/* for frontends and such allocating space --
+			 * usually allowed size of data in game, but
+			 * occasionally maximum reasonable size for
+			 * typing when game maintains information in
+			 * a different format */
 } compopt[] = {
-	{ "catname",  "the name of your (first) cat (e.g., catname:Tabby)," },
-	{ "disclose", "the kinds of information to disclose at end of game," },
-	{ "dogname",  "the name of your (first) dog (e.g., dogname:Fang)," },
-#ifdef TUTTI_FRUTTI
-	{ "fruit",    "the name of a fruit you enjoy eating," },
-#endif
-	{ "graphics", "the symbols to use in drawing the dungeon map," },
-	{ "monsters", "the symbols to use for monsters," },
-	{ "msghistory", "number of top line messages to save," },
-	{ "name",     "your character's name (e.g., name:Merlin-W)," },
-	{ "objects",  "the symbols to use for objects," },
-	{ "packorder", "the inventory order of the items in your pack," },
+	{ "catname",  "the name of your (first) cat (e.g., catname:Tabby),",
+						PL_PSIZ },
+	{ "disclose", "the kinds of information to disclose at end of game,",
+						sizeof(flags.end_disclose) },
+	{ "dogname",  "the name of your (first) dog (e.g., dogname:Fang),",
+						PL_PSIZ },
+	{ "dungeon",  "the symbols to use in drawing the dungeon map,",
+						MAXDCHARS+1 },
+	{ "effects",  "the symbols to use in drawing special effects,",
+						MAXECHARS+1 },
+	{ "fruit",    "the name of a fruit you enjoy eating,", PL_FSIZ },
+	{ "menustyle", "user interface for object selection,", MENUTYPELEN },
+	{ "monsters", "the symbols to use for monsters,", MAXMCLASSES },
+	{ "msghistory", "number of top line messages to save,", 5 },
+	{ "name",     "your character's name (e.g., name:Merlin-W),", PL_NSIZ },
+	{ "objects",  "the symbols to use for objects,", MAXOCLASSES },
+	{ "packorder", "the inventory order of the items in your pack,",
+						MAXOCLASSES },
 #ifdef CHANGE_COLOR
-	{ "palette",  "palette (00c/880/-fff is blue/yellow/reverse white)," },
+	{ "palette",  "palette (00c/880/-fff is blue/yellow/reverse white),",
+						15 },
 # if defined(MAC)
-	{ "hicolor",  "same as palette, only order is reversed," },
+	{ "hicolor",  "same as palette, only order is reversed,", 15 },
 # endif
 #endif
-	{ "pettype",  "your preferred initial pet type," },
-	{ "pickup_types", "types of objects to pick up automatically," },
-	{ "scores",   "the parts of the score list you wish to see," },
-#ifdef VIDEOSHADES
-	{ "videocolors", "color mappings for internal screen routines," },
-	{ "videoshades", "gray shades to map to black/gray/white," },
+	{ "pettype",  "your preferred initial pet type,", 4 },
+	{ "pickup_types", "types of objects to pick up automatically,",
+						MAXOCLASSES },
+	{ "scores",   "the parts of the score list you wish to see,", 32 },
+#ifdef MSDOS
+	{ "soundcard", "type of sound card to use,", 20 },
 #endif
-	{ "windowtype", "windowing system to use." },
-	{ NULL, NULL }
+	{ "traps",    "the symbols to use in drawing traps,", MAXTCHARS+1 },
+#ifdef MSDOS
+	{ "video",    "method of video updating,", 20 },
+#endif
+#ifdef VIDEOSHADES
+	{ "videocolors", "color mappings for internal screen routines,", 40 },
+	{ "videoshades", "gray shades to map to black/gray/white,", 32 },
+#endif
+	{ "windowtype", "windowing system to use.", WINTYPELEN },
+	{ (char *)0, (char *)0, 0 }
 };
 
-#ifndef OPTION_LISTS_ONLY	/* use rest of file */
+#ifdef OPTION_LISTS_ONLY
+#undef static
+
+#else	/* use rest of file */
 
 static boolean need_redraw; /* for doset() */
 
@@ -177,15 +229,15 @@ extern boolean colors_changed;	/* in tos.c */
 
 #ifdef VIDEOSHADES
 extern char *shade[3];		  /* in sys/msdos/video.c */
-extern char ttycolors[MAXCOLORS]; /* in sys/msdos/video.c */
+extern char ttycolors[CLR_MAX];	/* in sys/msdos/video.c */
 #endif
 
 extern const char *roles[];	/* from u_init.c */
 
 static char def_inv_order[MAXOCLASSES] = {
-	AMULET_CLASS, WEAPON_CLASS, ARMOR_CLASS, FOOD_CLASS, SCROLL_CLASS,
-	SPBOOK_CLASS, POTION_CLASS, RING_CLASS, WAND_CLASS, TOOL_CLASS, 
-	GEM_CLASS, ROCK_CLASS, BALL_CLASS, CHAIN_CLASS, 0,
+	GOLD_CLASS, AMULET_CLASS, WEAPON_CLASS, ARMOR_CLASS, FOOD_CLASS,
+	SCROLL_CLASS, SPBOOK_CLASS, POTION_CLASS, RING_CLASS, WAND_CLASS,
+	TOOL_CLASS, GEM_CLASS, ROCK_CLASS, BALL_CLASS, CHAIN_CLASS, 0,
 };
 
 static boolean initial, from_file;
@@ -196,8 +248,10 @@ static void FDECL(rejectoption, (const char *));
 static void FDECL(badoption, (const char *));
 static char *FDECL(string_for_opt, (char *,BOOLEAN_P));
 static char *FDECL(string_for_env_opt, (const char *, char *,BOOLEAN_P));
+static void FDECL(bad_negation, (const char *,BOOLEAN_P));
 static int FDECL(change_inv_order, (char *));
 static void FDECL(oc_to_str, (char *, char *));
+static void FDECL(graphics_opts, (char *,const char *,int,int));
 
 void
 initoptions()
@@ -256,12 +310,11 @@ initoptions()
 #ifdef MAC_GRAPHICS_ENV
 	switch_graphics(MAC_GRAPHICS);
 #endif /* MAC_GRAPHICS_ENV */
+	flags.menu_style = MENU_FULL;
 
-#ifdef TUTTI_FRUTTI
 	/* since this is done before init_objects(), do partial init here */
 	objects[SLIME_MOLD].oc_name_idx = SLIME_MOLD;
 	nmcpy(pl_fruit, OBJ_NAME(objects[SLIME_MOLD]), PL_FSIZ);
-#endif
 	opts = getenv("NETHACKOPTIONS");
 	if (!opts) opts = getenv("HACKOPTIONS");
 	if (opts) {
@@ -270,23 +323,22 @@ initoptions()
 			/* looks like a filename */
 			read_config_file(opts);
 		} else {
-			read_config_file(NULL);
+			read_config_file((char *)0);
 			parseoptions(opts, TRUE, FALSE);
 		}
 	} else {
-		read_config_file(NULL);
+		read_config_file((char *)0);
 	}
 #ifdef AMIGA
 	ami_wbench_init();	/* must be here or can't set fruit */
 #endif
-#ifdef TUTTI_FRUTTI
 	(void)fruitadd(pl_fruit);
 	/* Remove "slime mold" from list of object names; this will	*/
 	/* prevent it from being wished unless it's actually present	*/
 	/* as a named (or default) fruit.  Wishing for "fruit" will	*/
 	/* result in the player's preferred fruit [better than "\033"].	*/
 	obj_descr[SLIME_MOLD].oc_name = "fruit";
-#endif
+
 	if (flags.female)  {	/* should have been set in NETHACKOPTIONS */
 		roles[2] = "Cavewoman";
 		roles[6] = "Priestess";
@@ -421,11 +473,11 @@ boolean val_optional;
 	register char *colon;
 
 	colon = index(opts, ':');
-	if(!colon) {
+	if (!colon || !*++colon) {
 		if (!val_optional) badoption(opts);
-		return NULL;
+		return (char *)0;
 	}
-	return ++colon;
+	return colon;
 }
 
 static char *
@@ -436,15 +488,26 @@ boolean val_optional;
 {
 	if(!initial) {
 		rejectoption(optname);
-		return NULL;
+		return (char *)0;
 	}
 	return string_for_opt(opts, val_optional);
+}
+
+static void
+bad_negation(optname, with_parameter)
+const char *optname;
+boolean with_parameter;
+{
+	pline_The("%s option may not %sbe negated.",
+		optname,
+		with_parameter ? "both have a value and " : "");
 }
 
 /*
  * Change the inventory order, using the given string as the new order.
  * Missing characters in the new order are filled in at the end from
- * the current inv_order.
+ * the current inv_order, except for gold, which is forced to be first
+ * if not explicitly present.
  *
  * This routine returns 1 unless there is a duplicate or bad char in
  * the string.
@@ -456,27 +519,52 @@ char *op;
     int oc_sym, num;
     char *sp, buf[BUFSZ];
 
+    num = 0;
+    if (!index(op, GOLD_SYM))
+	buf[num++] = GOLD_CLASS;
+
     for (sp = op; *sp; sp++) {
 	oc_sym = def_char_to_objclass(*sp);
-
-	/* Remove bad or duplicate entries. */
+	/* reject bad or duplicate entries */
 	if (oc_sym == MAXOCLASSES ||
-		(!index(flags.inv_order, oc_sym)) || (index(sp+1, *sp)))
-
+		oc_sym == RANDOM_CLASS || oc_sym == ILLOBJ_CLASS ||
+		!index(flags.inv_order, oc_sym) || index(sp+1, *sp))
 	    return 0;
+	/* retain good ones */
+	buf[num++] = (char) oc_sym;
+    }
+    buf[num] = '\0';
 
-	*sp = (char) oc_sym;
-    } 
-    Strcpy(buf, op);
-    for (sp = flags.inv_order, num = strlen(buf); *sp; sp++)
+    /* fill in any omitted classes, using previous ordering */
+    for (sp = flags.inv_order; *sp; sp++)
 	if (!index(buf, *sp)) {
 	    buf[num++] = *sp;
 	    buf[num] = '\0';	/* explicitly terminate for next index() */
 	}
 
-    buf[num] = 0;
     Strcpy(flags.inv_order, buf);
     return 1;
+}
+
+static void
+graphics_opts(opts, optype, maxlen, offset)
+register char *opts;
+const char *optype;
+int maxlen, offset;
+{
+	uchar translate[MAXPCHARS+1];
+	int length, i;
+
+	if (!(opts = string_for_env_opt(optype, opts, FALSE)))
+		return;
+	escapes(opts, opts);
+
+	length = strlen(opts);
+	if (length > maxlen) length = maxlen;
+	/* match the form obtained from PC configuration files */
+	for (i = 0; i < length; i++)
+		translate[i] = (uchar) opts[i];
+	assign_graphics(translate, length, maxlen, offset);
 }
 
 void
@@ -488,6 +576,8 @@ boolean tinitial, tfrom_file;
 	unsigned num;
 	boolean negated;
 	int i;
+	char tbuf[MAXOCLASSES + 1];
+	const char *fullname;
 
 	initial = tinitial;
 	from_file = tfrom_file;
@@ -507,7 +597,12 @@ boolean tinitial, tfrom_file;
 		if (*opts == '!') opts++; else opts += 2;
 		negated = !negated;
 	}
-	
+
+	/* variant spelling */
+
+	if (!strcmpi(opts, "colour"))
+		Strcpy(opts, "color");	/* fortunately this is shorter */
+
 	/* special boolean options */
 
 	if (!strncmpi(opts, "female", 3)) {
@@ -535,10 +630,12 @@ boolean tinitial, tfrom_file;
 #endif /* MICRO */
 
 	/* compound options */
-
-	if (!strncmpi(opts, "pettype", 3)) {
-		if ((op = string_for_env_opt("pettype", opts, FALSE)) != 0)
-		    switch (*op) {
+	
+	fullname = "pettype";
+	if (!strncmpi(opts, fullname, 3)) {
+		if ((op = string_for_env_opt(fullname, opts, negated)) != 0) {
+		    if (negated) bad_negation(fullname, TRUE);
+		    else switch (*op) {
 			case 'd':	/* dog */
 			case 'D':
 			    preferred_pet = 'd';
@@ -553,25 +650,32 @@ boolean tinitial, tfrom_file;
 			    pline("Unrecognized pet type '%s'", op);
 			    break;
 		    }
+		} else if (negated) preferred_pet = 0;
 		return;
 	}
 
-	if (!strncmpi(opts, "catname", 3)) {
-		if ((op = string_for_env_opt("catname", opts, FALSE)) != 0)
-			nmcpy(catname, op, 62);
+	fullname = "catname";
+	if (!strncmpi(opts, fullname, 3)) {
+		if (negated) bad_negation(fullname, FALSE);
+		else if ((op = string_for_env_opt(fullname, opts, FALSE)) != 0)
+			nmcpy(catname, op, PL_PSIZ);
 		return;
 	}
 
-	if (!strncmpi(opts, "dogname", 3)) {
-		if ((op = string_for_env_opt("dogname", opts, FALSE)) != 0)
-			nmcpy(dogname, op, 62);
+	fullname = "dogname";
+	if (!strncmpi(opts, fullname, 3)) {
+		if (negated) bad_negation(fullname, FALSE);
+		else if ((op = string_for_env_opt(fullname, opts, FALSE)) != 0)
+			nmcpy(dogname, op, PL_PSIZ);
 		return;
 	}
 
-	if (!strncmpi(opts, "msghistory", 3)) {
-		if ((op = string_for_env_opt("msghistory", opts, FALSE)) != 0) {
-			flags.msg_history = atoi(op);
-		}
+	fullname = "msghistory";
+	if (!strncmpi(opts, fullname, 3)) {
+		op = string_for_env_opt(fullname, opts, negated);
+		if ((negated && !op) || (!negated && op)) {
+			flags.msg_history = negated ? 0 : atoi(op);
+		} else if (negated) bad_negation(fullname, TRUE);
 		return;
 	}
 
@@ -582,18 +686,27 @@ boolean tinitial, tfrom_file;
 # endif
 									) {
 	    int color_number, color_incr;
+
 # ifdef MAC
 	    if (!strncmpi(opts, "hicolor", 3)) {
-		color_number = MAXCOLORS + 4;	/* HARDCODED inverse number */
+		if (negated) {
+		    bad_negation("hicolor", FALSE);
+		    return;
+		}
+		color_number = CLR_MAX + 4;	/* HARDCODED inverse number */
 		color_incr = -1;
 	    } else {
 # endif
+		if (negated) {
+		    bad_negation("palette", FALSE);
+		    return;
+		}
 		color_number = 0;
 		color_incr = 1;
 # ifdef MAC
 	    }
 # endif
-	    if ((op = string_for_opt(opts, FALSE)) != NULL) {
+	    if ((op = string_for_opt(opts, FALSE)) != (char *)0) {
 		char *pt = op;
 		int cnt, tmp, reverse;
 		long rgb;
@@ -641,9 +754,18 @@ boolean tinitial, tfrom_file;
 	}
 #endif
 
-#ifdef TUTTI_FRUTTI
 	if (!strncmpi(opts, "fruit", 2)) {
-		if (!(op = string_for_opt(opts, FALSE))) return;
+		char empty_str = '\0';
+		op = string_for_opt(opts, negated);
+		if (negated) {
+		    if (op) {
+			bad_negation("fruit", TRUE);
+			return;
+		    }
+		    op = &empty_str;
+		    goto goodfruit;
+		}
+		if (!op) return;
 		if (!initial) {
 		    struct fruit *f;
 
@@ -659,8 +781,9 @@ boolean tinitial, tfrom_file;
 		}
 goodfruit:
 		nmcpy(pl_fruit, op, PL_FSIZ);
+	/* OBJ_NAME(objects[SLIME_MOLD]) won't work after initialization */
 		if (!*pl_fruit)
-		    nmcpy(pl_fruit, OBJ_NAME(objects[SLIME_MOLD]), PL_FSIZ);
+		    nmcpy(pl_fruit, "slime mold", PL_FSIZ);
 		if (!initial)
 		    (void)fruitadd(pl_fruit);
 		/* If initial, then initoptions is allowed to do it instead
@@ -670,30 +793,44 @@ goodfruit:
 		 */
 		return;
 	}
-#endif
+
 	/* graphics:string */
-	if (!strncmpi(opts, "graphics", 2)) {
-		uchar translate[MAXPCHARS+1];
-		int length;
-
-		if (!(opts = string_for_env_opt("graphics", opts, FALSE)))
-			return;
-		escapes(opts, opts);
-
-		length = strlen(opts);
-		if (length > MAXPCHARS) length = MAXPCHARS;
-		/* match the form obtained from PC configuration files */
-		for (i = 0; i < length; i++)
-			translate[i] = (uchar) opts[i];
-		assign_graphics(translate, length);
+	fullname = "graphics";
+	if (!strncmpi(opts, fullname, 2)) {
+		if (negated) bad_negation(fullname, FALSE);
+		else graphics_opts(opts, fullname, MAXPCHARS, 0);
+		return;
+	}
+	fullname = "dungeon";
+	if (!strncmpi(opts, fullname, 2)) {
+		if (negated) bad_negation(fullname, FALSE);
+		else graphics_opts(opts, fullname, MAXDCHARS, 0);
+		return;
+	}
+	fullname = "traps";
+	if (!strncmpi(opts, fullname, 2)) {
+		if (negated) bad_negation(fullname, FALSE);
+		else graphics_opts(opts, fullname, MAXTCHARS, MAXDCHARS);
+		return;
+	}
+	fullname = "effects";
+	if (!strncmpi(opts, fullname, 2)) {
+		if (negated) bad_negation(fullname, FALSE);
+		else
+		 graphics_opts(opts, fullname, MAXECHARS, MAXDCHARS+MAXTCHARS);
 		return;
 	}
 
 	/* objects:string */
-	if (!strncmpi(opts, "objects", 7)) {
+	fullname = "objects";
+	if (!strncmpi(opts, fullname, 7)) {
 		int length;
 
-		if (!(opts = string_for_env_opt("objects", opts, FALSE)))
+		if (negated) {
+		    bad_negation(fullname, FALSE);
+		    return;
+		}
+		if (!(opts = string_for_env_opt(fullname, opts, FALSE)))
 			return;
 		escapes(opts, opts);
 
@@ -716,10 +853,15 @@ goodfruit:
 	}
 
 	/* monsters:string */
-	if (!strncmpi(opts, "monsters", 8)) {
+	fullname = "monsters";
+	if (!strncmpi(opts, fullname, 8)) {
 		int length;
 
-		if (!(opts = string_for_env_opt("monsters", opts, FALSE)))
+		if (negated) {
+		    bad_negation(fullname, FALSE);
+		    return;
+		}
+		if (!(opts = string_for_env_opt(fullname, opts, FALSE)))
 			return;
 		escapes(opts, opts);
 
@@ -734,15 +876,21 @@ goodfruit:
 	}
 
 	/* name:string */
-	if (!strncmpi(opts, "name", 4)) {
-		if ((op = string_for_env_opt("name", opts, FALSE)) != 0)
-			nmcpy(plname, op, (int)sizeof(plname)-1);
+	fullname = "name";
+	if (!strncmpi(opts, fullname, 4)) {
+		if (negated) bad_negation(fullname, FALSE);
+		else if ((op = string_for_env_opt(fullname, opts, FALSE)) != 0)
+			nmcpy(plname, op, PL_NSIZ);
 		return;
 	}
 
 	/* the order to list the pack */
-	if (!strncmpi(opts, "packorder", 4)) {
-		if (!(op = string_for_opt(opts, FALSE))) return;
+	fullname = "packorder";
+	if (!strncmpi(opts, fullname, 4)) {
+		if (negated) {
+		    bad_negation(fullname, FALSE);
+		    return;
+		} else if (!(op = string_for_opt(opts, FALSE))) return;
 
 		if (!change_inv_order(op))
 			badoption(opts);
@@ -754,15 +902,38 @@ goodfruit:
 		int oc_sym;
 		boolean badopt = FALSE, compat = (strlen(opts) <= 6);
 
+		oc_to_str(flags.pickup_types, tbuf);
 		flags.pickup_types[0] = '\0';	/* all */
-		if (!(op = string_for_opt(opts, compat))) {
+		op = string_for_opt(opts, TRUE);
+		if (!op) {
+		    if (!compat && !negated) {
+			char ocl[MAXOCLASSES + 1];
+			
+			oc_to_str(flags.inv_order, ocl);
+		        if (choose_classes_menu("Auto-Pickup what?", 1,
+						TRUE, ocl, tbuf))
+				op = tbuf;
+		        else
+				return;
+		    } else if (!compat) {
+		    /* !pickup_types means no pickup types, but we can't do
+		       that by just emptying pickup_types, because that's a
+		       special case which means all types rather than none  */
+			flags.pickup = 0;
+			return;
+		    } else {
 		    /* for backwards compatibility, "pickup" without a value
+		       (as opposed to "pickup_types" without a value)
 		       is a synonym for boolean autopickup, and pickup_types
 		       gets reset to "all"				    */
-		    flags.pickup = !negated;
+		        flags.pickup = !negated;
+		        return;
+		    }
+		}
+		if (negated) {
+		    bad_negation("pickup_types", TRUE);
 		    return;
 		}
-
 		while (*op == ' ') op++;
 		if (*op != 'a' && *op != 'A') {
 		    num = 0;
@@ -795,6 +966,10 @@ goodfruit:
 			if (negated) Strcpy(flags.end_disclose, "none");
 			return;
 		}
+		if (negated) {
+			bad_negation("disclose", TRUE);
+			return;
+		}
 		num = 0;
 		while (*op && num < sizeof flags.end_disclose - 1) {
 			register char c;
@@ -811,74 +986,148 @@ goodfruit:
 
 	/* scores:5t[op] 5a[round] o[wn] */
 	if (!strncmpi(opts, "scores", 6)) {
-		if (!(op = string_for_opt(opts, FALSE))) return;
-
-		while (*op) {
-			num = 1;
-			if(digit(*op)) {
-				num = atoi(op);
-				while(digit(*op)) op++;
-			} else if(*op == '!') {
-				negated = !negated;
-				op++;
-			}
-			while(*op == ' ') op++;
-
-			switch(*op) {
-				case 't':
-				case 'T':
-					flags.end_top = num;
-					break;
-				case 'a':
-				case 'A':
-					flags.end_around = num;
-					break;
-				case 'o':
-				case 'O':
-					flags.end_own = !negated;
-					break;
-				default:
-					badoption(opts);
-					return;
-			}
-			while(letter(*++op) || *op == ' ') ;
-			if(*op == '/') op++;
-		}
+	    if (negated) {
+		bad_negation("scores", FALSE);
 		return;
+	    }
+	    if (!(op = string_for_opt(opts, FALSE))) return;
+
+	    while (*op) {
+		int inum = 1;
+
+		if (digit(*op)) {
+		    inum = atoi(op);
+		    while (digit(*op)) op++;
+		} else if (*op == '!') {
+		    negated = !negated;
+		    op++;
+		}
+		while (*op == ' ') op++;
+
+		switch (*op) {
+		 case 't':
+		 case 'T':  flags.end_top = inum;
+			    break;
+		 case 'a':
+		 case 'A':  flags.end_around = inum;
+			    break;
+		 case 'o':
+		 case 'O':  flags.end_own = !negated;
+			    break;
+		 default:   badoption(opts);
+			    return;
+		}
+		while (letter(*++op) || *op == ' ') continue;
+		if (*op == '/') op++;
+	    }
+	    return;
 	}
 
 #ifdef VIDEOSHADES
 	/* videocolors:string */
-	if (!strncmpi(opts, "videocolors", 6)) {
-		int length;
-
-		if (!(opts = string_for_env_opt("videocolors", opts, FALSE))) {
+	fullname = "videocolors";
+	if (!strncmpi(opts, fullname, 6)) {
+		if (negated) {
+			bad_negation(fullname, FALSE);
 			return;
 		}
-		badoption(opts);
+		else if (!(opts = string_for_env_opt(fullname, opts, FALSE))) {
+			return;
+		}
+		if (!assign_videocolors(opts))
+			badoption(opts);
 		return;
 	}
 	/* videoshades:string */
-	if (!strncmpi(opts, "videoshades", 6)) {
-		int length;
-
-		if (!(opts = string_for_env_opt("videoshades", opts, FALSE))) {
+	fullname = "videoshades";
+	if (!strncmpi(opts, fullname, 6)) {
+		if (negated) {
+			bad_negation(fullname, FALSE);
 			return;
 		}
-		badoption(opts);
+		else if (!(opts = string_for_env_opt(fullname, opts, FALSE))) {
+			return;
+		}
+		if (!assign_videoshades(opts))
+			badoption(opts);
 		return;
 	}
 #endif /* VIDEOSHADES */
-
-	if (!strncmpi(opts, "windowtype", 3)) {
-	    if ((op = string_for_env_opt("windowtype", opts, FALSE)) != 0) {
-		char buf[16];
-		nmcpy(buf, op, 15);
+#ifdef MSDOS
+# ifdef NO_TERMS
+	/* video:string -- must be after longer tests */
+	fullname = "video";
+	if (!strncmpi(opts, fullname, 5)) {
+		if (negated) {
+			bad_negation(fullname, FALSE);
+			return;
+		}
+		else if (!(opts = string_for_env_opt(fullname, opts, FALSE))) {
+			return;
+		}
+		if (!assign_video(opts))
+			badoption(opts);
+		return;
+	}
+# endif
+	/* soundcard:string -- careful not to match boolean 'sound' */
+	fullname = "soundcard";
+	if (!strncmpi(opts, fullname, 6)) {
+		if (negated) {
+			bad_negation(fullname, FALSE);
+			return;
+		}
+		else if (!(opts = string_for_env_opt(fullname, opts, FALSE))) {
+			return;
+		}
+		if (!assign_soundcard(opts))
+			badoption(opts);
+		return;
+	}
+#endif
+	fullname = "windowtype";
+	if (!strncmpi(opts, fullname, 3)) {
+	    if (negated) {
+		bad_negation(fullname, FALSE);
+		return;
+	    } else if ((op = string_for_env_opt(fullname, opts, FALSE)) != 0) {
+		char buf[WINTYPELEN];
+		nmcpy(buf, op, WINTYPELEN);
 		choose_windows(buf);
 	    }
 	    return;
 	}
 
+	/* menustyle:traditional or combo or full or partial */
+	if (!strncmpi(opts, "menustyle", 4)) {
+		int tmp;
+		boolean val_required = (strlen(opts) > 5 && !negated);
+
+		if (!(op = string_for_opt(opts, !val_required))) {
+		    if (val_required) return; /* string_for_opt gave feedback */
+		    tmp = negated ? 'n' : 'f';
+		} else {
+		    tmp = tolower(*op);
+		}
+		switch (tmp) {
+			case 'n':	/* none */
+			case 't':	/* traditional */
+				flags.menu_style = MENU_TRADITIONAL;
+				break;
+			case 'c':	/* combo: trad.class sel+menu */
+				flags.menu_style = MENU_COMBINATION;
+				break;
+			case 'p':	/* partial: no class menu */
+				flags.menu_style = MENU_PARTIAL;
+				break;
+			case 'f':	/* full: class menu + menu */
+				flags.menu_style = MENU_FULL;
+				break;
+			default:
+				badoption(opts);
+		}
+		return;
+	}
 	/* OK, if we still haven't recognized the option, check the boolean
 	 * options list
 	 */
@@ -888,7 +1137,7 @@ goodfruit:
 			/* options that don't exist */
 			if (!boolopt[i].addr) {
 			    if (!initial && !negated)
-				pline("The \"%s\" option is not available.",
+				pline_The("\"%s\" option is not available.",
 					boolopt[i].name);
 			    return;
 			}
@@ -1000,6 +1249,10 @@ goodfruit:
 	badoption(opts);
 }
 
+static NEARDATA const char *menutype[] = {
+	"traditional", "combination", "partial", "full"
+};
+
 /*
  * Convert the given string of object classes to a string of default object
  * symbols.
@@ -1048,12 +1301,12 @@ doset()
 		if (!boolopt[i].addr) continue;
 		opt_name = boolopt[i].name;
 		if (*(boolopt[i].addr)) {
-		    on_off = ' ';               /* on */
+		    on_off = ' ';		/* on */
 		} else {
 		    if (!strcmp(opt_name, "female"))
 			opt_name = "male",  on_off = ' ';
 		    else
-			on_off = '!';           /* off */
+			on_off = '!';		/* off */
 		}
 		Sprintf(buf, "%c%s", on_off, opt_name);
 		putstr(tmpwin, 0, buf);
@@ -1068,10 +1321,10 @@ doset()
 	    Sprintf(buf, " dogname: %s",
 			(dogname[0] != 0) ? dogname : "(null)");
 	    putstr(tmpwin, 0, buf);
-#ifdef TUTTI_FRUTTI
 	    Sprintf(buf, " fruit: %s", pl_fruit);
 	    putstr(tmpwin, 0, buf);
-#endif
+	    Sprintf(buf, " menustyle: %s", menutype[(int)flags.menu_style]);
+	    putstr(tmpwin, 0, buf);
 	    Sprintf(buf, " msghistory: %u", flags.msg_history);
 	    putstr(tmpwin, 0, buf);
 	    Sprintf(buf, " name: %s", plname);
@@ -1089,21 +1342,21 @@ doset()
 	    oc_to_str(flags.pickup_types, ocl);
 	    Sprintf(buf, " pickup_types: %s", (ocl[0]) ? ocl : "all");
 	    putstr(tmpwin, 0, buf);
-	    Sprintf(buf, " scores: %u top/%u around%s",
-		        flags.end_top, flags.end_around,
-		        (flags.end_own ? "/own" : ""));
+	    Sprintf(buf, " scores: %d top/%d around%s",
+			flags.end_top, flags.end_around,
+			(flags.end_own ? "/own" : ""));
 	    putstr(tmpwin, 0, buf);
 #ifdef VIDEOSHADES
-            Sprintf(buf, " videoshades: %s %s %s",
+	    Sprintf(buf, " videoshades: %s-%s-%s",
 				shade[0],shade[1],shade[2]);
-            putstr(tmpwin, 0, buf);
-            Sprintf(buf, " videocolors: %d %d %d %d %d %d %d %d %d %d %d %d",
-		 ttycolors[RED],ttycolors[GREEN],ttycolors[BROWN],
-                 ttycolors[BLUE],ttycolors[MAGENTA],ttycolors[CYAN],
-                 ttycolors[ORANGE_COLORED],ttycolors[BRIGHT_GREEN],
-		 ttycolors[YELLOW],ttycolors[BRIGHT_BLUE],
-                 ttycolors[BRIGHT_MAGENTA],ttycolors[BRIGHT_CYAN]);
-            putstr(tmpwin, 0, buf);
+	    putstr(tmpwin, 0, buf);
+	    Sprintf(buf, " videocolors: %d-%d-%d-%d-%d-%d-%d-%d-%d-%d-%d-%d",
+		 ttycolors[CLR_RED],ttycolors[CLR_GREEN],ttycolors[CLR_BROWN],
+		 ttycolors[CLR_BLUE],ttycolors[CLR_MAGENTA],ttycolors[CLR_CYAN],
+		 ttycolors[CLR_ORANGE],ttycolors[CLR_BRIGHT_GREEN],
+		 ttycolors[CLR_YELLOW],ttycolors[CLR_BRIGHT_BLUE],
+		 ttycolors[CLR_BRIGHT_MAGENTA],ttycolors[CLR_BRIGHT_CYAN]);
+	    putstr(tmpwin, 0, buf);
 #endif /* VIDEOSHADES */
 	    Sprintf(buf, " windowtype: %s", windowprocs.name);
 	    putstr(tmpwin, 0, buf);
@@ -1146,7 +1399,7 @@ static const char *opt_intro[] = {
 	"                 NetHack Options Help:",
 	"",
 #define CONFIG_SLOT 3	/* fill in next value at run-time */
-	NULL,
+	(char *)0,
 #if !defined(MICRO) && !defined(MAC)
 	"or use `NETHACKOPTIONS=\"<options>\"' in your environment;",
 # ifdef VMS
@@ -1157,14 +1410,14 @@ static const char *opt_intro[] = {
 	"In all cases, <options> is a list of options separated by commas.",
 	"",
  "Boolean options (which can be negated by prefixing them with '!' or \"no\"):",
-	NULL
+	(char *)0
 };
 
 static const char *opt_epilog[] = {
 	"",
  "Some of the options can be set only before the game is started.  You will",
 	"be so informed, if you attempt to set them while in the game.",
-	NULL
+	(char *)0
 };
 
 void
@@ -1227,7 +1480,7 @@ const char *str;
 			s[-2] = 0;	/* strip last ", " */
 		i = 121;
 	}
-	else	
+	else
 		i = strlen(buf) + strlen(str) + 2;
 
 	if (i > COLNO - 2) { /* rule of thumb */
@@ -1243,7 +1496,6 @@ const char *str;
 	return;
 }
 
-#ifdef TUTTI_FRUTTI
 /* Returns the fid of the fruit type; if that type already exists, it
  * returns the fid of that one; if it does not exist, it adds a new fruit
  * type to the chain and returns the new one.
@@ -1252,13 +1504,9 @@ int
 fruitadd(str)
 char *str;
 {
-	register int i,j;
+	register int i;
 	register struct fruit *f;
-#ifdef GCC_WARN
-	struct fruit *lastf = (struct fruit *)0;
-#else
-	struct fruit *lastf;
-#endif
+	struct fruit *lastf = 0;
 	int highest_fruit_id = 0;
 	char buf[PL_FSIZ];
 	boolean user_specified = (str == pl_fruit);
@@ -1276,19 +1524,21 @@ char *str;
 
 		boolean found = FALSE;
 
-		for(i = bases[j=letindex(FOOD_CLASS)]; i < bases[j+1]; i++) {
+		for (i = bases[FOOD_CLASS]; objects[i].oc_class == FOOD_CLASS;
+						i++) {
 			if (!strcmp(OBJ_NAME(objects[i]), pl_fruit)) {
 				found = TRUE;
 				break;
 			}
 		}
 		if (found ||
-		    (!strncmp(str, "tin of ", 7) && name_to_mon(str+7) > -1) ||
+		    (!strncmp(str, "tin of ", 7) &&
+			(!strcmp(str+7, "spinach") ||
+			 name_to_mon(str+7) >= LOW_PM)) ||
 		    !strcmp(str, "empty tin") ||
-		    !strcmp(str, "tin of spinach") ||
 		    ((!strncmp(eos(str)-6," corpse",7) ||
-						!strncmp(eos(str)-3, " egg",4))
-			&& name_to_mon(str) > -1))
+			    !strncmp(eos(str)-3, " egg",4)) &&
+			name_to_mon(str) >= LOW_PM))
 			{
 				Strcpy(buf, pl_fruit);
 				Strcpy(pl_fruit, "candied ");
@@ -1315,7 +1565,104 @@ nonew:
 	if (user_specified) current_fruit = highest_fruit_id;
 	return f->fid;
 }
-#endif
+
+/*
+ * This is a somewhat generic menu for taking a list of NetHack style
+ * class choices and presenting them via a description
+ * rather than the traditional NetHack characters.
+ * (Benefits users whose first exposure to NetHack is via tiles).
+ *
+ * prompt
+ *	     The title at the top of the menu.
+ *
+ * category: 0 = monster class
+ *           1 = object  class
+ *
+ * way
+ *	     FALSE = PICK_ONE, TRUE = PICK_ANY
+ *
+ * class_list
+ *	     a null terminated string containing the list of choices.
+ *
+ * class_selection
+ *	     a null terminated string containing the selected characters.
+ *
+ * Returns number selected (or ESC if aborted).
+ */
+int
+choose_classes_menu(prompt, category, way, class_list, class_select)
+const char *prompt;
+int category;
+boolean way;
+char *class_list;
+char *class_select;
+{
+    menu_item *pick_list = (menu_item *)0;
+    winid win;
+    anything any;
+    char buf[BUFSZ];
+    int i, n;
+    int ret;
+    int next_accelerator, accelerator;
+
+    if (class_list == (char *)0 || class_select == (char *)0) return 0;
+    accelerator = 0;
+    next_accelerator = 'a';
+    any.a_void = 0;
+    win = create_nhwindow(NHW_MENU);
+    start_menu(win);
+    while (*class_list) {
+    	const char *text;
+    	boolean selected;
+
+	text = (char *)0;
+	selected = FALSE;
+    	switch (category) {
+		case 0:
+			text = monexplain[def_char_to_monclass(*class_list)];
+			accelerator = *class_list;
+			Sprintf(buf, "%s", text);
+			break;
+		case 1:
+			text = objexplain[def_char_to_objclass(*class_list)];
+			accelerator = next_accelerator;
+			Sprintf(buf, "%c  %s", *class_list, text);
+			break;
+		default:
+			impossible("choose_classes_menu: invalid category %d",
+					category);
+	}
+	if (way && *class_select) {	/* Selections there already */
+		if (index(class_select, *class_list)) {
+			selected = TRUE;
+		}
+	}
+	any.a_int = *class_list;
+	add_menu(win, NO_GLYPH, &any, accelerator, ATR_NONE, buf, selected);
+	++class_list;
+	if (category > 0) {
+		++next_accelerator;
+		if (next_accelerator == ('z' + 1)) next_accelerator = 'A';
+		if (next_accelerator == ('Z' + 1)) break;
+	}
+    }
+    end_menu(win, prompt);
+    n = select_menu(win, way ? PICK_ANY : PICK_ONE, &pick_list);
+    destroy_nhwindow(win);
+    if (n > 0) {
+    	for (i = 0; i < n; ++i) {
+	    	*class_select++ = (char)pick_list[i].item.a_int;
+	}
+    	free((genericptr_t)pick_list);
+	ret = n;
+    } else if (n == -1) {
+	class_select = eos(class_select);
+	ret = -1;
+    } else
+    	ret = 0;
+    *class_select = '\0';
+    return ret;
+}
 
 #endif	/* OPTION_LISTS_ONLY */
 

@@ -1,6 +1,6 @@
-/*	SCCS Id: @(#)def_os2.h	3.1	93/01/19	*/
-/*	Copyright (c) Timo Hakulinen, 1990, 1991, 1992, 1993. */
-/*	NetHack may be freely redistributed.  See license for details. */
+/*	SCCS Id: @(#)def_os2.h	3.2	93/01/19	*/
+/* Copyright (c) Timo Hakulinen, 1990, 1991, 1992, 1993.	  */
+/* NetHack may be freely redistributed.  See license for details. */
 
 /*
  *	Only a small portion of all OS/2 defines are needed, so the
@@ -15,7 +15,7 @@
 # define INCL_DOS
 # define INCL_SUB
 
-# include <os2.h>
+#include <os2.h>
 
 #else
 

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)monattk.h	3.1	90/22/02	*/
+/*	SCCS Id: @(#)monattk.h	3.2	95/01/28	*/
 /* NetHack may be freely redistributed.  See license for details. */
 /* Copyright 1988, M. Stephenson */
 
@@ -68,9 +68,10 @@
 #define AD_DCAY		34		/* decays organics (Brown pudding) */
 #define AD_SSEX		35		/* Succubus seduction (extended) */
 					/* If no SEDUCE then same as AD_SEDU */
-#define AD_DETH		36		/* for Death only */
-#define AD_PEST		37		/* for Pestilence only */
-#define AD_FAMN		38		/* for Famine only */
+#define AD_HALU		36		/* causes hallucination */
+#define AD_DETH		37		/* for Death only */
+#define AD_PEST		38		/* for Pestilence only */
+#define AD_FAMN		39		/* for Famine only */
 
 #define AD_CLRC		240		/* random clerical spell */
 #define AD_SPEL		241		/* random magic spell */

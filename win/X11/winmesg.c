@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)winmesg.c	3.1	93/02/02		  */
+/*	SCCS Id: @(#)winmesg.c	3.2	93/02/02	*/
 /* Copyright (c) Dean Luick, 1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -45,6 +45,11 @@ static void FDECL(mesg_exposed, (Widget,XtPointer,XtPointer));
 static void FDECL(get_gc, (Widget,struct mesg_info_t *));
 static void FDECL(mesg_resized, (Widget,XtPointer,XtPointer));
 
+static char mesg_translations[] =
+"#override\n\
+ <Key>:		input()	\
+";
+
 /* Move the message window's vertical scrollbar's slider to the bottom. */
 void
 set_message_slider(wp)
@@ -85,18 +90,8 @@ create_message_window(wp, create_popup, parent)
     mesg_info->dirty = False;
     mesg_info->viewport_width = mesg_info->viewport_height = 0;
 
-    /*
-     * We should have an .Xdefaults option that specifies the number of lines
-     * to be displayed.  Until then, we'll use DEFAULT_LINES_DISPLAYED.
-     * E.g.:
-     *
-     *	if (a lines value from .Xdefaults exists)
-     *	    lines_displayed = lines value from .Xdefaults;
-     *	else
-     *	    lines_displayed = DEFAULT_LINES_DISPLAYED;
-     */
-    if (flags.msg_history < DEFAULT_LINES_DISPLAYED)
-	flags.msg_history = DEFAULT_LINES_DISPLAYED;
+    if (flags.msg_history < appResources.message_lines)
+	flags.msg_history = appResources.message_lines;
     if (flags.msg_history > MAX_HISTORY)	/* a sanity check */
 	flags.msg_history = MAX_HISTORY;
 
@@ -135,6 +130,10 @@ create_message_window(wp, create_popup, parent)
      * we know what font we are using.
      */
     num_args = 0;
+    if (!create_popup) {
+	XtSetArg(args[num_args], XtNtranslations,
+		 XtParseTranslationTable(mesg_translations));	num_args++;
+    }
     wp->w = XtCreateManagedWidget(
 		"message",		/* name */
 		windowWidgetClass,	/* widget class from Window.h */
@@ -146,7 +145,7 @@ create_message_window(wp, create_popup, parent)
 
     /*
      * Now adjust the height and width of the message window so that it
-     * is DEFAULT_LINES_DISPLAYED high and DEFAULT_MESSAGE_WIDTH wide.
+     * is appResources.message_lines high and DEFAULT_MESSAGE_WIDTH wide.
      */
 
     /* Get the font information. */
@@ -182,7 +181,7 @@ create_message_window(wp, create_popup, parent)
     /* make sure viewport height makes sense before realizing it */
     num_args = 0;
     mesg_info->viewport_height =
-	DEFAULT_LINES_DISPLAYED * mesg_info->char_height;
+	appResources.message_lines * mesg_info->char_height;
     XtSetArg(args[num_args], XtNheight, mesg_info->viewport_height);num_args++;
     XtSetValues(viewport, args, num_args);
 
@@ -286,7 +285,7 @@ set_circle_buf(mesg_info, count)
     if (count < mesg_info->num_lines) {
 	/*
 	 * Toss num_lines - count line entries from our circular list.
-	 *  
+	 *
 	 * We lose lines from the front (top) of the list.  We _know_
 	 * the list is non_empty.
 	 */
@@ -391,7 +390,7 @@ add_line(mesg_info, s)
 	if (curr->line) free(curr->line);	/* free old line */
 
 	curr->buf_length = new_line_length + 1;
-	curr->line = (char *) alloc(curr->buf_length);
+	curr->line = (char *) alloc((unsigned)curr->buf_length);
     }
 
     Strcpy(curr->line, s);			/* copy info */
@@ -572,7 +571,7 @@ get_gc(w, mesg_info)
 /*
  * Handle resizes on a message window.  Correct saved pixel height and width.
  * Adjust circle buffer to accomidate the new size.
- * 
+ *
  * Problem:  If the resize decreases the width of the window such that
  * some lines are now longer than the window, they will be cut off by
  * X itself.  All new lines will be split to the new size, but the ends
@@ -608,7 +607,7 @@ mesg_resized(w, client_data, call_data)
 			(int) pixel_height / wp->mesg_information->char_height);
 
 #ifdef VERBOSE
-    printf("Message resize.  Pixel: width = %d, height = %d;  Lines: old = %d, new = %d\n", 
+    printf("Message resize.  Pixel: width = %d, height = %d;  Lines: old = %d, new = %d\n",
 	pixel_width,
 	pixel_height,
 	old_lines,

@@ -1,9 +1,9 @@
-/*	SCCS Id: @(#)mklev.c	3.1	93/02/21	*/
+/*	SCCS Id: @(#)mklev.c	3.2	96/01/05	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
-/* #define DEBUG 	/* uncomment to enable code debugging */
+/* #define DEBUG	/* uncomment to enable code debugging */
 
 #ifdef DEBUG
 # ifdef WIZARD
@@ -26,6 +26,7 @@ static void FDECL(mkaltar,(struct mkroom *));
 static void NDECL(makevtele);
 static void NDECL(clear_level_structures);
 static void NDECL(makelevel);
+static void NDECL(mineralize);
 static boolean FDECL(bydoor,(XCHAR_P,XCHAR_P));
 static struct mkroom *FDECL(find_branch_room, (coord *));
 static struct mkroom *FDECL(pos_to_room, (XCHAR_P, XCHAR_P));
@@ -40,9 +41,7 @@ static void FDECL(do_room_or_subroom, (struct mkroom *,int,int,int,int,
 static void NDECL(makerooms);
 static void FDECL(finddpos,(coord *,XCHAR_P,XCHAR_P,XCHAR_P,XCHAR_P));
 static void FDECL(mkinvpos, (XCHAR_P,XCHAR_P,int));
-#ifdef MULDGN
 static void FDECL(mk_knox_portal, (XCHAR_P,XCHAR_P));
-#endif
 
 #define create_vault()	create_room(-1, -1, 2, 2, -1, -1, VAULT, TRUE)
 #define init_vault()	vault_x = -1
@@ -76,8 +75,8 @@ const genericptr vy;
 
 static void
 finddpos(cc, xl,yl,xh,yh)
-coord	*cc;
-xchar	xl,yl,xh,yh;
+coord *cc;
+xchar xl,yl,xh,yh;
 {
 	register xchar x, y;
 
@@ -249,7 +248,7 @@ register int a, b;
 boolean nxcor;
 {
 	coord cc,tt, org, dest;
-	register int tx, ty, xx, yy;
+	register xchar tx, ty, xx, yy;
 	register struct mkroom *croom, *troom;
 	register int dx, dy;
 
@@ -301,7 +300,7 @@ boolean nxcor;
 	org.x  = xx+dx; org.y  = yy+dy;
 	dest.x = tx; dest.y = ty;
 
-	if (!dig_corridor(org, dest, nxcor, CORR, STONE))
+	if (!dig_corridor(&org, &dest, nxcor, CORR, STONE))
 	    return;
 
 	/* we succeeded in digging the corridor */
@@ -401,9 +400,9 @@ register int type;
 		struct monst *mtmp;
 
 		if (level_difficulty() >= 9 && !rn2(5) &&
-		   !((mons[PM_SMALL_MIMIC].geno & (G_GENOD | G_EXTINCT)) &&
-		     (mons[PM_LARGE_MIMIC].geno & (G_GENOD | G_EXTINCT)) &&
-		     (mons[PM_GIANT_MIMIC].geno & (G_GENOD | G_EXTINCT)))) {
+		   !((mvitals[PM_SMALL_MIMIC].mvflags & G_GONE) &&
+		     (mvitals[PM_LARGE_MIMIC].mvflags & G_GONE) &&
+		     (mvitals[PM_GIANT_MIMIC].mvflags & G_GONE))) {
 		    /* make a mimic instead */
 		    levl[x][y].doormask = D_NODOOR;
 		    mtmp = makemon(mkclass(S_MIMIC,0), x, y);
@@ -446,14 +445,13 @@ int *dy, *xx, *yy;
 
 /* there should be one of these per trap, in the same order as trap.h */
 static NEARDATA const char *trap_engravings[TRAPNUM] = {
-				NULL, NULL, NULL, NULL, NULL, NULL,
-				NULL, NULL, NULL, NULL, NULL, NULL,
-			/* 12..14: trapdoor, teleport, level-teleport */
-				"?la? ?as ?er?", "ad ae?ar um", "ad ae?ar um",
-				NULL, NULL, NULL, NULL, NULL,
-#ifdef POLYSELF
-				NULL,
-#endif
+			(char *)0, (char *)0, (char *)0, (char *)0, (char *)0,
+			(char *)0, (char *)0, (char *)0, (char *)0, (char *)0,
+			(char *)0, (char *)0, (char *)0, (char *)0,
+			/* 14..16: trapdoor, teleport, level-teleport */
+			"Vlad was here", "ad aerarium", "ad aerarium",
+			(char *)0, (char *)0, (char *)0, (char *)0, (char *)0,
+			(char *)0,
 };
 
 static void
@@ -478,14 +476,17 @@ int trap_type;
 
 		rm->typ = SCORR;
 		if(trap_type) {
-		    if(trap_type == TRAPDOOR && !Can_fall_thru(&u.uz))
+		    if((trap_type == HOLE || trap_type == TRAPDOOR)
+			&& !Can_fall_thru(&u.uz))
 			trap_type = ROCKTRAP;
 		    ttmp = maketrap(xx, yy+dy, trap_type);
 		    if (ttmp) {
 			ttmp->once = 1;
-			if (trap_engravings[trap_type])
+			if (trap_engravings[trap_type]) {
 			    make_engr_at(xx, yy-dy,
 				     trap_engravings[trap_type], 0L, DUST);
+			    wipe_engr_at(xx, yy-dy, 5); /* age it a little */
+			}
 		    }
 		}
 		dosdoor(xx, yy, aroom, SDOOR);
@@ -568,9 +569,7 @@ clear_level_structures()
 	level.flags.has_court = 0;
 	level.flags.has_morgue = 0;
 	level.flags.has_beehive = 0;
-#ifdef ARMY
 	level.flags.has_barracks = 0;
-#endif
 	level.flags.has_temple = 0;
 	level.flags.has_swamp = 0;
 	level.flags.noteleport = 0;
@@ -601,6 +600,8 @@ makelevel()
 	register int tryct;
 	register int x, y;
 	struct monst *tmonst;	/* always put a web with a spider */
+	branch *branchp;
+	int room_threshold;
 
 	if(wiz1_level.dlevel == 0) init_dungeons();
 	oinit();	/* assign level dependent obj probabilities */
@@ -621,7 +622,6 @@ makelevel()
 	    } else if (dungeons[u.uz.dnum].proto[0]) {
 		    makemaz("");
 		    return;
-#ifdef MULDGN
 	    } else if (In_mines(&u.uz)) {
 		    makemaz("minefill");
 		    return;
@@ -637,7 +637,6 @@ makelevel()
 			   (u.uz.dlevel < loc_lev->dlevel.dlevel) ? "a" : "b");
 		    makemaz(fillname);
 		    return;
-#endif
 	    } else if(In_hell(&u.uz) ||
 		  (rn2(5) && u.uz.dnum == medusa_level.dnum
 			  && depth(&u.uz) > depth(&medusa_level))) {
@@ -676,6 +675,9 @@ makelevel()
 	    mkstairs(sx, sy, 1, croom);	/* up */
 	}
 
+	branchp = Is_branchlev(&u.uz);	/* possible dungeon branch */
+	room_threshold = branchp ? 4 : 3; /* minimum number of rooms needed
+					     to allow a random special room */
 #ifdef REINCARNATION
 	if (Is_rogue_level(&u.uz)) goto skip0;
 #endif
@@ -695,10 +697,9 @@ makelevel()
 			add_room(vault_x, vault_y, vault_x+w,
 				 vault_y+h, TRUE, VAULT, FALSE);
 			level.flags.has_vault = 1;
+			++room_threshold;
 			fill_room(&rooms[nroom - 1], FALSE);
-#ifdef MULDGN
 			mk_knox_portal(vault_x+w, vault_y+h);
-#endif
 			if(!level.flags.noteleport && !rn2(3)) makevtele();
 		} else if(rnd_rect() && create_vault()) {
 			vault_x = rooms[nroom].lx;
@@ -710,31 +711,32 @@ makelevel()
 		}
 	}
 
+    {
+	register int u_depth = depth(&u.uz);
+
 #ifdef WIZARD
 	if(wizard && getenv("SHOPTYPE")) mkroom(SHOPBASE); else
 #endif
-	if(depth(&u.uz) > 1 &&
-	   depth(&u.uz) < depth(&medusa_level) &&
-	   rn2(depth(&u.uz)) < 3) mkroom(SHOPBASE);
-	else if(depth(&u.uz) > 4 && !rn2(6)) mkroom(COURT);
-	else if(depth(&u.uz) > 6 && !rn2(7)) mkroom(ZOO);
-	else if(depth(&u.uz) > 8 && !rn2(5)) mkroom(TEMPLE);
-	else if(depth(&u.uz) > 9 && !rn2(5) &&
-	   !(mons[PM_KILLER_BEE].geno & (G_GENOD | G_EXTINCT))) mkroom(BEEHIVE);
-	else if(depth(&u.uz) > 11 && !rn2(6)) mkroom(MORGUE);
-	else
-#ifdef ARMY
-	if(depth(&u.uz) > 14 && !rn2(4) &&
-	   !(mons[PM_SOLDIER].geno & (G_GENOD | G_EXTINCT))) mkroom(BARRACKS);
-	else
-#endif
-	if(depth(&u.uz) > 18 && !rn2(6)) mkroom(SWAMP);
+	if (u_depth > 1 &&
+	    u_depth < depth(&medusa_level) &&
+	    nroom >= room_threshold &&
+	    rn2(u_depth) < 3) mkroom(SHOPBASE);
+	else if (u_depth > 4 && !rn2(6)) mkroom(COURT);
+	else if (u_depth > 6 && !rn2(7)) mkroom(ZOO);
+	else if (u_depth > 8 && !rn2(5)) mkroom(TEMPLE);
+	else if (u_depth > 9 && !rn2(5) &&
+	   !(mvitals[PM_KILLER_BEE].mvflags & G_GONE)) mkroom(BEEHIVE);
+	else if (u_depth > 11 && !rn2(6)) mkroom(MORGUE);
+	else if (u_depth > 14 && !rn2(4) &&
+	   !(mvitals[PM_SOLDIER].mvflags & G_GONE)) mkroom(BARRACKS);
+	else if (u_depth > 15 && !rn2(6)) mkroom(SWAMP);
+    }
 
 #ifdef REINCARNATION
 skip0:
 #endif
 	/* Place multi-dungeon branch. */
-	place_branch(Is_branchlev(&u.uz), 0, 0);
+	place_branch(branchp, 0, 0);
 
 	/* for each room: put things inside */
 	for(croom = rooms; croom->hx > 0; croom++) {
@@ -784,7 +786,8 @@ skip0:
 
 		/* maybe make some graffiti */
 		if(!rn2(27 + 3 * abs(depth(&u.uz)))) {
-		    const char *mesg = random_engraving();
+		    char buf[BUFSZ];
+		    const char *mesg = random_engraving(buf);
 		    if (mesg) {
 			do {
 			    x = somex(croom);  y = somey(croom);
@@ -812,6 +815,80 @@ skip0:
 	}
 }
 
+/*
+ *	Place deposits of minerals (gold and misc gems) in the stone
+ *	surrounding the rooms on the map.
+ */
+static void
+mineralize()
+{
+	s_level *sp;
+	struct obj *otmp;
+	int goldprob, gemprob, x, y, cnt;
+
+	/* determine if it is even allowed;
+	   almost all special levels are excluded */
+	if (In_hell(&u.uz) || In_V_tower(&u.uz) || In_endgame(&u.uz) ||
+#ifdef REINCARNATION
+		Is_rogue_level(&u.uz) ||
+#endif
+		((sp = Is_special(&u.uz)) != 0 && !Is_oracle_level(&u.uz)
+					&& (!In_mines(&u.uz) || sp->flags.town)
+	    )) return;
+
+	/* basic level-related probabilities */
+	goldprob = 20 + depth(&u.uz) / 3;
+	gemprob = goldprob / 4;
+
+	/* mines have ***MORE*** goodies - otherwise why mine? */
+	if (In_mines(&u.uz)) {
+	    goldprob *= 2;
+	    gemprob *= 3;
+	} else if (In_quest(&u.uz)) {
+	    goldprob /= 4;
+	    gemprob /= 6;
+	}
+
+	/*
+	 * Seed rock areas with gold and/or gems.
+	 * We use fairly low level object handling to avoid unnecessary
+	 * overhead from placing things in the floor chain prior to burial.
+	 */
+	for (x = 2; x < (COLNO - 2); x++)
+	  for (y = 1; y < (ROWNO - 1); y++)
+	    if (levl[x][y+1].typ != STONE) {	 /* <x,y> spot not eligible */
+		y += 2;		/* next two spots aren't eligible either */
+	    } else if (levl[x][y].typ != STONE) { /* this spot not eligible */
+		y += 1;		/* next spot isn't eligible either */
+	    } else if (!(levl[x][y].wall_info & W_NONDIGGABLE) &&
+		  levl[x][y-1].typ   == STONE &&
+		  levl[x+1][y-1].typ == STONE && levl[x-1][y-1].typ == STONE &&
+		  levl[x+1][y].typ   == STONE && levl[x-1][y].typ   == STONE &&
+		  levl[x+1][y+1].typ == STONE && levl[x-1][y+1].typ == STONE) {
+		if (rn2(1000) < goldprob) {
+		    if ((otmp = mksobj(GOLD_PIECE, FALSE, FALSE)) != 0) {
+			otmp->ox = x,  otmp->oy = y;
+			otmp->quan = 1L + rnd(goldprob * 3);
+			otmp->owt = weight(otmp);
+			if (!rn2(3)) add_to_buried(otmp);
+			else place_object(otmp, x, y);
+		    }
+		}
+		if (rn2(1000) < gemprob) {
+		    for (cnt = rnd(2 + dunlev(&u.uz) / 3); cnt > 0; cnt--)
+			if ((otmp = mkobj(GEM_CLASS, FALSE)) != 0) {
+			    if (otmp->otyp == ROCK) {
+				dealloc_obj(otmp);	/* discard it */
+			    } else {
+				otmp->ox = x,  otmp->oy = y;
+				if (!rn2(3)) add_to_buried(otmp);
+				else place_object(otmp, x, y);
+			    }
+		    }
+		}
+	    }
+}
+
 void
 mklev()
 {
@@ -821,6 +898,7 @@ mklev()
 	in_mklev = TRUE;
 	makelevel();
 	bound_digging();
+	mineralize();
 	in_mklev = FALSE;
 	/* has_morgue gets cleared once morgue entered; graveyard stays set */
 	level.flags.graveyard = level.flags.has_morgue;
@@ -832,6 +910,7 @@ mklev()
 		topologize(croom);
 #endif
 	}
+	set_wall_state();
 }
 
 void
@@ -931,7 +1010,7 @@ find_branch_room(mp)
     return croom;
 }
 
-/* Find the room for (x,y).  Return NULL of not in a room. */
+/* Find the room for (x,y).  Return null if not in a room. */
 static struct mkroom *
 pos_to_room(x, y)
     xchar x, y;
@@ -1057,13 +1136,8 @@ boolean
 occupied(x, y)
 register xchar x, y;
 {
-	return((boolean)(t_at(x, y) || levl[x][y].typ == STAIRS
-		|| IS_FOUNTAIN(levl[x][y].typ)
-		|| IS_THRONE(levl[x][y].typ)
-#ifdef SINKS
-		|| IS_SINK(levl[x][y].typ)
-#endif
-		|| levl[x][y].typ == ALTAR
+	return((boolean)(t_at(x, y)
+		|| IS_FURNITURE(levl[x][y].typ)
 		|| is_lava(x,y)
 		|| is_pool(x,y)
 		|| invocation_pos(x,y)
@@ -1071,7 +1145,7 @@ register xchar x, y;
 }
 
 /* make a trap somewhere (in croom if mazeflag = 0 && !tm) */
-/* if tm != NULL, make trap at that location */
+/* if tm != null, make trap at that location */
 void
 mktrap(num, mazeflag, croom, tm)
 register int num, mazeflag;
@@ -1108,6 +1182,9 @@ coord *tm;
 		kind = rnd(TRAPNUM-1);
 		/* reject "too hard" traps */
 		switch (kind) {
+		    case MAGIC_PORTAL:
+			kind = NO_TRAP; break;
+		    case ROLLING_BOULDER_TRAP:
 		    case SLP_GAS_TRAP:
 			if (lvl < 2) kind = NO_TRAP; break;
 		    case LEVEL_TELEP:
@@ -1120,24 +1197,28 @@ coord *tm;
 		    case WEB:
 			if (lvl < 7) kind = NO_TRAP; break;
 		    case STATUE_TRAP:
-#ifdef POLYSELF
 		    case POLY_TRAP:
-#endif
 			if (lvl < 8) kind = NO_TRAP; break;
 		    case FIRE_TRAP:
 			if (!Inhell) kind = NO_TRAP; break;
 		    case TELEP_TRAP:
 			if (level.flags.noteleport) kind = NO_TRAP; break;
+		    case HOLE:
+			/* make these much less often than other traps */
+			if (rn2(7)) kind = NO_TRAP; break;
 		}
-	    } while (kind == NO_TRAP || kind == MAGIC_PORTAL);
+	    } while (kind == NO_TRAP);
 	}
 
-	if (kind == TRAPDOOR && !Can_fall_thru(&u.uz)) kind = ROCKTRAP;
+	if ((kind == TRAPDOOR || kind == HOLE) && !Can_fall_thru(&u.uz))
+		kind = ROCKTRAP;
 
 	if (tm)
 	    m = *tm;
 	else {
 	    register int tryct = 0;
+	    boolean avoid_boulder = (kind == PIT || kind == SPIKED_PIT ||
+				     kind == TRAPDOOR || kind == HOLE);
 
 	    do {
 		if (++tryct > 200)
@@ -1146,10 +1227,8 @@ coord *tm;
 		    mazexy(&m);
 		else if (!somexy(croom,&m))
 		    return;
-	    } while (occupied(m.x, m.y) || is_pool(m.x,m.y) ||
-				     (sobj_at(BOULDER, m.x, m.y) &&
-				      (kind == PIT || kind == SPIKED_PIT ||
-				       kind == TRAPDOOR)));
+	    } while (occupied(m.x, m.y) ||
+			(avoid_boulder && sobj_at(BOULDER, m.x, m.y)));
 	}
 
 	(void) maketrap(m.x, m.y, kind);
@@ -1162,8 +1241,8 @@ xchar x, y;
 char  up;
 struct mkroom *croom;
 {
-	if (! (x || y)) {
-	    impossible("mkstairs:  bogus stair attempt at (%d,%d)", x, y);
+	if (!x) {
+	    impossible("mkstairs:  bogus stair attempt at <%d,%d>", x, y);
 	    return;
 	}
 
@@ -1262,11 +1341,16 @@ register struct mkroom *croom;
 	levl[m.x][m.y].altarmask = Align2amask( al );
 }
 
+/* maze levels have slightly different constraints from normal levels */
+#define x_maze_min 2
+#define y_maze_min 2
 /*
  * Major level transmutation: add a set of stairs (to the Sanctum) after
  * an earthquake that leaves behind a a new topology, centered at inv_pos.
  * Assumes there are no rooms within the invocation area and that inv_pos
- * is not too close to the edge of the map.  Also assume the hero can see.
+ * is not too close to the edge of the map.  Also assume the hero can see,
+ * which is guaranteed for normal play due to the fact that sight is needed
+ * to read the Book of the Dead.
  */
 void
 mkinvokearea()
@@ -1276,9 +1360,11 @@ mkinvokearea()
     xchar ymin = inv_pos.y, ymax = inv_pos.y;
     register xchar i;
 
-    pline("The floor shakes violently under you!");
-    pline("The walls around you begin to bend and crumble!");
+    pline_The("floor shakes violently under you!");
+    pline_The("walls around you begin to bend and crumble!");
     display_nhwindow(WIN_MESSAGE, TRUE);
+
+    mkinvpos(xmin, ymin, 0);		/* middle, before placing stairs */
 
     for(dist = 1; dist < 7; dist++) {
 	xmin--; xmax++;
@@ -1308,9 +1394,8 @@ mkinvokearea()
     vision_full_recalc = 1;	/* everything changed */
 }
 
-/* Change level topology.  Messes with vision tables and ignores things like
- * boulders in the name of a nice effect.  Vision will get fixed up again
- * immediately after the effect is complete.
+/* Change level topology.  Boulders in the vicinity are eliminated.
+ * Temporarily overrides vision in the name of a nice effect.
  */
 static void
 mkinvpos(x,y,dist)
@@ -1318,12 +1403,37 @@ xchar x,y;
 int dist;
 {
     struct trap *ttmp;
+    struct obj *otmp;
+    boolean make_rocks;
     register struct rm *lev = &levl[x][y];
 
+    /* clip at existing map borders if necessary */
+    if (!within_bounded_area(x, y, x_maze_min + 1, y_maze_min + 1,
+				   x_maze_max - 1, y_maze_max - 1)) {
+	/* only outermost 2 columns and/or rows may be truncated due to edge */
+	if (dist < (7 - 2))
+	    panic("mkinvpos: <%d,%d> (%d) off map edge!", x, y, dist);
+	return;
+    }
+
+    /* clear traps */
+    if ((ttmp = t_at(x,y)) != 0) deltrap(ttmp);
+
+    /* clear boulders; leave some rocks for non-{moat|trap} locations */
+    make_rocks = (dist != 1 && dist != 4 && dist != 5) ? TRUE : FALSE;
+    while ((otmp = sobj_at(BOULDER, x, y)) != 0) {
+	if (make_rocks) {
+	    fracture_rock(otmp);
+	    make_rocks = FALSE;		/* don't bother with more rocks */
+	} else {
+	    obj_extract_self(otmp);
+	    obfree(otmp, (struct obj *)0);
+	}
+    }
     unblock_point(x,y);	/* make sure vision knows this location is open */
 
     /* fake out saved state */
-    lev->seen = FALSE;
+    lev->seenv = 0;
     lev->doormask = 0;
     if(dist < 6) lev->lit = TRUE;
     lev->waslit = TRUE;
@@ -1334,20 +1444,19 @@ int dist;
 
     switch(dist) {
     case 1: /* fire traps */
-	lev->typ = ROOM;
 	if (is_pool(x,y)) break;
+	lev->typ = ROOM;
 	ttmp = maketrap(x, y, FIRE_TRAP);
 	if (ttmp) ttmp->tseen = TRUE;
 	break;
-    case 2: /* lit room locations */
+    case 0: /* lit room locations */
+    case 2:
     case 3:
-    case 6:
-	if ((ttmp = t_at(x,y)) != 0) deltrap(ttmp);
+    case 6: /* unlit room locations */
 	lev->typ = ROOM;
 	break;
     case 4: /* pools (aka a wide moat) */
     case 5:
-	if ((ttmp = t_at(x,y)) != 0) deltrap(ttmp);
 	lev->typ = MOAT;
 	break;
     default:
@@ -1359,7 +1468,6 @@ int dist;
     newsym(x,y);
 }
 
-#ifdef MULDGN
 /*
  * The portal to Ludios is special.  The entrance can only occur within a
  * vault in the main dungeon at a depth greater than 10.  The Ludios branch
@@ -1404,11 +1512,10 @@ xchar x, y;
 	*source = u.uz;
 	insert_branch(br, TRUE);
 
-# ifdef DEBUG
+#ifdef DEBUG
 	pline("Made knox portal.");
-# endif
+#endif
 	place_branch(br, x, y);
 }
-#endif
 
 /*mklev.c*/

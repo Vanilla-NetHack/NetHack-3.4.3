@@ -1,10 +1,11 @@
-/*	SCCS Id: @(#)unixmain.c	3.1	92/12/04	*/
+/*	SCCS Id: @(#)unixmain.c	3.2	94/11/07	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 /* main.c - Unix NetHack */
 
 #include "hack.h"
+#include "dlb.h"
 
 #include <signal.h>
 #include <pwd.h>
@@ -12,11 +13,13 @@
 #include <fcntl.h>
 #endif
 
-#if !defined(_BULL_SOURCE) && !defined(sgi) && !defined(_M_UNIX)
-# if defined(POSIX_TYPES) || defined(SVR4) || defined(HPUX)
+#if !defined(_BULL_SOURCE) && !defined(__sgi) && !defined(_M_UNIX)
+# if !defined(SUNOS4) && !(defined(ULTRIX) && defined(__GNUC__))
+#  if defined(POSIX_TYPES) || defined(SVR4) || defined(HPUX)
 extern struct passwd *FDECL(getpwuid,(uid_t));
-# else
+#  else
 extern struct passwd *FDECL(getpwuid,(int));
+#  endif
 # endif
 #endif
 extern struct passwd *FDECL(getpwnam,(const char *));
@@ -44,7 +47,7 @@ char *argv[];
 
 	hname = argv[0];
 	hackpid = getpid();
-	(void) umask(0);
+	(void) umask(0777 & ~FCMASK);
 
 	choose_windows(DEFAULT_WINDOW_SYS);
 
@@ -76,27 +79,43 @@ char *argv[];
 		}
 		if(!*dir)
 		    error("Flag -d must be followed by a directory name.");
-	    } else
-#endif /* CHDIR /**/
+	    }
+	    if (argc > 1)
+#endif /* CHDIR */
 
-	/*
-	 * Now we know the directory containing 'record' and
-	 * may do a prscore().
-	 */
+	    /*
+	     * Now we know the directory containing 'record' and
+	     * may do a prscore().
+	     */
 	    if (!strncmp(argv[1], "-s", 2)) {
 #ifdef CHDIR
 		chdirx(dir,0);
 #endif
 		prscore(argc, argv);
-		exit(0);
+		exit(EXIT_SUCCESS);
 	    }
 	}
+
+	/*
+	 * Find the creation date of this game,
+	 * so as to avoid restoring outdated savefiles.
+	 */
+	gethdate(hname);
+
+	/*
+	 * We cannot do chdir earlier, otherwise gethdate will fail.
+	 * Change directories before we initialize the window system so
+	 * we can find the tile file.
+	 */
+#ifdef CHDIR
+	chdirx(dir,1);
+#endif
 
 #ifdef _M_UNIX
 	check_sco_console();
 #endif
 	initoptions();
-	init_nhwindows();
+	init_nhwindows(&argc,argv);
 	exact_username = whoami();
 #ifdef _M_UNIX
 	init_sco_cons();
@@ -110,19 +129,6 @@ char *argv[];
 	(void) signal(SIGHUP, (SIG_RET_TYPE) hangup);
 #ifdef SIGXCPU
 	(void) signal(SIGXCPU, (SIG_RET_TYPE) hangup);
-#endif
-
-	/*
-	 * Find the creation date of this game,
-	 * so as to avoid restoring outdated savefiles.
-	 */
-	gethdate(hname);
-
-	/*
-	 * We cannot do chdir earlier, otherwise gethdate will fail.
-	 */
-#ifdef CHDIR
-	chdirx(dir,1);
 #endif
 
 	process_options(argc, argv);	/* command line options */
@@ -172,11 +178,12 @@ char *argv[];
 	}
 #endif /* WIZARD /**/
 
+	dlb_init();	/* must be before newgame() */
+
 	/*
-	 * Initialisation of the boundaries of the mazes
+	 * Initialization of the boundaries of the mazes
 	 * Both boundaries have to be even.
 	 */
-
 	x_maze_max = COLNO-1;
 	if (x_maze_max % 2)
 		x_maze_max--;
@@ -192,12 +199,7 @@ char *argv[];
 
 	display_gamewindows();
 
-	set_savefile_name();
-	uncompress(SAVEF);
-
-	if((fd = open_savefile()) >= 0 &&
-	   /* if not up-to-date, quietly delete file via false condition */
-	   (uptodate(fd) || delete_savefile())) {
+	if ((fd = restore_saved_game()) >= 0) {
 #ifdef WIZARD
 		/* Since wizard is actually flags.debug, restoring might
 		 * overwrite it.
@@ -221,11 +223,9 @@ char *argv[];
 #endif
 		pline("Hello %s, welcome back to NetHack!", plname);
 		check_special_room(FALSE);
-#ifdef EXPLORE_MODE
 		if (discover)
 			You("are in non-scoring discovery mode.");
-#endif
-#if defined(EXPLORE_MODE) || defined(WIZARD)
+
 		if (discover || wizard) {
 			if(yn("Do you want to keep the save file?") == 'n')
 			    (void) delete_savefile();
@@ -234,7 +234,6 @@ char *argv[];
 			    compress(SAVEF);
 			}
 		}
-#endif
 		flags.move = 0;
 	} else {
 not_recovered:
@@ -242,30 +241,17 @@ not_recovered:
 		newgame();
 		/* give welcome message before pickup messages */
 		pline("Hello %s, welcome to NetHack!", plname);
-#ifdef EXPLORE_MODE
 		if (discover)
 			You("are in non-scoring discovery mode.");
-#endif
+
 		flags.move = 0;
 		set_wear();
 		pickup(1);
 	}
 
-	flags.moonphase = phase_of_the_moon();
-	if(flags.moonphase == FULL_MOON) {
-		You("are lucky!  Full moon tonight.");
-		change_luck(1);
-	} else if(flags.moonphase == NEW_MOON) {
-		pline("Be careful!  New moon tonight.");
-	}
-	if(flags.friday13 = friday_13th()) {
-		pline("Watch out!  Bad things can happen on Friday the 13th.");
-		change_luck(-1);
-	}
-
-	initrack();
-
 	moveloop();
+	exit(EXIT_SUCCESS);
+	/*NOTREACHED*/
 	return(0);
 }
 
@@ -281,10 +267,6 @@ char *argv[];
 		argv++;
 		argc--;
 		switch(argv[0][1]){
-#if defined(WIZARD) || defined(EXPLORE_MODE)
-# ifndef EXPLORE_MODE
-		case 'X':
-# endif
 		case 'D':
 # ifdef WIZARD
 			{
@@ -315,12 +297,9 @@ char *argv[];
 			}
 			/* otherwise fall thru to discover */
 # endif
-# ifdef EXPLORE_MODE
 		case 'X':
 			discover = TRUE;
-# endif
 			break;
-#endif
 #ifdef NEWS
 		case 'n':
 			flags.news = FALSE;
@@ -382,7 +361,7 @@ boolean wr;
 # endif
 
 # ifdef HACKDIR
-	if(dir == NULL)
+	if(dir == (const char *)0)
 		dir = HACKDIR;
 # endif
 

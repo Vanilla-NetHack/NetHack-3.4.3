@@ -1,8 +1,7 @@
-/*	SCCS Id: @(#)qtext.h	3.1	92/01/22	*/
+/*	SCCS Id: @(#)qtext.h	3.2	92/01/22	*/
 /* Copyright (c) Mike Stephenson 1991.				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
-#ifdef MULDGN
 #ifndef QTEXT_H
 #define QTEXT_H
 
@@ -100,4 +99,3 @@ struct	qtlists {
 #endif	/* MAKEDEFS_C */
 
 #endif /* QTEXT_H */
-#endif /* MULDGN */

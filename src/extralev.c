@@ -1,6 +1,10 @@
-/*	SCCS Id: @(#)extralev.c	3.1	92/05/27			*/
+/*	SCCS Id: @(#)extralev.c	3.2	94/06/08	*/
 /*	Copyright 1988, 1989 by Ken Arromdee				*/
 /* NetHack may be freely redistributed.  See license for details. */
+
+/*
+ * Support code for "rogue"-style level.
+ */
 
 #include "hack.h"
 
@@ -252,8 +256,8 @@ makeroguerooms() {
 			 * level 10, but since Rogue rooms are only
 			 * encountered below level 10, use !rn2(7).
 			 */
-
-			add_room(lowx, lowy, hix, hiy, !rn2(7), OROOM, FALSE);
+			add_room(lowx, lowy, hix, hiy,
+				 (boolean) !rn2(7), OROOM, FALSE);
 		}
 	}
 

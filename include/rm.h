@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)rm.h	3.1	93/02/21		  */
+/*	SCCS Id: @(#)rm.h	3.2	93/02/21	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -16,17 +16,17 @@
 
 /*
  * TLCORNER	TDWALL		TRCORNER
- * +- 		-+- 		-+
- * |  		 |  	 	 |
+ * +-		-+-		-+
+ * |		 |		 |
  *
  * TRWALL	CROSSWALL	TLWALL		HWALL
- * |  		 |  		 |
- * +- 		-+- 		-+		---
- * |  		 |  		 |
+ * |		 |		 |
+ * +-		-+-		-+		---
+ * |		 |		 |
  *
  * BLCORNER	TUWALL		BRCORNER	VWALL
- * |  		 |  		 |		|
- * +- 		-+- 		-+		|
+ * |		 |		 |		|
+ * +-		-+-		-+		|
  */
 
 /* Level location types */
@@ -64,6 +64,7 @@
 #define AIR		31
 #define CLOUD		32
 
+#define MAX_TYPE	33
 #define INVALID_TYPE	127
 
 /*
@@ -94,6 +95,9 @@
  * See drawing.c for defaults.
  * Note: {ibm|dec}_graphics[] arrays (also in drawing.c) must be kept in synch.
  */
+
+/* begin dungeon characters */
+
 #define S_stone		0
 #define S_vwall		1
 #define S_hwall		2
@@ -118,57 +122,88 @@
 #define S_dnstair	21
 #define S_upladder	22
 #define S_dnladder	23
-#define S_trap		24
-#define S_web		25
-#define S_altar		26
-#define S_throne	27
-#define S_sink		28
-#define S_fountain	29
-#define S_pool		30
-#define S_ice		31
-#define S_lava		32
-#define S_vodbridge	33
-#define S_hodbridge	34
-#define S_vcdbridge	35	/* closed drawbridge, vertical wall */
-#define S_hcdbridge	36	/* closed drawbridge, horizontal wall */
-#define S_air		37
-#define S_cloud		38
-#define S_water		39
-#define S_vbeam		40	/* The 4 zap beam symbols.  Do NOT separate. */
-#define S_hbeam		41	/* To change order or add, see function     */
-#define S_lslant	42	/* zapdir_to_glyph() in display.c.	    */
-#define S_rslant	43
-#define S_digbeam	44	/* dig beam symbol */
-#define S_flashbeam	45	/* camera flash symbol */
-#define S_boomleft	46	/* thrown boomerang, open left, e.g ')'    */
-#define S_boomright	47	/* thrown boomerand, open right, e.g. '('  */
-#define S_ss1		48	/* 4 magic shield glyphs */
-#define S_ss2		49
-#define S_ss3		50
-#define S_ss4		51
+#define S_altar		24
+#define S_throne	25
+#define S_sink		26
+#define S_fountain	27
+#define S_pool		28
+#define S_ice		29
+#define S_lava		30
+#define S_vodbridge	31
+#define S_hodbridge	32
+#define S_vcdbridge	33	/* closed drawbridge, vertical wall */
+#define S_hcdbridge	34	/* closed drawbridge, horizontal wall */
+#define S_air		35
+#define S_cloud		36
+#define S_water		37
+
+/* end dungeon characters, begin traps */
+
+#define S_arrow_trap		38
+#define S_dart_trap		39
+#define S_falling_rock_trap	40
+#define S_squeaky_board		41
+#define S_bear_trap		42
+#define S_land_mine		43
+#define S_rolling_boulder_trap	44
+#define S_sleeping_gas_trap	45
+#define S_rust_trap		46
+#define S_fire_trap		47
+#define S_pit			48
+#define S_spiked_pit		49
+#define S_hole			50
+#define S_trap_door		51
+#define S_teleportation_trap	52
+#define S_level_teleporter	53
+#define S_magic_portal		54
+#define S_web			55
+#define S_statue_trap		56
+#define S_magic_trap		57
+#define S_anti_magic_trap	58
+#define S_polymorph_trap	59
+
+/* end traps, begin special effects */
+
+#define S_vbeam		60	/* The 4 zap beam symbols.  Do NOT separate. */
+#define S_hbeam		61	/* To change order or add, see function     */
+#define S_lslant	62	/* zapdir_to_glyph() in display.c.	    */
+#define S_rslant	63
+#define S_digbeam	64	/* dig beam symbol */
+#define S_flashbeam	65	/* camera flash symbol */
+#define S_boomleft	66	/* thrown boomerang, open left, e.g ')'    */
+#define S_boomright	67	/* thrown boomerand, open right, e.g. '('  */
+#define S_ss1		68	/* 4 magic shield glyphs */
+#define S_ss2		69
+#define S_ss3		70
+#define S_ss4		71
 
 /* The 8 swallow symbols.  Do NOT separate.  To change order or add, see */
 /* the function swallow_to_glyph() in display.c.			 */
-#define S_sw_tl		52	/* swallow top left [1]			*/
-#define S_sw_tc		53	/* swallow top center [2]	Order:	*/
-#define S_sw_tr		54	/* swallow top right [3]		*/
-#define S_sw_ml		55	/* swallow middle left [4]	1 2 3	*/
-#define S_sw_mr		56	/* swallow middle right [6]	4 5 6	*/
-#define S_sw_bl		57	/* swallow bottom left [7]	7 8 9	*/
-#define S_sw_bc		58	/* swallow bottom center [8]		*/
-#define S_sw_br		59	/* swallow bottom right [9]		*/
+#define S_sw_tl		72	/* swallow top left [1]			*/
+#define S_sw_tc		73	/* swallow top center [2]	Order:	*/
+#define S_sw_tr		74	/* swallow top right [3]		*/
+#define S_sw_ml		75	/* swallow middle left [4]	1 2 3	*/
+#define S_sw_mr		76	/* swallow middle right [6]	4 5 6	*/
+#define S_sw_bl		77	/* swallow bottom left [7]	7 8 9	*/
+#define S_sw_bc		78	/* swallow bottom center [8]		*/
+#define S_sw_br		79	/* swallow bottom right [9]		*/
 
-#define S_explode1	60	/* explosion top left			*/
-#define S_explode2	61	/* explosion top center			*/
-#define S_explode3	62	/* explosion top right		 Ex.	*/
-#define S_explode4	63	/* explosion middle left		*/
-#define S_explode5	64	/* explosion middle center	 /-\	*/
-#define S_explode6	65	/* explosion middle right	 |@|	*/
-#define S_explode7	66	/* explosion bottom left	 \-/	*/
-#define S_explode8	67	/* explosion bottom center		*/
-#define S_explode9	68	/* explosion bottom right		*/
+#define S_explode1	80	/* explosion top left			*/
+#define S_explode2	81	/* explosion top center			*/
+#define S_explode3	82	/* explosion top right		 Ex.	*/
+#define S_explode4	83	/* explosion middle left		*/
+#define S_explode5	84	/* explosion middle center	 /-\	*/
+#define S_explode6	85	/* explosion middle right	 |@|	*/
+#define S_explode7	86	/* explosion bottom left	 \-/	*/
+#define S_explode8	87	/* explosion bottom center		*/
+#define S_explode9	88	/* explosion bottom right		*/
 
-#define MAXPCHARS	69	/* maximum number of mapped characters */
+/* end effects */
+
+#define MAXPCHARS	89	/* maximum number of mapped characters */
+#define MAXDCHARS	38	/* maximum of mapped dungeon characters */
+#define MAXTCHARS	22	/* maximum of mapped trap characters */
+#define MAXECHARS	29	/* maximum of mapped effects characters */
 
 struct symdef {
     uchar sym;
@@ -256,12 +291,11 @@ extern uchar showsyms[MAXPCHARS];
 #define DB_UNDER	28	/* mask for underneath */
 
 /*
- * Some walls may be non diggable.
+ * Wall information.
  */
-#define W_DIGGABLE	0
-#define W_NONDIGGABLE	1
-#define W_REPAIRED	2
-#define W_NONPASSWALL	4
+#define WM_MASK		0x07	/* wall mode (bottom three bits) */
+#define W_NONDIGGABLE	0x08
+#define W_NONPASSWALL	0x10
 
 /*
  * Ladders (in Vlad's tower) may be up or down.
@@ -283,18 +317,100 @@ extern uchar showsyms[MAXPCHARS];
 struct rm {
 	int glyph;		/* what the hero thinks is there */
 	schar typ;		/* what is really there */
-	Bitfield(seen,1);	/* speed hack for room walls on corridors */
-	Bitfield(lit,1);	/* speed hack for lit rooms */
+	uchar seenv;		/* seen vector */
 	Bitfield(flags,5);	/* extra information for typ */
 	Bitfield(horizontal,1);	/* wall/door/etc is horiz. (more typ info) */
+	Bitfield(lit,1);	/* speed hack for lit rooms */
 	Bitfield(waslit,1);	/* remember if a location was lit */
 	Bitfield(roomno,6);	/* room # for special rooms */
 	Bitfield(edge,1);	/* marks boundaries for special rooms*/
 };
 
+/*
+ * Add wall angle viewing by defining "modes" for each wall type.  Each
+ * mode describes which parts of a wall are finished (seen as as wall)
+ * and which are unfinished (seen as rock).
+ *
+ * We use the bottom 3 bits of the flags field for the mode.  This comes
+ * in conflict with secret doors, but we avoid problems because until
+ * a secret door becomes discovered, we know what sdoor's bottom three
+ * bits are.
+ *
+ * The following should cover all of the cases.
+ *
+ *	type	mode				Examples: R=rock, F=finished
+ *	-----	----				----------------------------
+ *	WALL:	0 none				hwall, mode 1
+ *		1 left/top (1/2 rock)			RRR
+ *		2 right/bottom (1/2 rock)		---
+ *							FFF
+ *
+ *	CORNER:	0 none				trcorn, mode 2
+ *		1 outer (3/4 rock)			FFF
+ *		2 inner (1/4 rock)			F+-
+ *							F|R
+ *
+ *	TWALL:	0 none				tlwall, mode 3
+ *		1 long edge (1/2 rock)			F|F
+ *		2 bottom left (on a tdwall)		-+F
+ *		3 bottom right (on a tdwall)		R|F
+ *
+ *	CRWALL: 0 none				crwall, mode 5
+ *		1 top left (1/4 rock)			R|F
+ *		2 top right (1/4 rock)			-+-
+ *		3 bottom left (1/4 rock)		F|R
+ *		4 bottom right (1/4 rock)
+ *		5 top left & bottom right (1/2 rock)
+ *		6 bottom left & top right (1/2 rock)
+ */
+#define SDOOR_BITS D_CLOSED		/* sdoor bottom 3 bits are these */
+
+#define WM_W_LEFT 1			/* vertical or horizontal wall */
+#define WM_W_RIGHT 2
+#define WM_W_TOP WM_W_LEFT
+#define WM_W_BOTTOM WM_W_RIGHT
+
+#define WM_C_OUTER 1			/* corner wall */
+#define WM_C_INNER 2
+
+#define WM_T_LONG 1			/* T wall */
+#define WM_T_BL   2
+#define WM_T_BR   3
+
+#define WM_X_TL   1			/* cross wall */
+#define WM_X_TR   2
+#define WM_X_BL   3
+#define WM_X_BR   4
+#define WM_X_TLBR 5
+#define WM_X_BLTR 6
+
+/*
+ * Seen vector values.  The seen vector is an array of 8 bits, one for each
+ * octant around a given center x:
+ *
+ *			0 1 2
+ *			7 x 3
+ *			6 5 4
+ *
+ * In the case of walls, a single wall square can be viewed from 8 possible
+ * directions.  If we know the type of wall and the directions from which
+ * it has been seen, then we can determine what it looks like to the hero.
+ */
+#define SV0 0x1
+#define SV1 0x2
+#define SV2 0x4
+#define SV3 0x8
+#define SV4 0x10
+#define SV5 0x20
+#define SV6 0x40
+#define SV7 0x80
+#define SVALL 0xFF
+
+
+
 #define doormask	flags
 #define altarmask	flags
-#define diggable	flags
+#define wall_info	flags
 #define ladder		flags
 #define drawbridgemask	flags
 #define looted		flags
@@ -319,10 +435,9 @@ struct levelflags {
 	Bitfield(has_court, 1);
 	Bitfield(has_morgue, 1);
 	Bitfield(has_beehive, 1);
-#ifdef ARMY
 	Bitfield(has_barracks, 1);
-#endif
 	Bitfield(has_temple, 1);
+
 	Bitfield(has_swamp, 1);
 	Bitfield(noteleport,1);
 	Bitfield(hardfloor,1);
@@ -331,6 +446,7 @@ struct levelflags {
 	Bitfield(shortsighted,1);	/* monsters are shortsighted */
 	Bitfield(graveyard,1);		/* has_morgue, but remains set */
 	Bitfield(is_maze_lev,1);
+
 	Bitfield(is_cavernous_lev,1);
 };
 
@@ -363,15 +479,29 @@ extern dlevel_t	level;	/* structure describing the current level */
 #define fobj		level.objlist
 #define fmon		level.monlist
 
+/*
+ * Covert a trap number into the defsym graphics array.
+ * Convert a defsym number into a trap number.
+ * Assumes that arrow trap will always be the first trap.
+ */
+#define trap_to_defsym(t) (S_arrow_trap+(t)-1)
+#define defsym_to_trap(d) ((d)-S_arrow_trap+1)
+
 #define OBJ_AT(x,y)	(level.objects[x][y] != (struct obj *)0)
 /*
  * Macros for encapsulation of level.monsters references.
  */
-#define MON_AT(x,y)	(level.monsters[x][y] != (struct monst *)0)
+#define MON_AT(x,y)	(level.monsters[x][y] != (struct monst *)0 && \
+			 !(level.monsters[x][y])->mburied)
+#define MON_BURIED_AT(x,y)	(level.monsters[x][y] != (struct monst *)0 && \
+				(level.monsters[x][y])->mburied)
 #define place_monster(m,x,y)	((m)->mx=(x),(m)->my=(y),\
 				 level.monsters[(m)->mx][(m)->my]=(m))
 #define place_worm_seg(m,x,y)	level.monsters[x][y] = m
 #define remove_monster(x,y)	level.monsters[x][y] = (struct monst *)0
-#define m_at(x,y)		level.monsters[x][y]
+#define m_at(x,y)		(MON_AT(x,y) ? level.monsters[x][y] : \
+						(struct monst *)0)
+#define m_buried_at(x,y)	(MON_BURIED_AT(x,y) ? level.monsters[x][y] : \
+						       (struct monst *)0)
 
 #endif /* RM_H */

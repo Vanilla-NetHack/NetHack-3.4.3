@@ -1,24 +1,21 @@
-/*	SCCS Id: @(#)nttty.c	3.1	93/07/04
+/*	SCCS Id: @(#)nttty.c	3.2	95/09/06
 /* Copyright (c) NetHack PC Development Team 1993    */
 /* NetHack may be freely redistributed.  See license for details. */
 
 /* tty.c - (Windows NT) version */
 /*                                                  
- * Initial Creation - Michael Allison 93/01/31 
+ * Initial Creation 				M. Allison	93/01/31 
  *
  */
 
 #ifdef WIN32CON
-
 #define NEED_VARARGS /* Uses ... */
 #include "hack.h"
 #include "wintty.h"
 #include <sys\types.h>
 #include <sys\stat.h>
-#pragma pack(8)
-#include <windows.h>
+#include "win32api.h"
 #include <wincon.h>
-#pragma pack()
 
 void FDECL(cmov, (int, int));
 void FDECL(nocmov, (int, int));
@@ -33,7 +30,7 @@ void FDECL(nocmov, (int, int));
  * SetConsoleTextAttribute
  * PeekConsoleInput
  * ReadConsoleInput
- * WriteConsoleOutputCharacter
+ * WriteConsole
  */
 
 /* Win32 Console handles for input and output */
@@ -55,20 +52,18 @@ INPUT_RECORD ir;
 int ProgmanLaunched;
 
 # ifdef TEXTCOLOR
-char ttycolors[MAXCOLORS];
+int ttycolors[CLR_MAX];
 static void NDECL(init_ttycolor);
 # endif
 
 static char nullstr[] = "";
 char erase_char,kill_char;
-/* extern int LI, CO; */	/* decl.h does this alreay */
 
 /*
  * Called after returning from ! or ^Z
  */
 void
 gettty(){
-	register int i;
 
 	erase_char = '\b';
 	kill_char = 21;		/* cntl-U */
@@ -112,7 +107,7 @@ setftty()
  */
 
 static const struct pad {
-	char normal, shift, cntrl;
+	uchar normal, shift, cntrl;
 } keypad[PADKEYS] = {
 			{'y', 'Y', C('y')},		/* 7 */
 			{'k', 'K', C('k')},		/* 8 */
@@ -170,7 +165,6 @@ tgetch()
 	unsigned long shiftstate;
 	int altseq;
 	const struct pad *kpad;
-	char keymess[100];
 
 	shiftstate = 0L;
 	valid = 0;
@@ -223,7 +217,7 @@ tgetch()
 }
 
 int
-kbhit()
+nttty_kbhit()
 {
 	int done = 0;	/* true =  "stop searching"        */
 	int retval;	/* true =  "we had a match"        */
@@ -266,8 +260,13 @@ nttty_open()
         HANDLE hStdOut;
         long cmode;
         long mask;
-        unsigned int codepage;
         
+	/* Initialize the function pointer that points to
+         * the kbhit() equivalent, in this TTY case nttty_kbhit()
+         */
+
+	nt_kbhit = nttty_kbhit;
+
         /* The following 6 lines of code were suggested by 
          * Bob Landau of Microsoft WIN32 Developer support,
          * as the only current means of determining whether
@@ -286,7 +285,7 @@ nttty_open()
 	hConIn = CreateFile("CONIN$",
 			GENERIC_READ |GENERIC_WRITE,
 			FILE_SHARE_READ |FILE_SHARE_WRITE,
-			NULL, OPEN_EXISTING, 0, NULL);					
+			0, OPEN_EXISTING, 0, 0);					
 	GetConsoleMode(hConIn,&cmode);
 	mask = ENABLE_PROCESSED_INPUT | ENABLE_LINE_INPUT |
 	       ENABLE_MOUSE_INPUT | ENABLE_ECHO_INPUT | ENABLE_WINDOW_INPUT;   
@@ -296,7 +295,7 @@ nttty_open()
 	hConOut = CreateFile("CONOUT$",
 			GENERIC_READ |GENERIC_WRITE,
 			FILE_SHARE_READ |FILE_SHARE_WRITE,
-			NULL, OPEN_EXISTING, 0, NULL);					        
+			0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL,0);					        
         
 	get_scr_size();
 }
@@ -330,7 +329,7 @@ error VA_DECL(const char *,s)
 	Vprintf(s,VA_ARGS);
 	putchar('\n');
 	VA_END();
-	exit(1);
+	exit(EXIT_FAILURE);
 }
 
 
@@ -338,7 +337,6 @@ void
 tty_startup(wid, hgt)
     int *wid, *hgt;
 {
-	register int i;
 
 	*wid = CO;
 	*hgt = LI;
@@ -388,9 +386,7 @@ char c;
 {
 	int count;
 
-	ntcoord.X = ttyDisplay->curx;
-	ntcoord.Y = ttyDisplay->cury;
-	WriteConsoleOutputCharacter(hConOut,&c,1,ntcoord,&count);
+	WriteConsole(hConOut,&c,1,&count,0);
 }
 
 void
@@ -399,10 +395,7 @@ const char *s;
 {
 	int count;
 	
-	ntcoord.X = ttyDisplay->curx;
-	ntcoord.Y = ttyDisplay->cury;
-	WriteConsoleOutputCharacter(hConOut,s,
-			strlen(s),ntcoord,&count);
+	WriteConsole(hConOut,s,strlen(s),&count,0);
 }
 
 void
@@ -449,7 +442,8 @@ backsp()
 	if (csbi.dwCursorPosition.X > 0)
 		ntcoord.X = csbi.dwCursorPosition.X-1;
 	ntcoord.Y = csbi.dwCursorPosition.Y;
-	WriteConsoleOutputCharacter(hConOut," ",1,ntcoord,&count);
+	SetConsoleCursorPosition(hConOut,ntcoord);	
+	WriteConsole(hConOut," ",1,&count,0);
 	SetConsoleCursorPosition(hConOut,ntcoord);	
 }
 
@@ -491,45 +485,49 @@ cl_eos()
 
 # ifdef TEXTCOLOR
 /*
- * BLACK		0
- * RED			1
- * GREEN		2
- * BROWN		3	low-intensity yellow
- * BLUE			4
- * MAGENTA 		5
- * CYAN			6
- * GRAY			7	low-intensity white
+ * CLR_BLACK		0
+ * CLR_RED		1
+ * CLR_GREEN		2
+ * CLR_BROWN		3	low-intensity yellow
+ * CLR_BLUE		4
+ * CLR_MAGENTA 		5
+ * CLR_CYAN		6
+ * CLR_GRAY		7	low-intensity white
  * NO_COLOR		8
- * ORANGE_COLORED	9
- * BRIGHT_GREEN		10
- * YELLOW		11
- * BRIGHT_BLUE		12
- * BRIGHT_MAGENTA  	13
- * BRIGHT_CYAN		14
- * WHITE		15
- * MAXCOLORS		16
+ * CLR_ORANGE		9
+ * CLR_BRIGHT_GREEN	10
+ * CLR_YELLOW		11
+ * CLR_BRIGHT_BLUE	12
+ * CLR_BRIGHT_MAGENTA  	13
+ * CLR_BRIGHT_CYAN	14
+ * CLR_WHITE		15
+ * CLR_MAX		16
  * BRIGHT		8
  */
 
 static void
 init_ttycolor()
 {
-	ttycolors[BLACK] = FOREGROUND_GREEN|FOREGROUND_BLUE|FOREGROUND_RED;
-	ttycolors[RED] = FOREGROUND_RED;
-	ttycolors[GREEN] = FOREGROUND_GREEN;
-	ttycolors[BROWN] = FOREGROUND_GREEN|FOREGROUND_RED;
-	ttycolors[BLUE] = FOREGROUND_BLUE|FOREGROUND_INTENSITY;
-	ttycolors[MAGENTA] = FOREGROUND_BLUE|FOREGROUND_RED;
-	ttycolors[CYAN] = FOREGROUND_GREEN|FOREGROUND_BLUE;
-	ttycolors[GRAY] = FOREGROUND_GREEN|FOREGROUND_RED|FOREGROUND_BLUE;
-	ttycolors[BRIGHT] = FOREGROUND_GREEN|FOREGROUND_BLUE|FOREGROUND_RED|FOREGROUND_INTENSITY;
-	ttycolors[ORANGE_COLORED] = FOREGROUND_RED|FOREGROUND_INTENSITY;
-	ttycolors[BRIGHT_GREEN] = FOREGROUND_GREEN|FOREGROUND_INTENSITY;
-	ttycolors[YELLOW] = FOREGROUND_GREEN|FOREGROUND_RED|FOREGROUND_INTENSITY;
-	ttycolors[BRIGHT_BLUE] = FOREGROUND_BLUE|FOREGROUND_INTENSITY;
-	ttycolors[BRIGHT_MAGENTA] = FOREGROUND_BLUE|FOREGROUND_RED|FOREGROUND_INTENSITY;
-	ttycolors[BRIGHT_CYAN] = FOREGROUND_GREEN|FOREGROUND_BLUE;
-	ttycolors[WHITE] = FOREGROUND_GREEN|FOREGROUND_BLUE|FOREGROUND_RED|FOREGROUND_INTENSITY;
+	ttycolors[CLR_BLACK] = FOREGROUND_GREEN|FOREGROUND_BLUE|FOREGROUND_RED;
+	ttycolors[CLR_RED] = FOREGROUND_RED;
+	ttycolors[CLR_GREEN] = FOREGROUND_GREEN;
+	ttycolors[CLR_BROWN] = FOREGROUND_GREEN|FOREGROUND_RED;
+	ttycolors[CLR_BLUE] = FOREGROUND_BLUE|FOREGROUND_INTENSITY;
+	ttycolors[CLR_MAGENTA] = FOREGROUND_BLUE|FOREGROUND_RED;
+	ttycolors[CLR_CYAN] = FOREGROUND_GREEN|FOREGROUND_BLUE;
+	ttycolors[CLR_GRAY] = FOREGROUND_GREEN|FOREGROUND_RED|FOREGROUND_BLUE;
+	ttycolors[BRIGHT] = FOREGROUND_GREEN|FOREGROUND_BLUE|FOREGROUND_RED|\
+						FOREGROUND_INTENSITY;
+	ttycolors[CLR_ORANGE] = FOREGROUND_RED|FOREGROUND_INTENSITY;
+	ttycolors[CLR_BRIGHT_GREEN] = FOREGROUND_GREEN|FOREGROUND_INTENSITY;
+	ttycolors[CLR_YELLOW] = FOREGROUND_GREEN|FOREGROUND_RED|\
+						FOREGROUND_INTENSITY;
+	ttycolors[CLR_BRIGHT_BLUE] = FOREGROUND_BLUE|FOREGROUND_INTENSITY;
+	ttycolors[CLR_BRIGHT_MAGENTA] = FOREGROUND_BLUE|FOREGROUND_RED|\
+						FOREGROUND_INTENSITY;
+	ttycolors[CLR_BRIGHT_CYAN] = FOREGROUND_GREEN|FOREGROUND_BLUE;
+	ttycolors[CLR_WHITE] = FOREGROUND_GREEN|FOREGROUND_BLUE|FOREGROUND_RED|\
+						FOREGROUND_INTENSITY;
 }
 
 # endif /* TEXTCOLOR */
@@ -591,8 +589,8 @@ term_start_color(int color)
 # ifdef TEXTCOLOR
 	WORD attr;
 
-        if (color >= 0 && color < MAXCOLORS) {
-            attr = ttycolors[color];
+        if (color >= 0 && color < CLR_MAX) {
+            attr = (WORD)ttycolors[color];
 	    SetConsoleTextAttribute(hConOut,attr);
 	}
 # endif

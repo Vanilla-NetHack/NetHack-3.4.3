@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)lev_main.c	3.1	93/07/10	*/
+/*	SCCS Id: @(#)lev_main.c	3.2	95/10/04	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -8,6 +8,7 @@
  */
 
 #include "hack.h"
+#include "date.h"
 #include "sp_lev.h"
 #ifdef STRICT_REF_DEF
 #include "termcap.h"
@@ -16,7 +17,9 @@
 #ifdef MAC
 # ifdef applec
 #  define MPWTOOL
-#  include <CursorCtl.h>
+#include <CursorCtl.h>
+# else
+#  define PREFIX ":lib:"	/* place output files here */
 # endif
 #endif
 
@@ -24,14 +27,24 @@
 # define SpinCursor(x)
 #endif
 
+#if defined(AMIGA) && defined(DLB)
+# define PREFIX "NH:slib/"
+#endif
+
 #ifndef O_WRONLY
-# include <fcntl.h>
+#include <fcntl.h>
 #endif
 #ifndef O_CREAT	/* some older BSD systems do not define O_CREAT in <fcntl.h> */
-# include <sys/file.h>
+#include <sys/file.h>
 #endif
 #ifndef O_BINARY	/* used for micros, no-op for others */
 # define O_BINARY 0
+#endif
+
+#ifdef MICRO
+# define OMASK FCMASK
+#else
+# define OMASK 0644
 #endif
 
 #define NEWLINE	10	/* under Mac MPW C '\n' is 13 so don't use it. */
@@ -44,11 +57,14 @@
 
 #ifdef MICRO
 # undef exit
-# ifndef AMIGA
+# if !defined(AMIGA) && !defined(MSDOS) && !defined(WIN32)
 extern void FDECL(exit, (int));
 # endif
 #endif
 
+#ifdef __BORLANDC__
+extern unsigned _stklen = STKSIZ;
+#endif
 #define MAX_ERRORS	25
 
 extern int  NDECL (yyparse);
@@ -59,11 +75,10 @@ int  FDECL (main, (int, char **));
 void FDECL (yyerror, (const char *));
 void FDECL (yywarning, (const char *));
 int  NDECL (yywrap);
-char *FDECL(dup_string,(const char *));
 int FDECL(get_floor_type, (CHAR_P));
 int FDECL(get_room_type, (char *));
 int FDECL(get_trap_type, (char *));
-int FDECL(get_monster_id, (char *, CHAR_P));
+int FDECL(get_monster_id, (char *,CHAR_P));
 int FDECL(get_object_id, (char *));
 boolean FDECL(check_monster_char, (CHAR_P));
 boolean FDECL(check_object_char, (CHAR_P));
@@ -71,13 +86,22 @@ char FDECL(what_map_char, (CHAR_P));
 void FDECL(scan_map, (char *));
 void NDECL(wallify_map);
 boolean NDECL(check_subrooms);
-void FDECL(check_coord, (int, int, const char *));
+void FDECL(check_coord, (int,int,const char *));
 void NDECL(store_part);
 void NDECL(store_room);
+boolean FDECL(write_level_file, (char *,splev *,specialmaze *));
+void FDECL(free_rooms, (splev *));
+
+extern void NDECL(monst_init);
+extern void NDECL(objects_init);
+extern void NDECL(decl_init);
+
 static void FDECL(write_common_data, (int,int,lev_init *,long));
-void FDECL(write_maze, (int, specialmaze *));
-void FDECL(write_lev, (int, splev *));
-void FDECL(free_rooms, (room **, int));
+static void FDECL(write_monsters, (int,char *,monster ***));
+static void FDECL(write_objects, (int,char *,object ***));
+static void FDECL(write_engravings, (int,char *,engraving ***));
+static void FDECL(write_maze, (int,specialmaze *));
+static void FDECL(write_rooms, (int,splev *));
 
 static struct {
 	const char *name;
@@ -89,11 +113,13 @@ static struct {
 	{ "board",	SQKY_BOARD },
 	{ "bear",	BEAR_TRAP },
 	{ "land mine",	LANDMINE },
+	{ "rolling boulder",	ROLLING_BOULDER_TRAP },
 	{ "sleep gas",	SLP_GAS_TRAP },
 	{ "rust",	RUST_TRAP },
 	{ "fire",	FIRE_TRAP },
 	{ "pit",	PIT },
 	{ "spiked pit",	SPIKED_PIT },
+	{ "hole",	HOLE },
 	{ "trapdoor",	TRAPDOOR },
 	{ "teleport",	TELEP_TRAP },
 	{ "level teleport", LEVEL_TELEP },
@@ -102,9 +128,6 @@ static struct {
 	{ "statue",	STATUE_TRAP },
 	{ "magic",	MAGIC_TRAP },
 	{ "anti magic",	ANTI_MAGIC },
-#ifndef POLYSELF
-#define POLY_TRAP NO_TRAP	/* this will result in a random trap */
-#endif
 	{ "polymorph",	POLY_TRAP },
 	{ 0, 0 }
 };
@@ -121,9 +144,7 @@ static struct {
 	{ "vault",	 VAULT },
 	{ "beehive",	 BEEHIVE },
 	{ "morgue",	 MORGUE },
-#ifdef ARMY
 	{ "barracks",	 BARRACKS },
-#endif
 	{ "zoo",	 ZOO },
 	{ "delphi",	 DELPHI },
 	{ "temple",	 TEMPLE },
@@ -173,7 +194,6 @@ extern pool *tmppool[];
 extern engraving *tmpengraving[];
 extern mazepart *tmppart[];
 extern room *tmproom[];
-extern corridor *tmpcor[];
 
 extern int n_olist, n_mlist, n_plist;
 
@@ -193,7 +213,8 @@ char **argv;
 {
 	FILE *fin;
 	int i;
-#ifdef THINK_C
+	boolean errors_encountered = FALSE;
+#if defined(THINK_C) || defined(__MWERKS__)
 	static char *mac_argv[] = {	"lev_comp",	/* dummy argv[0] */
 				":dat:Arch.des",
 				":dat:Barb.des",
@@ -232,7 +253,10 @@ char **argv;
 	init_yyout(stdout);
 	if (argc == 1) {		/* Read standard input */
 	    init_yyin(stdin);
-	    yyparse();
+	    (void) yyparse();
+	    if (fatal_error > 0) {
+		    errors_encountered = TRUE;
+	    }
 	} else {			/* Otherwise every argument is a filename */
 	    for(i=1; i<argc; i++) {
 		    fname = argv[i];
@@ -245,19 +269,21 @@ char **argv;
 			(void) fprintf(stderr,"Can't open \"%s\" for input.\n",
 						fname);
 			perror(fname);
+			errors_encountered = TRUE;
 		    } else {
 			init_yyin(fin);
-			yyparse();
+			(void) yyparse();
+			line_number = 1;
+			if (fatal_error > 0) {
+				errors_encountered = TRUE;
+				fatal_error = 0;
+			}
 		    }
-		    line_number = 1;
-		    fatal_error = 0;
 	    }
 	}
-#ifndef VMS
+	exit(errors_encountered ? EXIT_FAILURE : EXIT_SUCCESS);
+	/*NOTREACHED*/
 	return 0;
-#else
-	return 1;       /* vms success */
-#endif /*VMS*/
 }
 
 /*
@@ -268,7 +294,6 @@ char **argv;
  * capitalized, to allow printing of the line containing the start of
  * the current declaration, instead of the beginning of the next declaration.
  */
-
 void
 yyerror(s)
 const char *s;
@@ -277,14 +302,13 @@ const char *s;
 		(*s >= 'A' && *s <= 'Z') ? colon_line_number : line_number, s);
 	if (++fatal_error > MAX_ERRORS) {
 		(void) fprintf(stderr,"Too many errors, good bye!\n");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 }
 
 /*
  * Just display a warning (that is : a non fatal error)
  */
-
 void
 yywarning(s)
 const char *s;
@@ -293,6 +317,9 @@ const char *s;
 				fname, colon_line_number, s);
 }
 
+/*
+ * Stub needed for lex interface.
+ */
 int
 yywrap()
 {
@@ -300,26 +327,8 @@ yywrap()
 }
 
 /*
- * Duplicate a string.
- */
-
-char *
-dup_string(s)
-const char *s;
-{
-	char *news;
-
-	if (!s)
-	    return (char *) 0;
-	news = (char *) alloc(strlen(s)+1);
-	Strcpy(news, s);
-	return news;
-}
-
-/*
  * Find the type of floor, knowing its char representation.
  */
-
 int
 get_floor_type(c)
 char c;
@@ -338,7 +347,6 @@ char c;
 /*
  * Find the type of a room in the table, knowing its name.
  */
-
 int
 get_room_type(s)
 char *s;
@@ -355,7 +363,6 @@ char *s;
 /*
  * Find the type of a trap in the table, knowing its name.
  */
-
 int
 get_trap_type(s)
 char *s;
@@ -380,13 +387,12 @@ char c;
 	register int i, class;
 
 	SpinCursor(3);
-	class = def_char_to_monclass(c);
-	if (c && class == MAXMCLASSES) return ERR;
+	class = c ? def_char_to_monclass(c) : 0;
+	if (class == MAXMCLASSES) return ERR;
 
-	for(i = 0; i < NUMMONS; i++)
-	    if(!strncmp(s, mons[i].mname, strlen(mons[i].mname))
-	       && (!c || class == mons[i].mlet))
-		return i;
+	for (i = LOW_PM; i < NUMMONS; i++)
+	    if (!class || class == mons[i].mlet)
+		if (!strcmp(s, mons[i].mname)) return i;
 	return ERR;
 }
 
@@ -401,10 +407,11 @@ char *s;
 	register const char *objname;
 
 	SpinCursor(3);
-	for (i=0; i<=NROFOBJECTS; i++)
-	    if ((objname = obj_descr[i].oc_name)
-	       && !strncmp(s, objname, strlen(objname)))
+	for (i=0; i<NUM_OBJECTS; i++) {
+	    objname = obj_descr[i].oc_name;
+	    if (objname && !strcmp(s, objname))
 		return i;
+	}
 	return ERR;
 }
 
@@ -428,10 +435,12 @@ char c;
 	return (def_char_to_objclass(c) != MAXOCLASSES);
 }
 
+/*
+ * Convert .des map letter into floor type.
+ */
 char
 what_map_char(c)
-
-     char	c;
+char c;
 {
 	SpinCursor(3);
 	switch(c) {
@@ -468,7 +477,6 @@ what_map_char(c)
  * Yep! LEX gives us the map in a raw mode.
  * Just analyze it here.
  */
-
 void
 scan_map(map)
 char *map;
@@ -485,14 +493,13 @@ char *map;
 	while (s1 && *s1) {
 		s2 = index(s1, NEWLINE);
 		if (s2) {
-			if (s2-s1 > max_len)
-			    max_len = s2-s1;
+			len = (int) (s2 - s1);
 			s1 = s2 + 1;
 		} else {
-			if (strlen(s1) > max_len)
-			    max_len = strlen(s1);
+			len = (int) strlen(s1);
 			s1 = (char *) 0;
 		}
+		if (len > max_len) max_len = len;
 	}
 
 	/* Then parse it now */
@@ -501,10 +508,10 @@ char *map;
 		tmpmap[max_hig] = (char *) alloc(max_len);
 		s1 = index(map, NEWLINE);
 		if (s1) {
-			len = s1 - map;
+			len = (int) (s1 - map);
 			s1++;
 		} else {
-			len = strlen(map);
+			len = (int) strlen(map);
 			s1 = map + len;
 		}
 		for(i=0; i<len; i++)
@@ -545,30 +552,28 @@ char *map;
  *	auto-magically wallify it.
  */
 #define Map_point(x,y) *(tmppart[npart]->map[y] + x)
-#define Valid_point(x,y) ((x >= 0 && x <= max_x_map) && \
-			  (y >= 0 && y <= max_y_map))
+
 void
 wallify_map()
 {
+	unsigned int x, y, xx, yy, lo_xx, lo_yy, hi_xx, hi_yy;
 
-	int x, y, xx, yy;
-
-	for(y = 0; y <= max_y_map; y++) {
-	  SpinCursor(3);
-	  for(x = 0; x <= max_x_map; x++)
-
-	    if(Map_point(x,y) == STONE) {
-
-	      for(yy = y - 1; yy <= y+1 && Map_point(x,y) == STONE; yy++)
-		for(xx = x - 1; xx <= x+1 && Map_point(x,y) == STONE; xx++)
-
-		  if(Valid_point(xx,yy) &&
-		     (IS_ROOM(Map_point(xx,yy)) ||
-		      Map_point(xx,yy) == CROSSWALL)) {
-
-		    if(yy != y)	Map_point(x,y) = HWALL;
-		    else	Map_point(x,y) = VWALL;
-		  }
+	for (y = 0; y <= max_y_map; y++) {
+	    SpinCursor(3);
+	    lo_yy = (y > 0) ? y - 1 : 0;
+	    hi_yy = (y < max_y_map) ? y + 1 : max_y_map;
+	    for (x = 0; x <= max_x_map; x++) {
+		if (Map_point(x,y) != STONE) continue;
+		lo_xx = (x > 0) ? x - 1 : 0;
+		hi_xx = (x < max_x_map) ? x + 1 : max_x_map;
+		for (yy = lo_yy; yy <= hi_yy; yy++)
+		    for (xx = lo_xx; xx <= hi_xx; xx++)
+			if (IS_ROOM(Map_point(xx,yy)) ||
+				Map_point(xx,yy) == CROSSWALL) {
+			    Map_point(x,y) = (yy != y) ? HWALL : VWALL;
+			    yy = hi_yy;		/* end `yy' loop */
+			    break;		/* end `xx' loop */
+			}
 	    }
 	}
 }
@@ -576,28 +581,59 @@ wallify_map()
 /*
  * We need to check the subrooms apartenance to an existing room.
  */
-
 boolean
 check_subrooms()
 {
-	short i,j;
-	boolean found, ok = TRUE;
-	char msg[256];
+	short	i, j, n_subrooms;
+	boolean	found, ok = TRUE;
+	char	*last_parent, msg[256];
 
 	for (i = 0; i < nrooms; i++)
 	    if (tmproom[i]->parent) {
-		    found = FALSE;
-		    for(j = 0; j < nrooms; j++)
-			if (tmproom[j]->name && !strcmp(tmproom[i]->parent,
-							tmproom[j]->name)) {
-				found = TRUE;
-				break;
-			}
-		    if (!found) {
-			    Sprintf(msg,"Subroom error : parent room '%s' not found!", tmproom[i]->parent);
-			    yyerror(msg);
-			    ok = FALSE;
+		found = FALSE;
+		for(j = 0; j < nrooms; j++)
+		    if (tmproom[j]->name &&
+			    !strcmp(tmproom[i]->parent, tmproom[j]->name)) {
+			found = TRUE;
+			break;
 		    }
+		if (!found) {
+		    Sprintf(msg,
+			    "Subroom error : parent room '%s' not found!",
+			    tmproom[i]->parent);
+		    yyerror(msg);
+		    ok = FALSE;
+		}
+	    }
+
+	msg[0] = '\0';
+	last_parent = msg;
+	for (i = 0; i < nrooms; i++)
+	    if (tmproom[i]->parent) {
+		n_subrooms = 0;
+		for(j = i; j < nrooms; j++) {
+/*
+ *	This is by no means perfect, but should cut down the duplicate error
+ *	messages by over 90%.  The only problem will be when either subrooms
+ *	are mixed in the level definition (not likely but possible) or rooms
+ *	have subrooms that have subrooms.
+ */
+		    if (!strcmp(tmproom[i]->parent, last_parent)) continue;
+		    if (tmproom[j]->parent &&
+			    !strcmp(tmproom[i]->parent, tmproom[j]->parent)) {
+			n_subrooms++;
+			if(n_subrooms > MAX_SUBROOMS) {
+
+			    Sprintf(msg,
+	      "Subroom error: too many subrooms attached to parent room '%s'!",
+				    tmproom[i]->parent);
+			    yyerror(msg);
+			    last_parent = tmproom[i]->parent;
+			    ok = FALSE;
+			    break;
+			}
+		    }
+		}
 	    }
 	return ok;
 }
@@ -606,7 +642,6 @@ check_subrooms()
  * Check that coordinates (x,y) are roomlike locations.
  * Print warning "str" if they aren't.
  */
-
 void
 check_coord(x, y, str)
 int x, y;
@@ -614,7 +649,7 @@ const char *str;
 {
     char ebuf[60];
 
-    if (x >= 0 && y >= 0 && x <= max_x_map && y <= max_y_map &&
+    if (x >= 0 && y >= 0 && x <= (int)max_x_map && y <= (int)max_y_map &&
 	(IS_ROCK(tmpmap[y][x]) || IS_DOOR(tmpmap[y][x]))) {
 	Sprintf(ebuf, "%s placed in wall at (%02d,%02d)?!", str, x, y);
 	yywarning(ebuf);
@@ -624,11 +659,10 @@ const char *str;
 /*
  * Here we want to store the maze part we just got.
  */
-
 void
 store_part()
 {
-	register int i;
+	register unsigned i;
 
 	/* Ok, We got the whole part, now we store it. */
 
@@ -658,33 +692,6 @@ store_part()
 		    tmppart[npart]->doors[i] = tmpdoor[i];
 	}
 	ndoor = 0;
-
-	/* the traps */
-
-	if ((tmppart[npart]->ntrap = ntrap) != 0) {
-		tmppart[npart]->traps = NewTab(trap, ntrap);
-		for(i=0;i<ntrap;i++)
-		    tmppart[npart]->traps[i] = tmptrap[i];
-	}
-	ntrap = 0;
-
-	/* the monsters */
-
-	if ((tmppart[npart]->nmonster = nmons) != 0) {
-		tmppart[npart]->monsters = NewTab(monster, nmons);
-		for(i=0;i<nmons;i++)
-		    tmppart[npart]->monsters[i] = tmpmonst[i];
-	}
-	nmons = 0;
-
-	/* the objects */
-
-	if ((tmppart[npart]->nobject = nobj) != 0) {
-		tmppart[npart]->objects = NewTab(object, nobj);
-		for(i=0;i<nobj;i++)
-		    tmppart[npart]->objects[i] = tmpobj[i];
-	}
-	nobj = 0;
 
 	/* the drawbridges */
 
@@ -748,6 +755,44 @@ store_part()
 	}
 	naltar = 0;
 
+	/* The fountains */
+
+	if ((tmppart[npart]->nfountain = nfountain) != 0) {
+		tmppart[npart]->fountains = NewTab(fountain, nfountain);
+		for(i=0;i<nfountain;i++)
+		    tmppart[npart]->fountains[i] = tmpfountain[i];
+	}
+	nfountain = 0;
+
+	/* the traps */
+
+	if ((tmppart[npart]->ntrap = ntrap) != 0) {
+		tmppart[npart]->traps = NewTab(trap, ntrap);
+		for(i=0;i<ntrap;i++)
+		    tmppart[npart]->traps[i] = tmptrap[i];
+	}
+	ntrap = 0;
+
+	/* the monsters */
+
+	if ((tmppart[npart]->nmonster = nmons) != 0) {
+		tmppart[npart]->monsters = NewTab(monster, nmons);
+		for(i=0;i<nmons;i++)
+		    tmppart[npart]->monsters[i] = tmpmonst[i];
+	} else
+		tmppart[npart]->monsters = 0;
+	nmons = 0;
+
+	/* the objects */
+
+	if ((tmppart[npart]->nobject = nobj) != 0) {
+		tmppart[npart]->objects = NewTab(object, nobj);
+		for(i=0;i<nobj;i++)
+		    tmppart[npart]->objects[i] = tmpobj[i];
+	} else
+		tmppart[npart]->objects = 0;
+	nobj = 0;
+
 	/* The gold piles */
 
 	if ((tmppart[npart]->ngold = ngold) != 0) {
@@ -763,17 +808,9 @@ store_part()
 		tmppart[npart]->engravings = NewTab(engraving, nengraving);
 		for(i=0;i<nengraving;i++)
 		    tmppart[npart]->engravings[i] = tmpengraving[i];
-	}
+	} else
+		tmppart[npart]->engravings = 0;
 	nengraving = 0;
-
-	/* The fountains */
-
-	if ((tmppart[npart]->nfountain = nfountain) != 0) {
-		tmppart[npart]->fountains = NewTab(fountain, nfountain);
-		for(i=0;i<nfountain;i++)
-		    tmppart[npart]->fountains[i] = tmpfountain[i];
-	}
-	nfountain = 0;
 
 	npart++;
 	n_plist = n_mlist = n_olist = 0;
@@ -782,11 +819,10 @@ store_part()
 /*
  * Here we want to store the room part we just got.
  */
-
 void
 store_room()
 {
-	register int i;
+	register unsigned i;
 
 	/* Ok, We got the whole room, now we store it. */
 
@@ -798,33 +834,6 @@ store_room()
 		    tmproom[nrooms]->doors[i] = tmprdoor[i];
 	}
 	ndoor = 0;
-
-	/* the traps */
-
-	if ((tmproom[nrooms]->ntrap = ntrap) != 0) {
-		tmproom[nrooms]->traps = NewTab(trap, ntrap);
-		for(i=0;i<ntrap;i++)
-		    tmproom[nrooms]->traps[i] = tmptrap[i];
-	}
-	ntrap = 0;
-
-	/* the monsters */
-
-	if ((tmproom[nrooms]->nmonster = nmons) != 0) {
-		tmproom[nrooms]->monsters = NewTab(monster, nmons);
-		for(i=0;i<nmons;i++)
-		    tmproom[nrooms]->monsters[i] = tmpmonst[i];
-	}
-	nmons = 0;
-
-	/* the objects */
-
-	if ((tmproom[nrooms]->nobject = nobj) != 0) {
-		tmproom[nrooms]->objects = NewTab(object, nobj);
-		for(i=0;i<nobj;i++)
-		    tmproom[nrooms]->objects[i] = tmpobj[i];
-	}
-	nobj = 0;
 
 	/* The stairs */
 
@@ -842,24 +851,6 @@ store_room()
 		    tmproom[nrooms]->altars[i] = tmpaltar[i];
 	}
 	naltar = 0;
-
-	/* The gold piles */
-
-	if ((tmproom[nrooms]->ngold = ngold) != 0) {
-		tmproom[nrooms]->golds = NewTab(gold, ngold);
-		for(i=0;i<ngold;i++)
-		    tmproom[nrooms]->golds[i] = tmpgold[i];
-	}
-	ngold = 0;
-
-	/* The engravings */
-
-	if ((tmproom[nrooms]->nengraving = nengraving) != 0) {
-		tmproom[nrooms]->engravings = NewTab(engraving, nengraving);
-		for(i=0;i<nengraving;i++)
-		    tmproom[nrooms]->engravings[i] = tmpengraving[i];
-	}
-	nengraving = 0;
 
 	/* The fountains */
 
@@ -888,10 +879,60 @@ store_room()
 	}
 	npool = 0;
 
+	/* the traps */
+
+	if ((tmproom[nrooms]->ntrap = ntrap) != 0) {
+		tmproom[nrooms]->traps = NewTab(trap, ntrap);
+		for(i=0;i<ntrap;i++)
+		    tmproom[nrooms]->traps[i] = tmptrap[i];
+	}
+	ntrap = 0;
+
+	/* the monsters */
+
+	if ((tmproom[nrooms]->nmonster = nmons) != 0) {
+		tmproom[nrooms]->monsters = NewTab(monster, nmons);
+		for(i=0;i<nmons;i++)
+		    tmproom[nrooms]->monsters[i] = tmpmonst[i];
+	} else
+		tmproom[nrooms]->monsters = 0;
+	nmons = 0;
+
+	/* the objects */
+
+	if ((tmproom[nrooms]->nobject = nobj) != 0) {
+		tmproom[nrooms]->objects = NewTab(object, nobj);
+		for(i=0;i<nobj;i++)
+		    tmproom[nrooms]->objects[i] = tmpobj[i];
+	} else
+		tmproom[nrooms]->objects = 0;
+	nobj = 0;
+
+	/* The gold piles */
+
+	if ((tmproom[nrooms]->ngold = ngold) != 0) {
+		tmproom[nrooms]->golds = NewTab(gold, ngold);
+		for(i=0;i<ngold;i++)
+		    tmproom[nrooms]->golds[i] = tmpgold[i];
+	}
+	ngold = 0;
+
+	/* The engravings */
+
+	if ((tmproom[nrooms]->nengraving = nengraving) != 0) {
+		tmproom[nrooms]->engravings = NewTab(engraving, nengraving);
+		for(i=0;i<nengraving;i++)
+		    tmproom[nrooms]->engravings[i] = tmpengraving[i];
+	} else
+		tmproom[nrooms]->engravings = 0;
+	nengraving = 0;
+
 	nrooms++;
 }
 
-/* some info common to all special levels */
+/*
+ * Output some info common to all special levels.
+ */
 static void
 write_common_data(fd, typ, init, flgs)
 int fd, typ;
@@ -900,24 +941,164 @@ long flgs;
 {
 	char c;
 	uchar len;
+	static long version_info[3] = {
+			VERSION_NUMBER, VERSION_FEATURES, VERSION_SANITY
+	};
 
+	Write(fd, version_info, sizeof version_info);
 	c = typ;
 	Write(fd, &c, sizeof(c));	/* 1 byte header */
 	Write(fd, init, sizeof(lev_init));
 	Write(fd, &flgs, sizeof flgs);
 
-	len = strlen(tmpmessage);
+	len = (uchar) strlen(tmpmessage);
 	Write(fd, &len, sizeof len);
 	if (len) Write(fd, tmpmessage, (int) len);
 	tmpmessage[0] = '\0';
 }
 
 /*
- * Here we write the structure of the maze in the specified file (fd).
- * Also, we have to free the memory allocated via alloc()
+ * Output monster info, which needs string fixups, then release memory.
  */
+static void
+write_monsters(fd, nmonster_p, monsters_p)
+int fd;
+char *nmonster_p;
+monster ***monsters_p;
+{
+	monster *m;
+	char *name, *appr;
+	int j, n = (int)*nmonster_p;
 
-void
+	Write(fd, nmonster_p, sizeof *nmonster_p);
+	for (j = 0; j < n; j++) {
+	    m = (*monsters_p)[j];
+	    name = m->name.str;
+	    appr = m->appear_as.str;
+	    m->name.str = m->appear_as.str = 0;
+	    m->name.len = name ? strlen(name) : 0;
+	    m->appear_as.len = appr ? strlen(appr) : 0;
+	    Write(fd, m, sizeof *m);
+	    if (name) {
+		Write(fd, name, m->name.len);
+		Free(name);
+	    }
+	    if (appr) {
+		Write(fd, appr, m->appear_as.len);
+		Free(appr);
+	    }
+	    Free(m);
+	}
+	if (*monsters_p) {
+	    Free(*monsters_p);
+	    *monsters_p = 0;
+	}
+	*nmonster_p = 0;
+}
+
+/*
+ * Output object info, which needs string fixup, then release memory.
+ */
+static void
+write_objects(fd, nobject_p, objects_p)
+int fd;
+char *nobject_p;
+object ***objects_p;
+{
+	object *o;
+	char *name;
+	int j, n = (int)*nobject_p;
+
+	Write(fd, nobject_p, sizeof *nobject_p);
+	for (j = 0; j < n; j++) {
+	    o = (*objects_p)[j];
+	    name = o->name.str;
+	    o->name.str = 0;	/* reset in case `len' is narrower */
+	    o->name.len = name ? strlen(name) : 0;
+	    Write(fd, o, sizeof *o);
+	    if (name) {
+		Write(fd, name, o->name.len);
+		Free(name);
+	    }
+	    Free(o);
+	}
+	if (*objects_p) {
+	    Free(*objects_p);
+	    *objects_p = 0;
+	}
+	*nobject_p = 0;
+}
+
+/*
+ * Output engraving info, which needs string fixup, then release memory.
+ */
+static void
+write_engravings(fd, nengraving_p, engravings_p)
+int fd;
+char *nengraving_p;
+engraving ***engravings_p;
+{
+	engraving *e;
+	char *engr;
+	int j, n = (int)*nengraving_p;
+
+	Write(fd, nengraving_p, sizeof *nengraving_p);
+	for (j = 0; j < n; j++) {
+	    e = (*engravings_p)[j];
+	    engr = e->engr.str;
+	    e->engr.str = 0;	/* reset in case `len' is narrower */
+	    e->engr.len = strlen(engr);
+	    Write(fd, e, sizeof *e);
+	    Write(fd, engr, e->engr.len);
+	    Free(engr);
+	    Free(e);
+	}
+	if (*engravings_p) {
+	    Free(*engravings_p);
+	    *engravings_p = 0;
+	}
+	*nengraving_p = 0;
+}
+
+/*
+ * Open and write maze or rooms file, based on which pointer is non-null.
+ * Return TRUE on success, FALSE on failure.
+ */
+boolean
+write_level_file(filename, room_level, maze_level)
+char *filename;
+splev *room_level;
+specialmaze *maze_level;
+{
+	int fout;
+	char lbuf[60];
+
+	lbuf[0] = '\0';
+#ifdef PREFIX
+	Strcat(lbuf, PREFIX);
+#endif
+	Strcat(lbuf, filename);
+	Strcat(lbuf, LEV_EXT);
+
+	fout = open(lbuf, O_WRONLY|O_CREAT|O_BINARY, OMASK);
+	if (fout < 0) return FALSE;
+
+	if (room_level)
+	    write_rooms(fout, room_level);
+	else if (maze_level)
+	    write_maze(fout, maze_level);
+	else
+	    panic("write_level_file");
+
+	(void) close(fout);
+	return TRUE;
+}
+
+/*
+ * Here we write the structure of the maze in the specified file (fd).
+ * Also, we have to free the memory allocated via alloc().
+ */
+static void
 write_maze(fd, maze)
 int fd;
 specialmaze *maze;
@@ -942,24 +1123,27 @@ specialmaze *maze;
 	    for(j=0;j<pt->ysize;j++) {
 		if(!maze->init_lev.init_present ||
 		   pt->xsize > 1 || pt->ysize > 1)
-		    Write(fd, pt->map[j], sizeof(*(pt->map[j])) * pt->xsize);
+		    Write(fd, pt->map[j], pt->xsize * sizeof *pt->map[j]);
 		Free(pt->map[j]);
 	    }
 	    Free(pt->map);
 
 	    /* level region stuff */
-	    Write(fd, &(pt->nlreg), sizeof(pt->nlreg));
-	    for(j=0;j<pt->nlreg;j++) {
-		    Write(fd, pt->lregions[j], sizeof(lev_region));
-		    if(pt->lregions[j]->rname) {
-			    char c = strlen(pt->lregions[j]->rname);
-			    Write(fd, &c, sizeof(c));
-			    Write(fd, pt->lregions[j]->rname, (int)c);
-		    }
-		    Free(pt->lregions[j]);
+	    Write(fd, &pt->nlreg, sizeof pt->nlreg);
+	    for (j = 0; j < pt->nlreg; j++) {
+		lev_region *l = pt->lregions[j];
+		char *rname = l->rname.str;
+		l->rname.str = 0;	/* reset in case `len' is narrower */
+		l->rname.len = rname ? strlen(rname) : 0;
+		Write(fd, l, sizeof *l);
+		if (rname) {
+		    Write(fd, rname, l->rname.len);
+		    Free(rname);
+		}
+		Free(l);
 	    }
-	    if(pt->nlreg > 0)
-		    Free(pt->lregions);
+	    if (pt->nlreg > 0)
+		Free(pt->lregions);
 
 	    /* The random registers */
 	    Write(fd, &(pt->nrobjects), sizeof(pt->nrobjects));
@@ -997,55 +1181,6 @@ specialmaze *maze;
 	    }
 	    if (pt->ndoor > 0)
 		    Free(pt->doors);
-
-	    /* The traps */
-	    Write(fd, &(pt->ntrap), sizeof(pt->ntrap));
-	    for(j=0;j<pt->ntrap;j++) {
-		    Write(fd, pt->traps[j], sizeof(trap));
-		    Free(pt->traps[j]);
-	    }
-	    if (pt->ntrap)
-		    Free(pt->traps);
-
-	    /* The monsters */
-	    Write(fd, &(pt->nmonster), sizeof(pt->nmonster));
-	    for(j=0;j<pt->nmonster;j++) {
-		    short size;
-		    monster *m = pt->monsters[j];
-		    Write(fd, m, sizeof(monster));
-		    size = m->name ? strlen(m->name) : 0;
-		    Write(fd, &size, sizeof(size));
-		    if (size) {
-			    Write(fd, m->name, size);
-			    Free(m->name);
-		    }
-		    size = m->appear_as ? strlen(m->appear_as) : 0;
-		    Write(fd, &size, sizeof(size));
-		    if (size) {
-			    Write(fd, m->appear_as, size);
-			    Free(m->appear_as);
-		    }
-		    Free(pt->monsters[j]);
-	    }
-	    if (pt->nmonster > 0)
-		    Free(pt->monsters);
-
-	    /* The objects */
-	    Write(fd, &(pt->nobject), sizeof(pt->nobject));
-	    for(j=0;j<pt->nobject;j++) {
-		    short size;
-		    object *o = pt->objects[j];
-		    Write(fd, o, sizeof(object));
-		    size = o->name ? strlen(o->name) : 0;
-		    Write(fd, &size, sizeof(size));
-		    if (size) {
-			    Write(fd, o->name, size);
-			    Free(o->name);
-		    }
-		    Free(pt->objects[j]);
-	    }
-	    if(pt->nobject > 0)
-		    Free(pt->objects);
 
 	    /* The drawbridges */
 	    Write(fd, &(pt->ndrawbridge), sizeof(pt->ndrawbridge));
@@ -1110,6 +1245,30 @@ specialmaze *maze;
 	    if (pt->naltar > 0)
 		    Free(pt->altars);
 
+	    /* The fountains */
+	    Write(fd, &(pt->nfountain), sizeof(pt->nfountain));
+	    for(j=0;j<pt->nfountain;j++) {
+		Write(fd, pt->fountains[j], sizeof(fountain));
+		Free(pt->fountains[j]);
+	    }
+	    if (pt->nfountain > 0)
+		    Free(pt->fountains);
+
+	    /* The traps */
+	    Write(fd, &(pt->ntrap), sizeof(pt->ntrap));
+	    for(j=0;j<pt->ntrap;j++) {
+		    Write(fd, pt->traps[j], sizeof(trap));
+		    Free(pt->traps[j]);
+	    }
+	    if (pt->ntrap)
+		    Free(pt->traps);
+
+	    /* The monsters */
+	    write_monsters(fd, &pt->nmonster, &pt->monsters);
+
+	    /* The objects */
+	    write_objects(fd, &pt->nobject, &pt->objects);
+
 	    /* The gold piles */
 	    Write(fd, &(pt->ngold), sizeof(pt->naltar));
 	    for(j=0;j<pt->ngold;j++) {
@@ -1120,39 +1279,21 @@ specialmaze *maze;
 		    Free(pt->golds);
 
 	    /* The engravings */
-	    Write(fd, &(pt->nengraving), sizeof(pt->nengraving));
-	    for(j=0;j<pt->nengraving;j++) {
-		    char *txt;
-		    int size;
-		    txt = pt->engravings[j]->e.text;
-		    size = pt->engravings[j]->e.length = strlen(txt);
-		    Write(fd, pt->engravings[j], sizeof *pt->engravings[j]);
-		    Write(fd, txt, size);
-		    Free(txt);
-		    Free(pt->engravings[j]);
-	    }
-	    if (pt->nengraving > 0)
-		    Free(pt->engravings);
-
-	    /* The fountains */
-	    Write(fd, &(pt->nfountain), sizeof(pt->nfountain));
-	    for(j=0;j<pt->nfountain;j++) {
-		Write(fd, pt->fountains[j], sizeof(fountain));
-		Free(pt->fountains[j]);
-	    }
-	    if (pt->nfountain > 0)
-		    Free(pt->fountains);
+	    write_engravings(fd, &pt->nengraving, &pt->engravings);
 
 	    Free(pt);
 	}
+
+	Free(maze->parts);
+	maze->parts = (mazepart **)0;
+	maze->numpart = 0;
 }
 
 /*
  * Here we write the structure of the room level in the specified file (fd).
  */
-
-void
-write_lev(fd, lev)
+static void
+write_rooms(fd, lev)
 int fd;
 splev *lev;
 {
@@ -1164,15 +1305,11 @@ splev *lev;
 	/* Random registers */
 
 	Write(fd, &lev->nrobjects, sizeof(lev->nrobjects));
-	if (lev->nrobjects) {
+	if (lev->nrobjects)
 		Write(fd, lev->robjects, lev->nrobjects);
-		Free (lev->robjects);
-	}
 	Write(fd, &lev->nrmonst, sizeof(lev->nrmonst));
-	if (lev->nrmonst) {
+	if (lev->nrmonst)
 		Write(fd, lev->rmonst, lev->nrmonst);
-		Free (lev->rmonst);
-	}
 
 	Write(fd, &(lev->nroom), sizeof(lev->nroom));
 							/* Number of rooms */
@@ -1181,18 +1318,12 @@ splev *lev;
 
 		/* Room characteristics */
 
-		if (pt->name)
-			size = strlen(pt->name);
-		else
-			size = 0;
+		size = (short) (pt->name ? strlen(pt->name) : 0);
 		Write(fd, &size, sizeof(size));
 		if (size)
 			Write(fd, pt->name, size);
 
-		if (pt->parent)
-			size = strlen(pt->parent);
-		else
-			size = 0;
+		size = (short) (pt->parent ? strlen(pt->parent) : 0);
 		Write(fd, &size, sizeof(size));
 		if (size)
 			Write(fd, pt->parent, size);
@@ -1212,36 +1343,6 @@ splev *lev;
 		Write(fd, &(pt->ndoor), sizeof(pt->ndoor));
 		for(j=0;j<pt->ndoor;j++)
 			Write(fd, pt->doors[j], sizeof(room_door));
-		/* The traps */
-		Write(fd, &(pt->ntrap), sizeof(pt->ntrap));
-		for(j=0;j<pt->ntrap;j++)
-			Write(fd, pt->traps[j], sizeof(trap));
-
-		/* The monsters */
-		Write(fd, &(pt->nmonster), sizeof(pt->nmonster));
-		for(j=0;j<pt->nmonster;j++) {
-			monster *m = pt->monsters[j];
-			Write(fd, m, sizeof(monster));
-			size = m->name ? strlen(m->name) : 0;
-			Write(fd, &size, sizeof(size));
-			if (size)
-				Write(fd, m->name, size);
-			size = m->appear_as ? strlen(m->appear_as) : 0;
-			Write(fd, &size, sizeof(size));
-			if (size)
-				Write(fd, m->appear_as, size);
-		}
-
-		/* The objects */
-		Write(fd, &(pt->nobject), sizeof(pt->nobject));
-		for(j=0;j<pt->nobject;j++) {
-			object *o = pt->objects[j];
-			Write(fd, o, sizeof(object));
-			size = o->name ? strlen(o->name) : 0;
-			Write(fd, &size, sizeof(size));
-			if (size)
-				Write(fd,  o->name, size);
-		}
 
 		/* The stairs */
 		Write(fd, &(pt->nstair), sizeof(pt->nstair));
@@ -1252,22 +1353,6 @@ splev *lev;
 		Write(fd, &(pt->naltar), sizeof(pt->naltar));
 		for(j=0;j<pt->naltar;j++)
 			Write(fd, pt->altars[j], sizeof(altar));
-
-		/* The gold piles */
-		Write(fd, &(pt->ngold), sizeof(pt->ngold));
-		for(j=0;j<pt->ngold;j++)
-			Write(fd, pt->golds[j], sizeof(gold));
-
-		/* The engravings */
-		Write(fd, &(pt->nengraving), sizeof(pt->nengraving));
-		for(j=0;j<pt->nengraving;j++) {
-			char *txt;
-			txt = pt->engravings[j]->e.text;
-			size = pt->engravings[j]->e.length = strlen(txt);
-			Write(fd, pt->engravings[j],
-			      sizeof *pt->engravings[j]);
-			Write(fd, txt, size);
-		}
 
 		/* The fountains */
 		Write(fd, &(pt->nfountain), sizeof(pt->nfountain));
@@ -1283,53 +1368,54 @@ splev *lev;
 		Write(fd, &(pt->npool), sizeof(pt->npool));
 		for(j=0;j<pt->npool;j++)
 			Write(fd, pt->pools[j], sizeof(pool));
+
+		/* The traps */
+		Write(fd, &(pt->ntrap), sizeof(pt->ntrap));
+		for(j=0;j<pt->ntrap;j++)
+			Write(fd, pt->traps[j], sizeof(trap));
+
+		/* The monsters */
+		write_monsters(fd, &pt->nmonster, &pt->monsters);
+
+		/* The objects */
+		write_objects(fd, &pt->nobject, &pt->objects);
+
+		/* The gold piles */
+		Write(fd, &(pt->ngold), sizeof(pt->ngold));
+		for(j=0;j<pt->ngold;j++)
+			Write(fd, pt->golds[j], sizeof(gold));
+
+		/* The engravings */
+		write_engravings(fd, &pt->nengraving, &pt->engravings);
+
 	}
 
 	/* The corridors */
-	Write(fd, &ncorridor, sizeof(ncorridor));
-	for (i=0; i<ncorridor; i++) {
-		Write(fd, tmpcor[i], sizeof(corridor));
-		Free(tmpcor[i]);
-	}
-	ncorridor = 0;
+	Write(fd, &lev->ncorr, sizeof(lev->ncorr));
+	for (i=0; i < lev->ncorr; i++)
+		Write(fd, lev->corrs[i], sizeof(corridor));
 }
 
+/*
+ * Release memory allocated to a rooms-style special level; maze-style
+ * levels have the fields freed as they're written; monsters, objects, and
+ * engravings are freed as written for both styles, so not handled here.
+ */
 void
-free_rooms(ro, n)
-room **ro;
-int n;
+free_rooms(lev)
+splev *lev;
 {
-	short j;
 	room *r;
+	int j, n = lev->nroom;
 
 	while(n--) {
-		r = ro[n];
+		r = lev->rooms[n];
 		Free(r->name);
 		Free(r->parent);
 		if ((j = r->ndoor) != 0) {
 			while(j--)
 				Free(r->doors[j]);
 			Free(r->doors);
-		}
-		if ((j = r->ntrap) != 0) {
-			while (j--)
-				Free(r->traps[j]);
-			Free(r->traps);
-		}
-		if ((j = r->nmonster) != 0) {
-			while (j--) {
-				Free(r->monsters[j]->name);
-				Free(r->monsters[j]->appear_as);
-				Free(r->monsters[j]);
-			}
-			Free(r->monsters);
-		}
-		if ((j = r->nobject) != 0) {
-			while(j--) {
-				Free(r->objects[j]->name);
-				Free(r->objects[j]);
-			}
-			Free(r->objects);
 		}
 		if ((j = r->nstair) != 0) {
 			while(j--)
@@ -1340,18 +1426,6 @@ int n;
 			while (j--)
 				Free(r->altars[j]);
 			Free(r->altars);
-		}
-		if ((j = r->ngold) != 0) {
-			while(j--)
-				Free(r->golds[j]);
-			Free(r->golds);
-		}
-		if ((j = r->nengraving) != 0) {
-			while(j--) {
-				Free(r->engravings[j]->e.text);
-				Free(r->engravings[j]);
-			}
-			Free(r->engravings);
 		}
 		if ((j = r->nfountain) != 0) {
 			while(j--)
@@ -1368,8 +1442,37 @@ int n;
 				Free(r->pools[j]);
 			Free(r->pools);
 		}
+		if ((j = r->ntrap) != 0) {
+			while (j--)
+				Free(r->traps[j]);
+			Free(r->traps);
+		}
+		if ((j = r->ngold) != 0) {
+			while(j--)
+				Free(r->golds[j]);
+			Free(r->golds);
+		}
 		Free(r);
+		lev->rooms[n] = (room *)0;
 	}
+	Free(lev->rooms);
+	lev->rooms = (room **)0;
+	lev->nroom = 0;
+
+	for (j = 0; j < lev->ncorr; j++) {
+		Free(lev->corrs[j]);
+		lev->corrs[j] = (corridor *)0;
+	}
+	Free(lev->corrs);
+	lev->corrs = (corridor **)0;
+	lev->ncorr = 0;
+
+	Free(lev->robjects);
+	lev->robjects = (char *)0;
+	lev->nrobjects = 0;
+	Free(lev->rmonst);
+	lev->rmonst = (char *)0;
+	lev->nrmonst = 0;
 }
 
 #ifdef STRICT_REF_DEF
@@ -1393,9 +1496,9 @@ char SAVEP[ARBITRARY_SIZE];
 struct tc_lcl_data tc_lcl_data;
 # ifdef TEXTCOLOR
 #  ifdef TOS
-const char *hilites[MAXCOLORS];
+const char *hilites[CLR_MAX];
 #  else
-char NEARDATA *hilites[MAXCOLORS];
+char NEARDATA *hilites[CLR_MAX];
 #  endif
 # endif
 /* trap.c */

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)pline.c	3.1	92/11/20	*/
+/*	SCCS Id: @(#)pline.c	3.2	96/02/01	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -6,13 +6,10 @@
 #include "hack.h"
 #include "epri.h"
 
-#ifndef OVLB
-STATIC_DCL boolean no_repeat;
-#else /* OVLB */
-STATIC_OVL boolean no_repeat = FALSE;
-#endif /* OVLB */
-
 #ifdef OVLB
+
+static boolean no_repeat = FALSE;
+
 static char *FDECL(You_buf, (int));
 
 /*VARARGS1*/
@@ -50,22 +47,22 @@ pline VA_DECL(const char *, line)
 	char pbuf[BUFSZ];
 /* Do NOT use VA_START and VA_END in here... see above */
 
-	if(!line || !*line) return;
-	if(!index(line, '%'))
-	    Strcpy(pbuf,line);
-	else
+	if (!line || !*line) return;
+	if (index(line, '%')) {
 	    Vsprintf(pbuf,line,VA_ARGS);
-	if(!flags.window_inited) {
-	    raw_print(pbuf);
+	    line = pbuf;
+	}
+	if (!flags.window_inited) {
+	    raw_print(line);
 	    return;
 	}
 #ifndef MAC
-	if(no_repeat && !strcmp(pbuf, toplines))
+	if (no_repeat && !strcmp(line, toplines))
 	    return;
 #endif /* MAC */
 	if (vision_full_recalc) vision_recalc(0);
 	if (u.ux) flush_screen(1);		/* %% */
-	putstr(WIN_MESSAGE, 0, pbuf);
+	putstr(WIN_MESSAGE, 0, line);
 }
 
 /*VARARGS1*/
@@ -80,7 +77,7 @@ Norep VA_DECL(const char *, line)
 	return;
 }
 
-/* work buffer for You(), Your(), and verbalize() */
+/* work buffer for You(), &c and verbalize() */
 static char *you_buf = 0;
 static int you_buf_siz = 0;
 
@@ -94,16 +91,20 @@ You_buf(siz) int siz; {
 	return you_buf;
 }
 
+/* `prefix' must be a string literal, not a pointer */
+#define YouPrefix(pointer,prefix,text) \
+ Strcpy((pointer = You_buf((int)(strlen(text) + sizeof prefix))), prefix)
+
+#define YouMessage(pointer,prefix,text) \
+ strcat((YouPrefix(pointer, prefix, text), pointer), text)
+
 /*VARARGS1*/
 void
 You VA_DECL(const char *, line)
 	char *tmp;
 	VA_START(line);
 	VA_INIT(line, const char *);
-	tmp = You_buf((int)strlen(line) + 5);
-	Strcpy(tmp, "You ");
-	Strcat(tmp, line);
-	vpline(tmp, VA_ARGS);
+	vpline(YouMessage(tmp, "You ", line), VA_ARGS);
 	VA_END();
 }
 
@@ -113,10 +114,52 @@ Your VA_DECL(const char *,line)
 	char *tmp;
 	VA_START(line);
 	VA_INIT(line, const char *);
-	tmp = You_buf((int)strlen(line) + 6);
-	Strcpy(tmp, "Your ");
-	Strcat(tmp, line);
-	vpline(tmp, VA_ARGS);
+	vpline(YouMessage(tmp, "Your ", line), VA_ARGS);
+	VA_END();
+}
+
+/*VARARGS1*/
+void
+You_feel VA_DECL(const char *,line)
+	char *tmp;
+	VA_START(line);
+	VA_INIT(line, const char *);
+	vpline(YouMessage(tmp, "You feel ", line), VA_ARGS);
+	VA_END();
+}
+
+
+/*VARARGS1*/
+void
+You_cant VA_DECL(const char *,line)
+	char *tmp;
+	VA_START(line);
+	VA_INIT(line, const char *);
+	vpline(YouMessage(tmp, "You can't ", line), VA_ARGS);
+	VA_END();
+}
+
+/*VARARGS1*/
+void
+pline_The VA_DECL(const char *,line)
+	char *tmp;
+	VA_START(line);
+	VA_INIT(line, const char *);
+	vpline(YouMessage(tmp, "The ", line), VA_ARGS);
+	VA_END();
+}
+
+/*VARARGS1*/
+void
+You_hear VA_DECL(const char *,line)
+	char *tmp;
+	VA_START(line);
+	VA_INIT(line, const char *);
+	if (!Underwater)
+		YouPrefix(tmp, "You hear ", line);
+	else
+		YouPrefix(tmp, "You barely hear ", line);
+	vpline(strcat(tmp, line), VA_ARGS);
 	VA_END();
 }
 
@@ -127,7 +170,7 @@ verbalize VA_DECL(const char *,line)
 	if (!flags.soundok) return;
 	VA_START(line);
 	VA_INIT(line, const char *);
-	tmp = You_buf((int)strlen(line) + 3);
+	tmp = You_buf((int)strlen(line) + sizeof "\"\"");
 	Strcpy(tmp, "\"");
 	Strcat(tmp, line);
 	Strcat(tmp, "\"");
@@ -204,32 +247,125 @@ mstatusline(mtmp)
 register struct monst *mtmp;
 {
 	aligntyp alignment;
+	char info[BUFSZ], monnambuf[BUFSZ];
 
 	if (mtmp->ispriest || mtmp->data == &mons[PM_ALIGNED_PRIEST]
 				|| mtmp->data == &mons[PM_ANGEL])
 		alignment = EPRI(mtmp)->shralign;
 	else
 		alignment = mtmp->data->maligntyp;
-
 	alignment = (alignment > 0) ? A_LAWFUL :
 		(alignment < 0) ? A_CHAOTIC :
 		A_NEUTRAL;
-	pline("Status of %s (%s):  Level %d  Gold %lu  HP %d(%d) AC %d%s%s",
-		mon_nam(mtmp),
+
+	info[0] = 0;
+	if (mtmp->mtame) {	  Strcat(info, ", tame");
+#ifdef WIZARD
+	    if (wizard)		  Sprintf(eos(info), " (%d)", mtmp->mtame);
+#endif
+	}
+	else if (mtmp->mpeaceful) Strcat(info, ", peaceful");
+	if (mtmp->meating)	  Strcat(info, ", eating");
+	if (mtmp->mcan)		  Strcat(info, ", cancelled");
+	if (mtmp->mconf)	  Strcat(info, ", confused");
+	if (mtmp->mblinded || !mtmp->mcansee)
+				  Strcat(info, ", blind");
+	if (mtmp->mstun)	  Strcat(info, ", stunned");
+	if (mtmp->msleep)	  Strcat(info, ", asleep");
+#if 0	/* unfortunately mfrozen covers temporary sleep and being busy
+	   (donning armor, for instance) as well as paralysis */
+	else if (mtmp->mfrozen)	  Strcat(info, ", paralyzed");
+#else
+	else if (mtmp->mfrozen || !mtmp->mcanmove)
+				  Strcat(info, ", can't move");
+#endif
+				  /* [arbitrary reason why it isn't moving] */
+	else if (mtmp->mstrategy & STRAT_WAITMASK)
+				  Strcat(info, ", meditating");
+	else if (mtmp->mflee)	  Strcat(info, ", scared");
+	if (mtmp->mtrapped)	  Strcat(info, ", trapped");
+	if (mtmp->mspeed)	  Strcat(info,
+					mtmp->mspeed == MFAST ? ", fast" :
+					mtmp->mspeed == MSLOW ? ", slow" :
+					", ???? speed");
+	if (mtmp->mundetected)	  Strcat(info, ", concealed");
+	if (mtmp->minvis)	  Strcat(info, ", invisible");
+	if (mtmp == u.ustuck)	  Strcat(info,
+			(u.mtimedone && sticks(uasmon)) ? ", held by you" :
+				u.uswallow ? (is_animal(u.ustuck->data) ?
+				", swallowed you" :
+				", engulfed you") :
+				", holding you");
+
+	Strcpy(monnambuf, mon_nam(mtmp));
+	/* avoid "Status of the invisible newt ..., invisible" */
+	if (mtmp->minvis && strstri(monnambuf, "invisible")) {
+	    mtmp->minvis = 0;
+	    Strcpy(monnambuf, mon_nam(mtmp));
+	    mtmp->minvis = 1;
+	}
+
+	pline("Status of %s (%s):  Level %d  HP %d(%d)  AC %d%s.",
+		monnambuf,
 		align_str(alignment),
 		mtmp->m_lev,
-		mtmp->mgold,
 		mtmp->mhp,
 		mtmp->mhpmax,
 		find_mac(mtmp),
-		mtmp->mcan ? ", cancelled" : "" ,
-		mtmp->mtame ? ", tame" : "");
+		info);
 }
 
 void
 ustatusline()
 {
-	pline("Status of %s (%s%s):  Level %d  Gold %lu  HP %d(%d)  AC %d",
+	char info[BUFSZ];
+
+	info[0] = '\0';
+	if (Sick) {
+		Strcat(info, ", dying from");
+		if (u.usick_type & SICK_VOMITABLE)
+			Strcat(info, " food poisoning");
+		if (u.usick_type & SICK_NONVOMITABLE) {
+			if (u.usick_type & SICK_VOMITABLE)
+				Strcat(info, " and");
+			Strcat(info, " illness");
+		}
+	}
+	if (Stoned)		Strcat(info, ", solidifying");
+	if (Strangled)		Strcat(info, ", being strangled");
+	if (Vomiting)		Strcat(info, ", nauseated"); /* !"nauseous" */
+	if (Confusion)		Strcat(info, ", confused");
+	if (Blind) {
+	    Strcat(info, ", blind");
+	    if (u.ucreamed) {
+		if ((long)u.ucreamed < Blinded || Blindfolded
+						|| !haseyes(uasmon))
+		    Strcat(info, ", cover");
+		Strcat(info, "ed by sticky goop");
+	    }	/* note: "goop" == "glop"; variation is intentional */
+	}
+	if (Stunned)		Strcat(info, ", stunned");
+	if (Wounded_legs) {
+	    const char *what = body_part(LEG);
+	    if ((Wounded_legs & BOTH_SIDES) == BOTH_SIDES)
+		what = makeplural(what);
+				Sprintf(eos(info), ", injured %s", what);
+	}
+	if (Glib)		Sprintf(eos(info), ", slippery %s",
+					makeplural(body_part(HAND)));
+	if (u.utrap)		Strcat(info, ", trapped");
+	if (Fast)		Strcat(info, ", fast");
+	if (u.uundetected)	Strcat(info, ", concealed");
+	if (Invis)		Strcat(info, ", invisible");
+	if (u.ustuck) {
+	    if (u.mtimedone && sticks(uasmon))
+		Strcat(info, ", holding ");
+	    else
+		Strcat(info, ", held by ");
+	    Strcat(info, mon_nam(u.ustuck));
+	}
+
+	pline("Status of %s (%s%s):  Level %d  HP %d(%d)  AC %d%s.",
 		plname,
 		    (u.ualign.record >= 20) ? "piously " :
 		    (u.ualign.record > 13) ? "devoutly " :
@@ -240,18 +376,11 @@ ustatusline()
 		    (u.ualign.record == 0) ? "nominally " :
 					    "insufficiently ",
 		align_str(u.ualign.type),
-# ifdef POLYSELF
 		u.mtimedone ? mons[u.umonnum].mlevel : u.ulevel,
-		u.ugold,
 		u.mtimedone ? u.mh : u.uhp,
 		u.mtimedone ? u.mhmax : u.uhpmax,
-# else
-		u.ulevel,
-		u.ugold,
-		u.uhp,
-		u.uhpmax,
-# endif
-		u.uac);
+		u.uac,
+		info);
 }
 
 #endif /* OVLB */

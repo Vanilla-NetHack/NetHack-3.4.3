@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)rect.c	3.1	90/22/02 */
+/*	SCCS Id: @(#)rect.c	3.2	90/02/22	*/
 /* Copyright (c) 1990 by Jean-Christophe Collet	 */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -8,19 +8,19 @@ int FDECL(get_rect_ind, (NhRect *));
 
 static boolean FDECL(intersect, (NhRect *,NhRect *,NhRect *));
 
-    /* 
+    /*
      * In this file, we will handle the various rectangle functions we
      * need for room generation.
      */
 
-#define	MAXRECT	50
+#define MAXRECT	50
 #define XLIM	4
 #define YLIM	3
 
 static NhRect rect[MAXRECT+1];
 static int rect_cnt;
 
-/* 
+/*
  * Initialisation of internal structures. Should be called for every
  * new level to be build...
  */
@@ -34,9 +34,9 @@ init_rect()
 	rect[0].hy = ROWNO - 1;
 }
 
-/* 
+/*
  * Search Index of one precise NhRect.
- * 
+ *
  */
 
 int
@@ -56,7 +56,7 @@ NhRect *r;
 	return -1;
 }
 
-/* 
+/*
  * Search a free rectangle that include the one given in arg
  */
 
@@ -77,7 +77,7 @@ NhRect *r;
 	return 0;
 }
 
-/* 
+/*
  * Get some random NhRect from the list.
  */
 
@@ -87,7 +87,7 @@ rnd_rect()
 	    return rect_cnt > 0 ? &rect[rn2(rect_cnt)] : 0;
 }
 
-/* 
+/*
  * Search intersection between two rectangles (r1 & r2).
  * return TRUE if intersection exist and put it in r3.
  * otherwise returns FALSE
@@ -111,7 +111,7 @@ NhRect *r1, *r2, *r3;
 	return TRUE;
 }
 
-/* 
+/*
  * Remove a rectangle from the list of free NhRect.
  */
 
@@ -126,7 +126,7 @@ NhRect *r;
 	    rect[ind] = rect[--rect_cnt];
 }
 
-/* 
+/*
  * Add a NhRect to the list.
  */
 
@@ -147,7 +147,7 @@ NhRect *r;
 	rect_cnt++;
 }
 
-/* 
+/*
  * Okay, here we have two rectangles (r1 & r2).
  * r1 was already in the list and r2 is included in r1.
  * What we want is to allocate r2, that is split r1 into smaller rectangles

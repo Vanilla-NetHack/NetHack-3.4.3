@@ -1,5 +1,5 @@
-/*	SCCS Id: @(#)amilib.c	3.1	93/04/26	*/
-/* Copyright (c) Gregg Wonderly, Naperville, Illinois,  1991,1992,1993. */
+/*	SCCS Id: @(#)amilib.c	3.2	96/02/04	*/
+/* Copyright (c) Gregg Wonderly, Naperville, Illinois,  1991,1992,1993,1996. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
@@ -24,16 +24,20 @@
 #endif
 
 #ifdef AZTEC_C
-#include <functions.h>
+# include <functions.h>
 #else
-#include <dos.h>
-#include <proto/exec.h>
+# ifndef _DCC
+#  include <dos.h>
+# endif
+# ifdef _DCC
+#  include <clib/exec_protos.h>
+# else
+#  include <proto/exec.h>
+# endif
 #endif
 
-#include "Amiga:lib/amilib.h"
-
-#include "Amiga:winami.p"
-#include "Amiga:amiwind.p"
+#include "NH:sys/amiga/lib/amilib.h"
+#include "winproto.h"
 
 WinamiBASE *WinamiBase = 0;
 
@@ -46,14 +50,17 @@ char Initialized = 0;
 struct amii_DisplayDesc *amiIDisplay = 0;
 struct Screen *HackScreen = 0;
 winid WIN_BASE = WIN_ERR;
+#ifdef	VIEWWINDOW
+winid WIN_OVER = WIN_ERR;
+#endif
 winid amii_rawprwin = WIN_ERR;
+extern const char *configfile;
 
-/*void genl_botl_flush( void );*/
 void amii_outrip( winid, int );
 void setup_librefs( WinamiBASE * );
 
 /* The current color map */
-unsigned short amii_initmap[] = {
+unsigned short amii_initmap[ MAXCOLORS ] = {
 #define C_BLACK		0
 #define C_WHITE		1
 #define C_BROWN		2
@@ -71,9 +78,17 @@ unsigned short amii_initmap[] = {
     0x0C06, /* color #5 */
     0x023E, /* color #6 */
     0x0c00  /* color #7 */
+#ifdef	VIEWWINDOW
+    0x0AAA,	/* Various shades of grey */
+    0x0fff,
+    0x0444,
+    0x0666,
+    0x0888,
+    0x0bbb,
+    0x0ddd,
+    0x0222,
+#endif
 };
-
-
 
 /* Interface definition, for use by windows.c and winprocs.h to provide
  * the simple intuition interface for the amiga...
@@ -99,11 +114,15 @@ struct window_procs amii_procs =
     amii_add_menu,
     amii_end_menu,
     amii_select_menu,
+    genl_message_menu,
     amii_update_inventory,
     amii_mark_synch,
     amii_wait_synch,
 #ifdef CLIPPING
     amii_cliparound,
+#endif
+#ifdef POSITIONBAR
+    donull,
 #endif
     amii_print_glyph,
     amii_raw_print,
@@ -114,18 +133,16 @@ struct window_procs amii_procs =
     amii_doprev_message,
     amii_yn_function,
     amii_getlin,
-#ifdef COM_COMPL
     amii_get_ext_cmd,
-#endif /* COM_COMPL */
     amii_number_pad,
     amii_delay_output,
     /* other defs that really should go away (they're tty specific) */
 #ifdef CHANGE_COLOR
-    amii_delay_output,
-    amii_delay_output,
+    amii_change_color,
+    amii_get_color_string,
 #endif
-    amii_delay_output,
-    amii_delay_output,
+    (void *)amii_delay_output,
+    (void *)amii_delay_output,
 
     amii_outrip,
 };
@@ -155,11 +172,15 @@ struct window_procs amiv_procs =
     amii_add_menu,
     amii_end_menu,
     amii_select_menu,
+    genl_message_menu,
     amii_update_inventory,
     amii_mark_synch,
     amii_wait_synch,
 #ifdef CLIPPING
     amii_cliparound,
+#endif
+#ifdef POSITIONBAR
+    donull,
 #endif
     amii_print_glyph,
     amii_raw_print,
@@ -170,18 +191,16 @@ struct window_procs amiv_procs =
     amii_doprev_message,
     amii_yn_function,
     amii_getlin,
-#ifdef COM_COMPL
     amii_get_ext_cmd,
-#endif /* COM_COMPL */
     amii_number_pad,
-    amii_delay_output,
+    (void *)amii_delay_output,
     /* other defs that really should go away (they're tty specific) */
 #ifdef CHANGE_COLOR
-    amii_delay_output,
-    amii_delay_output,
+    amii_change_color,
+    amii_get_color_string,
 #endif
-    amii_delay_output,
-    amii_delay_output,
+    (void *)amii_delay_output,
+    (void *)amii_delay_output,
 
     amii_outrip,
 };
@@ -235,6 +254,7 @@ setup_librefs( base )
     base->G_display_inventory = display_inventory;
     base->G_terminate = terminate;
     base->G_rnd = rnd;
+    base->G_rn2 = rn2;
     base->G_panic = panic;
     base->G_clearlocks = clearlocks;
     base->G_on_level = on_level;
@@ -244,7 +264,13 @@ setup_librefs( base )
     base->G_Abort = Abort;
     base->G_error = error;
     base->G_fopenp = fopenp;
-/*    base->G_genl_botl_flush = genl_botl_flush; */
+    base->G_doredraw = doredraw;
+    base->G_fopen = fopen;
+    base->G_fclose = fclose;
+    base->G_fputs = fputs;
+    base->G_fprintf = fprintf;
+    base->G_fgets = fgets;
+    base->G_fflush = fflush;
 
     base->G_yn_number = &yn_number;
     base->G_zapcolors = zapcolors;
@@ -279,7 +305,21 @@ setup_librefs( base )
     base->G_amii_initmap = amii_initmap;
     base->G_Initialized = &Initialized;
     base->G_ConsoleDevice = &ConsoleDevice;
+    base->G_configfile = configfile;
     base->G_amii_procs = &amii_procs;
+    base->G_amii_set_text_font = amii_set_text_font;
+}
+
+/*
+ * We don't compile the NetHack sources with amilib.h, so we define the function
+ * here to call the shared library version
+ */
+void
+amii_set_text_font( name, size )
+    char *name;
+    int size;
+{
+	/*(*WinamiBase->G_amii_set_text_font)( name, size );*/
 }
 #endif
 

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mhitm.c	3.1	93/05/26	*/
+/*	SCCS Id: @(#)mhitm.c	3.2	96/04/08	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -11,6 +11,9 @@
 static NEARDATA boolean vis, far_noise;
 static NEARDATA long noisetime;
 static NEARDATA struct obj *otmp;
+
+static const char brief_feeling[] =
+	"have a %s feeling for a moment, then it passes.";
 
 static void FDECL(mrustm, (struct monst *, struct monst *, struct obj *));
 static int FDECL(hitmm, (struct monst *,struct monst *,struct attack *));
@@ -39,7 +42,7 @@ noises(magr, mattk)
 	if(flags.soundok && (farq != far_noise || moves-noisetime > 10)) {
 		far_noise = farq;
 		noisetime = moves;
-		You("hear %s%s.",
+		You_hear("%s%s.",
 			(mattk->aatyp == AT_EXPL) ? "an explosion" : "some noises",
 			farq ? " in the distance" : "");
 	}
@@ -87,13 +90,12 @@ fightm(mtmp)		/* have monsters fight each other */
 	/* perhaps the monster will resist Conflict */
 	if(resist(mtmp, RING_CLASS, 0, 0))
 	    return(0);
-#ifdef POLYSELF
+
 	if(u.ustuck == mtmp) {
 	    /* perhaps we're holding it... */
 	    if(itsstuck(mtmp))
 		return(0);
 	}
-#endif
 	has_u_swallowed = (u.uswallow && (mtmp == u.ustuck));
 
 	for(mon = fmon; mon; mon = nmon) {
@@ -132,7 +134,7 @@ fightm(mtmp)		/* have monsters fight each other */
  * mattackm() -- a monster attacks another monster.
  *
  * This function returns a result bitfield:
- *	   
+ *	
  *	    --------- agressor died
  *	   /  ------- defender died
  *	  /  /  ----- defender was hit
@@ -163,8 +165,8 @@ mattackm(magr, mdef)
     struct permonst *pa, *pd;
 
     if (!magr || !mdef) return(MM_MISS);		/* mike@genat */
-    pa = magr->data; pd = mdef->data;
     if (!magr->mcanmove) return(MM_MISS);		/* riv05!a3 */
+    pa = magr->data;  pd = mdef->data;
 
     /* Grid bugs cannot attack at an angle. */
     if (pa == &mons[PM_GRID_BUG] && magr->mx != mdef->mx
@@ -182,7 +184,7 @@ mattackm(magr, mdef)
     if (mdef->mundetected) {
 	mdef->mundetected = 0;
 	newsym(mdef->mx, mdef->my);
-	if(canseemon(mdef))
+	if(canseemon(mdef) && !sensemon(mdef))
 	    pline("Suddenly, you notice %s.", a_monnam(mdef));
     }
 
@@ -208,20 +210,16 @@ mattackm(magr, mdef)
 	attk = 1;
 	switch (mattk->aatyp) {
 	    case AT_WEAP:		/* "hand to hand" attacks */
-#ifdef MUSE
 		if (magr->weapon_check == NEED_WEAPON || !MON_WEP(magr)) {
 			magr->weapon_check = NEED_HTH_WEAPON;
 			if (mon_wield_item(magr) != 0) return 0;
 		}
-		remove_cadavers(&magr->minvent);
 		possibly_unwield(magr);
 		otmp = MON_WEP(magr);
-#else
-		otmp = select_hwep(magr);
-#endif
+
 		if (otmp) {
 		    if (vis) mswingsm(magr, mdef, otmp);
-		    tmp += hitval(otmp, pd);
+		    tmp += hitval(otmp, mdef);
 		}
 		/* fall through */
 	    case AT_CLAW:
@@ -380,6 +378,7 @@ gulpmm(magr, mdef, mattk)
 	xchar	ax, ay, dx, dy;
 	int	status;
 	char buf[BUFSZ];
+	struct obj *obj;
 
 	if (mdef->data->msize >= MZ_HUGE) return MM_MISS;
 
@@ -387,6 +386,8 @@ gulpmm(magr, mdef, mattk)
 		Sprintf(buf,"%s swallows", Monnam(magr));
 		pline("%s %s.", buf, mon_nam(mdef));
 	}
+	for (obj = mdef->minvent; obj; obj = obj->nobj)
+	    (void) snuff_lit(obj);
 
 	/*
 	 *  All of this maniuplation is needed to keep the display correct.
@@ -442,33 +443,25 @@ explmm(magr, mdef, mattk)
 	register struct monst *magr, *mdef;
 	register struct	attack *mattk;
 {
-	int result, was_tame;
+	int result;
 
 	if(cansee(magr->mx, magr->my))
 		pline("%s explodes!", Monnam(magr));
 	else	noises(magr, mattk);
 
-	was_tame = magr->mtame;
 	result = mdamagem(magr, mdef, mattk);
-
-	/* The attacker could have died . . */
-	if (was_tame)
-	    You("have a sad feeling for a moment, then it passes.");
 
 	/* Kill off agressor if it didn't die. */
 	if (!(result & MM_AGR_DIED)) {
 	    mondead(magr);
-#ifdef MUSE
-	    if (magr->mhp <= 0)
-#endif
-		result |= MM_AGR_DIED;
+	    if (magr->mhp > 0) return result;	/* life saved */
+	    result |= MM_AGR_DIED;
 	}
+	if (magr->mtame)	/* give this one even if it was visible */
+	    You(brief_feeling, "melancholy");
 
 	return result;
 }
-
-static const char psf[] =
-	"have a peculiarly sad feeling for a moment, then it passes.";
 
 /*
  *  See comment at top of mattackm(), for return values.
@@ -482,28 +475,39 @@ mdamagem(magr, mdef, mattk)
 	int	tmp = d((int)mattk->damn,(int)mattk->damd);
 	char buf[BUFSZ];
 
-	if (pd == &mons[PM_COCKATRICE] && !resists_ston(pa) &&
+	if (pd == &mons[PM_COCKATRICE] && !resists_ston(magr) &&
 	   (mattk->aatyp != AT_WEAP || !otmp) &&
 	   (mattk->aatyp != AT_GAZE && mattk->aatyp != AT_EXPL) &&
-#ifdef MUSE
-	   (!(magr->misc_worn_check & W_ARMG))) {
-#else
-	   (!is_mercenary(pa) || !m_carrying(magr, LEATHER_GLOVES))) {
-	   /* Note: other monsters may carry gloves, only soldiers have them */
-	   /* as their "armor" and can be said to wear them */
-#endif
+	   !(magr->misc_worn_check & W_ARMG)) {
 		if (poly_when_stoned(pa)) {
 		    mon_to_stone(magr);
 		    return MM_HIT; /* no damage during the polymorph */
 		}
 		if (vis) pline("%s turns to stone!", Monnam(magr));
-		else if (magr->mtame) You(psf);
 		monstone(magr);
+		if (magr->mhp > 0) return 0;
+		else if (magr->mtame && !vis)
+		    You(brief_feeling, "peculiarly sad");
 		return MM_AGR_DIED;
 	}
 
 	switch(mattk->adtyp) {
 	    case AD_DGST:
+		/* eating a Rider or its corpse is fatal */
+		if (is_rider(mdef->data)) {
+		    if (vis)
+			pline("%s %s!", Monnam(magr),
+			      mdef->data == &mons[PM_FAMINE] ?
+				"belches feebly, shrivels up and dies" :
+			      mdef->data == &mons[PM_PESTILENCE] ?
+				"coughs spasmodically and collapses" :
+				"vomits violently and drops dead");
+		    mondied(magr);
+		    if (magr->mhp > 0) return 0;	/* lifesaved */
+		    else if (magr->mtame && !vis)
+			You(brief_feeling, "queasy");
+		    return MM_AGR_DIED;
+		}
 		if(flags.verbose && flags.soundok) verbalize("Burrrrp!");
 		tmp = mdef->mhp;
 		break;
@@ -520,12 +524,10 @@ mdamagem(magr, mdef, mattk)
 			tmp = 0;
 		else if(mattk->aatyp == AT_WEAP) {
 		    if(otmp) {
-#ifdef MUSE
 			if (otmp->otyp == CORPSE &&
 				otmp->corpsenm == PM_COCKATRICE)
 			    goto do_stone_goto_label;
-#endif
-			tmp += dmgval(otmp, pd);
+			tmp += dmgval(otmp, mdef);
 			if (otmp->oartifact) {
 			    (void)artifact_hit(magr,mdef, otmp, &tmp, dieroll);
 			    if (mdef->mhp <= 0)
@@ -542,12 +544,15 @@ mdamagem(magr, mdef, mattk)
 		    tmp = 0;
 		    break;
 		}
-		if(vis) pline("%s is on fire!", Monnam(mdef));
+		if (vis)
+		    pline("%s is %s!", Monnam(mdef),
+			  mattk->aatyp == AT_HUGS ?
+				"being roasted" : "on fire");
 		tmp += destroy_mitem(mdef, SCROLL_CLASS, AD_FIRE);
 		tmp += destroy_mitem(mdef, SPBOOK_CLASS, AD_FIRE);
-		if(resists_fire(pd)) {
+		if (resists_fire(mdef)) {
 		    if (vis)
-			pline("The fire doesn't seem to burn %s!",
+			pline_The("fire doesn't seem to burn %s!",
 								mon_nam(mdef));
 		    shieldeff(mdef->mx, mdef->my);
 		    golemeffects(mdef, AD_FIRE, tmp);
@@ -561,10 +566,10 @@ mdamagem(magr, mdef, mattk)
 		    tmp = 0;
 		    break;
 		}
-		if(vis) pline("%s is covered in frost!", Monnam(mdef));
-		if(resists_cold(pd)) {
+		if (vis) pline("%s is covered in frost!", Monnam(mdef));
+		if (resists_cold(mdef)) {
 		    if (vis)
-			pline("The frost doesn't seem to chill %s!",
+			pline_The("frost doesn't seem to chill %s!",
 								mon_nam(mdef));
 		    shieldeff(mdef->mx, mdef->my);
 		    golemeffects(mdef, AD_COLD, tmp);
@@ -577,10 +582,10 @@ mdamagem(magr, mdef, mattk)
 		    tmp = 0;
 		    break;
 		}
-		if(vis) pline("%s gets zapped!", Monnam(mdef));
+		if (vis) pline("%s gets zapped!", Monnam(mdef));
 		tmp += destroy_mitem(mdef, WAND_CLASS, AD_ELEC);
-		if(resists_elec(pd)) {
-		    if (vis) pline("The zap doesn't shock %s!", mon_nam(mdef));
+		if (resists_elec(mdef)) {
+		    if (vis) pline_The("zap doesn't shock %s!", mon_nam(mdef));
 		    shieldeff(mdef->mx, mdef->my);
 		    golemeffects(mdef, AD_ELEC, tmp);
 		    tmp = 0;
@@ -593,10 +598,10 @@ mdamagem(magr, mdef, mattk)
 		    tmp = 0;
 		    break;
 		}
-		if(resists_acid(pd)) {
+		if (resists_acid(mdef)) {
 		    if (vis)
 			pline("%s is covered in acid, but it seems harmless.",
-							Monnam(mdef));
+			      Monnam(mdef));
 		    tmp = 0;
 		} else if (vis) {
 		    pline("%s is covered in acid!", Monnam(mdef));
@@ -606,12 +611,10 @@ mdamagem(magr, mdef, mattk)
 	    case AD_RUST:
 		if (!magr->mcan && pd == &mons[PM_IRON_GOLEM]) {
 			if (vis) pline("%s falls to pieces!", Monnam(mdef));
-			else if(mdef->mtame)
-			     pline("May %s rust in peace.", mon_nam(mdef));
 			mondied(mdef);
-#ifdef MUSE
 			if (mdef->mhp > 0) return 0;
-#endif
+			else if (mdef->mtame && !vis)
+			    pline("May %s rust in peace.", mon_nam(mdef));
 			return (MM_DEF_DIED | (grow_up(magr,mdef) ?
 							0 : MM_AGR_DIED));
 		}
@@ -621,54 +624,54 @@ mdamagem(magr, mdef, mattk)
 		if (!magr->mcan && (pd == &mons[PM_WOOD_GOLEM] ||
 		    pd == &mons[PM_LEATHER_GOLEM])) {
 			if (vis) pline("%s falls to pieces!", Monnam(mdef));
-			else if(mdef->mtame)
-			     pline("May %s rot in peace.", mon_nam(mdef));
 			mondied(mdef);
-#ifdef MUSE
 			if (mdef->mhp > 0) return 0;
-#endif
+			else if (mdef->mtame && !vis)
+			    pline("May %s rot in peace.", mon_nam(mdef));
 			return (MM_DEF_DIED | (grow_up(magr,mdef) ?
 							0 : MM_AGR_DIED));
 		}
 		tmp = 0;
 		break;
 	    case AD_STON:
-#ifdef MUSE
 do_stone_goto_label:
-#endif
-		if(poly_when_stoned(pd)) {
-		    mon_to_stone(mdef);
-		    tmp = 0;
-		    break;
+		/* may die from the acid if it eats a stone-curing corpse */
+		if (munstone(mdef, FALSE)) goto label2;
+		if (poly_when_stoned(pd)) {
+			mon_to_stone(mdef);
+			tmp = 0;
+			break;
 		}
-		if(!resists_ston(pd)) {
-			if(vis) pline("%s turns to stone!", Monnam(mdef));
-			else if(mdef->mtame) You(psf);
+		if (!resists_ston(mdef)) {
+			if (vis) pline("%s turns to stone!", Monnam(mdef));
 			monstone(mdef);
-#ifdef MUSE
-			if (mdef->mhp > 0) return 0;
-#endif
+label2:			if (mdef->mhp > 0) return 0;
+			else if (mdef->mtame && !vis)
+			    You(brief_feeling, "peculiarly sad");
 			return (MM_DEF_DIED | (grow_up(magr,mdef) ?
 							0 : MM_AGR_DIED));
 		}
 		tmp = (mattk->adtyp == AD_STON ? 0 : 1);
 		break;
 	    case AD_TLPT:
-		if(!magr->mcan && tmp < mdef->mhp) {
-		    if (!tele_restrict(mdef)) rloc(mdef);
-		    if(vis && !cansee(mdef->mx, mdef->my))
-			pline("%s suddenly disappears!", Monnam(mdef));
+		if (!magr->mcan && tmp < mdef->mhp && !tele_restrict(mdef)) {
+		    char mdef_Monnam[BUFSZ];
+		    /* save the name before monster teleports, otherwise
+		       we'll get "it" in the suddenly disappears message */
+		    if (vis) Strcpy(mdef_Monnam, Monnam(mdef));
+		    rloc(mdef);
+		    if (vis && !cansee(mdef->mx, mdef->my))
+			pline("%s suddenly disappears!", mdef_Monnam);
 		}
 		break;
 	    case AD_SLEE:
-		if(!resists_sleep(pd) && !magr->mcan && !mdef->msleep
-							&& mdef->mcanmove) {
+		if (!magr->mcan && !mdef->msleep &&
+			sleep_monst(mdef, rnd(10), -1)) {
 		    if (vis) {
 			Strcpy(buf, Monnam(mdef));
 			pline("%s is put to sleep by %s.", buf, mon_nam(magr));
 		    }
-		    mdef->mcanmove = 0;
-		    mdef->mfrozen = rnd(10);
+		    slept_monst(mdef);
 		}
 		break;
 	    case AD_PLYS:
@@ -693,8 +696,8 @@ do_stone_goto_label:
 		 * limit, setting spec_used would not really be right (though
 		 * we still should check for it).
 		 */
-		if (!magr->mcan && vis && !mdef->mconf && !magr->mspec_used) {
-		    pline("%s looks confused.", Monnam(mdef));
+		if (!magr->mcan && !mdef->mconf && !magr->mspec_used) {
+		    if (vis) pline("%s looks confused.", Monnam(mdef));
 		    mdef->mconf = 1;
 		}
 		break;
@@ -711,29 +714,35 @@ do_stone_goto_label:
 		}
 		tmp = 0;
 		break;
+	    case AD_HALU:
+		if (!magr->mcan && haseyes(pd) && mdef->mcansee) {
+		    if (vis) pline("%s looks %sconfused.",
+				    Monnam(mdef), mdef->mconf ? "more " : "");
+		    mdef->mconf = 1;
+		}
+		tmp = 0;
+		break;
 	    case AD_CURS:
 		if (!night() && (pa == &mons[PM_GREMLIN])) break;
 		if (!magr->mcan && !rn2(10)) {
+		    mdef->mcan = 1;	/* cancelled regardless of lifesave */
 		    if (is_were(pd) && pd->mlet != S_HUMAN)
 			were_change(mdef);
 		    if (pd == &mons[PM_CLAY_GOLEM]) {
 			    if (vis) {
 				pline("Some writing vanishes from %s head!",
 				    s_suffix(mon_nam(mdef)));
-				pline("%s dies!", Monnam(mdef));
+				pline("%s is destroyed!", Monnam(mdef));
 			    }
-			    else if (mdef->mtame)
-	You("have a strangely sad feeling for a moment, then it passes.");
 			    mondied(mdef);
-#ifdef MUSE
 			    if (mdef->mhp > 0) return 0;
-#endif
+			    else if (mdef->mtame && !vis)
+				You(brief_feeling, "strangely sad");
 			    return (MM_DEF_DIED | (grow_up(magr,mdef) ?
 							0 : MM_AGR_DIED));
-		      }
-		    mdef->mcan = 1;
+		    }
 		    if (flags.soundok) {
-			    if (!vis) You("hear laughter.");
+			    if (!vis) You_hear("laughter.");
 			    else pline("%s chuckles.", Monnam(magr));
 		    }
 		}
@@ -753,7 +762,7 @@ do_stone_goto_label:
 		}
 		break;
 	    case AD_DRLI:
-		if(rn2(2) && !resists_drli(pd)) {
+		if (rn2(2) && !resists_drli(mdef)) {
 			tmp = d(2,6);
 			if (vis)
 			    pline("%s suddenly seems weaker!", Monnam(mdef));
@@ -770,26 +779,29 @@ do_stone_goto_label:
 	    case AD_SITM:	/* for now these are the same */
 	    case AD_SEDU:
 		if (!magr->mcan && mdef->minvent) {
-		   	otmp = mdef->minvent;
-			mdef->minvent = otmp->nobj;
-			otmp->nobj = magr->minvent;
-			magr->minvent = otmp;
+			char onambuf[BUFSZ];
+
+			otmp = mdef->minvent;
+			obj_extract_self(otmp);
+			if (otmp->owornmask) {
+				mdef->misc_worn_check &= ~otmp->owornmask;
+				otmp->owornmask = 0L;
+				update_mon_intrinsics(mdef, otmp, FALSE);
+			}
+			/* add_to_minv() might free otmp [if it merges] */
+			if (vis)
+				Strcpy(onambuf, doname(otmp));
+			add_to_minv(magr, otmp);
 			if (vis) {
 				Strcpy(buf, Monnam(magr));
 				pline("%s steals %s from %s!", buf,
-						doname(otmp), mon_nam(mdef));
+				      onambuf, mon_nam(mdef));
 			}
-#ifdef MUSE
 			possibly_unwield(mdef);
-			if (otmp->owornmask) {
-				mdef->misc_worn_check &= ~otmp->owornmask;
-				otmp->owornmask = 0;
-			}
 			mselftouch(mdef, (const char *)0, FALSE);
 			if (mdef->mhp <= 0)
 				return (MM_DEF_DIED | (grow_up(magr,mdef) ?
 							0 : MM_AGR_DIED));
-#endif
 		}
 		tmp = 0;
 		break;
@@ -799,15 +811,15 @@ do_stone_goto_label:
 		if (!magr->mcan && !rn2(8)) {
 		    if (vis)
 			pline("%s %s was poisoned!", s_suffix(Monnam(magr)),
-				mattk->aatyp==AT_BITE ? "bite" : "sting");
-		    if (resists_poison(pd)) {
+			      mpoisons_subj(magr, mattk));
+		    if (resists_poison(mdef)) {
 			if (vis)
-			    pline("The poison doesn't seem to affect %s.",
+			    pline_The("poison doesn't seem to affect %s.",
 				mon_nam(mdef));
 		    } else {
 			if (rn2(10)) tmp += rn1(10,6);
 			else {
-			    if (vis) pline("The poison was deadly...");
+			    if (vis) pline_The("poison was deadly...");
 			    tmp = mdef->mhp;
 			}
 		    }
@@ -819,7 +831,6 @@ do_stone_goto_label:
 		    tmp = 0;
 		    break;
 		}
-#ifdef MUSE
 		if ((mdef->misc_worn_check & W_ARMH) && rn2(8)) {
 		    if (vis) {
 			Strcpy(buf, s_suffix(Monnam(mdef)));
@@ -828,7 +839,6 @@ do_stone_goto_label:
 		    }
 		    break;
 		}
-#endif
 		if (vis) pline("%s brain is eaten!", s_suffix(Monnam(mdef)));
 		if (mindless(pd)) {
 		    if (vis) pline("%s doesn't notice.", Monnam(mdef));
@@ -840,7 +850,7 @@ do_stone_goto_label:
 		    magr->mconf = 0;
 		}
 		if (tmp >= mdef->mhp && vis)
-		    pline("%s last thought fades away...", 
+		    pline("%s last thought fades away...",
 			          s_suffix(Monnam(mdef)));
 		break;
 	    case AD_STCK:
@@ -880,6 +890,36 @@ noattacks(ptr)			/* returns 1 if monster doesn't attack */
 	return(1);
 }
 
+/* `mon' is hit by a sleep attack; return 1 if it's affected, 0 otherwise */
+int
+sleep_monst(mon, amt, how)
+struct monst *mon;
+int amt, how;
+{
+	if (resists_sleep(mon) ||
+		(how >= 0 && resist(mon, (char)how, 0, NOTELL))) {
+	    shieldeff(mon->mx, mon->my);
+	} else if (mon->mcanmove) {
+	    amt += (int) mon->mfrozen;
+	    mon->mcanmove = 0;
+	    mon->mfrozen = min(amt, 127);
+	    return 1;
+	}
+	return 0;
+}
+
+/* sleeping grabber releases, engulfer doesn't; don't use for paralysis! */
+void
+slept_monst(mon)
+struct monst *mon;
+{
+	if ((mon->msleep || !mon->mcanmove) && mon == u.ustuck &&
+		!sticks(uasmon) && !u.uswallow) {
+	    pline("%s grip relaxes.", s_suffix(Monnam(mon)));
+	    unstuck(mon);
+	}
+}
+
 #endif /* OVL0 */
 #ifdef OVLB
 
@@ -893,7 +933,7 @@ register struct obj *obj;
 	    is_rustprone(obj) && obj->oeroded < MAX_ERODE) {
 		if (obj->greased || obj->oerodeproof || (obj->blessed && rn2(3))) {
 		    if (cansee(mdef->mx, mdef->my) && flags.verbose)
-			pline("%s weapon is not affected.", 
+			pline("%s weapon is not affected.",
 			                 s_suffix(Monnam(magr)));
 		    if (obj->greased && !rn2(2)) obj->greased = 0;
 		} else {
@@ -916,9 +956,7 @@ register struct obj *otemp;
 	Strcpy(buf, mon_nam(mdef));
 	if (!flags.verbose || Blind) return;
 	pline("%s %s %s %s at %s.", Monnam(magr),
-	      ((otemp->otyp >= SPEAR && otemp->otyp <= LANCE) ||
-	       (otemp->otyp >= PARTISAN && otemp->otyp <= SPETUM) ||
-	       otemp->otyp == TRIDENT) ? "thrusts" : "swings",
+	      (objects[otemp->otyp].oc_dir & PIERCE) ? "thrusts" : "swings",
 	      his[pronoun_gender(magr)], xname(otemp), buf);
 }
 
@@ -942,8 +980,8 @@ int mdead;
 	    if(mddat->mattk[i].aatyp == AT_NONE) break;
 	}
 	if (mddat->mattk[i].damn)
-	    tmp = d((int)mddat->mattk[i].damn, 
-                                    (int)mddat->mattk[i].damd);
+	    tmp = d((int)mddat->mattk[i].damn,
+				    (int)mddat->mattk[i].damd);
 	else if(mddat->mattk[i].damd)
 	    tmp = d((int)mddat->mlevel+1, (int)mddat->mattk[i].damd);
 	else
@@ -957,7 +995,7 @@ int mdead;
 		    if(canseemon(magr))
 			pline("%s is splashed by %s acid!",
 			      buf, s_suffix(mon_nam(mdef)));
-		    if(resists_acid(madat)) {
+		    if (resists_acid(magr)) {
 			if(canseemon(magr))
 			    pline("%s is not affected.", Monnam(magr));
 			tmp = 0;
@@ -977,12 +1015,11 @@ int mdead;
 		    if (!rn2(4)) tmp = 127;
 		    if (magr->mcansee && haseyes(madat) && mdef->mcansee &&
 			(perceives(madat) || !mdef->minvis)) {
-#ifdef MUSE
 			Sprintf(buf, "%s gaze is reflected by %%s %%s.",
 				s_suffix(mon_nam(mdef)));
-			if (mon_reflects(magr, buf))
+			if (mon_reflects(magr,
+					 canseemon(magr) ? buf : (char *)0))
 				return(mdead|mhit);
-#endif
 			Strcpy(buf, Monnam(magr));
 			if(canseemon(magr))
 			    pline("%s is frozen by %s gaze!",
@@ -1001,13 +1038,13 @@ int mdead;
 		}
 		return 1;
 	    case AD_COLD:
-		if (resists_cold(madat)) {
+		if (resists_cold(magr)) {
 		    if (canseemon(magr)) {
 			pline("%s is mildly chilly.", Monnam(magr));
 			golemeffects(magr, AD_COLD, tmp);
-			tmp = 0;
-			break;
 		    }
+		    tmp = 0;
+		    break;
 		}
 		if(canseemon(magr))
 		    pline("%s is suddenly very cold!", Monnam(magr));
@@ -1035,25 +1072,25 @@ int mdead;
 		tmp = 0;
 		break;
 	    case AD_FIRE:
-		if (resists_fire(madat)) {
+		if (resists_fire(magr)) {
 		    if (canseemon(magr)) {
 			pline("%s is mildly warmed.", Monnam(magr));
 			golemeffects(magr, AD_FIRE, tmp);
-			tmp = 0;
-			break;
 		    }
+		    tmp = 0;
+		    break;
 		}
 		if(canseemon(magr))
 		    pline("%s is suddenly very hot!", Monnam(magr));
 		break;
 	    case AD_ELEC:
-		if (resists_elec(madat)) {
+		if (resists_elec(magr)) {
 		    if (canseemon(magr)) {
 			pline("%s is mildly tingled.", Monnam(magr));
 			golemeffects(magr, AD_ELEC, tmp);
-			tmp = 0;
-			break;
 		    }
+		    tmp = 0;
+		    break;
 		}
 		if(canseemon(magr))
 		    pline("%s is jolted with electricity!", Monnam(magr));

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)monflag.h	3.1	93/02/14	*/
+/*	SCCS Id: @(#)monflag.h	3.2	95/07/29	*/
 /* Copyright (c) 1989 Mike Threepoint				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -39,11 +39,9 @@
 #define MS_BRIBE	28	/* asks for money, or berates you */
 #define MS_CUSS		29	/* berates (demons) or intimidates (Wiz) */
 #define MS_RIDER	30	/* astral level special monsters */
-#ifdef MULDGN
 #define MS_LEADER	31	/* your class leader */
 #define MS_NEMESIS	32	/* your nemesis */
 #define MS_GUARDIAN	33	/* your leader's guards */
-#endif
 #define MS_SELL		34	/* demand payment, complain about shoplifters */
 #define MS_ORACLE	35	/* do a consultation */
 #define MS_PRIEST	36	/* ask for contribution; do cleansing */
@@ -59,6 +57,15 @@
 #define MR_STONE        0x80    /* resists petrification */
 /* other resistances: magic, sickness */
 /* other conveyances: teleport, teleport control, telepathy */
+
+/* individual resistances */
+#define MR2_SEE_INVIS	0x0100	/* see invisible */
+#define MR2_LEVITATE	0x0200	/* levitation */
+#define MR2_WATERWALK	0x0400	/* water walking */
+#define MR2_MAGBREATH	0x0800	/* magical breathing */
+#define MR2_DISPLACED	0x1000	/* displaced */
+#define MR2_STRENGTH	0x2000	/* gauntlets of power */
+#define MR2_FUMBLING	0x4000	/* clumsy */
 
 
 #define M1_FLY		0x00000001L	/* can fly or float */
@@ -136,12 +143,8 @@
 #define M3_WANTSBELL	0x02		/* wants the bell */
 #define M3_WANTSBOOK	0x04		/* wants the book */
 #define M3_WANTSCAND	0x08		/* wants the candelabrum */
-#ifdef MULDGN
 #define M3_WANTSARTI	0x10		/* wants the quest artifact */
 #define M3_WANTSALL	0x1f		/* wants any major artifact */
-#else
-#define M3_WANTSALL	0x0f		/* wants any major artifact */
-#endif
 #define M3_WAITFORU	0x40		/* waits to see you or get attacked */
 #define M3_CLOSE	0x80		/* lets you close unless attacked */
 
@@ -155,5 +158,26 @@
 #define MZ_LARGE	3		/* 7-12' */
 #define MZ_HUGE		4		/* 12-25' */
 #define MZ_GIGANTIC	7		/* off the scale */
+
+
+/* for mons[].geno (constant during game) */
+#define G_UNIQ		0x1000		/* generated only once */
+#define G_NOHELL	0x0800		/* not generated in "hell" */
+#define G_HELL		0x0400		/* generated only in "hell" */
+#define G_NOGEN		0x0200		/* generated only specially */
+#define G_SGROUP	0x0080		/* appear in small groups normally */
+#define G_LGROUP	0x0040		/* appear in large groups normally */
+#define G_GENO		0x0020		/* can be genocided */
+#define G_NOCORPSE	0x0010		/* no corpse left ever */
+#define G_FREQ		0x0007		/* creation frequency mask */
+
+/* for mvitals[].mvflags (variant during game), along with G_NOCORPSE */
+#define G_KNOWN		0x0004		/* have been encountered */
+#define G_GONE		0x0003
+#define G_GENOD		0x0002		/* have been genocided */
+#define G_EXTINCT	0x0001		/* have been extinguished as
+					   population control */
+#define MV_KNOWS_EGG	0x0008		/* player recognizes egg of this
+					   monster type */
 
 #endif /* MONFLAG_H */

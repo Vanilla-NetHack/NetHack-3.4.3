@@ -1,8 +1,7 @@
-/*	SCCS Id: @(#)quest.h	3.1	92/11/15	*/
+/*	SCCS Id: @(#)quest.h	3.2	92/11/15	*/
 /* Copyright (c) Mike Stephenson 1991.				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
-#ifdef MULDGN
 #ifndef QUEST_H
 #define QUEST_H
 
@@ -35,4 +34,3 @@ struct q_score {			/* Quest "scorecard" */
   /* note: exp.lev. 14 is threshold level for 5th rank (class title, botl.c) */
 
 #endif /* QUEST_H */
-#endif /* MULDGN */

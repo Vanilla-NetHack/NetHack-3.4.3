@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)wizard.c	3.1	93/05/26	*/
+/*	SCCS Id: @(#)wizard.c	3.2	95/11/18	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -8,9 +8,7 @@
 /*	       - generalized for 3.1 (mike@bullns.on01.bull.ca) */
 
 #include "hack.h"
-#ifdef MULDGN
 #include "qtext.h"
-#endif
 
 #ifdef OVLB
 
@@ -22,16 +20,15 @@ static boolean FDECL(you_have, (int));
 static long FDECL(target_on, (int,struct monst *));
 static long FDECL(strategy, (struct monst *));
 
-/*	TODO:	Expand this list.	*/
 static NEARDATA const int nasties[] = {
 	PM_COCKATRICE, PM_ETTIN, PM_STALKER, PM_MINOTAUR, PM_RED_DRAGON,
-	PM_GREEN_DRAGON, PM_OWLBEAR, PM_PURPLE_WORM, PM_ROCK_TROLL, PM_XAN,
-	PM_GREMLIN, PM_UMBER_HULK, PM_VAMPIRE_LORD, PM_XORN, PM_ZRUTY,
-	PM_ELF_LORD, PM_ELVENKING, PM_YELLOW_DRAGON, PM_LEOCROTTA,
-	PM_CARNIVOROUS_APE, PM_FIRE_GIANT, PM_COUATL,
-#ifdef ARMY
-	PM_CAPTAIN,
-#endif
+	PM_BLACK_DRAGON, PM_GREEN_DRAGON, PM_OWLBEAR, PM_PURPLE_WORM,
+	PM_ROCK_TROLL, PM_XAN, PM_GREMLIN, PM_UMBER_HULK, PM_VAMPIRE_LORD,
+	PM_XORN, PM_ZRUTY, PM_ELF_LORD, PM_ELVENKING, PM_YELLOW_DRAGON,
+	PM_LEOCROTTA, PM_BALUCHITHERIUM, PM_CARNIVOROUS_APE, PM_FIRE_GIANT,
+	PM_COUATL, PM_CAPTAIN, PM_WINGED_GARGOYLE, PM_MIND_FLAYER,
+	PM_FIRE_ELEMENTAL, PM_JABBERWOCK, PM_MASTER_LICH, PM_OGRE_KING,
+	PM_OLOG_HAI, PM_IRON_GOLEM, PM_OCHRE_JELLY
 	};
 
 static NEARDATA const unsigned wizapp[] = {
@@ -51,12 +48,17 @@ static NEARDATA const unsigned wizapp[] = {
 void
 amulet()
 {
-	register struct monst *mtmp;
+	struct monst *mtmp;
+	struct trap *ttmp;
 	struct obj *amu;
 
-	if ((((amu = uamul) && uamul->otyp == AMULET_OF_YENDOR) ||
-	     ((amu = uwep) && uwep->otyp == AMULET_OF_YENDOR)) && !rn2(15)) {
-	    register struct trap *ttmp;
+#if 0		/* caller takes care of this check */
+	if (!u.uhave.amulet)
+		return;
+#endif
+	if ((((amu = uamul) != 0 && amu->otyp == AMULET_OF_YENDOR) ||
+	     ((amu = uwep) != 0 && amu->otyp == AMULET_OF_YENDOR))
+	    && !rn2(15)) {
 	    for(ttmp = ftrap; ttmp; ttmp = ttmp->ntrap) {
 		if(ttmp->ttyp == MAGIC_PORTAL) {
 		    int du = distu(ttmp->tx, ttmp->ty);
@@ -72,7 +74,7 @@ amulet()
 	    }
 	}
 
-	if (!flags.no_of_wizards || !u.uhave.amulet)
+	if (!flags.no_of_wizards)
 		return;
 	/* find Wizard, and wake him if necessary */
 	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
@@ -108,9 +110,7 @@ register struct monst *mtmp;
 
 	for(otmp = mtmp->minvent; otmp; otmp = otmp->nobj)
 		if(otmp->otyp == AMULET_OF_YENDOR ||
-#ifdef MULDGN
 			is_quest_artifact(otmp) ||
-#endif
 			otmp->otyp == BELL_OF_OPENING ||
 			otmp->otyp == CANDELABRUM_OF_INVOCATION ||
 			otmp->otyp == SPE_BOOK_OF_THE_DEAD) return(1);
@@ -125,13 +125,8 @@ register struct monst *mtmp;
  *	to attempt, the tactics section implements the decision.
  */
 #define STRAT(w, x, y, typ) (w | ((long)(x)<<16) | ((long)(y)<<8) | (long)typ)
-#define ST_NONE	0L
-#define	ST_HEAL	-1L
-#define ST_GROUND 0x04000000
-#define ST_MONSTR 0x02000000
-#define ST_PLAYER 0x01000000
 
-#define	M_Wants(mask)	(mtmp->data->mflags3 & (mask))
+#define M_Wants(mask)	(mtmp->data->mflags3 & (mask))
 
 static short
 which_arti(mask)
@@ -164,9 +159,7 @@ mon_has_arti(mtmp, otyp)
 		if(otmp->otyp == otyp)
 			return(1);
 	    }
-#ifdef MULDGN
 	     else if(is_quest_artifact(otmp)) return(1);
-#endif
 	}
 	return(0);
 
@@ -192,14 +185,12 @@ on_ground(otyp)
 {
 	register struct obj *otmp;
 
-	for(otmp = fobj; otmp; otmp = otmp->nobj)
-	    if(otyp) {
-		if(otmp->otyp == otyp)
+	for (otmp = fobj; otmp; otmp = otmp->nobj)
+	    if (otyp) {
+		if (otmp->otyp == otyp)
 		    return(otmp);
-	    }
-#ifdef MULDGN
-	     else if(is_quest_artifact(otmp)) return(otmp);
-#endif
+	    } else if (is_quest_artifact(otmp))
+		return(otmp);
 	return((struct obj *)0);
 }
 
@@ -212,9 +203,7 @@ you_have(mask)
 	    case M3_WANTSBELL:	return(boolean)(u.uhave.bell);
 	    case M3_WANTSCAND:	return(boolean)(u.uhave.menorah);
 	    case M3_WANTSBOOK:	return(boolean)(u.uhave.book);
-#ifdef MULDGN
 	    case M3_WANTSARTI:	return(boolean)(u.uhave.questart);
-#endif
 	    default:		break;
 	}
 	return(0);
@@ -229,18 +218,18 @@ target_on(mask, mtmp)
 	register struct obj *otmp;
 	register struct monst *mtmp2;
 
-	if(!M_Wants(mask))	return(ST_NONE);
+	if(!M_Wants(mask))	return(STRAT_NONE);
 
 	otyp = which_arti(mask);
 	if(!mon_has_arti(mtmp, otyp)) {
 	    if(you_have(mask))
-		return(STRAT(ST_PLAYER, u.ux, u.uy, mask));
+		return(STRAT(STRAT_PLAYER, u.ux, u.uy, mask));
 	    else if((otmp = on_ground(otyp)))
-		return(STRAT(ST_GROUND, otmp->ox, otmp->oy, mask));
+		return(STRAT(STRAT_GROUND, otmp->ox, otmp->oy, mask));
 	    else if((mtmp2 = other_mon_has_arti(mtmp, otyp)))
-		return(STRAT(ST_MONSTR, mtmp2->mx, mtmp2->my, mask));
+		return(STRAT(STRAT_MONSTR, mtmp2->mx, mtmp2->my, mask));
 	}
-	return(ST_NONE);
+	return(STRAT_NONE);
 }
 
 static long
@@ -249,54 +238,50 @@ strategy(mtmp)
 {
 	long strat, dstrat;
 
-	if(!is_covetous(mtmp->data)) return(ST_NONE);
+	if(!is_covetous(mtmp->data)) return(STRAT_NONE);
 
 	switch((mtmp->mhp*3)/mtmp->mhpmax) {	/* 0-3 */
 
 	   default:
 	    case 0:	/* panic time - mtmp is almost snuffed */
-			return(ST_HEAL);
+			return(STRAT_HEAL);
 
 	    case 1:	/* the wiz is less cautious */
 			if(mtmp->data != &mons[PM_WIZARD_OF_YENDOR])
-			    return(ST_HEAL);
+			    return(STRAT_HEAL);
 			/* else fall through */
 
-	    case 2:	dstrat = ST_HEAL;
+	    case 2:	dstrat = STRAT_HEAL;
 			break;
 
-	    case 3:	dstrat = ST_NONE;
+	    case 3:	dstrat = STRAT_NONE;
 			break;
 	}
 
 	if(flags.made_amulet)
-	    if((strat = target_on(M3_WANTSAMUL, mtmp)) != ST_NONE)
+	    if((strat = target_on(M3_WANTSAMUL, mtmp)) != STRAT_NONE)
 		return(strat);
 
 	if(u.uevent.invoked) {		/* priorities change once gate opened */
 
-#ifdef MULDGN
-	    if((strat = target_on(M3_WANTSARTI, mtmp)) != ST_NONE)
+	    if((strat = target_on(M3_WANTSARTI, mtmp)) != STRAT_NONE)
 		return(strat);
-#endif
-	    if((strat = target_on(M3_WANTSBOOK, mtmp)) != ST_NONE)
+	    if((strat = target_on(M3_WANTSBOOK, mtmp)) != STRAT_NONE)
 		return(strat);
-	    if((strat = target_on(M3_WANTSBELL, mtmp)) != ST_NONE)
+	    if((strat = target_on(M3_WANTSBELL, mtmp)) != STRAT_NONE)
 		return(strat);
-	    if((strat = target_on(M3_WANTSCAND, mtmp)) != ST_NONE)
+	    if((strat = target_on(M3_WANTSCAND, mtmp)) != STRAT_NONE)
 		return(strat);
 	} else {
 
-	    if((strat = target_on(M3_WANTSBOOK, mtmp)) != ST_NONE)
+	    if((strat = target_on(M3_WANTSBOOK, mtmp)) != STRAT_NONE)
 		return(strat);
-	    if((strat = target_on(M3_WANTSBELL, mtmp)) != ST_NONE)
+	    if((strat = target_on(M3_WANTSBELL, mtmp)) != STRAT_NONE)
 		return(strat);
-	    if((strat = target_on(M3_WANTSCAND, mtmp)) != ST_NONE)
+	    if((strat = target_on(M3_WANTSCAND, mtmp)) != STRAT_NONE)
 		return(strat);
-#ifdef MULDGN
-	    if((strat = target_on(M3_WANTSARTI, mtmp)) != ST_NONE)
+	    if((strat = target_on(M3_WANTSARTI, mtmp)) != STRAT_NONE)
 		return(strat);
-#endif
 	}
 	return(dstrat);
 }
@@ -305,16 +290,21 @@ int
 tactics(mtmp)
 	register struct monst *mtmp;
 {
-	mtmp->mstrategy = strategy(mtmp);
+	long strat = strategy(mtmp);
 
-	switch (mtmp->mstrategy) {
-	    case ST_HEAL:	/* hide and recover */
+	mtmp->mstrategy = (mtmp->mstrategy & STRAT_WAITMASK) | strat;
+
+	switch (strat) {
+	    case STRAT_HEAL:	/* hide and recover */
 		/* if wounded, hole up on or near the stairs (to block them) */
-		/* unless, of course, there are no stairs (e.g. endlevel */
-		if((xupstair || yupstair))
-		    if (mtmp->mx != xupstair || mtmp->my != yupstair)
-			(void) mnearto(mtmp, xupstair, yupstair, TRUE);
-
+		/* unless, of course, there are no stairs (e.g. endlevel) */
+		if (In_W_tower(mtmp->mx, mtmp->my, &u.uz) ||
+			(mtmp->iswiz && !xupstair && !mon_has_amulet(mtmp))) {
+		    if (!rn2(3 + mtmp->mhp/10)) rloc(mtmp);
+		} else if (xupstair &&
+			 (mtmp->mx != xupstair || mtmp->my != yupstair)) {
+		    (void) mnearto(mtmp, xupstair, yupstair, TRUE);
+		}
 		/* if you're not around, cast healing spells */
 		if (distu(mtmp->mx,mtmp->my) > (BOLT_LIM * BOLT_LIM))
 		    if(mtmp->mhp <= mtmp->mhpmax - 8) {
@@ -323,38 +313,38 @@ tactics(mtmp)
 		    }
 		/* fall through :-) */
 
-	    case ST_NONE:	/* harrass */
+	    case STRAT_NONE:	/* harrass */
 	        if(!rn2(5)) mnexto(mtmp);
 		return(0);
 
 	    default:		/* kill, maim, pillage! */
 	    {
-		long  where = (mtmp->mstrategy & 0xff000000L);
-		xchar tx = (xchar)((mtmp->mstrategy >> 16) & 0xff),
-		      ty = (xchar)((mtmp->mstrategy >> 8) & 0xff);
-		int   targ = (mtmp->mstrategy & 0xff);
+		long  where = (strat & STRAT_STRATMASK);
+		xchar tx = STRAT_GOALX(strat),
+		      ty = STRAT_GOALY(strat);
+		int   targ = strat & STRAT_GOAL;
 		struct obj *otmp;
 
 		if(!targ) { /* simply wants you to close */
 		    return(0);
 		}
-		if((u.ux == tx && u.uy == ty) || where == ST_PLAYER) {
+		if((u.ux == tx && u.uy == ty) || where == STRAT_PLAYER) {
 		    /* player is standing on it (or has it) */
 		    mnexto(mtmp);
 		    return(0);
 		}
-		if(where == ST_GROUND) {
+		if(where == STRAT_GROUND) {
 		  if(!MON_AT(tx, ty) || (mtmp->mx == tx && mtmp->my == ty)) {
-
 		    /* teleport to it and pick it up */
-		    rloc_to(mtmp, tx, ty); 	/* clean old pos */
+		    rloc_to(mtmp, tx, ty);	/* clean old pos */
 
-		    if((otmp = on_ground(which_arti(targ)))) {
-
+		    if ((otmp = on_ground(which_arti(targ))) != 0) {
 			if (cansee(mtmp->mx, mtmp->my))
 			    pline("%s picks up %s.",
-				  Monnam(mtmp), the(xname(otmp)));
-			freeobj(otmp);
+				  Monnam(mtmp),
+				  (distu(mtmp->my, mtmp->my) <= 5) ?
+				    doname(otmp) : distant_name(otmp, doname));
+			obj_extract_self(otmp);
 			mpickobj(mtmp, otmp);
 			return(1);
 		    } else return(0);
@@ -389,13 +379,13 @@ clonewiz()
 	register struct monst *mtmp2;
 
 	if ((mtmp2 = makemon(&mons[PM_WIZARD_OF_YENDOR], u.ux, u.uy)) != 0) {
-		mtmp2->msleep = mtmp2->mtame = mtmp2->mpeaceful = 0;
-		if (!u.uhave.amulet && rn2(2)) {  /* give clone a fake */
-			mtmp2->minvent = mksobj(FAKE_AMULET_OF_YENDOR, TRUE, FALSE);
-		}
-		mtmp2->m_ap_type = M_AP_MONSTER;
-		mtmp2->mappearance = wizapp[rn2(SIZE(wizapp))];
-		newsym(mtmp2->mx,mtmp2->my);
+	    mtmp2->msleep = mtmp2->mtame = mtmp2->mpeaceful = 0;
+	    if (!u.uhave.amulet && rn2(2)) {  /* give clone a fake */
+		add_to_minv(mtmp2, mksobj(FAKE_AMULET_OF_YENDOR, TRUE, FALSE));
+	    }
+	    mtmp2->m_ap_type = M_AP_MONSTER;
+	    mtmp2->mappearance = wizapp[rn2(SIZE(wizapp))];
+	    newsym(mtmp2->mx,mtmp2->my);
 	}
 }
 
@@ -433,13 +423,45 @@ nasty(mcast)
 void
 resurrect()
 {
-	register struct monst	*mtmp;
+	struct monst *mtmp, **mmtmp;
+	long elapsed;
+	const char *verb;
 
-	if ((mtmp = makemon(&mons[PM_WIZARD_OF_YENDOR], u.ux, u.uy)) != 0) {
+	if (!flags.no_of_wizards) {
+	    /* make a new Wizard */
+	    verb = "kill";
+	    mtmp = makemon(&mons[PM_WIZARD_OF_YENDOR], u.ux, u.uy);
+	} else {
+	    /* look for a migrating Wizard */
+	    verb = "elude";
+	    mmtmp = &migrating_mons;
+	    while ((mtmp = *mmtmp) != 0) {
+		if (mtmp->iswiz &&
+			(elapsed = monstermoves - mtmp->mlstmv) > 0L) {
+		    mon_catchup_elapsed_time(mtmp, elapsed);
+		    if (elapsed >= LARGEST_INT) elapsed = LARGEST_INT - 1;
+		    elapsed /= 50L;
+		    if (mtmp->msleep && rn2((int)elapsed + 1))
+			mtmp->msleep = 0;
+		    if (mtmp->mfrozen == 1) /* would unfreeze on next move */
+			mtmp->mfrozen = 0,  mtmp->mcanmove = 1;
+		    if (mtmp->mcanmove && !mtmp->msleep) {
+			*mmtmp = mtmp->nmon;
+			mon_arrive(mtmp, TRUE);
+			/* note: there might be a second Wizard; if so,
+			   he'll have to wait til the next resurrection */
+			break;
+		    }
+		}
+		mmtmp = &mtmp->nmon;
+	    }
+	}
+
+	if (mtmp) {
 		mtmp->msleep = mtmp->mtame = mtmp->mpeaceful = 0;
 		set_malign(mtmp);
 		pline("A voice booms out...");
-		verbalize("So thou thought thou couldst kill me, fool.");
+		verbalize("So thou thought thou couldst %s me, fool.", verb);
 	}
 
 }
@@ -447,41 +469,36 @@ resurrect()
 /*	Here, we make trouble for the poor shmuck who actually	*/
 /*	managed to do in the Wizard.				*/
 void
-intervene() {
-
-	switch(rn2(6)) {
-
+intervene()
+{
+	int which = Is_astralevel(&u.uz) ? rnd(4) : rn2(6);
+	/* cases 0 and 5 don't apply on the Astral level */
+	switch (which) {
 	    case 0:
-	    case 1:	You("feel vaguely nervous.");
+	    case 1:	You_feel("vaguely nervous.");
 			break;
 	    case 2:	if (!Blind)
 			    You("notice a %s glow surrounding you.",
-				  Hallucination ? hcolor() : Black);
+				  hcolor(Black));
 			rndcurse();
 			break;
 	    case 3:	aggravate();
 			break;
 	    case 4:	nasty((struct monst *)0);
 			break;
-	    case 5:	if (!flags.no_of_wizards) resurrect();
+	    case 5:	resurrect();
 			break;
 	}
 }
 
 void
-wizdead(mtmp)
-register struct monst	*mtmp;
+wizdead()
 {
 	flags.no_of_wizards--;
 	if (!u.uevent.udemigod) {
 		u.uevent.udemigod = TRUE;
 		u.udg_cnt = rn1(250, 50);
-
-		/* Make the wizard meaner the next time he appears */
-		mtmp->data->mlevel++;
-		mtmp->data->ac--;
-	} else  
-		mtmp->data->mlevel++;
+	}
 }
 
 const char *random_insult[] = {
@@ -529,58 +546,15 @@ const char *random_malediction[] = {
 	"Verily, thou shalt be one dead"
 };
 
-#ifdef SOUNDS
-# ifndef MULDGN
-/* Any %s will be filled in by the appropriate diety's name */
-const char *angelic_malediction[] = {
-	"Repent, and thou shalt be saved!",
-	"Thou shalt pay for thine insolence!",
-	"Very soon, my child, thou shalt meet thy maker.",
-	"%s has sent me to make you pay for your sins!",
-	"The wrath of %s is now upon you!",
-	"Thy life belongs to %s now!",
-	"Dost thou wish to receive thy final blessing?",
-	"Thou art but a godless void.",
-	"Thou art not worthy to seek the Amulet.",
-	"No one expects the Spanish Inquisition!",
-};
-
-const char *demonic_malediction[] = {
-	"I first mistook thee for a statue, when I regarded thy head of stone.",
-	"Come here often?",
-	"Dost pain excite thee?  Wouldst thou prefer the whip?",
-	"Thinkest thou it shall tickle as I rip out thy lungs?",
-	"Eat slime and die!",
-	"Go ahead, fetch thy mama!  I shall wait.",
-	"Go play leapfrog with a herd of unicorns!",
-	"Hast thou been drinking, or art thou always so clumsy?",
-	"This time I shall let thee off with a spanking, but let it not happen again.",
-	"I've met smarter (and prettier) acid blobs.",
-	"Look!  Thy bootlace is undone!",
-	"Mercy!  Dost thou wish me to die of laughter?",
-	"Run away!  Live to flee another day!",	
-	"Thou hadst best fight better than thou canst dress!",
-	"Twixt thy cousin and thee, Medusa is the prettier.",
-	"Methinks thou wert unnaturally interested in yon corpse back there, eh, varlet?",
-	"Up thy nose with a rubber hose!",
-	"Verily, thy corpse could not smell worse!",
-	"Wait!  I shall polymorph into a grid bug to give thee a fighting chance!",
-	"Why search for the Amulet?  Thou wouldst but lose it, cretin.",
-};
-# endif /* MULDGN */
-#endif
-
 /* Insult or intimidate the player */
 void
 cuss(mtmp)
 register struct monst	*mtmp;
 {
-#ifdef SOUNDS
 	if (mtmp->iswiz) {
-#endif
 	    if (!rn2(5))  /* typical bad guy action */
 		pline("%s laughs fiendishly.", Monnam(mtmp));
-	    else 
+	    else
 		if (u.uhave.amulet && !rn2(SIZE(random_insult)))
 		    verbalize("Relinquish the amulet, %s!",
 			  random_insult[rn2(SIZE(random_insult))]);
@@ -597,27 +571,15 @@ register struct monst	*mtmp;
 		    verbalize("%s %s!",
 			  random_malediction[rn2(SIZE(random_malediction))],
 			  random_insult[rn2(SIZE(random_insult))]);
-#ifdef SOUNDS
 	} else if(is_lminion(mtmp->data)) {
-#ifndef MULDGN
-		verbalize(angelic_malediction[rn2(SIZE(angelic_malediction) - 1
-						  + (Hallucination ? 1 : 0))],
-			  align_gname(A_LAWFUL));
-#else
 		com_pager(rn2(QTN_ANGELIC - 1 + (Hallucination ? 1 : 0)) +
 			      QT_ANGELIC);
-#endif
 	} else {
 	    if (!rn2(5))
 		pline("%s casts aspersions on your ancestry.", Monnam(mtmp));
 	    else
-#ifndef MULDGN
-		verbalize(demonic_malediction[rn2(SIZE(demonic_malediction))]);
-#else
 	        com_pager(rn2(QTN_DEMONIC) + QT_DEMONIC);
-#endif
 	}
-#endif
 }
 
 #endif /* OVLB */

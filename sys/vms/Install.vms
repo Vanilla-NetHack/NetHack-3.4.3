@@ -1,4 +1,4 @@
-               Instructions for Installing NetHack 3.1.3
+               Instructions for Installing NetHack 3.2.0
                            on a VMS system
                =========================================
 
@@ -6,11 +6,12 @@
     NetHack, then read it again!
 
 1.  Building NetHack requires a C compiler (either VAX C, DEC C, or GNU C)
-    and VMS version V4.6 or later (but see note #11).  This release has
-    been tested on VAX/VMS V5.5-2, T6.0, and Alpha/VMS V1.0, V1.5.  The build
+    and VMS version V4.6 or later (but see note #9).  This release has
+    been tested on VAX/VMS V5.5-2, V6.2, and Alpha/VMS V6.2, plus been
+    confirmed to compile and link successfully under V7.0.  The build
     procedure (vmsbuild.com) should not need to be modified; it accepts
-    an option for selecting VAXC vs GNUC, and it can detect different
-    versions of VAXC to use appropriate CC command qualifiers.  Versions
+    an option for selecting the compiler, and it can detect different
+    versions which might require specific command qualifiers.  Versions
     of VAXC earlier than V2.3 will produce many warning messages (about
     170 per source file; over to 20,000 total!), but NetHack has been
     verified to compile, link, and execute correctly when built with VAXC
@@ -38,11 +39,15 @@
         [.sys   .amiga   .splitter]
         [.sys   .atari] -- Atari TOS
         [.sys   .mac]   -- Macintosh
+        [.sys   .mac     .old]
         [.sys   .msdos] -- MSDOS for IBM PCs and compatibles
+        [.sys   .msdos   .msold]
         [.sys   .os2]   -- OS/2
         [.sys   .share   .sounds] -- AIFF format audio files
         [.sys   .unix]  -- guess :-)
         [.sys   .winnt] -- Windows NT
+        [.win   .share] -- "tile" graphic support
+        [.win   .win32] -- Windows NT
         [.win   .X11]   -- window routines for X-Windows; requires X11R4
                            or later and MIT's Athena Widget set
     You must arrange things in this structure or the supplied procedures
@@ -51,12 +56,10 @@
     work as intended if they're moved elsewhere.  The file called Files
     in the top directory contains lists of everything that should be in
     each subdirectory, including things that are constructed as NetHack
-    is being built.  If you obtain the NetHack distribution via the
+    is being built.  (If you obtain the NetHack distribution via the
     "shar" packaging used for Usenet newsgroup comp.sources.games and its
-    archives, you may have to reconstruct several files that were split
-    for posting.  At the time of this writing, the list of files needing
-    such treatment is not known, so they can't be enumerated here or
-    handled automatically be the build procedures.
+    archives, you may have to reconstruct several files that get split
+    for posting.)
 
 3.  Prior to beginning compilation, go to the [.include] subdirectory and
     edit vmsconf.h according to its comments.  You should set Local_WIZARD
@@ -83,27 +86,18 @@
     If you perform this step, do it prior to executing vmsbuild.com; if
     you don't perform this step, vmsbuild.com will do so for you.
 
-5.  If you are using DEC C (not to be confused with Digital's VAX C) as
-    your compiler, you should create an empty file called CRTL.OPT in the
-    [.src] subdirectory.  This is a linker options file for accessing
-    the C run-time library.  If you don't create it, vmsbuild.com will
-    construct one suitable for linking with shareable VAXCRTL.  Programs
-    compiled with DEC C should link with DECC$SHR instead; no special
-    linker options are needed in that case and VAXCRTL should be avoided.
-    You should also create a DCL symbol for invoking CC that specifies
-    VAXC compatibility mode.
-       $ CC == "CC/Standard=VAXC"
-    You might also want to specify /noOptimize if you don't trust the V1
-    compiler's optimizer yet.  No other special qualifiers are needed.
-
-6.  To build NETHACK.EXE and its auxiliary programs, execute the
+5.  To build NETHACK.EXE and its auxiliary programs, execute the
     following DCL command:
-       $ @[.SYS.VMS]VMSBUILD    !defaults to VAXC unless symbol 'CC' exists
-    or $ @[.SYS.VMS]VMSBUILD "GNUC"
+       $ @[.SYS.VMS]VMSBUILD          !defaults to CC, either VAXC or DECC
+    or $ @[.SYS.VMS]VMSBUILD "GNUC"   !force "GCC"
     It can take quite a bit of time for a full build to complete.
     vmsbuild.com will display some feedback as it executes; generally
     this will be the name of each source file that's about to be compiled
     or the name of the executable that has just been linked.
+
+6.  If you have already started (or finished) a build and decide to start
+    over with a different compiler, you should DELETE [.SRC]CRTL.OPT;*
+    first.
 
 7.  After compilation, it's time to perform installation.  Go back to
     the top directory.  Either edit [.sys.vms]install.com to indicate
@@ -135,18 +129,16 @@
     of the command-line options specified in the Unix man-page (file
     [.dat]nethack.6) are also applicable to VMS.  Some comments at the
     beginning of nethack.com illustrate several of the options.  New
-    players should read the document file "Guidebook.txt" which will
-    be available in the playground directory.
+    players should read the file "Guidebook.txt" which will be copied
+    into the playground directory as "Guidebook.doc".
 
 
 Notes:
 
-1.  Save files and bones files from earlier versions, including 3.1.2,
-    will not work with 3.1.3.  The scoreboard file (RECORD) from 3.1.<any>
-    is compatible with 3.1.3, but one from 3.0pl10 or earlier is not.
-    When moving an existing scoreboard file into the new playground
-    directory, it must end up as file version one (RECORD.;1) or NetHack
-    will ignore it.
+1.  Save files and bones files from earlier versions will not work with
+    3.2.0.  The scoreboard file (RECORD) from old versions is also not
+    compatible with 3.2.0.  If you install into an existing playground
+    directory, you should remove old files RECORD.;1 and LOGFILE.;* first.
 
 2.  To specify user-preference options in your environment, define the
     logical name NETHACKOPTIONS to have the value of a quoted string
@@ -159,7 +151,9 @@ Notes:
     files left behind after a crash contains sufficient information for
     recover.exe to be able to construct a save file after the fact.  The
     tradeoff for enabling checkpoint is that using it makes level changes
-    do more I/O and take longer.
+    do more I/O and take longer.  The "menustyle" option controls some
+    aspects of the user interface, and can be set to "menustyle:traditional"
+    to make 3.2.0 behave more like 3.1.3.
 
     If logical name or DCL symbol NETHACKOPTIONS is not defined, NetHack
     will try HACKOPTIONS instead.  Regardless of whether or not either
@@ -175,7 +169,7 @@ Notes:
     OPTIONS=, and comments can be included by placing '#' in the first
     column.  Several options which take more complex values (graphics
     representation) can also be present; see the "Guidebook" for details.
-    (Guidebook.txt can be found in the [.dat] subdirectory; a copy gets
+    (Guidebook.txt can be found in the [.doc] subdirectory; a copy gets
     placed in the playground directory by install.com.  Also, an example
     configuration file can be found in [.win.X11]nethack.rc.)
 
@@ -209,23 +203,12 @@ Notes:
     or $ make all install
     To compile and install everything.  The object files compiled via
     the Makefiles are left as individual .OBJ files rather than placed
-    into an object library (in contrast to step #7 above and note #12
+    into an object library (in contrast to step #7 above and note #10
     below).  These Makefiles are provided on an as-is basis; vmsbuild.com
     is the preferred way to compile because it's guaranteed to compile
     and link everything.
 
-4.  VMS NetHack uses the termcap routines borrowed from GNU Emacs.  These
-    have been supplied for those who do not already have GNU Emacs, but
-    they are not properly a part of the NetHack distribution.  Since
-    these files (gnutermcap.c and gnutparam.c) bear the usual GNU license,
-    any executable made with these files is also under the GNU license,
-    which among other things means you must be prepared to distribute
-    all the source that went into the executable if you distribute the
-    executable.  See the GNU license in the files for further details.
-    Since NetHack itself has a very similar license, this should not be
-    an issue.
-
-5.  termcap is an ASCII data file containing descriptions of terminal
+4.  termcap is an ASCII data file containing descriptions of terminal
     capabilities and the escape sequences that software must use to take
     advantage of them.  If you do not already have a termcap file in use
     on your system there is a small one in file [.SYS.SHARE]TERMCAP.  It
@@ -253,47 +236,7 @@ Notes:
     termcap file, otherwise a message about "Unknown terminal type" will
     be printed and NetHack will exit.
 
-6.  If you want to use GEM C for cross-compiling from VAX/VMS to Alpha/VMS
-    or vice versa, you'll have to build in stages.  For the first pass,
-    use a value of CC appropriate for the host system, interactively
-    start vmsbuild.com as described in step #6 above, wait until it has
-    compiled and linked "makedefs", then use <ctrl/C> to interrupt it
-    (after the "12:34 makedefs" feedback message) so that it doesn't
-    waste any time compiling the rest of the code.  Consider that to be
-    stage 1.  For stage 2, go back to step #5, but set the symbol for
-    invoking CC to have a value similar to the following
-       $ CC == "GEMC/Standard=VAXC"
-    Also set up symbols for cross-architecture access to the linker and
-    librarian (these examples assume building an AXP version from a VAX)
-       $ LINK == "LINK/Alpha"   !or LINK/VAX
-       $ LIBR == "LIBR/Alpha"   !or LIBR/VAX
-    Now re-do step #6, but specify "/noExe" as the 4th parameter to
-    vmsbuild.com.
-       $ @[.SYS.VMS]VMSBUILD "" "" "" "/noExe"
-    Note the three empty strings used as placeholders.  That's the end of
-    stage 2; everything will be compiled to object files but no executable
-    files will have been linked.  If you don't do things this way, a new
-    version of makedefs will be linked; but since it will be appropriate
-    for the target, vmsbuild's attempt to use it on the host will fail.
-    For stage 3, link nethack.exe using vmsbuild.com
-       $ @[.SYS.VMS]VMSBUILD "LINK"
-    Don't specify "/noExe" this time around or you'll just be wasting
-    your time and CPU cycles. ;-)  For stage 4, link all four of the
-    utility programs manually (there's no vmsbuild option for this).
-    Go to the [.util] subdirectory and issue these commands
-       $ LINK makedefs,[-.src]nethack/Lib
-       $ LINK/Exe=[]lev_comp lev_main,lev_yacc,lev_lex,panic,[-.src]nethack/Lib
-       $ LINK/Exe=[]dgn_comp dgn_main,dgn_yacc,dgn_lex,panic,[-.src]nethack/Lib
-       $ LINK recover,[-.src]nethack/Lib
-    Note that these commands are slightly simpler than the corresponding
-    ones used in vmsbuild.com; crtl.opt is expected to be empty (step #5
-    above) so omitted here, and the identification directive is optional.
-
-    The installation of the playground (step #7 above) must be done on
-    the target system but should need no special cross-architecture
-    contortions.
-
-7.  NetHack contains code which attempts to make it secure in case it's
+5.  NetHack contains code which attempts to make it secure in case it's
     installed with privileges (to allow the playground to be protected
     against world write access).  This has only undergone limited testing,
     so install NetHack with privileges at your own risk.  If you discover
@@ -346,7 +289,7 @@ Notes:
     built NetHack, you can relink with tracebacks disabled by doing
        $ @[.SYS.VMS]VMSBUILD "LINK" "" "" "/noTrace/noDebug"
 
-8.  If you can't or won't install nethack.exe with privileges and if you
+6.  If you can't or won't install nethack.exe with privileges and if you
     don't have access to a privileged account yourself, then if you intend
     to allow other users to access your copy of NetHack you should probably
     place an ACL on the playground directory and its save subdirectory.
@@ -376,7 +319,7 @@ Notes:
     you to run recover.exe on behalf of other users, because you won't be
     able to create files owned by them unless you have elevated privileges.
 
-9.  Many NetHack commands can be aborted by sending it the <escape>
+7.  Many NetHack commands can be aborted by sending it the <escape>
     character when it wants input.  This is displayed as ESC inside the
     game.  Digital VK201 keyboards (used by VT2xx and VT3xx and older
     VAXstations) and VK401 keyboards (used by VT4xx, newer VAXstations,
@@ -416,7 +359,7 @@ Notes:
     be sure to remember to eventually reattach to the NetHack subprocess;
     otherwise the game in progress won't get saved when you logout.
 
-10. NetHack optionally maintains a logfile which receives one line appended
+8.  NetHack optionally maintains a logfile which receives one line appended
     to it whenever a game ends.  This can be disabled entirely by adding
     an "#undef LOGFILE" directive to vmsconf.h prior to building the
     program, or it can be disabled later by removing the file(s) LOGFILE.;*
@@ -425,7 +368,7 @@ Notes:
     named LOGFILE in the playground, but make sure that users are able
     to write into it, or new entries will not be appended.
 
-11. Some attempt at support for VMS versions earlier than V4.6 has been
+9.  Some attempt at support for VMS versions earlier than V4.6 has been
     included, but no such obsolete system was available for testing it.
     vmsbuild.com detects the need for the extra support routines and
     arranges automatically for them to be compiled.  The reason that
@@ -433,7 +376,7 @@ Notes:
     underwent a major revision for VMS V4.6 and several routines which
     NetHack utilizes were not available prior to that upgrade.
 
-12. vmsbuild.com collects almost all of the object files (xxx.OBJ) into
+10. vmsbuild.com collects almost all of the object files (xxx.OBJ) into
     an object library (NETHACK.OLB) as it compiles the source files.
     This should prevent the quota-exceeded problems from the linker
     that some sites have reported for prior versions.  Note that if you
@@ -445,15 +388,17 @@ Notes:
     If you forget to replace the library entry, your newly compiled code
     will not be included in the new executable image.
 
-13. To access "wizard mode"--intended for debugging purposes, not to
+11. To access "wizard mode"--intended for debugging purposes, not to
     spoil the game with unlimited wishes--you must be running from the
     username compiled into the game via Local_WIZARD in vmsconf.h, and
     you must specify "-D" on the command line when invoking NetHack.
     Note that it must be uppercase, and it must be in quotes to prevent
     the C run-time library's program startup code from converting it into
-    lowercase.  Any character name will be ignored in favor of "wizard".
+    lowercase.
+       $ @hackdir:nethack "-D"
+    Any character name you specify will be ignored in favor of "wizard".
 
-14. At program startup time, NetHack uses the empty file PERM to prevent
+12. At program startup time, NetHack uses the empty file PERM to prevent
     two different processes from using the same character name (under the
     same UIC ownership) at the same time.  It does this by temporarily
     giving that file a second directory entry named PERM.LOCK, then
@@ -494,7 +439,7 @@ Notes:
     is accomplished using temporary entry RECORD.LOCK and LOGFILE using
     entry LOGFILE.LOCK.
 
-15. Unless you have both Motif and the Athena Widget set from MIT, you
+13. Unless you have both Motif and the Athena Widget set from MIT, you
     will not be able to use the X11 interface on VMS.  Even if you do
     have both those things, such a configuration has not been tested and
     there are no provisions for it in vmsbuild.com.  Makefile.src does
@@ -520,11 +465,11 @@ Notes:
     window manager in order for any changes to take effect; it's easiest
     to just make the session manager quit and then log in again.
 
-16. There is no support for VMS POSIX in this release of NetHack.
+14. There is no support for VMS POSIX in this release of NetHack.
 
-17. If necessary, send problem reports via e-mail to
+15. If necessary, send problem reports via e-mail to
        "nethack-bugs@linc.cis.upenn.edu"  (numeric address 130.91.6.8).
     Always include version information for NetHack, the operating system,
     and the C compiler used.
 
- 6-JUL-1993
+15-MAR-1996

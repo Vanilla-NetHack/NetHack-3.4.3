@@ -3,10 +3,10 @@
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
+#include "macwin.h"
 #include <OSUtils.h>
 
-void FlashButton ( DialogPtr , short ) ;
-void trans_num_keys ( EventRecord * ) ;
+static void mv_handle_click (EventRecord * theEvent);
 
 #define MAX_MV_DIALOGS 20
 static int old_dialog_count = 0;
@@ -50,7 +50,7 @@ mv_get_new_dialog(short dialogID)
 		dialog = old_dialog [ d_idx ] . dialog ;
 		oldRect = dialog -> portBits . bounds ;
 		DisposeDialog ( dialog ) ;
-		old_dialog [ d_idx ] . dialog = ( DialogPtr ) NULL ;
+		old_dialog [ d_idx ] . dialog = ( DialogPtr ) 0 ;
 		hadOld = 1 ;
 
 	} else {
@@ -81,7 +81,7 @@ void mv_close_dialog(DialogPtr dialog) {
 
 /* This routine is stolen/borrowed from HandleClick (macwin.c).  See the
    comments in mv_modal_dialog for more information. */
-void
+static void
 mv_handle_click ( EventRecord * theEvent )
 {
 	int code ;

@@ -1,8 +1,8 @@
-/*	SCCS Id: @(#)trap.h	3.1	92/09/28	*/
+/*	SCCS Id: @(#)trap.h	3.2	92/09/28	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
-/* note: no longer manipulated by 'makedefs' */
+/* note for 3.1.0 and later: no longer manipulated by 'makedefs' */
 
 #ifndef TRAP_H
 #define TRAP_H
@@ -13,12 +13,28 @@ struct trap {
 	Bitfield(ttyp,5);
 	Bitfield(tseen,1);
 	Bitfield(once,1);
+	Bitfield(madeby_u,1); /* So monsters may take offence when you trap
+				 them.  Recognizing who made the trap isn't
+				 completely unreasonable, everybody has
+				 their own style.  This flag is also needed
+				 when you untrap a monster.  It would be too
+				 easy to make a monster peaceful if you could
+				 set a trap for it and then untrap it. */
 	d_level dst;	/* destination for portals */
+	coord launch;
+	union {
+	    short v_launch_otyp;	/* type of object to be triggered */
+	    coord v_launch2;	/* secondary launch point (for boulders) */
+	} v;
+#define launch_otyp	v.v_launch_otyp
+#define launch2		v.v_launch2
 };
 
 extern struct trap *ftrap;
 #define newtrap()	(struct trap *) alloc(sizeof(struct trap))
 #define dealloc_trap(trap) free((genericptr_t) (trap))
+
+/* Note: if adding/removing a trap, adjust trap_engravings[] in mklev.c */
 
 /* unconditional traps */
 #define NO_TRAP		0
@@ -28,26 +44,22 @@ extern struct trap *ftrap;
 #define SQKY_BOARD	4
 #define BEAR_TRAP	5
 #define LANDMINE	6
-#define SLP_GAS_TRAP	7
-#define RUST_TRAP	8
-#define FIRE_TRAP	9
-#define PIT		10
-#define SPIKED_PIT	11
-#define TRAPDOOR	12
-#define TELEP_TRAP	13
-#define LEVEL_TELEP	14
-#define MAGIC_PORTAL    15
-#define WEB		16
-#define STATUE_TRAP	17
-#define MAGIC_TRAP	18
-#define ANTI_MAGIC	19
-
-/* conditional feature traps */
-#ifdef POLYSELF
-#define POLY_TRAP	20
-#define TRAPNUM	21
-#else
-#define TRAPNUM	20
-#endif
+#define ROLLING_BOULDER_TRAP	7
+#define SLP_GAS_TRAP	8
+#define RUST_TRAP	9
+#define FIRE_TRAP	10
+#define PIT		11
+#define SPIKED_PIT	12
+#define HOLE            13
+#define TRAPDOOR	14
+#define TELEP_TRAP	15
+#define LEVEL_TELEP	16
+#define MAGIC_PORTAL    17
+#define WEB		18
+#define STATUE_TRAP	19
+#define MAGIC_TRAP	20
+#define ANTI_MAGIC	21
+#define POLY_TRAP	22
+#define TRAPNUM	23
 
 #endif /* TRAP_H */

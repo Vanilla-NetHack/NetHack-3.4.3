@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)winami.h	3.1	93/01/17	*/
+/*	SCCS Id: @(#)winami.h	3.2	93/01/17	*/
 /* Copyright (c) Kenneth Lorber, Bethesda, Maryland, 1991. */
 /* Copyright (c) Gregg Wonderly, Naperville, Illinois, 1992, 1993. */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -6,11 +6,38 @@
 #ifndef WINAMI_H
 #define WINAMI_H
 
+#define MAXWINTAGS	5
+
+/*
+ * Information specific to a menu window.  First a structure for each
+ * menu entry, then the structure for each menu window.
+ */
+typedef struct amii_mi {
+    struct amii_mi *next;
+    anything identifier;	/* Opaque type to identify this selection */
+    long glyph;			/* Glyph for menu item */
+    char selected;		/* Been selected? */
+    char selector;		/* Char used to select this entry. */
+    char canselect;		/* Can user select this entry. */
+    char attr;			/* Attribute for the line. */
+    char *str;			/* The text of the item. */
+} amii_menu_item;
+
+struct amii_menu
+{
+    amii_menu_item *items;	/* Starting pointer for item list. */
+    amii_menu_item *last;	/* End pointer for item list. */
+    const char     *query;	/* Query string */
+    int		    count;	/* Number of strings. */
+    char            chr;	/* Character to assign for accelerator */
+};
+
 /* descriptor for Amiga Intuition-based windows.  If we decide to cope with
  * tty-style windows also, then things will need to change. */
 /* per-window data */
 struct amii_WinDesc {
     xchar type;			/* type of window */
+    struct amii_menu menu;
     boolean active;		/* true if window is active */
     boolean wasup;		/* true if menu/text window was already open */
     short disprows;		/* Rows displayed so far (used for paging in message win) */
@@ -22,6 +49,7 @@ struct amii_WinDesc {
 				/* maxcol is also used by WIN_MESSAGE for */
 				/* tracking the ^P command */
     char **data;		/* window data [row][column] */
+    menu_item *mi;		/* Menu information */
     char *resp;			/* valid menu responses (for NHW_INVEN) */
     char *canresp;		/* cancel responses; 1st is the return value */
     char *morestr;		/* string to display instead of default */
@@ -32,6 +60,12 @@ struct amii_WinDesc {
 #else
     struct NewWindow *newwin;	/* ExtNewWindow alloc'd */
 #endif
+#ifdef	INTUI_NEW_LOOK
+    struct TagItem wintags[ MAXWINTAGS ];/* Tag items for this window */
+#else
+    long wintags[ MAXWINTAGS*2 ];
+#endif
+    void *hook;			/* Hook structure pointer for tiles version */
 #define FLMAP_INGLYPH	1	/* An NHW_MAP window is in glyph mode */
 #define FLMAP_CURSUP	2	/* An NHW_MAP window has the cursor displayed */
 #define FLMAP_SKIP	4
@@ -55,31 +89,30 @@ struct amii_DisplayDesc {
 };
 
 typedef enum {
-	WEUNK, WEKEY, WEMOUSE, WEMENU,
+    WEUNK, WEKEY, WEMOUSE, WEMENU,
 } WETYPE;
 
 typedef struct WEVENT
 {
-	WETYPE type;
-	union {
-		int key;
-		struct {
-			int x, y;
-			int qual;
-		} mouse;
-		long menucode;
-	} un;
+    WETYPE type;
+    union {
+	int key;
+	struct {
+	    int x, y;
+	    int qual;
+	} mouse;
+	long menucode;
+    } un;
 } WEVENT;
 
 #define MAXWIN 20		/* maximum number of windows, cop-out */
 
 /* port specific variable declarations */
 extern winid WIN_BASE;
-extern winid WIN_VIEW;
-extern winid WIN_VIEWBOX;
+extern winid WIN_OVER;
 #define NHW_BASE	6
-#define NHW_VIEW	7
-#define NHW_VIEWBOX	8
+#define NHW_OVER	7		/* overview window */
+
 
 extern struct amii_WinDesc *amii_wins[MAXWIN + 1];
 
