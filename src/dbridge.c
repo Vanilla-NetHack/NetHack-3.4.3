@@ -222,7 +222,7 @@ int x,y;
 	}
 	lev2->diggable = (W_NONDIGGABLE | W_GATEWAY);
 	if ((lev1->drawbridgemask & DB_UNDER) == DB_MOAT) {
-	    if (lev1->mmask && !is_flyer((mtmp = m_at(x,y))->data)) {
+	    if (MON_AT(x, y) && !is_flyer((mtmp = m_at(x,y))->data)) {
 		if (is_swimmer(mtmp->data)) {
 		    if (flags.soundok) You("hear a splash.");
 		} else {
@@ -244,7 +244,7 @@ int x,y;
 		    if (!Wwalking) drown();
 	    }
 	}
-	if (lev2->mmask && !noncorporeal((mtmp = m_at(x2, y2))->data)) {
+	if (MON_AT(x2,y2) && !noncorporeal((mtmp = m_at(x2, y2))->data)) {
 		if (cansee(x2,y2))
 		    pline("%s is crushed by the portcullis.",Monnam(mtmp));
 		else if (flags.soundok)

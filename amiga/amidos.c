@@ -10,6 +10,7 @@
 #undef COUNT
 #undef NULL
 
+#define NEED_VARARGS
 #include "hack.h"
 
 extern char Initialized;
@@ -77,19 +78,6 @@ int x;
     return x < 0? -x: x;
 }
 
-#ifdef REDO
-
-int
-tgetch()
-{
-    char ch, popch();
-
-    if (!(ch = popch())) {
-	ch = WindowGetchar();
-    }
-    return ((ch == '\r') ? '\n' : ch);
-}
-#else /* REDO /**/
 int
 tgetch() {
     char ch;
@@ -97,8 +85,6 @@ tgetch() {
     ch = WindowGetchar();
     return ((ch == '\r') ? '\n' : ch);
 }
-#endif /* REDO /**/
-
 
 #ifdef DGK
 # include <ctype.h>
@@ -221,13 +207,14 @@ char *path, *files;
 	dirLock = CurrentDir(dirLock);
 
 	strcpy(buf, files);
-	for (i = 0; i < MAXLEVEL; i++) {
+	for (i = 0; i <= MAXLEVEL; i++) {
 	    name_file(buf, i);
 	    if (fileLock = Lock(buf, SHARED_LOCK)) {
 		UnLock(fileLock);
 		DeleteFile(buf);
+	    } else if (IoErr() == ERROR_DEVICE_NOT_MOUNTED)
+		break;
 	    }
-	}
 
 	UnLock(CurrentDir(dirLock));
     }
@@ -298,6 +285,9 @@ int mode;
 	    UnLock(fileLock);
 	    if (status = CopyFile(from, to))
 		goto failed;
+	} else if (IoErr() == ERROR_DEVICE_NOT_MOUNTED) {
+	    status = "disk not present";
+	    goto failed;
 	}
     }
 
@@ -488,7 +478,7 @@ read_config_file()
 	    int  lth;
 
 	    if ((lth = sscanf(bufp,
-		 "%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d",
+	     "%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d",
 				&translate[0], &translate[1], &translate[2],
 				&translate[3], &translate[4], &translate[5],
 				&translate[6], &translate[7], &translate[8],
@@ -497,6 +487,7 @@ read_config_file()
 				&translate[15], &translate[16], &translate[17],
 				&translate[18], &translate[19], &translate[20],
 				&translate[21], &translate[22], &translate[23],
+				&translate[24], &translate[25], &translate[26],
 				&translate[27], &translate[28], &translate[29],
 				&translate[30], &translate[31])) < 0) {
 		    msmsg ("Syntax error in GRAPHICS\n");
@@ -572,12 +563,12 @@ char *str;
 }
 
 void
-msmsg(fmt, a1, a2, a3)
-char *fmt;
-long a1, a2, a3;
-{
-    printf(fmt, a1, a2, a3);
+msmsg VA_DECL(char *, fmt)
+    VA_START(fmt);
+    VA_INIT(fmt, char *);
+    vprintf(fmt, VA_ARGS);
     (void) fflush(stdout);
+    VA_END();
 }
 
 /* Follow the PATH, trying to fopen the file.
@@ -710,6 +701,7 @@ register char *a, *b;
  *  memcmp - used to compare two struct symbols, in lev.c
  */
 
+#ifndef memcmp
 memcmp(a, b, size)
 register unsigned char *a, *b;
 register int size;
@@ -721,3 +713,16 @@ register int size;
 
     return 0;		/* equal */
 }
+#endif
+
+#ifndef memcpy
+char *
+memcpy(dest, source, size)
+register char *dest;
+char *source;
+int size;
+{
+    movmem(source, dest, size);
+    return dest;
+}
+#endif

@@ -29,7 +29,6 @@ dowhatis()
 	FILE *fp;
 	char bufr[BUFSZ+6];
 	register char *buf = &bufr[6], *ep, q;
-	register struct monst *mtmp;
 #ifdef OS2_CODEVIEW
 	char tmp[PATHLEN];
 
@@ -44,7 +43,6 @@ dowhatis()
 	else {
 		coord	cc;
 		uchar	r;
-		boolean bycurs = FALSE;
 
 		pline ("Specify unknown object by cursor? ");
 		q = ynq();
@@ -56,7 +54,6 @@ dowhatis()
 			pline("Specify what? ");
 			r = readchar();
 		} else {
-		    bycurs = TRUE;
 		    cc.x = u.ux;
 		    cc.y = u.uy;
 	selobj:
@@ -68,6 +65,7 @@ dowhatis()
 			    return 0;
 		    }
 		    r = levl[cc.x][cc.y].scrsym;
+		    if (!r || !levl[cc.x][cc.y].seen) r = ' ';
 		}
 
 #define conv_sym(x)	if(r == showsyms.x) q = defsyms.x
@@ -109,23 +107,13 @@ dowhatis()
 		else conv_sym(dbvwall);
 		else conv_sym(dbhwall);
 #endif
-		else q = r;
 #undef conv_sym
-
-		if (index(quitchars, q)) {
-			(void) fclose(fp); /* sweet@scubed */
-			return 0;
-		}
-		if(q == '%') {
-			pline("%%       a piece of food");
-			if(bycurs) {
-				buf = &bufr[6];
-				more();
-				rewind(fp);
-				goto selobj;
+		else {
+			q = r;
+			if (index(quitchars, q)) {
+				(void) fclose(fp); /* sweet@scubed */
+				return 0;
 			}
-			(void) fclose(fp);
-			return 0;
 		}
 
 		if(q != '\t')
@@ -140,13 +128,19 @@ dowhatis()
 				buf[0] = r;
 				(void) strncpy(buf+1, "       ", 7);
 			}
-			pline(buf);
+			/* use %s so '%' won't be interpreted as a format */
+			pline("%s", buf);
 			if(cc.x != -1) {
+			    register struct monst *mtmp;
+
+			    if(MON_AT(cc.x,cc.y))
+				mtmp = m_at(cc.x,cc.y);
+			    else
+				mtmp = (struct monst *) 0;
 #ifdef ALTARS
 			    if (r == showsyms.altar && q == defsyms.altar &&
 				(IS_ALTAR(levl[cc.x][cc.y].typ) ||
-				 (levl[cc.x][cc.y].mmask &&
-				    m_at(cc.x,cc.y)->mimic))
+				 (mtmp && mtmp->mimic))
 			       ) {
 				    int type = levl[cc.x][cc.y].altarmask &
 						~A_SHRINE;
@@ -154,14 +148,12 @@ dowhatis()
 					  (type == A_NEUTRAL) ? "(neutral)" :
 					  "(lawful)");
 			    } else
+#endif
 			    if (q == CHAIN_SYM && OBJ_AT(cc.x, cc.y))
 				    pline("(chain)");
-			    else
-#endif
-			    if (r == showsyms.door && q == defsyms.door &&
+			    else if (r == showsyms.door && q == defsyms.door &&
 				(IS_DOOR(levl[cc.x][cc.y].typ) ||
-                                 (levl[cc.x][cc.y].mmask &&
-				    m_at(cc.x,cc.y)->mimic))) {
+				 (mtmp && mtmp->mimic))) {
 				/* Note: this will say mimics in walls are
 				 *	 closed doors, which we want.
 				 */
@@ -191,25 +183,29 @@ dowhatis()
 				IS_SINK(levl[cc.x][cc.y].typ))
 				    pline("(sink)");
 #endif
-			}
-			if (!Invisible 
+			    if (!Invisible 
 #ifdef POLYSELF
 				&& !u.uundetected
 #endif
 					&& u.ux==cc.x && u.uy==cc.y) {
-			    pline("(%s named %s)",
+				pline("(%s named %s)",
 #ifdef POLYSELF
-				u.mtimedone ? mons[u.umonnum].mname :
+				    u.mtimedone ? mons[u.umonnum].mname :
 #endif
-				pl_character, plname);
-			} else if(levl[cc.x][cc.y].mmask) {
-			    mtmp = m_at(cc.x,cc.y);
-			    if (q == mtmp->data->mlet)
-				pline("(%s%s)",
-				    mtmp->mtame ? "tame " :
-				      mtmp->mpeaceful ? "peaceful " : "",
-				    strncmp(lmonnam(mtmp), "the ", 4)
-				      ? lmonnam(mtmp) : lmonnam(mtmp)+4);
+				    pl_character, plname);
+			    /* Note: the blind/telepathy check is necessary.
+			     * Otherwise a ghost sitting on a blank square
+			     * gets identified even while blind because the
+			     * symbol is "correct".
+			     */
+			    } else if (mtmp && (!Blind || Telepat)) {
+				if (q == mtmp->data->mlet)
+				    pline("(%s%s)",
+					mtmp->mtame ? "tame " :
+					  mtmp->mpeaceful ? "peaceful " : "",
+					strncmp(lmonnam(mtmp), "the ", 4)
+					  ? lmonnam(mtmp) : lmonnam(mtmp)+4);
+			    }
 			}
 			if(ep[-1] == ';') {
 				pline("More info? ");
@@ -218,7 +214,7 @@ dowhatis()
 					return 0;
 				}
 			}
-			if(bycurs) {
+			if(cc.x != -1) {
 				buf = &bufr[6];
 				more();
 				rewind(fp);
@@ -254,11 +250,11 @@ dowhatdoes()
 	}
 
 	pline("What command? ");
-#ifdef UNIX
+#if defined(UNIX) || defined(VMS)
 	introff();
 #endif
 	q = readchar();
-#ifdef UNIX
+#if defined(UNIX) || defined(VMS)
 	intron();
 #endif
 	ctrl = ((q <= '\033') ? (q - 1 + 'A') : 0);
@@ -282,7 +278,7 @@ dowhatdoes()
 			buf[0] = q;
 			(void) strncpy(buf+1, "       ", 7);
 		}
-		pline(buf);
+		pline("%s", buf);
 		(void) fclose(fp);
 		return 0;
 	    }
@@ -514,7 +510,7 @@ char *text;
 
 	/* --- now we really do it --- */
 	if(mode == 2 && linect == 1)			    /* topline only */
-		pline(texthead->line_text);
+		pline("%s", texthead->line_text);
 	else
 	if(mode == 2) {
 	    register int curline, lth;
@@ -760,6 +756,7 @@ register char *str;
 }
 #endif /* SHELL /**/
 
+#if defined(SHELL) || defined(DEF_PAGER) || defined(DEF_MAILREADER)
 int
 child(wt)
 int wt;
@@ -806,4 +803,5 @@ register int f = fork();
 	docrt();
 	return(0);
 }
+#endif
 #endif /* UNIX /**/

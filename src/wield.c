@@ -209,7 +209,7 @@ boolean specific;
 	} else
 		Sprintf(buf, "Your %s%s",
 			is_sword(obj) ? "sword" : "weapon",
-			((obj->quan > 1) ? "s" : ""));
+			plur((long)obj->quan));
 	Strcat(buf, (obj->quan==1) ? " is" : " are");
 #ifdef POLYSELF
 	Sprintf(eos(buf), " welded to your %s!",

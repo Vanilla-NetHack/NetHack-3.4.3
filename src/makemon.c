@@ -382,7 +382,7 @@ register struct	monst	*mtmp;
 		    for(cnt = rn2((int)(mtmp->m_lev / 2)); cnt; cnt--) {
 			    do
 				otmp = mkobj(GEM_SYM,FALSE);
-			    while (otmp->otyp >= LAST_GEM+5);
+			    while (otmp->otyp >= LAST_GEM+6);
 			    otmp->quan = 2 + rnd(2);
 			    otmp->owt = weight(otmp);
 			    mpickobj(mtmp, otmp);
@@ -421,14 +421,21 @@ register int	x, y;
 
 	/* if caller wants random location, do it here */
 	if(x == 0 && y == 0) {
+		int uroom;
+		int tryct = 0;	/* careful with bigrooms */
+
+		if(!in_mklev) uroom = inroom(u.ux, u.uy);
+
 		do {
 			x = rn1(COLNO-3,2);
 			y = rn2(ROWNO);
-		} while(!goodpos(x, y, ptr));
+		} while(!goodpos(x, y, ptr) ||
+			(!in_mklev && tryct++ < 50 && inroom(x, y) == uroom));
 	}
 
 	/* if a monster already exists at the position, return */
-	if(levl[x][y].mmask) return((struct monst *) 0);
+	if(MON_AT(x, y))
+		return((struct monst *) 0);
 
 	if(ptr){
 		/* if you are to make a specific monster and it has 
@@ -476,13 +483,11 @@ register int	x, y;
 	     * above the 1..49 that indicate "normal" monster levels */
  	    mtmp->mhpmax = mtmp->mhp = 2*(ptr->mlevel - 6);
  	    mtmp->m_lev = mtmp->mhp / 4;	/* approximation */
- 	} else if((ptr->mlet == S_DRAGON) && (ptr >= &mons[PM_GREY_DRAGON]))
+ 	} else if((ptr->mlet == S_DRAGON) && (ptr >= &mons[PM_GRAY_DRAGON]))
 	    mtmp->mhpmax = mtmp->mhp = 80;
 	else if(!mtmp->m_lev) mtmp->mhpmax = mtmp->mhp = rnd(4);
 	else mtmp->mhpmax = mtmp->mhp = d((int)mtmp->m_lev, 8);
-	mtmp->mx = x;
-	mtmp->my = y;
-	levl[x][y].mmask = 1;
+	place_monster(mtmp, x, y);
 	mtmp->mcansee = 1;
 	mtmp->mpeaceful = peace_minded(ptr);
 
@@ -492,10 +497,12 @@ register int	x, y;
 			break;
 		case S_SPIDER:
 		case S_SNAKE:
-			mtmp->mhide = mtmp->mundetected = 1;
+			mtmp->mhide = 1;
 			if(in_mklev)
-			    if(mtmp->mx && mtmp->my)
-				(void) mkobj_at(0, mtmp->mx, mtmp->my);
+			    if(x && y)
+				(void) mkobj_at(0, x, y);
+			if(OBJ_AT(x, y) || levl[x][y].gmask)
+			    mtmp->mundetected = 1;
 			break;
 		case S_CHAMELEON:
 			/* If you're protected with a ring, don't create
@@ -521,7 +528,7 @@ register int	x, y;
 		case S_UNICORN:
 			if ((ptr==&mons[PM_WHITE_UNICORN] && 
 				u.ualigntyp == U_LAWFUL) ||
-			(ptr==&mons[PM_GREY_UNICORN] && 
+			(ptr==&mons[PM_GRAY_UNICORN] && 
 				u.ualigntyp == U_NEUTRAL) ||
 			(ptr==&mons[PM_BLACK_UNICORN] && 
 				u.ualigntyp == U_CHAOTIC))
@@ -632,7 +639,7 @@ goodpos(x, y, mdat)
 int x,y;
 struct permonst *mdat;
 {
-	if (x < 1 || x > COLNO-2 || y < 1 || y > ROWNO-2 || levl[x][y].mmask)
+	if (x < 1 || x > COLNO-2 || y < 1 || y > ROWNO-2 || MON_AT(x, y))
 		return 0;
 	if (x == u.ux && y == u.uy) return 0;
 	if (mdat) {
@@ -668,10 +675,8 @@ struct monst *mtmp;
 		ty = rn2(ROWNO);
 	   } while(!goodpos(tx,ty,mtmp->data));
 	if(mtmp->mx != 0 && mtmp->my != 0)
-		levl[mtmp->mx][mtmp->my].mmask = 0;
-	mtmp->mx = tx;
-	mtmp->my = ty;
-	levl[tx][ty].mmask = 1;
+		remove_monster(mtmp->mx, mtmp->my);
+	place_monster(mtmp, tx, ty);
 	if(u.ustuck == mtmp){
 		if(u.uswallow) {
 			u.ux = tx;
@@ -681,22 +686,6 @@ struct monst *mtmp;
 	}
 	pmon(mtmp);
 	set_apparxy(mtmp);
-}
-
-struct monst *
-mkmon_at(name, x, y)
-char *name;
-register int x,y;
-{
-	register int ct;
-	register struct permonst *ptr;
-
-	for(ct = PM_CHAMELEON; ct >= 0; ct--) { /* Chameleon is last monster */
-		ptr = &mons[ct];
-		if(!strcmp(ptr->mname, name))
-			return(makemon(ptr, x, y));
-	}
-	return((struct monst *)0);
 }
 
 static int
@@ -735,6 +724,9 @@ struct permonst *ptr;
 	n = (!!(ptr->geno & G_SGROUP));
 	n += (!!(ptr->geno & G_LGROUP)) << 1;
 
+/*	For ranged attacks */
+	if (ranged_attk(ptr)) n++;
+
 /*	For higher ac values */
 	n += (ptr->ac < 0);
 
@@ -747,16 +739,25 @@ struct permonst *ptr;
 	    tmp2 = ptr->mattk[i].aatyp;
 	    n += (tmp2 > 0);
 	    n += (tmp2 == AT_MAGC);
+	    n += (tmp2 == AT_WEAP && strongmonst(ptr));
 	}
 
 /*	For each "special" damage type */
 	for(i = 0; i < NATTK; i++) {
 
 	    tmp2 = ptr->mattk[i].adtyp;
-	    if((tmp2 == AD_DRLI) || (tmp2 == AD_STON)) n += 2;
+	    if((tmp2 == AD_DRLI) || (tmp2 == AD_STON)
+#ifdef POLYSELF
+					|| (tmp2 == AD_WERE)
+#endif
+								) n += 2;
 	    else n += (tmp2 != AD_PHYS);
 	    n += ((ptr->mattk[i].damd * ptr->mattk[i].damn) > 23);
 	}
+
+/*	Leprechauns are special cases.  They have many hit dice so they
+	can hit and are hard to kill, but they don't really do much damage. */
+	if (ptr == &mons[PM_LEPRECHAUN]) n -= 2;
 
 /*	Finally, adjust the monster level  0 <= n <= 24 (approx.) */
 	if(n == 0) tmp--;
@@ -1080,7 +1081,7 @@ register struct monst *mtmp;
 	if (levl[mtmp->mx][mtmp->my].gmask)
 		sym = GOLD_SYM;
 	else if (OBJ_AT(mtmp->mx, mtmp->my))
-		sym = o_at(mtmp->mx,mtmp->my)->olet;
+		sym = level.objects[mtmp->mx][mtmp->my]->olet;
 	else if (IS_DOOR(levl[mtmp->mx][mtmp->my].typ) ||
 		 IS_WALL(levl[mtmp->mx][mtmp->my].typ))
 		sym = DOOR_SYM;

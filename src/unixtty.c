@@ -10,6 +10,7 @@
 /* block some unused #defines to avoid overloading some cpp's */
 #define MONATTK_H
 #define ONAMES_H
+#define NEED_VARARGS
 #include "hack.h"
 
 /*
@@ -187,13 +188,15 @@ introff() {		/* disable kbd interrupts if required*/
 
 /* fatal error */
 /*VARARGS1*/
+
 void
-error(s, x, y)
-char *s, *x, *y;
-{
+error VA_DECL(char *,s)
+	VA_START(s);
+	VA_INIT(s, char *);
 	if(settty_needed)
 		settty(NULL);
-	Printf(s,x,y);
+	Vprintf(s,VA_ARGS);
 	(void) putchar('\n');
+	VA_END();
 	exit(1);
 }

@@ -18,10 +18,10 @@ static struct obj *book;	/* last/current book being xscribed */
 #define spellid(spell)		spl_book[spell-1].sp_id
 
 static void
-cursed_book(level)
-	register int	level;
+cursed_book(lev)
+	register int	lev;
 {
-	switch(rn2(level)) {
+	switch(rn2(lev)) {
 	case 0:
 		You("feel a wrenching sensation.");
 		tele();		/* teleport him */

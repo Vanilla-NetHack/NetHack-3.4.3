@@ -23,16 +23,13 @@ const char *breathwep[] = {	"fragments",
 };
 
 int
-thitu(tlev, dam, name)	/* u is hit by sth, but not a monster */
+thitu(tlev, dam, obj, name)	/* u is hit by sth, but not a monster */
 	register int tlev, dam;
+	struct obj *obj;
 	register char *name;
 {
 	char buf[BUFSZ];
-	boolean acidic = (!strcmp(name, "splash of venom") && dam);
-	/* A horrible kludge... the problem is that we want to do something
-	 * special--and we can't do it after returning since we might die and
-	 * not return, but the special stuff should be done anyway...
-	 */
+	boolean acidic = (obj && obj->otyp == ACID_VENOM);
 
 	setan(name, buf);
 	if(u.uac + tlev <= rnd(20)) {
@@ -43,6 +40,13 @@ thitu(tlev, dam, name)	/* u is hit by sth, but not a monster */
 		if(Blind || !flags.verbose) You("are hit!");
 		else You("are hit by %s!", buf);
 #ifdef POLYSELF
+		if (obj && obj->otyp == SILVER_ARROW && (u.ulycn != -1 ||
+				is_demon(uasmon) || u.usym == S_VAMPIRE ||
+				(u.usym == S_IMP && u.umonnum != PM_TENGU))) {
+			dam += rnd(20);
+			pline("You feel the %sarrow sear your flesh!",
+				Blind ? "" : "silver ");
+		}
 		if (acidic && resists_acid(uasmon))
 			pline("It doesn't seem to hurt you.");
 		else {
@@ -106,7 +110,11 @@ m_throw(x, y, dx, dy, range, obj)
 
 	if(sym) {
 		tmp_at(-1, sym);	/* open call */
+#ifdef TEXTCOLOR
+		tmp_at(-3, (int)objects[obj->otyp].oc_color);
+#else
 		tmp_at(-3, (int)AT_OBJ);
+#endif
 	}
 	while(range-- > 0) { /* Actually the loop is always exited by break */
 		boolean vis;
@@ -114,7 +122,7 @@ m_throw(x, y, dx, dy, range, obj)
 		bhitpos.x += dx;
 		bhitpos.y += dy;
 		vis = cansee(bhitpos.x, bhitpos.y);
-		if(levl[bhitpos.x][bhitpos.y].mmask) {
+		if(MON_AT(bhitpos.x, bhitpos.y)) {
 		    mtmp = m_at(bhitpos.x,bhitpos.y);
 
 		    if(mtmp->data->ac + 8 + obj->spe <= rnd(20)) {
@@ -145,6 +153,16 @@ m_throw(x, y, dx, dy, range, obj)
 				    damage = mtmp->mhp;
 				}
 			    }
+			}
+			if (obj->otyp==SILVER_ARROW && (is_were(mtmp->data)
+				|| is_demon(mtmp->data)
+				|| mtmp->data->mlet == S_VAMPIRE
+				|| (mtmp->data->mlet==S_IMP
+					&& mtmp->data != &mons[PM_TENGU]))) {
+			    if (vis) pline("The silver arrow sears %s's flesh!",
+				mon_nam(mtmp));
+			    else pline("Its flesh is seared!");
+			    damage += rnd(20);
 			}
 			if (obj->otyp==ACID_VENOM && cansee(mtmp->mx,mtmp->my)){
 			    if (resists_acid(mtmp->data)) {
@@ -186,12 +204,13 @@ m_throw(x, y, dx, dy, range, obj)
 			    int dam;
 			    case CREAM_PIE:
 			    case BLINDING_VENOM:
-				hitu = thitu(8, 0, xname(singleobj));
+				hitu = thitu(8, 0, singleobj, xname(singleobj));
 				break;
 			    default:
 				dam = dmgval(obj, uasmon);
 				if (dam < 1) dam = 1;
-				hitu = thitu(8+obj->spe, dam, xname(singleobj));
+				hitu = thitu(8+obj->spe, dam, singleobj,
+					xname(singleobj));
 			}
 			if (hitu && obj->opoisoned)
 			    /* it's safe to call xname twice because it's the

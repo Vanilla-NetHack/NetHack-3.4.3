@@ -26,7 +26,7 @@ struct monst *mon;
 	mm.x = mon->mx;
 	mm.y = mon->my;
 	enexto(&mm, mm.x, mm.y, mon->data);
-	if (levl[mm.x][mm.y].mmask || mon->mhp <= 1) return (struct monst *)0;
+	if (MON_AT(mm.x, mm.y) || mon->mhp <= 1) return (struct monst *)0;
 	m2 = newmonst(0);
 	*m2 = *mon;			/* copy condition of old monster */
 	m2->nmon = fmon;
@@ -62,7 +62,7 @@ struct monst *mon;
 	m2->mnamelth = 0;
 	m2->mdispl = 0;
 	pmon(m2);	/* display the new monster */
-	levl[m2->mx][m2->my].mmask = 1;
+	place_monster(m2, m2->mx, m2->my);
 	if (mon->mtame) (void) tamedog(m2, (struct obj *)0);
 	return m2;
 }
@@ -98,7 +98,7 @@ register struct monst *mtmp;
 
 		    if(Blind) pline("Wait!  There's a hidden monster there!");
 		    else if(OBJ_AT(mtmp->mx, mtmp->my)) {
-			if(obj = o_at(mtmp->mx,mtmp->my))
+			if(obj = level.objects[mtmp->mx][mtmp->my])
 				pline("Wait!  There's %s hiding under %s!",
 					defmonnam(mtmp), doname(obj));
 		    } else if (levl[mtmp->mx][mtmp->my].gmask == 1)
@@ -317,10 +317,15 @@ register int thrown;
 	 * 7) Possibly kill monster (must be done after 6a, 6b)
 	 * 8) Instant-kill from poison (can happen anywhere between 5 and 9)
 	 * 9) Hands not glowing (must be done after 7 and 8)
+	 * The major problem is that since we don't want a "hit" message
+	 * when the monster dies, we have to know how much damage it did
+	 * _before_ outputting a hit message, but any messages associated with
+	 * the damage don't come out until _after_ outputting a hit message.
 	 */
 	boolean hittxt = FALSE, destroyed = FALSE;
 	boolean get_dmg_bonus = TRUE;
 	boolean ispoisoned = FALSE, needpoismsg = FALSE, poiskilled = FALSE;
+	boolean silvermsg = FALSE;
 
 	wakeup(mon);
 	if(!obj) {
@@ -379,6 +384,14 @@ register int thrown;
 				obj->opoisoned)
 			    ispoisoned = TRUE;
 		    }
+		    if(thrown && obj->otyp == SILVER_ARROW) {
+			if (is_were(mon->data) || mon->data->mlet==S_VAMPIRE
+			    || (mon->data->mlet==S_IMP && mon->data != &mons[PM_TENGU])
+			    || is_demon(mon->data)) {
+				silvermsg = TRUE;
+				tmp += rnd(20);
+			}
+		    }
 		}
 	    } else if(obj->olet == POTION_SYM) {
 			if (obj->quan > 1) setuwep(splitobj(obj, 1));
@@ -426,7 +439,7 @@ register int thrown;
 				kludge("You hit %s with the %s egg%s.",
 					mon_nam(mon),
 					mons[obj->corpsenm].mname,
-					(obj->quan==1) ? "" : "s");
+					plur((long)obj->quan));
 				hittxt = TRUE;
 				pline("The egg%sn't live any more...",
 					(obj->quan==1) ? " is" : "s are");
@@ -557,9 +570,16 @@ register int thrown;
 		else	You("hit %s%s", mon_nam(mon), exclam(tmp));
 	}
 
+	if (silvermsg) {
+		if (cansee(mon->mx, mon->my))
+			pline("The silver arrow sears %s's flesh!",
+				mon_nam(mon));
+		else
+			pline("Its flesh is seared!");
+	}
+
 	if (needpoismsg)
 		kludge("The poison doesn't seem to affect %s.", mon_nam(mon));
-
 	if (poiskilled) {
 		pline("The poison was deadly...");
 		xkilled(mon, 0);
@@ -616,7 +636,6 @@ register struct attack *mattk;
 	    ) {
 	    struct monst *dtmp;
 	    pline("Some hell-p has arrived!");
-/*	    if((dtmp = mkmon_at(uasmon, u.ux, u.uy)))*/
 /*	    if((dtmp = makemon(uasmon, u.ux, u.uy)))*/
 	    if((dtmp = makemon(&mons[ndemon()], u.ux, u.uy)))
 		(void)tamedog(dtmp, (struct obj *)0);
@@ -1088,7 +1107,7 @@ use_weapon:
 				sum[i] = damageum(mon,mattk);
 			break;
 		case AT_CLAW:
-			if (i==0 && uwep && humanoid(uasmon)) goto use_weapon;
+			if (i==0 && uwep && !cantwield(uasmon)) goto use_weapon;
 # ifdef SEDUCE
 			/* succubi/incubi are humanoid, but their _second_
 			 * attack is AT_CLAW, not their first...

@@ -13,6 +13,10 @@ struct objclass {
 	char *oc_uname;		/* called by user */
 	Bitfield(oc_name_known,1);
 	Bitfield(oc_merge,1);	/* merge otherwise equal objects */
+	Bitfield(oc_uses_known,1); /* obj->known affects full decription */
+				/* otherwise, obj->dknown and obj->bknown */
+				/* tell all, and obj->known should always */
+				/* be set for proper merging behavior */
 	Bitfield(oc_bool,1);
 #define oc_bimanual	oc_bool	/* for weapons */
 #define oc_bulky	oc_bool	/* for armor */
@@ -35,6 +39,9 @@ struct objclass {
 	int oc_cost;		/* base cost in shops */
 	schar oc_oc1, oc_oc2;
 	int oc_oi;
+#ifdef TEXTCOLOR
+	uchar oc_color;		/* color of the object */
+#endif /* TEXTCOLOR */
 #define	nutrition	oc_oi	/* for foods */
 #define w_propellor	oc_oi	/* for weapons */
 #define WP_BOW		1

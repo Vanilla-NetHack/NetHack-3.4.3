@@ -9,7 +9,12 @@
 #ifdef MAIL
 
 # ifdef UNIX
-#include <sys/stat.h>
+#  include <sys/stat.h>
+#  include <pwd.h>
+# endif
+# ifdef VMS
+#  include <descrip.h>
+#  include <ssdef.h>
 # endif
 
 /*
@@ -19,9 +24,12 @@
  *   hack should do the paging itself. But when I get mail, I want to put it
  *   in some folder, reply, etc. - it would be unreasonable to put all these
  *   functions in hack. }
- * The motion of the mail daemon is less restrained than usual:
- * diagonal moves from a DOOR are possible. He might also use SDOOR's. Also,
- * the mail daemon is visible in a ROOM, even when you are Blind.
+ *
+ * The mail daemon can move with less than usual restraint.  It can:
+ *	- move diagonally from a door
+ *	- use secret doors
+ *	- run thru a monster
+ *
  * Its path should be longer when you are Telepat-hic and Blind.
  *
  * Possible extensions:
@@ -42,16 +50,17 @@
  * Here are some minor problems i didn't fix:  -3.
  *
  *	- The code sometimes pops up the mail daemon next to you on
- *	  the corridor side of doorways when there are open spaces in
- *	  the room.
+ *	  the corridor side of doorways when there are open spaces
+ *	  within the room.
  *	- It may also do this with adjoining castle rooms.
  */
 
-# ifndef UNIX
+# if !defined(UNIX) && !defined(VMS)
 int mustgetmail = -1;
 # endif
 
 # ifdef UNIX
+extern struct passwd *getpwuid();
 static struct stat omstat,nmstat;
 static char *mailbox = NULL;
 static long laststattime;
@@ -69,14 +78,14 @@ getmailstatus() {
 #  ifdef MAILPATH
 		mailbox = (char *) alloc(sizeof(MAILPATH)+8);
 		Strcpy(mailbox, MAILPATH);
-		Strcat(mailbox, getlogin());
+		Strcat(mailbox, getpwuid(getuid())->pw_name);
 #  else
 		return;
 #  endif
 	}
 	if(stat(mailbox, &omstat)){
 #  ifdef PERMANENT_MAILBOX
-		pline("Cannot get status of MAIL=%s .", mailbox);
+		pline("Cannot get status of MAIL=\"%s\".", mailbox);
 		mailbox = 0;
 #  else
 		omstat.st_mtime = 0;
@@ -85,75 +94,111 @@ getmailstatus() {
 }
 # endif /* UNIX */
 
-/* make md run through the cave */
+# ifdef VMS
+extern unsigned long pasteboard_id;
+int broadcasts = 0;
+#  define getmailstatus()
+# endif /* VMS */
+
+
+/* make mail daemon run through the dungeon */
 static void
-mdrush(md,away)
-register struct monst *md;
+mdrush(md,fx,fy)
+struct monst *md;
+register int fx, fy;	/* origin, where the '&' is displayed */
+{
+	register int tx = md->mx, ty = md->my;
+			/* real location, where the '&' is going */
+
+	tmp_at(-1, md->data->mlet);	/* open call */
+#ifdef TEXTCOLOR
+	tmp_at(-3, (int)md->data->mcolor);
+#endif
+
+	while(fx != tx || fy != ty) {
+		register int dx, dy,		/* direction counters */
+			     nfx = fx, nfy = fy,/* next location */ 
+			     d1, d2;		/* shortest dist, eval */
+
+		/* display the '&' at (fx,fy) */
+		tmp_at(fx,fy);
+
+		/* find location next to (fx,fy) closest to (tx,ty) */
+		d1 = dist2(fx,fy,tx,ty);
+		for(dx = -1; dx <= 1; dx++) for(dy = -1; dy <= 1; dy++)
+		    if((dx || dy) && 
+		       !IS_STWALL(levl[fx+dx][fy+dy].typ)) {
+			d2 = dist2(fx+dx,fy+dy,tx,ty);
+			if(d2 < d1) {
+			    d1 = d2;
+			    nfx = fx+dx;
+			    nfy = fy+dy;
+			}
+		    }
+
+		/* set (fx,fy) to next location, unless it stopped */
+		if(nfx != fx || nfy != fy) {
+		    fx = nfx;
+		    fy = nfy;
+		} else break;
+	}
+
+	tmp_at(-1,-1);			/* close call */
+}
+
+static void
+mdappear(md,away)
+struct monst *md;
 boolean away;
 {
-	register int uroom = inroom(u.ux, u.uy);
-	if(uroom >= 0 && inroom(md->mx,md->my) == uroom) {
-		register int tmp = rooms[uroom].fdoor;
-		register int cnt = rooms[uroom].doorct;
-		register int fx = u.ux, fy = u.uy;
-		while(cnt--) {
-			if(dist(fx,fy) < dist(doors[tmp].x, doors[tmp].y)){
-				fx = doors[tmp].x;
-				fy = doors[tmp].y;
-			}
-			tmp++;
-		}
-		if (has_dnstairs(&rooms[uroom]))
-			if(dist(fx,fy) < dist(xdnstair, ydnstair)){
-				fx = xdnstair;
-				fy = ydnstair;
-			}
-		if (has_upstairs(&rooms[uroom]))
-			if(dist(fx,fy) < dist(xupstair, yupstair)){
-				fx = xupstair;
-				fy = yupstair;
-			}
-		tmp_at(-1, md->data->mlet);	/* open call */
-		tmp_at(-3, (int)AT_MON);
-		if(away) {	/* interchange origin and destination */
-			unpmon(md);
-			levl[md->mx][md->my].mmask = 0;
-			levl[fx][fy].mmask = 1;
-			tmp = fx; fx = md->mx; md->mx = tmp;
-			tmp = fy; fy = md->my; md->my = tmp;
-		}
-		while(fx != md->mx || fy != md->my) {
-			register int dx,dy,nfx = fx,nfy = fy,d1,d2;
+	static int fx, fy;			/* origin */
+	int tx = md->mx, ty = md->my;		/* destination */
+	register int uroom = inroom(u.ux, u.uy);/* room you're in */
 
-			tmp_at(fx,fy);
-			d1 = dist2(fx,fy,md->mx,md->my);
-			for(dx = -1; dx <= 1; dx++) for(dy = -1; dy <= 1; dy++)
-			    if((dx || dy) && 
-			       !IS_STWALL(levl[fx+dx][fy+dy].typ)) {
-				d2 = dist2(fx+dx,fy+dy,md->mx,md->my);
-				if(d2 < d1) {
-				    d1 = d2;
-				    nfx = fx+dx;
-				    nfy = fy+dy;
+	/* if mail daemon is in same room as you */
+	if(uroom >= 0 && inroom(md->mx,md->my) == uroom && (!Blind || Telepat))
+		if(away) {
+			unpmon(md);
+			remove_monster(tx, ty);
+
+			/* fake "real" location to origin */
+			md->mx = fx; md->my = fy;
+
+			/* rush from destination */
+			mdrush(md,tx,ty);
+			return;
+		} else {
+			/* choose origin */
+			register int cnt = rooms[uroom].doorct;
+			register int tmp = rooms[uroom].fdoor;
+			register int dd = 0;
+
+			/* which door (or staircase) is farthest? */
+			while (cnt--) {
+				if(dd < dist(doors[tmp].x, doors[tmp].y)) {
+					fx = doors[tmp].x;
+					fy = doors[tmp].y;
+					dd = dist(tx,ty);
 				}
-			    }
-			if(nfx != fx || nfy != fy) {
-			    fx = nfx;
-			    fy = nfy;
-			} else {
-			    if(!away) {
-				levl[md->mx][md->my].mmask = 0;
-				levl[fx][fy].mmask = 1;
-				md->mx = fx;
-				md->my = fy;
-			    }
-			    break;
-			} 
+				tmp++;
+			}
+			if (has_dnstairs(&rooms[uroom]))
+				if(dd < dist(xdnstair, ydnstair)) {
+					fx = xdnstair;
+					fy = ydnstair;
+					dd = dist(xdnstair, ydnstair);
+				}
+			if (has_upstairs(&rooms[uroom]))
+				if(dd < dist(xupstair, yupstair)) {
+					fx = xupstair;
+					fy = yupstair;
+				}
+
+			/* rush from origin */
+			mdrush(md,fx,fy);
 		}
-		tmp_at(-1,-1);			/* close call */
-	}
-	if(!away)
-		pmon(md);
+
+	pmon(md);
 }
 
 static void
@@ -167,9 +212,13 @@ newmail() {
 
 	if(!md)	return;
 
-	mdrush(md,0);
+	mdappear(md,FALSE);
 
+# ifdef VMS
+	pline("\"Hello, %s!  I have a message for you.\"", plname);
+# else
 	pline("\"Hello, %s!  I have some mail for you.\"", plname);
+# endif
 
 	if(dist(md->mx,md->my) > 2)
 		verbalize("Catch!");
@@ -186,14 +235,17 @@ newmail() {
 	}
 
 	/* disappear again */
-	mdrush(md,1);
+	mdappear(md,TRUE);
 	mongone(md);
 
 	/* force the graphics character set off */
 	nscr();
+# ifdef VMS
+	broadcasts--;
+# endif
 }
 
-# ifndef UNIX
+# if !defined(UNIX) && !defined(VMS)
 void
 ckmailstatus() {
 	if (mustgetmail < 0)
@@ -209,9 +261,9 @@ readmail()
 {
 	pline("It says:  \"Please disregard previous letter.\"");
 }
+# endif /* !UNIX && !VMS */
 
-# else /* UNIX */
-
+# ifdef UNIX
 void
 ckmailstatus() {
 	if(!mailbox
@@ -224,7 +276,7 @@ ckmailstatus() {
 	laststattime = moves;
 	if(stat(mailbox, &nmstat)){
 #  ifdef PERMANENT_MAILBOX
-		pline("Cannot get status of MAIL=%s anymore.", mailbox);
+		pline("Cannot get status of MAIL=\"%s\" anymore.", mailbox);
 		mailbox = 0;
 #  else
 		nmstat.st_mtime = 0;
@@ -255,5 +307,28 @@ readmail() {
 	getmailstatus();
 }
 # endif /* UNIX */
+
+# ifdef VMS
+void
+ckmailstatus()
+{
+	if (broadcasts)
+		newmail();
+}
+
+void
+readmail()
+{
+	char buf[16384];	/* $BRKTHRU limits messages to 16350 bytes */
+	$DESCRIPTOR(message, buf);
+	short length;
+
+	if (SMG$GET_BROADCAST_MESSAGE(&pasteboard_id, &message, &length)
+	    == SS$_NORMAL && length != 0) {
+		buf[length] = '\0';
+		pline("%s", buf);
+	}
+}
+# endif /* VMS */
 
 #endif /* MAIL */

@@ -206,7 +206,7 @@ do_pit:			    chasm = maketrap(x,y,PIT);
 			    /* We have to check whether monsters or player
 			       fall in a chasm... */
 
-			    if (levl[x][y].mmask) {
+			    if (MON_AT(x, y)) {
 				mtmp = m_at(x,y);
 				if(!is_flyer(mtmp->data)) {
 				    mtmp->mtrapped = 1;
@@ -253,7 +253,7 @@ do_pit:			    chasm = maketrap(x,y,PIT);
 			    if (cansee(x,y))
 				pline("The door collapses.");
 			    levl[x][y].doormask = D_NODOOR;
-			    if (!levl[x][y].mmask && !(x == u.ux && y == u.uy))
+			    if (!MON_AT(x, y) && !(x == u.ux && y == u.uy))
 				newsym(x,y);
 			    break;
 		    }
@@ -415,15 +415,15 @@ struct obj *instr;
 			}
 		    if(tumblers)
 			if(gears)
-			You("hear %d tumbler%s click and %d gear%s turn.",
-			    tumblers, (tumblers > 1 ? "s" : ""),
-			    gears, (gears > 1 ? "s" : ""));
+			    You("hear %d tumbler%s click and %d gear%s turn.",
+				tumblers, plur((long)tumblers),
+				gears, plur((long)gears));
 			else
 			    You("hear %d tumbler%s click.",
-			    tumblers, (tumblers > 1 ? "s" : ""));
+				tumblers, plur((long)tumblers));
 		    else if(gears)
 			You("hear %d gear%s turn.",
-			gears, (gears > 1 ? "s" : ""));
+			    gears, plur((long)gears));
 		}
 	    }
 	return 1;

@@ -216,7 +216,7 @@ register struct obj	*sobj;
 			return(1);
 		    }
 		} else {	/* armor and scroll both cursed */
-		    Your("%s vibrates", xname(otmp));
+		    Your("%s vibrates.", xname(otmp));
 		    otmp->spe--;
 		    make_stunned(HStun + rn1(10, 10), TRUE);
 		}
@@ -363,7 +363,7 @@ register struct obj	*sobj;
 		register struct monst *mtmp;
 
 		for(i = -bd; i <= bd; i++) for(j = -bd; j <= bd; j++)
-		if(levl[u.ux+i][u.uy+j].mmask && (mtmp = m_at(u.ux+i, u.uy+j))) {
+		if(MON_AT(u.ux+i, u.uy+j) && (mtmp = m_at(u.ux+i, u.uy+j))) {
 		    if(sobj->cursed) {
 			if(!mtmp->mtame) mtmp->mpeaceful = 0;
 		    } else {

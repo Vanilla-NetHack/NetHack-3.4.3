@@ -56,6 +56,8 @@ long ftell();
 FILE *freopen();
 char *gets();
 
+typedef long off_t;
+
 #define getchar()   WindowGetchar()
 #define putchar(c)  WindowPutchar(c)
 #define puts(s)     WindowPuts(s)
@@ -63,7 +65,7 @@ char *gets();
 #define printf      WindowPrintf
 #define fflush(fp)  WindowFlush()
 
-#define xputs(s)    WindowFPuts(s)
-#define xputc(c)    WindowPutchar(c)
+#define xputs	    WindowFPuts
+#define xputc	    WindowPutchar
 
 #endif

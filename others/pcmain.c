@@ -4,31 +4,25 @@
 /* main.c - PC, ST, and Amiga NetHack */
 
 #include "hack.h"
+
 #ifndef NO_SIGNAL
 #include <signal.h>
 #endif
 
 char orgdir[PATHLEN];
+char SAVEF[FILENAME];
 
-extern struct permonst mons[NUMMONS];
-extern char plname[PL_NSIZ], pl_character[PL_CSIZ];
-
-int (*afternmv)(), (*occupation)();
-static void moveloop();	/* a helper function for MSC optimizer */
-static void newgame();
+char *hname = "NetHack";	/* used for syntax messages */
+#ifndef AMIGA
+char obuf[BUFSIZ];	/* BUFSIZ is defined in stdio.h */
+#endif
+int hackpid;		/* not used anymore, but kept in for save files */
 
 #if defined(DGK) && !defined(OLD_TOS)
 struct finfo	zfinfo = ZFINFO;
 int i;
 #endif /* DGK && !OLD_TOS */
 
-char SAVEF[FILENAME];
-char *hname = "NetHack";	/* used for syntax messages */
-char obuf[BUFSIZ];	/* BUFSIZ is defined in stdio.h */
-int hackpid;		/* not used anymore, but kept in for save files */
-
-extern char *nomovemsg;
-extern long wailmsg;
 #ifdef __TURBOC__	/* tell Turbo C to make a bigger stack */
 extern unsigned _stklen = 0x2000;	/* 8K */
 extern unsigned char _osmajor;
@@ -77,8 +71,8 @@ char *argv[];
 	 *  Initialize screen I/O before anything is displayed.
 	 *
 	 *  startup() must be called before initoptions()
-	 *  due to ordering of graphics settings, and before
-	 *  any calls to error() due to use of termcap strings.
+	 *    due to ordering of graphics settings
+	 *  and before error(), due to use of termcap strings.
 	 */
 	gettty();
 #ifndef AMIGA
@@ -114,15 +108,15 @@ char *argv[];
 #endif /* DGK && !OLD_TOS */
 
 	initoptions();
+#ifdef TOS
+	if (flags.IBMBIOS && flags.use_color)
+		set_colors();
+#endif
 	if (!hackdir[0])
 		Strcpy(hackdir, orgdir);
 
 	if(argc > 1) {
-#ifdef TOS
-	    if(!strncmp(argv[1], "-D", 2)) {
-#else
-	    if(!strncmp(argv[1], "-d", 2)) {
-#endif
+	    if (!strncmp(argv[1], "-d", 2)) {
 		argc--;
 		argv++;
 		dir = argv[0]+2;
@@ -135,17 +129,13 @@ char *argv[];
 		if(!*dir)
 		    error("Flag -d must be followed by a directory name.");
 		Strcpy(hackdir, dir);
-	    }
+	    } else
 
 	/*
 	 * Now we know the directory containing 'record' and
 	 * may do a prscore().
 	 */
-#ifdef TOS
-	    else if (!strncmp(argv[1], "-S", 2)) {
-#else
-	    else if (!strncmp(argv[1], "-s", 2)) {
-#endif
+	    if (!strncmp(argv[1], "-s", 2)) {
 #ifdef CHDIR
 		chdirx(hackdir,0);
 #endif
@@ -154,6 +144,9 @@ char *argv[];
 	    }
 	}
 
+	/*
+	 * It seems you really want to play.
+	 */
 	setrandom();
 	cls();
 	u.uhp = 1;	/* prevent RIP on early quits */
@@ -182,37 +175,32 @@ char *argv[];
 		argc--;
 		switch(argv[0][1]){
 #if defined(WIZARD) || defined(EXPLORE_MODE)
-# ifndef TOS
-		case 'D':
-# endif
+# ifndef EXPLORE_MODE
 		case 'X':
+# endif
+		case 'D':
 # ifdef WIZARD
 			/* Must have "name" set correctly by NETHACK.CNF,
 			 * NETHACKOPTIONS, or -U
 			 * before this flag to enter wizard mode. */
-			if(!strcmp(plname, WIZARD))
+			if(!strcmp(plname, WIZARD)) {
 				wizard = TRUE;
-# endif
-# if defined(WIZARD) && defined(EXPLORE_MODE)
-			else
+				break;
+			}
+			/* otherwise fall thru to discover */
 # endif
 # ifdef EXPLORE_MODE
-				discover = TRUE;
+		case 'X':
+			discover = TRUE;
 # endif
 			break;
 #endif
 #ifdef NEWS
-		case 'N':
-# ifndef TOS
 		case 'n':
-# endif
 			flags.nonews = TRUE;
 			break;
 #endif
-		case 'U':
-#ifndef TOS
 		case 'u':
-#endif
 			if(argv[0][2])
 			  (void) strncpy(plname, argv[0]+2, sizeof(plname)-1);
 			else if(argc > 1) {
@@ -223,29 +211,16 @@ char *argv[];
 				Printf("Player name expected after -U\n");
 			break;
 #ifdef DGK
-		/* Person does not want to use a ram disk
+		/* Player doesn't want to use a RAM disk
 		 */
-# ifdef TOS
-		case 'R':
-# else
 		case 'r':
-# endif
 			ramdisk = FALSE;
 			break;
 #endif
-		case 'C':   /* character role is next character */
-			/* allow -CT for Tourist, etc. */
-			(void) strncpy(pl_character, argv[0]+2,
-				sizeof(pl_character)-1);
-			break;
 		default:
-#ifndef TOS
 			/* allow -T for Tourist, etc. */
 			(void) strncpy(pl_character, argv[0]+1,
 				sizeof(pl_character)-1);
-#else
-			Printf("Unknown option: %s\n", *argv);
-#endif
 		}
 	}
 
@@ -297,6 +272,12 @@ char *argv[];
 #endif /* DGK */
 	    ((fd = open(SAVEF, OMASK)) >= 0) &&
 	    (uptodate(fd) || !unlink(SAVEF))) {
+#ifdef WIZARD
+		/* Since wizard is actually flags.debug, restoring might
+		 * overwrite it.
+		 */
+		boolean remember_wiz_mode = wizard;
+#endif
 #ifndef NO_SIGNAL
 		(void) signal(SIGINT, (SIG_RET_TYPE) done1);
 #endif
@@ -304,6 +285,9 @@ char *argv[];
 		(void) fflush(stdout);
 		if(!dorecover(fd))
 			goto not_recovered;
+#ifdef WIZARD
+		if(!wizard && remember_wiz_mode) wizard = TRUE;
+#endif
 		pline("Hello %s, welcome to NetHack!", plname);
 		/* get shopkeeper set properly if restore is in shop */
 		(void) inshop();
@@ -349,185 +333,9 @@ not_recovered:
 #ifdef OS2
 	gettty(); /* somehow ctrl-P gets turned back on during startup ... */
 #endif
-	/* Help for Microsoft optimizer.  Otherwise main is too large -dgk*/
+
 	moveloop();
 	return 0;
-}
-
-static void
-moveloop()
-{
-	char ch;
-	int abort;
-
-	for(;;) {
-		if(flags.move) {	/* actual time passed */
-
-#ifdef SOUNDS
-			dosounds();
-#endif
-			settrack();
-
-			if(moves%2 == 0 ||
-			  (!(Fast & ~INTRINSIC) && (!Fast || rn2(3)))) {
-				movemon();
-#ifdef HARD
-				if(!rn2(u.udemigod?25:(dlevel>30)?50:70))
-#else
-				if(!rn2(70))
-#endif
-				    (void) makemon((struct permonst *)0, 0, 0);
-			}
-			if(Glib) glibr();
-			timeout();
-			++moves;
-#ifdef THEOLOGY
-			if (u.ublesscnt)  u.ublesscnt--;
-#endif
-#ifdef POLYSELF
-			if(u.mtimedone)
-			    if(u.mh < 1) rehumanize();
-			else
-#endif
-			    if(u.uhp < 1) {
-				You("die...");
-				done(DIED);
-			    }
-#ifdef POLYSELF
-			if (u.mtimedone) {
-			    if (u.mh < u.mhmax) {
-				if (Regeneration || !(moves%20)) {
-					flags.botl = 1;
-					u.mh++;
-				}
-			    }
-			}
-#endif
-			if(u.uhp < u.uhpmax) {
-				if(u.ulevel > 9) {
-				    int heal;
-
-				    if(HRegeneration || !(moves%3)) {
-					flags.botl = 1;
-					if (ACURR(A_CON) <= 12) heal = 1;
-					else heal = rnd((int) ACURR(A_CON)-12);
-					if (heal > u.ulevel-9) heal = u.ulevel-9;
-					u.uhp += heal;
-					if(u.uhp > u.uhpmax)
-					    u.uhp = u.uhpmax;
-				    }
-				} else if(HRegeneration ||
-					(!(moves%((MAXULEV+12)/(u.ulevel+2)+1)))) {
-					flags.botl = 1;
-					u.uhp++;
-				}
-			}
-#ifdef SPELLS
-			if ((u.uen<u.uenmax) && (!(moves%(19-ACURR(A_INT)/2)))) {
-				u.uen += rn2((int)ACURR(A_WIS)/5 + 1) + 1;
-				if (u.uen > u.uenmax)  u.uen = u.uenmax;
-				flags.botl = 1;
-			}
-#endif
-			if(Teleportation && !rn2(85)) tele();
-#ifdef POLYSELF
-			if(Polymorph && !rn2(100))
-				polyself();
-			if(u.ulycn >= 0 && !rn2(80 - (20 * night())))
-				you_were();
-#endif
-			if(Searching && multi >= 0) (void) dosearch0(1);
-			gethungry();
-			hatch_eggs();
-			invault();
-			amulet();
-#ifdef HARD
-			if (!rn2(40+(int)(ACURR(A_DEX)*3))) u_wipe_engr(rnd(3));
-			if (u.udemigod) {
-
-				u.udg_cnt--;
-				if(u.udg_cnt <= 0) {
-
-					intervene();
-					u.udg_cnt = rn1(200, 50);
-				}
-			}
-#endif
-			restore_attrib();
-		}
-		if(multi < 0) {
-			if(!++multi){
-				pline(nomovemsg ? nomovemsg :
-					"You can move again.");
-				nomovemsg = 0;
-				if(afternmv) (*afternmv)();
-				afternmv = 0;
-			}
-		}
-
-		find_ac();
-		if(!flags.mv || Blind)
-		{
-			seeobjs();
-			seemons();
-			seeglds();
-			nscr();
-		}
-		if(flags.time) flags.botl = 1;
-
-		if(flags.botl || flags.botlx) bot();
-
-		flags.move = 1;
-
-		if(multi >= 0 && occupation) {
-			abort = 0;
-			if (kbhit()) {
-				if ((ch = Getchar()) == ABORT)
-					abort++;
-#ifdef REDO
-				else
-					pushch(ch);
-#endif /* REDO */
-			}
-			if(abort || monster_nearby())
-				stop_occupation();
-			else if ((*occupation)() == 0)
-				occupation = 0;
-			if (!(++occtime % 7))
-				(void) fflush(stdout);
-			continue;
-		}
-
-		if((u.uhave_amulet || Clairvoyant) && 
-#ifdef ENDGAME
-			dlevel != ENDLEVEL &&
-#endif
-			!(moves%15) && !rn2(2)) do_vicinity_map();
-
-		u.umoved = FALSE;
-		if(multi > 0) {
-			lookaround();
-			if(!multi) {	/* lookaround may clear multi */
-				flags.move = 0;
-				continue;
-			}
-			if(flags.mv) {
-				if(multi < COLNO && !--multi)
-					flags.mv = flags.run = 0;
-				domove();
-			} else {
-				--multi;
-				rhack(save_cm);
-			}
-		} else if(multi == 0) {
-#ifdef MAIL
-			ckmailstatus();
-#endif
-			rhack(NULL);
-		}
-		if(multi && multi%7 == 0)
-			(void) fflush(stdout);
-	}
 }
 
 /*
@@ -561,19 +369,10 @@ askname() {
 			msmsg("%c", c);
 #endif
 			plname[ct++] = c;
-	}
+		}
 	}
 	plname[ct] = 0;
 	if(ct == 0) askname();
-}
-
-/*VARARGS1*/
-void
-impossible(s,x1,x2)
-	register char *s, *x1, *x2;
-{
-	pline(s,x1,x2);
-	pline("Program in disorder - perhaps you'd better Quit.");
 }
 
 #ifdef CHDIR
@@ -593,7 +392,7 @@ boolean wr;
 	chdrive(dir);
 #endif
 
-	/* warn the player if he cannot write the record file */
+	/* warn the player if we can't write the record file */
 	/* perhaps we should also test whether . is writable */
 	/* unfortunately the access systemcall is worthless */
 	if(wr) {
@@ -637,60 +436,3 @@ boolean wr;
 	}
 }
 #endif /* CHDIR /**/
-
-void
-stop_occupation()
-{
-	if(occupation) {
-		You("stop %s.", occtxt);
-		occupation = 0;
-#ifdef REDO
-		multi = 0;
-		pushch(0);
-#endif
-	}
-}
-
-static void
-newgame() {
-#ifdef DGK
-	gameDiskPrompt();
-#endif
-
-	fobj = fcobj = invent = 0;
-	fmon = fallen_down = 0;
-	ftrap = 0;
-	fgold = 0;
-	flags.ident = 1;
-
-	init_objects();
-	u_init();
-
-#ifndef NO_SIGNAL
-	(void) signal(SIGINT, (SIG_RET_TYPE) done1);
-#endif
-
-	mklev();
-	u.ux = xupstair;
-	u.uy = yupstair;
-	(void) inshop();
-
-	setsee();
-	flags.botlx = 1;
-
-	/* Move the monster from under you or else
-	 * makedog() will fail when it calls makemon().
-	 * 			- ucsfcgl!kneller
-	 */
-	if(levl[u.ux][u.uy].mmask) mnexto(m_at(u.ux, u.uy));
-
-	(void) makedog();
-	seemons();
-#ifdef NEWS
-	if(flags.nonews || !readnews())
-		/* after reading news we did docrt() already */
-#endif
-		docrt();
-
-	return;
-}

@@ -15,10 +15,10 @@ static const struct artifact artilist[] = {
 
 { LONG_SWORD,	 "Excalibur",	(SPFX_NOGEN | SPFX_SEEK | SPFX_DEFN |
 								SPFX_SEARCH), 0,
-  { 0, AD_PHYS, 5, 10 }, { 0, AD_DRLI, 0, 0}, A_LAW },
+  { 0, AD_PHYS, 5, 10 }, { 0, AD_DRLI, 0, 0}, A_LAW, 'K' },
 
 { KATANA,	 "Snickersnee",	SPFX_RESTR, 0,
-  { 0, AD_PHYS, 0, 8 }, NO_ATTK, A_LAW },
+  { 0, AD_PHYS, 0, 8 }, NO_ATTK, A_LAW, 'S' },
 
 /*	Ah, never shall I forget the cry, 
  *		or the shriek that shrieked he,
@@ -30,71 +30,71 @@ static const struct artifact artilist[] = {
  */
 
 { AXE,		 "Cleaver",	SPFX_RESTR, 0,
-  { 0, AD_PHYS, 3, 12 }, NO_ATTK, A_CHAOS },
+  { 0, AD_PHYS, 3, 12 }, NO_ATTK, A_CHAOS, 0 },
 
 #ifdef TOLKIEN
 { ORCISH_DAGGER, "Grimtooth",	SPFX_RESTR, 0,
-  { 0, AD_PHYS, 2, 6 }, NO_ATTK, A_CHAOS },
+  { 0, AD_PHYS, 2, 6 }, NO_ATTK, A_CHAOS, 0 },
 #else
 { DAGGER,	 "Grimtooth",	SPFX_RESTR, 0,
-  { 0, AD_PHYS, 2, 6 }, NO_ATTK, A_CHAOS },
+  { 0, AD_PHYS, 2, 6 }, NO_ATTK, A_CHAOS, 0 },
 #endif
 
 /*  Special purpose swords - various types */
 
-{ TWO_HANDED_SWORD, "Orcrist",	SPFX_DCLAS, S_ORC,
-  { 0, AD_PHYS, 5, 0 }, NO_ATTK, A_LAW },
+{ TWO_HANDED_SWORD, "Orcrist",	SPFX_DFLAG2, M2_ORC,
+  { 0, AD_PHYS, 5, 0 }, NO_ATTK, A_LAW, 'E' },
 
 #ifdef TOLKIEN
-{ ELVEN_DAGGER,	 "Sting",	(SPFX_WARN | SPFX_DCLAS), S_ORC,
-  { 0, AD_PHYS, 5, 0 }, NO_ATTK, A_LAW },
+{ ELVEN_DAGGER,	 "Sting",	(SPFX_WARN | SPFX_DFLAG2), M2_ORC,
+  { 0, AD_PHYS, 5, 0 }, NO_ATTK, A_LAW, 0 },
 #else
-{ DAGGER,	 "Sting",	(SPFX_WARN | SPFX_DCLAS), S_ORC,
-  { 0, AD_PHYS, 5, 0 }, NO_ATTK, A_LAW },
+{ DAGGER,	 "Sting",	(SPFX_WARN | SPFX_DFLAG2), M2_ORC,
+  { 0, AD_PHYS, 5, 0 }, NO_ATTK, A_LAW, 0 },
 #endif
 
 { LONG_SWORD,	 "Frost Brand", (SPFX_RESTR | SPFX_ATTK | SPFX_DEFN), 0,
-  { 0, AD_COLD, 5, 0 }, { 0, AD_COLD, 0, 0 }, A_NEUTRAL },
+  { 0, AD_COLD, 5, 0 }, { 0, AD_COLD, 0, 0 }, A_NEUTRAL, 0 },
 
 { LONG_SWORD,	 "Fire Brand",	(SPFX_RESTR | SPFX_ATTK | SPFX_DEFN), 0,
-  { 0, AD_FIRE, 5, 0 }, { 0, AD_FIRE, 0, 0 }, A_NEUTRAL },
+  { 0, AD_FIRE, 5, 0 }, { 0, AD_FIRE, 0, 0 }, A_NEUTRAL, 0 },
 
 /* Stormbringer only has a 2 because it can drain a level, providing 8 more */
 { BROADSWORD,	 "Stormbringer", (SPFX_RESTR | SPFX_ATTK | SPFX_DEFN |
 								SPFX_DRLI), 0,
-  { 0, AD_DRLI, 5, 2 }, { 0, AD_DRLI, 0, 0 }, A_CHAOS },
+  { 0, AD_DRLI, 5, 2 }, { 0, AD_DRLI, 0, 0 }, A_CHAOS, 0 },
 
-{ LONG_SWORD,	 "Sunsword",	(SPFX_RESTR | SPFX_DCLAS), 0, /* undead */
-  { 0, AD_PHYS, 5, 0 }, NO_ATTK, A_LAW },
+{ LONG_SWORD,	 "Sunsword",	(SPFX_RESTR | SPFX_DFLAG1), M1_UNDEAD,
+  { 0, AD_PHYS, 5, 0 }, NO_ATTK, A_LAW, 0 },
 
 { BROADSWORD,	 "Dragonbane",	(SPFX_RESTR | SPFX_DCLAS), S_DRAGON,
-  { 0, AD_PHYS, 5, 0 }, NO_ATTK, A_NEUTRAL },
+  { 0, AD_PHYS, 5, 0 }, NO_ATTK, A_NEUTRAL, 0 },
 
-{ LONG_SWORD,	 "Demonbane",	(SPFX_RESTR | SPFX_DCLAS), 0, /* demons */
-  { 0, AD_PHYS, 5, 0 }, NO_ATTK, A_LAW },
+{ LONG_SWORD,	 "Demonbane",	(SPFX_RESTR | SPFX_DFLAG2), M2_DEMON,
+  { 0, AD_PHYS, 5, 0 }, NO_ATTK, A_LAW, 0 },
 
 /* A silver weapon would be appropriate, if we had one. */
-{ LONG_SWORD,	 "Werebane",	(SPFX_RESTR | SPFX_DCLAS), 0, /* weres */
-  { 0, AD_PHYS, 5, 0 }, NO_ATTK, A_LAW },
+{ LONG_SWORD,	 "Werebane",	(SPFX_RESTR | SPFX_DFLAG1), M1_WERE,
+  { 0, AD_PHYS, 5, 0 }, NO_ATTK, A_LAW, 0 },
 
-{ LONG_SWORD,	 "Giantslayer", (SPFX_RESTR | SPFX_DCLAS), 0, /* giants */
-  { 0, AD_PHYS, 5, 0 }, NO_ATTK, A_NEUTRAL },
+{ LONG_SWORD,	 "Giantslayer", (SPFX_RESTR | SPFX_DFLAG2), M2_GIANT,
+  { 0, AD_PHYS, 5, 0 }, NO_ATTK, A_NEUTRAL, 0 },
 
 /* Another interesting weapon would be the dwarven hammer or axe with the
  * boomerang-like power of returning to the wielder's hand, if the code
  * were written to add such an ability.
  */
-{ WAR_HAMMER, "Ogresmasher",	(SPFX_RESTR | SPFX_DCLAS),  S_OGRE,
-  { 0, AD_PHYS, 5, 0 }, NO_ATTK, A_LAW },
+{ WAR_HAMMER, "Ogresmasher",	(SPFX_RESTR | SPFX_DCLAS), S_OGRE,
+  { 0, AD_PHYS, 5, 0 }, NO_ATTK, A_LAW, 0 },
 
 { WAR_HAMMER, "Mjollnir",	(SPFX_RESTR | SPFX_ATTK),  0,
-  { 0, AD_ELEC, 5, 24 }, NO_ATTK, A_LAW }, /* Mjo:llnir */
+  { 0, AD_ELEC, 5, 24 }, NO_ATTK, A_LAW, 'V' }, /* Mjo:llnir */
 
 { MORNING_STAR,	 "Trollsbane", (SPFX_RESTR | SPFX_DCLAS), S_TROLL,
-  { 0, AD_PHYS, 5, 0 }, NO_ATTK, A_LAW },
+  { 0, AD_PHYS, 5, 0 }, NO_ATTK, A_LAW, 0 },
 
 /*	ARRAY TERMINATOR	*/
-{ 0,  "", 0, 0, NO_ATTK, NO_ATTK, 0 }
+{ 0,  "", 0, 0, NO_ATTK, NO_ATTK, 0, 0 }
 };
 
 void
@@ -177,7 +177,10 @@ unsigned align;
 	register int n = 0;
 
 	for(artif = artilist; artif->otyp; artif++)
-	    if(align == artif->align && !(artif->spfx & SPFX_NOGEN)) n++;
+	    if(align == artif->align && !(artif->spfx & SPFX_NOGEN))
+		if (pl_character[0] == artif->class) {
+		    n=0; break;
+		} else n++;
 	if (n) {
 		n = rnd(n);
 		for(artif = artilist; artif->otyp && n > 0; ) {
@@ -185,11 +188,11 @@ unsigned align;
 			n--;
 		    if (n > 0) artif++;
 		}
-		if(artif->otyp) {
-			otmp = mksobj((int)artif->otyp, FALSE);
-			otmp = oname(otmp, artif->name, 0);
-			return (otmp);
-		}
+	}
+	if(artif->otyp) {
+		otmp = mksobj((int)artif->otyp, FALSE);
+		otmp = oname(otmp, artif->name, 0);
+		return (otmp);
 	}
 	return ((struct obj *) 0);
 }
@@ -212,28 +215,18 @@ spec_applies(weap, ptr)
 register struct artifact *weap;
 struct permonst *ptr;
 {
-	if(!(weap->spfx & (SPFX_DMONS | SPFX_DCLAS | SPFX_ATTK)))
+	if(!(weap->spfx & (SPFX_DBONUS | SPFX_ATTK)))
 	    return(1);
 
 	if(weap->spfx & SPFX_DMONS)
-	    return((ptr == &mons[weap->mtype]));
-	else if(weap->spfx & SPFX_DCLAS) {
-
-	    if(weap->mtype)
-		return((weap->mtype == ptr->mlet));
-	    else {
-		if(!strcmp(weap->name, "Sunsword"))
-		    return(is_undead(ptr));
-		else if(!strcmp(weap->name, "Demonbane"))
-		    return(is_demon(ptr));
-		else if(!strcmp(weap->name, "Werebane"))
-		    return(is_were(ptr));
-		else if(!strcmp(weap->name, "Giantslayer"))
-		    return(is_giant(ptr));
-		else impossible("Weird class specific weapon '%s'",
-				weap->name);
-	    }
-	} else if(weap->spfx & SPFX_ATTK) {
+	    return((ptr == &mons[(int)weap->mtype]));
+	else if(weap->spfx & SPFX_DCLAS)
+	    return((weap->mtype == ptr->mlet));
+	else if(weap->spfx & SPFX_DFLAG1)
+	    return((ptr->mflags1 & weap->mtype) != 0L);
+	else if(weap->spfx & SPFX_DFLAG2)
+	    return((ptr->mflags2 & weap->mtype) != 0L);
+	else if(weap->spfx & SPFX_ATTK) {
 	    switch(weap->attk.adtyp) {
 		case AD_FIRE:	return(!resists_fire(ptr));
 		case AD_COLD:	return(!resists_cold(ptr));

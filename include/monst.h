@@ -68,7 +68,6 @@ struct monst {
 
 #define newmonst(xl)	(struct monst *) alloc((unsigned)(xl) + sizeof(struct monst))
 
-extern struct monst *fmon;
 extern struct monst *mydogs, *fallen_down;
 
 /* these are in mspeed */

@@ -36,7 +36,7 @@ int *num;
 		    atl(zx,zy,(char)((ttmp->ttyp==WEB) ? WEB_SYM : TRAP_SYM));
 			(*num)++;
 		}
-	} else if(levl[zx][zy].mmask) {
+	} else if(MON_AT(zx, zy)) {
 		mtmp = m_at(zx,zy);
 		if(mtmp->mimic) {
 		        seemimic(mtmp);
@@ -122,7 +122,7 @@ register int aflag;
 			prl(x,y);
 		    } else {
 		/* Be careful not to find anything in an SCORR or SDOOR */
-			if(levl[x][y].mmask) {
+			if(MON_AT(x, y)) {
 			    mtmp = m_at(x,y);
 			    if(!aflag && mtmp->mimic) {
 				seemimic(mtmp);

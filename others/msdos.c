@@ -3,6 +3,7 @@
 /* An assortment of MSDOS functions.
  */
 
+#define NEED_VARARGS
 #include "hack.h"
 #ifdef MSDOS
 # ifdef TOS
@@ -97,7 +98,7 @@ dosh() {
 	char *comspec;
 
 	if (comspec = getcomspec()) {
-#ifdef DGK
+#if defined(DGK) && !defined(TOS)	/* TOS has a variety of shells */
 		settty("To return to NetHack, enter \"exit\" at the DOS prompt.\n");
 #else
 		settty((char *)0);
@@ -131,7 +132,7 @@ dosh() {
  * Shift characters are output when either shift key is pushed.
  */
 #ifdef TOS
-#define KEYPADLO	0x67
+#define KEYPADLO	0x61
 #define KEYPADHI	0x71
 #else
 #define KEYPADLO	0x47
@@ -144,6 +145,14 @@ dosh() {
 static const struct pad {
 	char normal, shift;
 	} keypad[PADKEYS] = {
+#ifdef TOS
+			{C('['), 'Q'},		/* UNDO */
+			{'?', '/'},		/* HELP */
+			{'(', 'a'},		/* ( */
+			{')', 'w'},		/* ) */
+			{'/', '/'},		/* / */
+			{C('p'), '$'},		/* * */
+#endif
 			{'y', 'Y'},		/* 7 */
 			{'k', 'K'},		/* 8 */
 			{'u', 'U'},		/* 9 */
@@ -166,6 +175,14 @@ static const struct pad {
 			{'i', 'I'},		/* Ins */
 			{'.', ':'}		/* Del */
 	}, numpad[PADKEYS] = {
+#ifdef TOS
+			{C('['), 'Q'}	,	/* UNDO */
+			{'?', '/'},		/* HELP */
+			{'(', 'a'},		/* ( */
+			{')', 'w'},		/* ) */
+			{'/', '/'},		/* / */
+			{C('p'), '$'},		/* * */
+#endif
 			{'7', M('7')},		/* 7 */
 			{'8', M('8')},		/* 8 */
 			{'9', M('9')},		/* 9 */
@@ -195,6 +212,14 @@ static const struct pad {
  * Alt-letter to a letter with the meta bit set, we use a scan code
  * table to translate the scan codes into letters, then set the
  * "meta" bit for them.  -3.
+ */
+/*
+ * An addition to the above text: If a DOS or OS/2 keyboard conversion
+ * table is in effect (almost always so outside of US), pressing ALT-letter
+ * may indeed return a character which must be taken into account as a
+ * character command instead of a metacommand. When an ALT-letter is pressed,
+ * it is checked whether the character code is something else than a 0, and
+ * if so, it is interpreted as a valid character command. (TH)
  */
 #ifdef MSDOS
 #define SCANLO		0x10
@@ -273,7 +298,8 @@ BIOSgetch() {
 			ch = (*kpad)[scan - KEYPADLO].normal;
 	}
 	if (shift & ALT) {
-		if (!ch && inmap(scan))
+		if (ch) return ch; 	/* because of multilingual keyboards (TH) */
+		else if (inmap(scan))
 		    ch = scanmap[scan - SCANLO];
 		return (isprint(ch) ? M(ch) : ch);
 	}
@@ -824,7 +850,7 @@ read_config_file() {
 			int lth;
 
 		     if ((lth = sscanf(bufp,
-		 "%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d",
+	 "%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d",
 				&translate[0], &translate[1], &translate[2],
 				&translate[3], &translate[4], &translate[5],
 				&translate[6], &translate[7], &translate[8],
@@ -912,12 +938,12 @@ char *str;
 }
 
 void
-msmsg(fmt, a1, a2, a3)
-char *fmt;
-long a1, a2, a3;
-{
-	Printf(fmt, a1, a2, a3);
+msmsg VA_DECL(char *, fmt)
+	VA_START(fmt);
+	VA_INIT(fmt, char *);
+	Vprintf(fmt, VA_ARGS);
 	flushout();
+	VA_END();
 	return;
 }
 
@@ -1132,6 +1158,8 @@ msexit(code)
 #ifdef TOS
 	if (run_from_desktop)
 	    getreturn("to continue"); /* so the user can read the score list */
+	if (flags.IBMBIOS && flags.use_color)
+		restore_colors();
 #endif
 	exit(code);
 	return;
@@ -1218,5 +1246,24 @@ char *from, *to;
 int kbhit()
 {
 	return Cconis();
+}
+
+static unsigned orig_color[4] = {-1, -1, -1, -1};
+static unsigned new_color[4] = { 0x0, 0x730, 0x047, 0x555 };
+
+void set_colors()
+{
+	int i;
+
+	for (i = 0; i < 4; i++)
+		orig_color[i] = Setcolor(i, new_color[i]);
+}
+
+void restore_colors()
+{
+	int i;
+
+	for (i = 0; i < 4; i++)
+		(void) Setcolor(i, orig_color[i]);
 }
 #endif /* TOS */

@@ -245,43 +245,6 @@ register struct gold *gold;
 #endif
 }
 
-struct monst *
-m_at(x,y)
-register int x, y;
-{
-	register struct monst *mtmp;
-#ifdef WORM
-	register struct wseg *wtmp;
-	m_atseg = 0;
-#endif
-
-	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon){
-		if(mtmp->mx == x && mtmp->my == y)
-			return(mtmp);
-#ifdef WORM
-		if(mtmp->wormno){
-		    for(wtmp = wsegs[mtmp->wormno]; wtmp; wtmp = wtmp->nseg)
-		    if(wtmp->wx == x && wtmp->wy == y){
-			m_atseg = wtmp;
-			return(mtmp);
-		    }
-		}
-#endif
-	}
-	return((struct monst *)0);
-}
-
-struct obj *
-o_at(x,y)
-register int x, y;
-{
-	register struct obj *otmp;
-
-	for(otmp = fobj; otmp; otmp = otmp->nobj)
-		if(otmp->ox == x && otmp->oy == y) return(otmp);
-	return((struct obj *)0);
-}
-
 struct obj *
 sobj_at(n,x,y)
 register int n, x, y;
@@ -289,8 +252,8 @@ register int n, x, y;
 	register struct obj *otmp;
 
 	if(OBJ_AT(x, y))
-	    for(otmp = fobj; otmp; otmp = otmp->nobj)
-		if(otmp->ox == x && otmp->oy == y && otmp->otyp == n)
+	    for(otmp = level.objects[x][y]; otmp; otmp = otmp->nexthere)
+		if(otmp->otyp == n)
 		    return(otmp);
 	return((struct obj *)0);
 }
@@ -385,6 +348,7 @@ register char *let,*word;
 	boolean allownone = FALSE;
 	xchar foox = 0;
 	long cnt;
+	boolean prezero = FALSE;
 
 	if(*let == '0') let++, allowcnt = 1;
 	if(*let == GOLD_SYM) let++,
@@ -475,6 +439,7 @@ register char *let,*word;
 		}
 		cnt = 0;
 		ilet = readchar();
+		if(ilet == '0') prezero = TRUE;
 		while(digit(ilet) && allowcnt) {
 #ifdef REDO
 			if (ilet != '?' && ilet != '*')	savech(ilet);
@@ -503,6 +468,7 @@ register char *let,*word;
 				You("are not carrying any gold.");
 				return(struct obj *)0;
 			}
+			if(cnt == 0 && prezero) return((struct obj *)0);
 			if(!(allowcnt == 2 && cnt < u.ugold))
 				cnt = u.ugold;
 			return(mkgoldobj(cnt));
@@ -512,7 +478,8 @@ register char *let,*word;
 			 * counts for other things since the throw code will
 			 * split off a single item anyway */
 			allowcnt = 1;
-			if(cnt != 1) {
+			if(cnt == 0 && prezero) return((struct obj *)0);
+			if(cnt > 1) {
 			    pline("You can only throw one item at a time.");
 			    continue;
 			}
@@ -973,7 +940,7 @@ dolook() {
 
     	read_engr_at(u.ux, u.uy); /* Eric Backus */
     	if(!u.uswallow) {
-		otmp0 = o_at(u.ux, u.uy);
+		otmp0 = level.objects[u.ux][u.uy];
 		gold = g_at(u.ux, u.uy);
     	}  else  {
 		You("%s no objects here.", verb);
@@ -1064,7 +1031,7 @@ dolook() {
     	}
 
     	cornline(0, "Things that are here:");
-    	for(otmp = otmp0; otmp; otmp = otmp->nobj) {
+    	for(otmp = otmp0; otmp; otmp = otmp->nexthere) {
 		if(otmp->ox == u.ux && otmp->oy == u.uy) {
 	    		ct++;
 	    		cornline(1, doname(otmp));
@@ -1129,11 +1096,15 @@ mergable(otmp, obj)	/* returns TRUE if obj  & otmp can be merged */
 	else if((obj->olet==WEAPON_SYM || obj->olet==ARMOR_SYM) &&
 		obj->rustfree != otmp->rustfree) return FALSE;
 
+	else if(obj->olet == FOOD_SYM && OEATEN(obj) != OEATEN(otmp))
+		return(FALSE);
+
 	else if(obj->otyp == CORPSE || obj->otyp == EGG || obj->otyp == TIN)
 		return( (obj->corpsenm == otmp->corpsenm) &&
 			(!ONAME(obj) || !strcmp(ONAME(obj), ONAME(otmp))) );
 
-	else if(obj->known == otmp->known || !uses_known(otmp)) {
+	else if(obj->known == otmp->known || 
+		!objects[otmp->otyp].oc_uses_known) {
 		return(objects[obj->otyp].oc_merge);
 	} else return(FALSE);
 }

@@ -33,9 +33,11 @@
 #define Srand() srand()
 #endif
 
+/* configurable options */
 #define DGK
 #define RANDOM
 #define SHELL
+#define TEXTCOLOR
 
 #ifndef MSDOS_H
 #include "msdos.h"

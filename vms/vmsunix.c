@@ -1,0 +1,397 @@
+/*	SCCS Id: @(#)vmsunix.c	3.0	88/04/13
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* NetHack may be freely redistributed.  See license for details. */
+
+/* This file collects some Unix dependencies; pager.c contains some more */
+
+/*
+ * The time is used for:
+ *	- seed for rand()
+ *	- year on tombstone and yymmdd in record file
+ *	- phase of the moon (various monsters react to NEW_MOON or FULL_MOON)
+ *	- night and midnight (the undead are dangerous at midnight)
+ *	- determination of what files are "very old"
+ */
+
+#include "hack.h"
+
+#include <rms.h>
+#include <jpidef.h>
+#include <ssdef.h>
+#include <errno.h>
+#include <signal.h>
+#undef off_t
+#include <sys/stat.h>
+
+void
+setrandom()
+{
+	(void) Srand((long) time ((time_t *) 0));
+}
+
+static struct tm *
+getlt()
+{
+	time_t date;
+
+	(void) time(&date);
+	return(localtime(&date));
+}
+
+int
+getyear()
+{
+	return(1900 + getlt()->tm_year);
+}
+
+char *
+getdate()
+{
+	static char datestr[7];
+	register struct tm *lt = getlt();
+
+	Sprintf(datestr, "%2d%2d%2d",
+		lt->tm_year, lt->tm_mon + 1, lt->tm_mday);
+	if(datestr[2] == ' ') datestr[2] = '0';
+	if(datestr[4] == ' ') datestr[4] = '0';
+	return(datestr);
+}
+
+int
+phase_of_the_moon()			/* 0-7, with 0: new, 4: full */
+{					/* moon period: 29.5306 days */
+					/* year: 365.2422 days */
+	register struct tm *lt = getlt();
+	register int epact, diy, goldn;
+
+	diy = lt->tm_yday;
+	goldn = (lt->tm_year % 19) + 1;
+	epact = (11 * goldn + 18) % 30;
+	if ((epact == 25 && goldn > 11) || epact == 24)
+		epact++;
+
+	return( (((((diy + epact) * 6) + 11) % 177) / 22) & 7 );
+}
+
+int
+night()
+{
+	register int hour = getlt()->tm_hour;
+
+	return(hour < 6 || hour > 21);
+}
+
+int
+midnight()
+{
+	return(getlt()->tm_hour == 0);
+}
+
+static struct stat buf, hbuf;
+
+void
+gethdate(name) char *name; {
+	register char *np;
+
+	if(stat(name, &hbuf))
+		error("Cannot get status of %s.",
+			(np = rindex(name, ']')) ? np+1 : name);
+}
+
+int
+uptodate(fd)
+int fd;
+{
+	if(fstat(fd, &buf)) {
+		pline("Cannot get status of saved level? ");
+		return(0);
+	}
+	if(buf.st_mtime < hbuf.st_mtime) {
+		pline("Saved level is out of date. ");
+		return(0);
+	}
+	return(1);
+}
+
+static int
+veryold(fd)
+int fd;
+{
+	register int i;
+	time_t date;
+
+	if(fstat(fd, &buf)) return(0);			/* cannot get status */
+	if(buf.st_size != sizeof(int)) return(0);	/* not an xlock file */
+	(void) time(&date);
+	if(date - buf.st_mtime < 3L*24L*60L*60L) {	/* recent */
+		int lockedpid;	/* should be the same size as hackpid */
+		int status, dummy, code = JPI$_PID;
+
+		if(read(fd, (char *)&lockedpid, sizeof(lockedpid)) !=
+			sizeof(lockedpid))
+			/* strange ... */
+			return(0);
+  		if(!(!((status = LIB$GETJPI(&code, &lockedpid, 0, &dummy)) & 1)
+		     && status == SS$_NONEXPR))
+			return(0);
+	}
+	(void) close(fd);
+	for(i = 1; i <= MAXLEVEL+1; i++) {		/* try to remove all */
+		glo(i);
+		(void) delete(lock);
+	}
+	glo(0);
+	if(delete(lock)) return(0);			/* cannot remove it */
+	return(1);					/* success! */
+}
+
+void
+getlock()
+{
+	register int i = 0, fd;
+
+#ifdef HARD
+	/* idea from rpick%ucqais@uccba.uc.edu
+	 * prevent automated rerolling of characters
+	 * test input (fd0) so that tee'ing output to get a screen dump still
+	 * works
+	 * also incidentally prevents development of any hack-o-matic programs
+	 */
+	if (!isatty(0))
+		error("You must play from a terminal.");
+#endif
+
+	(void) fflush(stdout);
+
+	/* we ignore QUIT and INT at this point */
+	if (link(HLOCK, LLOCK) == -1) {
+		register int errnosv = errno;
+
+		perror(HLOCK);
+		Printf("Cannot link %s to %s\n", LLOCK, HLOCK);
+		switch(errnosv) {
+		case ENOENT:
+		    Printf("Perhaps there is no (empty) file %s ?\n", HLOCK);
+		    break;
+		case EACCES:
+		    Printf("It seems you don't have write permission here.\n");
+		    break;
+		case EEXIST:
+		    Printf("(Try again or rm %s.)\n", LLOCK);
+		    break;
+		default:
+		    Printf("I don't know what is wrong.");
+		}
+		getret();
+		error("");
+		/*NOTREACHED*/
+	}
+
+	regularize(lock);
+	glo(0);
+	if(locknum > 25) locknum = 25;
+
+	do {
+		if(locknum) lock[0] = 'a' + i++;
+
+		if((fd = open(lock, 0)) == -1) {
+			if(errno == ENOENT) goto gotlock;    /* no such file */
+			perror(lock);
+			(void) delete(LLOCK);
+			error("Cannot open %s", lock);
+		}
+
+		if(veryold(fd))	/* if true, this closes fd and unlinks lock */
+			goto gotlock;
+		(void) close(fd);
+	} while(i < locknum);
+
+	(void) delete(LLOCK);
+	error(locknum ? "Too many hacks running now."
+		      : "There is a game in progress under your name.");
+gotlock:
+	fd = creat(lock, FCMASK);
+	if(delete(LLOCK) == -1)
+		error("Cannot delete %s.", LLOCK);
+	if(fd == -1) {
+		error("cannot creat lock file.");
+	} else {
+		if(write(fd, (char *) &hackpid, sizeof(hackpid))
+		    != sizeof(hackpid)){
+			error("cannot write lock");
+		}
+		if(close(fd) == -1) {
+			error("cannot close lock");
+		}
+	}
+}	
+
+void
+regularize(s)	/* normalize file name */
+register char *s;
+{
+	register char *lp;
+
+	for (lp = s; *lp; lp++)
+		if (!((*lp >= 'A' && *lp <= 'Z')
+		      || (*lp >= 'a' && *lp <= 'z')
+		      || (*lp >= '0' && *lp <= '9')
+		      || *lp == '$' || *lp == '_'
+		      || (lp > s && *lp == '-')))
+			*lp = '_';
+}
+
+int link(file, new)
+char *file, *new;
+{
+    int status;
+    struct FAB fab;
+    struct NAM nam;
+    unsigned short fid[3];
+    char esa[NAM$C_MAXRSS];
+
+    fab = cc$rms_fab;
+    fab.fab$l_fop = FAB$M_OFP;
+    fab.fab$l_fna = file;
+    fab.fab$b_fns = strlen(file);
+    fab.fab$l_nam = &nam;
+
+    nam = cc$rms_nam;
+    nam.nam$l_esa = esa;
+    nam.nam$b_ess = NAM$C_MAXRSS;
+
+    if (!((status = SYS$PARSE(&fab)) & 1)
+	|| !((status = SYS$SEARCH(&fab)) & 1))
+    {
+	C$$TRANSLATE(status);
+	return -1;
+    }
+
+    fid[0] = nam.nam$w_fid[0];
+    fid[1] = nam.nam$w_fid[1];
+    fid[2] = nam.nam$w_fid[2];
+
+    fab.fab$l_fna = new;
+    fab.fab$b_fns = strlen(new);
+
+    if (!((status = SYS$PARSE(&fab)) & 1))
+    {
+	C$$TRANSLATE(status);
+	return -1;
+    }
+
+    nam.nam$w_fid[0] = fid[0];
+    nam.nam$w_fid[1] = fid[1];
+    nam.nam$w_fid[2] = fid[2];
+
+    nam.nam$l_esa = nam.nam$l_name;
+    nam.nam$b_esl = nam.nam$b_name + nam.nam$b_type + nam.nam$b_ver;
+
+    if (!((status = SYS$ENTER(&fab)) & 1))
+    {
+	C$$TRANSLATE(status);
+	return -1;
+    }
+
+    return 0;
+}
+
+#undef unlink
+int unlink(file)
+char *file;
+{
+    int status;
+    struct FAB fab = cc$rms_fab;
+    struct NAM nam = cc$rms_nam;
+    char esa[NAM$C_MAXRSS];
+
+    fab.fab$l_fop = FAB$M_DLT;
+    fab.fab$l_fna = file;
+    fab.fab$b_fns = strlen(file);
+    fab.fab$l_nam = &nam;
+    nam.nam$l_esa = esa;
+    nam.nam$b_ess = NAM$C_MAXRSS;
+
+    if (!((status = SYS$PARSE(&fab)) & 1)
+	|| !((status = SYS$REMOVE(&fab)) & 1))
+    {
+	C$$TRANSLATE(status);
+	return -1;
+    }
+
+    return 0;
+}
+
+#undef creat
+int vms_creat(file, mode)
+char *file;
+unsigned int mode;
+{
+    if (index(file, ';'))
+	(void) delete(file);
+    return creat(file, mode);
+}
+
+#undef getuid
+int
+vms_getuid()
+{
+    return (getgid() << 16) | getuid();
+}
+
+#ifdef CHDIR
+unsigned int oprv[2];
+
+void
+privoff()
+{
+    unsigned int prv[2] = { -1, -1 }, code = JPI$_PROCPRIV;
+
+    (void) SYS$SETPRV(0, prv, 0, oprv);
+    (void) LIB$GETJPI(&code, 0, 0, prv);
+    (void) SYS$SETPRV(1, prv, 0, 0);
+}
+
+void
+privon()
+{
+    (void) SYS$SETPRV(1, oprv, 0, 0);
+}
+#endif
+
+#ifdef SHELL
+unsigned int dosh_pid = 0;
+
+int
+dosh()
+{
+	int status;
+
+	settty((char *) NULL);	/* also calls end_screen() */
+	(void) signal(SIGINT,SIG_IGN);
+	(void) signal(SIGQUIT,SIG_IGN);
+	if (!dosh_pid || !((status = LIB$ATTACH(&dosh_pid)) & 1))
+	{
+#ifdef CHDIR
+		(void) chdir(getenv("PATH"));
+		privoff();
+#endif
+		dosh_pid = 0;
+		status = LIB$SPAWN(0, 0, 0, 0, 0, &dosh_pid);
+#ifdef CHDIR
+		privon();
+		chdirx((char *) 0, 0);
+#endif
+	}
+	gettty();
+	setftty();
+	(void) signal(SIGINT, (SIG_RET_TYPE) done1);
+#ifdef WIZARD
+	if(wizard) (void) signal(SIGQUIT,SIG_DFL);
+#endif
+	docrt();
+	if (!(status & 1))
+	    pline("Spawn failed.  Try again.");
+	return 0;
+}
+#endif

@@ -9,7 +9,7 @@
  * Some systems may have getchar() return EOF for various reasons, and
  * we should not quit before seeing at least NR_OF_EOFS consecutive EOFs.
  */
-#ifdef SYSV
+#if defined(SYSV) || defined(DGUX)
 #define	NR_OF_EOFS	20
 #endif
 
@@ -123,7 +123,8 @@ parse()
 #else
 	static char in_line[COLNO];
 #endif
-	register int foo;
+	register int foo, cnt = 0;
+	boolean prezero = FALSE;
 
 	multi = 0;
 	flags.move = 1;
@@ -141,6 +142,14 @@ parse()
 			Printf("Count: %d", multi);
 		}
 		last_multi = multi;
+		if(!cnt && foo == '0') prezero = TRUE;
+		cnt++;
+	    }
+	    if (foo == '\033') {   /* esc cancels count (TH) */
+		remember_topl();
+		home();
+		cl_end();
+		multi = last_multi = 0;
 	    }
 # ifdef REDO
 	if (foo == DOAGAIN || in_doagain)
@@ -171,6 +180,7 @@ parse()
 		in_line[2] = 0;
 	}
 	clrlin();
+	if(prezero) in_line[0] = '\033';
 	return(in_line);
 }
 

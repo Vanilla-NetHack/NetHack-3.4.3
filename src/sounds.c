@@ -381,10 +381,10 @@ register struct monst *mtmp;
 	case MS_HUMANOID:
 	    /* Generic humanoid behaviour. */
 	    if (!mtmp->mpeaceful && !mtmp->mtame) break;
-	    if (mtmp->mhp < 10)
-		kludge("%s moans.", Monnam(mtmp));
-	    else if (mtmp->mflee)
+	    if (mtmp->mflee)
 		kludge("%s wants nothing to do with you.", Monnam(mtmp));
+	    else if (mtmp->mhp < mtmp->mhpmax/4)
+		kludge("%s moans.", Monnam(mtmp));
 	    else if (mtmp->mconf || mtmp->mstun)
 		verbalize(!rn2(3) ? "Huh?" : rn2(2) ? "What?" : "Eh?");
 	    else if (mtmp->mblinded)
@@ -587,7 +587,7 @@ dotalk()
     }
 
     tx = u.ux+u.dx; ty = u.uy+u.dy;
-    if ((Blind && !Telepat) || !levl[tx][ty].mmask ||
+    if ((Blind && !Telepat) || !MON_AT(tx, ty) ||
 	    (mtmp = m_at(tx, ty))->mimic || mtmp->mundetected) {
 	pline("I see nobody there.");
 	return(0);

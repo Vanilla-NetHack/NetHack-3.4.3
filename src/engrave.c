@@ -320,6 +320,15 @@ register struct obj *otmp;
 				type = DUST;
 			}
 		}
+		if (otmp->spe < 0 && type != POLY) {
+dust:
+		    /* If POLY, polymorph the writing and _then_ become dust. */
+		    pline("The %s %sturns to dust.",
+			   xname(otmp), Blind ? "" : "glows violently, then ");
+    You("are not going to get anywhere writing in the dust with your dust...");
+		    useup(otmp);
+		    return(1);
+		}
 		if(type == DUST)
 			You("write in the dust with %s.",
 			   doname(otmp));
@@ -362,7 +371,7 @@ register struct obj *otmp;
 		  del_engr(oep);
 		  oep = 0;
 	}
-	if(type == DUST && oep) {
+	if(oep) {
 	    You("cannot wipe out the message that is %s in the rock.",
 		  (oep->engr_type == BURN) ? "burned" :
 		  (oep->engr_type == ENGRAVE) ? "engraved" : "scribbled");
@@ -518,7 +527,7 @@ register struct obj *otmp;
 	case WAN_STRIKING:
 		pline("The %s unsuccessfully fights your attempt to write!",xname(otmp));
 	}
-
+	if (otmp->otyp == WAN_POLYMORPH && otmp->spe < 0) goto dust;
 	return(1);
 }
 

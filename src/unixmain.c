@@ -1,35 +1,35 @@
 /*	SCCS Id: @(#)unixmain.c	3.0	89/01/13
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
-/* main.c - (Unix) version */
+/* main.c - Unix NetHack */
 
 #include <signal.h>
 #include <pwd.h>
 
 #include "hack.h"
 
+char SAVEF[PL_NSIZ + 11] = "save/";	/* save/99999player */
+
+char *hname = 0;		/* name of the game (argv[0] of call) */
+char obuf[BUFSIZ];	/* BUFSIZ is defined in stdio.h */
 int hackpid = 0;				/* current pid */
 int locknum = 0;				/* max num of players */
 #ifdef DEF_PAGER
 char *catmore = 0;				/* default pager */
 #endif
-char SAVEF[PL_NSIZ + 11] = "save/";	/* save/99999player */
-char *hname = 0;		/* name of the game (argv[0] of call) */
-char obuf[BUFSIZ];	/* BUFSIZ is defined in stdio.h */
 
-int (*occupation)() = DUMMY;
-int (*afternmv)() = DUMMY;
+extern struct passwd *getpwuid();
 #ifdef CHDIR
 static void chdirx();
 #endif /* CHDIR */
-static void whoami(), newgame();
+static void whoami();
 
+int
 main(argc,argv)
 int argc;
 char *argv[];
 {
 	struct passwd *pw;
-	extern struct passwd *getpwuid();
 	extern int x_maze_max, y_maze_max;
 	register int fd;
 #ifdef CHDIR
@@ -38,9 +38,24 @@ char *argv[];
 #ifdef COMPRESS
 	char	cmd[80], old[80];
 #endif
+
 	hname = argv[0];
 	hackpid = getpid();
 	(void) umask(0);
+
+	/*
+	 *  Remember tty modes, to be restored on exit.
+	 *
+	 *  gettty() must be called before startup()
+	 *    due to ordering of LI/CO settings
+	 *  startup() must be called before initoptions()
+	 *    due to ordering of graphics settings
+	 */
+	gettty();
+	setbuf(stdout,obuf);
+	startup();
+	initoptions();
+	whoami();
 
 #ifdef CHDIR			/* otherwise no chdir() */
 	/*
@@ -50,9 +65,11 @@ char *argv[];
 	 * The environment variable HACKDIR is overridden by a
 	 *  -d command line option (must be the first option given)
 	 */
-
 	dir = getenv("HACKDIR");
-	if(argc > 1 && !strncmp(argv[1], "-d", 2)) {
+#endif
+	if(argc > 1) {
+#ifdef CHDIR
+	    if (!strncmp(argv[1], "-d", 2)) {
 		argc--;
 		argv++;
 		dir = argv[0]+2;
@@ -64,38 +81,27 @@ char *argv[];
 		}
 		if(!*dir)
 		    error("Flag -d must be followed by a directory name.");
-	}
+	    } else
 #endif /* CHDIR /**/
 
-	/*
-	 *  Remember tty modes, to be restored on exit.
-	 *
-	 *  Note that getty() must be called before startup() due to ordering
-	 *  of LI/CO settings, and startup() must be called before initoptions()
-	 *  due to ordering of graphics settings.
-	 */
-	gettty();
-	startup();
-	initoptions();
-	whoami();
 	/*
 	 * Now we know the directory containing 'record' and
 	 * may do a prscore().
 	 */
-	if(argc > 1 && !strncmp(argv[1], "-s", 2)) {
+	    if (!strncmp(argv[1], "-s", 2)) {
 #ifdef CHDIR
 		chdirx(dir,0);
 #endif
 		prscore(argc, argv);
-		getret();
+		if(isatty(1)) getret();
 		settty(NULL);
 		exit(0);
+	    }
 	}
 
 	/*
-	 * It seems he really wants to play.
+	 * It seems you really want to play.
 	 */
-	setbuf(stdout,obuf);
 	setrandom();
 	cls();
 	u.uhp = 1;	/* prevent RIP on early quits */
@@ -123,18 +129,21 @@ char *argv[];
 		argc--;
 		switch(argv[0][1]){
 #if defined(WIZARD) || defined(EXPLORE_MODE)
-		case 'D':
+# ifndef EXPLORE_MODE
 		case 'X':
-			pw = getpwuid(getuid());
-# ifdef WIZARD
-			if(!strcmp(pw->pw_name, WIZARD))
-				wizard = TRUE;
 # endif
-# if defined(WIZARD) && defined(EXPLORE_MODE)
-			else
+		case 'D':
+# ifdef WIZARD
+			pw = getpwuid(getuid());
+			if(!strcmp(pw->pw_name, WIZARD)) {
+				wizard = TRUE;
+				break;
+			}
+			/* otherwise fall thru to discover */
 # endif
 # ifdef EXPLORE_MODE
-				discover = TRUE;
+		case 'X':
+			discover = TRUE;
 # endif
 			break;
 #endif
@@ -176,7 +185,9 @@ char *argv[];
 	getmailstatus();
 #endif
 #ifdef WIZARD
-	if(wizard) Strcpy(plname, "wizard"); else
+	if (wizard)
+		Strcpy(plname, "wizard");
+	else
 #endif
 	if(!*plname || !strncmp(plname, "player", 4)
 		    || !strncmp(plname, "games", 4))
@@ -202,16 +213,16 @@ char *argv[];
 #endif /* WIZARD /**/
 	setftty();
 
-	/* 
+	/*
 	 * Initialisation of the boundaries of the mazes
 	 * Both boundaries have to be even.
 	 */
-	 
+
 	x_maze_max = COLNO-1;
-	if (x_maze_max % 2) 
+	if (x_maze_max % 2)
 		x_maze_max--;
 	y_maze_max = ROWNO-1;
-	if (y_maze_max % 2) 
+	if (y_maze_max % 2)
 		y_maze_max--;
 
 	/* initialize static monster strength array */
@@ -237,11 +248,20 @@ char *argv[];
 #endif
 	if((fd = open(SAVEF,0)) >= 0 &&
 	   (uptodate(fd) || unlink(SAVEF) == 666)) {
+#ifdef WIZARD
+		/* Since wizard is actually flags.debug, restoring might
+		 * overwrite it.
+		 */
+		boolean remember_wiz_mode = wizard;
+#endif
 		(void) signal(SIGINT, (SIG_RET_TYPE) done1);
 		pline("Restoring old save file...");
 		(void) fflush(stdout);
 		if(!dorecover(fd))
 			goto not_recovered;
+#ifdef WIZARD
+		if(!wizard && remember_wiz_mode) wizard = TRUE;
+#endif
 		pline("Hello %s, welcome to NetHack!", plname);
 		/* get shopkeeper set properly if restore is in shop */
 		(void) inshop();
@@ -282,162 +302,8 @@ not_recovered:
 
 	initrack();
 
-	for(;;) {
-		if(flags.move) {	/* actual time passed */
-
-#ifdef SOUNDS
-			dosounds();
-#endif
-			settrack();
-
-			if(moves%2 == 0 ||
-			  (!(Fast & ~INTRINSIC) && (!Fast || rn2(3)))) {
-				movemon();
-#ifdef HARD
-				if(!rn2(u.udemigod?25:(dlevel>30)?50:70))
-#else
-				if(!rn2(70))
-#endif
-				    (void) makemon((struct permonst *)0, 0, 0);
-			}
-			if(Glib) glibr();
-			timeout();
-			++moves;
-#ifdef THEOLOGY
-			if (u.ublesscnt)  u.ublesscnt--;
-#endif
-			if(flags.time) flags.botl = 1;
-#ifdef POLYSELF
-			if(u.mtimedone)
-			    if(u.mh < 1) rehumanize();
-			else
-#endif
-			    if(u.uhp < 1) {
-				You("die...");
-				done(DIED);
-			    }
-#ifdef POLYSELF
-			if (u.mtimedone) {
-			    if (u.mh < u.mhmax) {
-				if (Regeneration || !(moves%20)) {
-					flags.botl = 1;
-					u.mh++;
-				}
-			    }
-			}
-#endif
-			if(u.uhp < u.uhpmax) {
-				if(u.ulevel > 9) {
-				    int heal;
-
-				    if(HRegeneration || !(moves%3)) {
-					flags.botl = 1;
-					if (ACURR(A_CON) <= 12) heal = 1;
-					else heal = rnd((int) ACURR(A_CON)-12);
-					if (heal > u.ulevel-9) heal = u.ulevel-9;
-					u.uhp += heal;
-					if(u.uhp > u.uhpmax)
-					    u.uhp = u.uhpmax;
-				    }
-				} else if(HRegeneration ||
-				      (!(moves%((MAXULEV+12)/(u.ulevel+2)+1)))) {
-					flags.botl = 1;
-					u.uhp++;
-				}
-			}
-#ifdef SPELLS
-			if ((u.uen<u.uenmax) && (!(moves%(19-ACURR(A_INT)/2)))) {
-				u.uen += rn2((int)ACURR(A_WIS)/5 + 1) + 1;
-				if (u.uen > u.uenmax)  u.uen = u.uenmax;
-				flags.botl = 1;
-			}
-#endif
-			if(Teleportation && !rn2(85)) tele();
-#ifdef POLYSELF
-			if(Polymorph && !rn2(100)) polyself();
-			if(u.ulycn >= 0 && !rn2(80 - (20 * night())))
-				you_were();
-#endif
-			if(Searching && multi >= 0) (void) dosearch0(1);
-			hatch_eggs();
-			gethungry();
-			invault();
-			amulet();
-#ifdef HARD
-			if (!rn2(40+(int)(ACURR(A_DEX)*3))) u_wipe_engr(rnd(3));
-			if (u.udemigod) {
-
-				if(u.udg_cnt) u.udg_cnt--;
-				if(!u.udg_cnt) {
-
-					intervene();
-					u.udg_cnt = rn1(200, 50);
-				}
-			}
-#endif
-			restore_attrib();
-		}
-		if(multi < 0) {
-			if(!++multi){
-				pline(nomovemsg ? nomovemsg :
-					"You can move again.");
-				nomovemsg = 0;
-				if(afternmv) (*afternmv)();
-				afternmv = 0;
-			}
-		}
-
-		find_ac();
-		if(!flags.mv || Blind)
-		{
-			seeobjs();
-			seemons();
-			seeglds();
-			nscr();
-		}
-		if(flags.botl || flags.botlx) bot();
-
-		flags.move = 1;
-
-		if(multi >= 0 && occupation) {
-
-			if(monster_nearby())
-				stop_occupation();
-			else if ((*occupation)() == 0)
-				occupation = 0;
-			continue;
-		}
-
-		if((u.uhave_amulet || Clairvoyant) && 
-#ifdef ENDGAME
-			dlevel != ENDLEVEL &&
-#endif
-			!(moves%15) && !rn2(2)) do_vicinity_map();
-
-		u.umoved = FALSE;
-		if(multi > 0) {
-			lookaround();
-			if(!multi) {	/* lookaround may clear multi */
-				flags.move = 0;
-				continue;
-			}
-			if(flags.mv) {
-				if(multi < COLNO && !--multi)
-					flags.mv = flags.run = 0;
-				domove();
-			} else {
-				--multi;
-				rhack(save_cm);
-			}
-		} else if(multi == 0) {
-#ifdef MAIL
-			ckmailstatus();
-#endif
-			rhack(NULL);
-		}
-		if(multi && multi%7 == 0)
-			(void) fflush(stdout);
-	}
+	moveloop();
+	return(0);
 }
 
 void
@@ -458,12 +324,13 @@ register int foo;
  * It may still contain a suffix denoting pl_character.
  */
 void
-askname(){
-register int c,ct;
+askname() {
+	register int c, ct;
+
 	Printf("\nWho are you? ");
 	(void) fflush(stdout);
 	ct = 0;
-	while((c = Getchar()) != '\n'){
+	while((c = Getchar()) != '\n') {
 		if(c == EOF) error("End of input\n");
 		/* some people get confused when their erase char is not ^H */
 		if(c == '\010') {
@@ -472,19 +339,11 @@ register int c,ct;
 		}
 		if(c != '-')
 		if(c < 'A' || (c > 'Z' && c < 'a') || c > 'z') c = '_';
-		if(ct < sizeof(plname)-1) plname[ct++] = c;
+		if(ct < sizeof(plname)-1)
+			plname[ct++] = c;
 	}
 	plname[ct] = 0;
 	if(ct == 0) askname();
-}
-
-/*VARARGS1*/
-void
-impossible(s,x1,x2)
-register char *s, *x1, *x2;
-{
-	pline(s,x1,x2);
-	pline("Program in disorder - perhaps you'd better Quit.");
 }
 
 #ifdef CHDIR
@@ -515,7 +374,7 @@ boolean wr;
 		error("Cannot chdir to %s.", dir);
 	}
 
-	/* warn the player if he cannot write the record file */
+	/* warn the player if we can't write the record file */
 	/* perhaps we should also test whether . is writable */
 	/* unfortunately the access systemcall is worthless */
 	if(wr) {
@@ -532,19 +391,6 @@ boolean wr;
 }
 #endif /* CHDIR /**/
 
-void
-stop_occupation()
-{
-	if(occupation) {
-		You("stop %s.", occtxt);
-		occupation = 0;
-#ifdef REDO
-		multi = 0;
-		pushch(0);		
-#endif
-	}
-}
-
 static void
 whoami() {
 	/*
@@ -555,7 +401,7 @@ whoami() {
 	 * If everything fails, or if the resulting name is some generic
 	 * account like "games", "play", "player", "hack" then eventually
 	 * we'll ask him.
-	 * Note that we trust him here; it is possible to play under
+	 * Note that we trust the user here; it is possible to play under
 	 * somebody else's name.
 	 */
 	register char *s;
@@ -566,42 +412,4 @@ whoami() {
 		(void) strncpy(plname, s, sizeof(plname)-1);
 	if(!*plname && (s = getlogin()))
 		(void) strncpy(plname, s, sizeof(plname)-1);
-}
-
-static void
-newgame() {
-	fobj = fcobj = invent = 0;
-	fmon = fallen_down = 0;
-	ftrap = 0;
-	fgold = 0;
-	flags.ident = 1;
-
-	init_objects();
-	u_init();
-
-	(void) signal(SIGINT, (SIG_RET_TYPE) done1);
-
-	mklev();
-	u.ux = xupstair;
-	u.uy = yupstair;
-	(void) inshop();
-
-	setsee();
-	flags.botlx = 1;
-
-	/* Move the monster from under you or else
-	 * makedog() will fail when it calls makemon().
-	 * 			- ucsfcgl!kneller
-	 */
-	if(levl[u.ux][u.uy].mmask) mnexto(m_at(u.ux, u.uy));
-
-	(void) makedog();
-	seemons();
-#ifdef NEWS
-	if(flags.nonews || !readnews())
-		/* after reading news we did docrt() already */
-#endif
-		docrt();
-
-	return;
 }

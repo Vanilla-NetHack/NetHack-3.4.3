@@ -34,10 +34,10 @@ Boolean options if DGK was not set at compile time:
 null		allow nulls to be sent to your terminal  [TRUE]
 standout	use standout mode for --More-- on messages  [FALSE]
 
+Boolean option if TEXTCOLOR was set at compile time:
+color		use different colors for objects on screen  [TRUE]
+
 Any Boolean option can be negated by prefixing it with a '!' or 'no'.
-
-
-
 
 
 

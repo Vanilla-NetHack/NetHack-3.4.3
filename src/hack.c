@@ -63,7 +63,8 @@ seeoff(mode) {	/* 1 to redo @, 0 to leave them */
 		    for(y = u.uy-1; y < u.uy+2; y++) {
 			if(!isok(x, y)) continue;
 			lev = &levl[x][y];
-			if(lev->mmask) unpmon(m_at(x,y));
+			if(MON_AT(x, y))
+			    unpmon(m_at(x,y));
 			if(!lev->lit && lev->scrsym == ROOM_SYM) {
 			    lev->seen = 0;
 			    atl(x, y, (char)STONE_SYM);
@@ -95,7 +96,7 @@ moverock() {
 		if(isok(rx,ry) && !IS_ROCK(levl[rx][ry].typ) &&
 		    (!IS_DOOR(levl[rx][ry].typ) || !(u.dx && u.dy)) &&
 		    !sobj_at(BOULDER, rx, ry)) {
-			if(levl[rx][ry].mmask) {
+			if(MON_AT(rx, ry)) {
 			    mtmp = m_at(rx,ry);
 			    if(canseemon(mtmp))
 				pline("There's %s on the other side.",
@@ -119,6 +120,11 @@ moverock() {
 				    pline("It completely fills the pit!");
 				continue;
 			    case TRAPDOOR:
+				if(is_maze_lev
+#ifdef STRONGHOLD
+					&& (dlevel > stronghold_level)
+#endif
+					) break;
 				pline("The boulder falls into and plugs a hole in the ground!");
 				deltrap(ttmp);
 				delobj(otmp);
@@ -361,7 +367,7 @@ domove() {
 #endif
 			}
 		}
-		if (levl[x][y].mmask) {
+		if (MON_AT(x, y)) {
 			mtmp = m_at(x,y);
 			/* Don't attack if you're running */
 			if (flags.run && !mtmp->mimic &&
@@ -490,7 +496,7 @@ domove() {
 
 		movobj(uball, uchain->ox, uchain->oy);
 		unpobj(uball);		/* BAH %% */
-		place_object(uchain, u.ux, u.uy);
+		move_object(uchain, u.ux, u.uy);
 		nomul(-2);
 		nomovemsg = "";
 	nodrag:	;
@@ -568,7 +574,7 @@ domove() {
 #ifdef POLYSELF
 	if (hides_under(uasmon))
 	    u.uundetected = (OBJ_AT(u.ux, u.uy) || levl[u.ux][u.uy].gmask);
-	else if (u.dx || u.dy) { /* i.e. piercer */
+	else if (u.dx || u.dy) { /* piercer */
 	    if (u.usym == S_MIMIC_DEF)
 		u.usym = S_MIMIC;
 	    u.uundetected = 0;
@@ -691,7 +697,7 @@ lookaround() {
 	if(Blind || flags.run == 0) return;
 	for(x = u.ux-1; x <= u.ux+1; x++) for(y = u.uy-1; y <= u.uy+1; y++) {
 		if(x == u.ux && y == u.uy) continue;
-		if(levl[x][y].mmask && (mtmp = m_at(x,y)) && !mtmp->mimic &&
+		if(MON_AT(x, y) && (mtmp = m_at(x,y)) && !mtmp->mimic &&
 		    (!mtmp->minvis || See_invisible) && !mtmp->mundetected) {
 			if((flags.run != 1 && !mtmp->mtame) || (x == u.ux+u.dx && y == u.uy+u.dy))
 				goto stop;
@@ -792,7 +798,7 @@ monster_nearby() {
 	for(x = u.ux-1; x <= u.ux+1; x++)
 	    for(y = u.uy-1; y <= u.uy+1; y++) {
 		if(x == u.ux && y == u.uy) continue;
-		if(levl[x][y].mmask && (mtmp = m_at(x,y)) && !mtmp->mimic &&
+		if(MON_AT(x, y) && (mtmp = m_at(x,y)) && !mtmp->mimic &&
 		   !mtmp->mtame && !mtmp->mpeaceful &&
 		   !noattacks(mtmp->data) &&
 		   !mtmp->mfroz && !mtmp->msleep &&  /* aplvax!jcn */
@@ -809,7 +815,7 @@ xchar x,y;
 {
 	if(Blind || (u.uswallow && (x != u.ux || y != u.uy))) return(0);
 	if(IS_ROCK(levl[x][y].typ) && levl[u.ux][u.uy].typ == CORR &&
-				!levl[x][y].mmask && !levl[u.ux][u.uy].lit)
+				!MON_AT(x, y) && !levl[u.ux][u.uy].lit)
 		return(0);
 	if(dist(x,y) < 3) return(1);
 	if(levl[x][y].lit &&

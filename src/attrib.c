@@ -88,7 +88,7 @@ const struct clattr {
 	struct	attribs	base, dist;
  	schar	align, aligntyp;
 	schar	shp, hd, xlev, ndx;
-/* According to AD&D, HD for some classes (i.e. Wizard) should be smaller
+/* According to AD&D, HD for some classes (ex. Wizard) should be smaller
  * (4-sided for wizards).  But this is not AD&D, and using the AD&D
  * rule here produces an unplayable character.  This I have used a minimum
  * of an 10-sided hit die for everything.  Another AD&D change: wizards get

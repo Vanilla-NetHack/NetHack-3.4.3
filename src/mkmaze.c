@@ -473,8 +473,8 @@ register int dir;
 }
 
 void
-mazexy(cc)	/* find random point in generated corridors
-		   i.e., don't create items in moats, bunkers, or walls */
+mazexy(cc)	/* find random point in generated corridors,
+		   so we don't create items in moats, bunkers, or walls */
 	coord	*cc;
 {
 	int cpt=0;

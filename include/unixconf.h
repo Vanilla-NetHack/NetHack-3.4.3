@@ -73,17 +73,25 @@
  * A stat system call is done on the mailbox every MAILCKFREQ moves.
  */
 
-#define	MAIL
-#if defined(BSD) || defined(ULTRIX)
+#define	MAIL		/* Deliver mail during the game */
+#ifdef MAIL
+
+# if defined(BSD) || defined(ULTRIX)
 #define	DEF_MAILREADER	"/usr/ucb/Mail"
-#else
-# ifdef SYSV
-#define	DEF_MAILREADER	"/usr/bin/mailx"
 # else
+#  if defined(SYSV) || defined(DGUX)
+#   ifdef M_XENIX
+#define	DEF_MAILREADER	"/usr/bin/mail"
+#   else
+#define	DEF_MAILREADER	"/usr/bin/mailx"
+#   endif
+#  else
 #define	DEF_MAILREADER	"/bin/mail"
+#  endif
 # endif
-#endif
+
 #define	MAILCKFREQ	50
+#endif	/* MAIL */
 
 #ifdef COMPRESS
 /* Some implementations of compress need a 'quiet' option.
@@ -146,15 +154,5 @@
 # undef hc
 #endif
 
-#ifdef TEXTCOLOR
-/* configurable colors */
-#  define HI_MON	RED	/* red slaps! */
-#  define HI_OBJ	MAGENTA
-#  define HI_METAL	CYAN
-#  define HI_ORGANIC	GREEN
-#  define HI_GOLD	YELLOW
-#  define HI_ZAP	BLUE	/* blue zaps! */
-#endif
-
-#endif
+#endif /* UNIXCONF_H /* */
 #endif /* UNIX /* */

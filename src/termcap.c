@@ -32,19 +32,19 @@ static void nocmov();
 # ifdef TERMLIB
 static void init_hilite();
 # endif
-#define NONE		0
-#define HIGH_INTENSITY	1
-#define BLACK		0
-#define HILITE_ATTRIB	HIGH_INTENSITY
-#endif /* TEXTCOLOR */
+#endif
 
 static char *HO, *CL, *CE, *UP, *CM, *ND, *XD, *BC, *SO, *SE, *TI, *TE;
 static char *VS, *VE, *US, *UE;
 static char *MR, *ME;
 #if 0
-static char *MB, *MD, *MH;
+static char *MB, *MH;
+static char *MD;	/* may already be in use below */
 #endif
 #ifdef TERMLIB
+# ifdef TEXTCOLOR
+static char *MD;
+# endif
 static int SG;
 static char PC = '\0';
 static char tbuf[512];
@@ -134,7 +134,11 @@ startup()
 		SO = "\033p";
 		SE = "\033q";
 		HI = "\033p";
-		HE = "\033q";
+		HE = "\033q\033b\020";
+		for (i = 0; i < SIZE(hilites); i++) {
+			hilites[i] = (char *) alloc(sizeof("Eb1"));
+			Sprintf(hilites[i], (i%4)?"\033b%c","\033p", i);
+		}
 	}
 #  else /* TOS */
 	{
@@ -173,10 +177,11 @@ startup()
 #   endif
 		TE = VS = VE = "";
 #   ifdef TEXTCOLOR
-		for (i = 0; i < SIZE(HI_COLOR); i++) {
-			HI_COLOR[i] = (char *) alloc(sizeof("E[0;33;44m"));
-			Sprintf(HI_COLOR[i], "\033[%d;3%dm",
-				i == BLACK ? NONE : HILITE_ATTRIB, i);
+		for (i = 0; i < MAXCOLORS / 2; i++) {
+			hilites[i] = (char *) alloc(sizeof("\033[0;3%dm"));
+			hilites[i+BRIGHT] = (char *) alloc(sizeof("\033[1;3%dm"));
+			Sprintf(hilites[i], "\033[0;3%dm", i);
+			Sprintf(hilites[i+BRIGHT], "\033[1;3%dm", i);
 		}
 #   endif
 		return;
@@ -282,6 +287,9 @@ startup()
 	AS = Tgetstr("as");
 	AE = Tgetstr("ae");
 	CD = Tgetstr("cd");
+# ifdef TEXTCOLOR
+	MD = Tgetstr("md");
+# endif
 	set_whole_screen();		/* uses LI and CD */
 	if(tbufptr-tbuf > sizeof(tbuf)) error("TERMCAP entry too big...\n");
 	free((genericptr_t)tptr);
@@ -514,6 +522,7 @@ bell()
 	(void) fflush(stdout);
 }
 
+#if defined(TERMLIB) || defined(DECRAINBOW)
 void
 graph_on() {
 	if (AS) xputs(AS);
@@ -523,11 +532,19 @@ void
 graph_off() {
 	if (AE) xputs(AE);
 }
+#endif
 
 #ifndef MSDOS
+# ifdef VMS
+static const short tmspc10[] = {		/* from termcap */
+	0, 2000, 1333, 909, 743, 666, 333, 166, 83, 55, 50, 41, 27, 20, 13, 10,
+	5
+};
+# else
 static const short tmspc10[] = {		/* from termcap */
 	0, 2000, 1333, 909, 743, 666, 500, 333, 166, 83, 55, 41, 20, 10, 5
 };
+# endif
 #endif
 
 void
@@ -594,7 +611,7 @@ cl_eos()			/* free after Robert Viduya */
  * code found in pri.c).  It is assumed that the background color is black.
  */
 /* terminfo indexes for the basic colors it guarantees */
-#define COLOR_BLACK   0
+#define COLOR_BLACK   1		/* fake out to avoid black on black */
 #define COLOR_BLUE    1
 #define COLOR_GREEN   2
 #define COLOR_CYAN    3
@@ -611,23 +628,28 @@ const int ti_map[8] = {
 static void
 init_hilite()
 {
-	int erret;
-	char *setf, *scratch;
 	register int c;
-	extern int setupterm();
-	extern char *tparm(), *tigetstr();
+#  ifdef TERMINFO
+	char *setf, *scratch;
+	extern char *tparm();
+#  endif
 
-	for (c = 0; c < SIZE(HI_COLOR); c++)
-		HI_COLOR[c] = HI;
+	for (c = 0; c < MAXCOLORS; c++)
+		hilites[c] = HI;
 
-	if (tgetnum("Co") < 8 || (setf = tgetstr("Sf", 0)) == (char *)NULL)
+#  ifdef TERMINFO
+	if (tgetnum("Co") < 8 || (setf = tgetstr("Sf", 0)) == NULL)
 		return;
 
-	for (c = 0; c < SIZE(HI_COLOR); c++) {
-		scratch = tparm(setf, ti_map[c]);
-		HI_COLOR[c] = (char *)alloc(strlen(scratch) + 1);
-		Strcpy(HI_COLOR[c], scratch);
+	for (c = 0; c < MAXCOLORS / 2; c++) {
+  		scratch = tparm(setf, ti_map[c]);
+		hilites[c] = (char *) alloc(strlen(scratch) + 1);
+		hilites[c+BRIGHT] = (char*) alloc(strlen(scratch)+strlen(MD)+1);
+		Strcpy(hilites[c], scratch);
+		Strcpy(hilites[c+BRIGHT], MD);
+		Strcat(hilites[c+BRIGHT], scratch);
 	}
+#  endif
 }
 
 # else /* UNIX */
@@ -644,9 +666,18 @@ init_hilite()
 	int backg = BLACK, foreg = WHITE, len;
 	register int c, color;
 
-	for (c = 0; c < SIZE(HI_COLOR); c++)
-		HI_COLOR[c] = HI;
+	for (c = 0; c < SIZE(hilites); c++)
+		hilites[c] = HI;
 
+#  ifdef TOS
+	hilites[RED] = hilites[BRIGHT+RED] = "\033b1";
+	hilites[BLUE] = hilites[BRIGHT+BLUE] = "\033b2";
+	hilites[CYAN] = hilites[BRIGHT+CYAN] = "\033b3\033c2";
+	hilites[ORANGE_COLORED] = hilites[RED];
+	hilites[WHITE] = hilites[GRAY] = "\033b3";
+	hilites[MAGENTA] = hilites[BRIGHT+MAGENTA] = "\033b1\033c2";
+	HE = "\033q\033b3\033c0";	/* to turn off the color stuff too */
+#  else /* TOS */
 	/* find the background color, HI[len] == 'm' */
 	len = strlen(HI) - 1;
 
@@ -657,6 +688,10 @@ init_hilite()
 	    if ((color = atoi(&HI[c])) == 0) {
 		/* this also catches errors */
 		foreg = WHITE; backg = BLACK;
+	    /*
+	    } else if (color == 1) {
+		foreg |= BRIGHT;
+	    */
 	    } else if (color >= 30 && color <= 37) {
 		foreg = color - 30;
 	    } else if (color >= 40 && color <= 47) {
@@ -666,14 +701,15 @@ init_hilite()
 	    c++;
 	}
 
-	for (c = 0; c < SIZE(HI_COLOR); c++)
+	for (c = 0; c < MAXCOLORS / 2; c++)
 	    /* avoid invisibility */
 	    if (foreg != c && backg != c) {
-		HI_COLOR[c] = (char *) alloc(sizeof("E[0;33;44;54m"));
-		Sprintf(HI_COLOR[c], "\033[%d;3%d;4%dm",
-			c == BLACK ? NONE : HILITE_ATTRIB,
-			c, backg);
+		hilites[c] = (char *) alloc(sizeof("\033[0;3%d;4%dm"));
+		hilites[c+BRIGHT] = (char *) alloc(sizeof("\033[1;3%d;4%dm"));
+		Sprintf(hilites[c], "\033[0;3%d;4%dm", c, backg);
+		Sprintf(hilites[c+BRIGHT], "\033[1;3%d;4%dm", c, backg);
 	    }
+#  endif /* TOS */
 }
 # endif /* UNIX */
 #endif /* TEXTCOLOR */

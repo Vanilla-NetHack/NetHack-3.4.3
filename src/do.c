@@ -30,18 +30,46 @@ flooreffects(obj,x,y)
 struct obj *obj;
 int x,y;
 {
-	if(obj->otyp == BOULDER && IS_POOL(levl[x][y].typ)) {
+	struct trap *t = t_at(x,y);
+	boolean pool = IS_POOL(levl[x][y].typ);
+
+	if(obj->otyp == BOULDER && (pool ||
+	  (t && (t->ttyp==PIT || t->ttyp==SPIKED_PIT || t->ttyp==TRAPDOOR)))) {
+	    if (pool) {
 #ifdef STRONGHOLD
-	    if(levl[x][y].typ == DRAWBRIDGE_UP)
-		levl[x][y].drawbridgemask |= DB_FLOOR;
-	    else
+		if(levl[x][y].typ == DRAWBRIDGE_UP)
+		    levl[x][y].drawbridgemask |= DB_FLOOR;
+		else
 #endif
-		levl[x][y].typ = ROOM;
-	    if (cansee(x,y))
-		pline("There is a large splash as the boulder fills the %s.",
+		    levl[x][y].typ = ROOM;
+		if (cansee(x,y))
+		  pline("There is a large splash as the boulder fills the %s.",
 			(levl[x][y].typ==POOL) ? "pool" : "moat");
-	    else if (flags.soundok)
-		You("hear a splash.");
+		else if (flags.soundok)
+		    You("hear a splash.");
+	    } else if (t) {
+		if(is_maze_lev
+#ifdef STRONGHOLD
+		 	&& (dlevel > stronghold_level)
+#endif
+			&& t->ttyp == TRAPDOOR) return FALSE;
+		if (Blind) You("hear the boulder roll.");
+		else pline("The boulder %sfills a %s.",
+			t->tseen ? "" : "triggers and ",
+			t->ttyp == TRAPDOOR ? "trapdoor" : "pit");
+		deltrap(t);
+		if (u.utrap && x==u.ux && y==u.uy) {
+		    u.utrap = 0;
+#ifdef POLYSELF
+		    if (!passes_walls(uasmon)) {
+#endif
+			pline("Unfortunately, you were still in it.");
+			losehp(rnd(15), "burial beneath a boulder");
+#ifdef POLYSELF
+		    }
+#endif
+		}
+	    }
 	    obfree(obj, (struct obj *)0);
 	    mnewsym(x,y);
 	    if ((x != u.ux || y != u.uy || Invisible) && !Blind)
@@ -225,7 +253,7 @@ register char *word;
 		obj->bknown = 1;
 		pline("For some reason, you cannot %s the stone%s!",
 			word,
-			obj->quan==1 ? "" : "s");
+			plur((long)obj->quan));
 		return(FALSE);
 	}
 #ifdef WALKIES
@@ -322,7 +350,7 @@ register struct obj *obj;
 		fobj = obj;
 		place_object(obj, u.ux, u.uy);
 		if(Invisible) newsym(u.ux,u.uy);
-		if(obj != uball) subfrombill(obj);
+		if(obj != uball) sellobj(obj);
 		stackobj(obj);
 	}
 }
@@ -348,6 +376,11 @@ dodown()
 #endif
 	  ) {
 		if (!(trap = t_at(u.ux,u.uy)) || trap->ttyp != TRAPDOOR
+			|| (is_maze_lev
+#ifdef STRONGHOLD
+				&& (dlevel > stronghold_level)
+#endif
+								)
 							|| !trap->tseen) {
 			You("can't go down here.");
 			return(0);
@@ -404,7 +437,14 @@ doup()
 		You("are being held, and cannot go up.");
 		return(1);
 	}
+#ifdef POLYSELF
+	/* Some monsters have carrying capacities less than 5, and we don't
+	 * want to totally keep them from going upstairs.
+	 */
+	if((invent || u.ugold) && inv_weight() + 5 > 0) {
+#else
 	if(inv_weight() + 5 > 0) {
+#endif
 		/* No levitation check; inv_weight() already allows for it */
 #ifdef STRONGHOLD
 		Your("load is too heavy to climb the %s.",
@@ -700,7 +740,7 @@ register boolean at_stairs;
 		u.ux = rnd(COLNO-1);
 		u.uy = rn2(ROWNO);
 	    } while(tryct++ < 100 && (levl[u.ux][u.uy].typ != ROOM &&
-		     levl[u.ux][u.uy].typ != CORR) || levl[u.ux][u.uy].mmask);
+		     levl[u.ux][u.uy].typ != CORR) || MON_AT(u.ux, u.uy));
 	    if(tryct >= 100)
 		panic("goto_level: could not relocate player!");
 	    if(Punished){
@@ -719,7 +759,7 @@ register boolean at_stairs;
 	initrack();
 
 	losedogs();
-	if(levl[u.ux][u.uy].mmask) mnexto(m_at(u.ux, u.uy));
+	if(MON_AT(u.ux, u.uy)) mnexto(m_at(u.ux, u.uy));
 	flags.nscrinh = 0;
 	setsee();
 	seeobjs();	/* make old cadavers disappear - riv05!a3 */
@@ -732,7 +772,15 @@ register boolean at_stairs;
 	if (dlevel == 1 && u.uhave_amulet && flags.no_of_wizards == 0)
 	    resurrect();
 #endif
-	is_maze_lev = !xdnstair;
+	is_maze_lev = (rooms[0].hx < 0
+#ifdef STRONGHOLD
+		|| dlevel == stronghold_level
+		|| (dlevel >= tower_level && dlevel <= tower_level + 2)
+#endif
+#ifdef ENDGAME
+		|| dlevel == ENDLEVEL
+#endif
+		);
 }
 
 int
@@ -789,7 +837,7 @@ register struct obj *otmp;
 	obj->owt = weight(obj);
 	otmp->quan -= num;
 	otmp->owt = weight(otmp);	/* -= obj->owt ? */
-	obj->nobj = otmp;
+	obj->nobj = obj->nexthere = otmp;
 	if(obj->unpaid) splitbill(obj,otmp);
 	return(otmp);
 }
@@ -799,7 +847,10 @@ set_wounded_legs(side, timex)
 register long side;
 register int timex;
 {
-	if(!Wounded_legs) ATEMP(A_DEX)--;
+	if(!Wounded_legs) {
+		ATEMP(A_DEX)--;
+		flags.botl = 1;
+	}
 
 	if(!Wounded_legs || (Wounded_legs & TIMEOUT))
 		Wounded_legs |= side + timex;

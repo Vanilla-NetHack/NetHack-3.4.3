@@ -38,25 +38,25 @@ struct ghods {
 0,0,0,0
 };
 
-#define TROUBLE_STONED 8
-#define TROUBLE_STRANGLED 7
-#define TROUBLE_SICK 6
-#define TROUBLE_STARVING 5
-#define TROUBLE_HIT 4
+#define TROUBLE_STONED 9
+#define TROUBLE_STRANGLED 8
+#define TROUBLE_SICK 7
+#define TROUBLE_STARVING 6
+#define TROUBLE_HIT 5
+#define TROUBLE_LYCANTHROPE 4
 #define TROUBLE_STUCK_IN_WALL 3
 #define TROUBLE_CURSED_BLINDFOLD 2
 #define TROUBLE_CURSED_LEVITATION 1
 
-#define TROUBLE_LYCANTHROPE (-1)
-#define TROUBLE_PUNISHED (-2)
-#define TROUBLE_CURSED_ITEMS (-3)
-#define TROUBLE_BLIND (-4)
-#define TROUBLE_HUNGRY (-5)
-#define TROUBLE_POISONED (-6)
-#define TROUBLE_WOUNDED_LEGS (-7)
-#define TROUBLE_STUNNED (-8)
-#define TROUBLE_CONFUSED (-9)
-#define TROUBLE_HALLUCINATION (-10)
+#define TROUBLE_PUNISHED (-1)
+#define TROUBLE_CURSED_ITEMS (-2)
+#define TROUBLE_BLIND (-3)
+#define TROUBLE_HUNGRY (-4)
+#define TROUBLE_POISONED (-5)
+#define TROUBLE_WOUNDED_LEGS (-6)
+#define TROUBLE_STUNNED (-7)
+#define TROUBLE_CONFUSED (-8)
+#define TROUBLE_HALLUCINATION (-9)
 
 /* We could force rehumanize of polyselfed people, but we can't tell
    unintentional shape changes from the other kind. Oh well. */
@@ -102,6 +102,9 @@ in_trouble()
 		if (!isok(u.ux+i, u.uy+j) || IS_ROCK(levl[u.ux+i][u.uy+j].typ))
 			count++;
 	}
+#ifdef POLYSELF
+	if(u.ulycn >= 0) return(TROUBLE_LYCANTHROPE);
+#endif
 	if(count==8
 #ifdef POLYSELF
 	    && !passes_walls(uasmon)
@@ -113,9 +116,6 @@ in_trouble()
 		return(TROUBLE_CURSED_LEVITATION);
 	if(ublindf && ublindf->cursed) return(TROUBLE_CURSED_BLINDFOLD);
 
-#ifdef POLYSELF
-	if(u.ulycn >= 0) return(TROUBLE_LYCANTHROPE);
-#endif
 	if(Punished) return(TROUBLE_PUNISHED);
 	for(otmp=invent; otmp; otmp=otmp->nobj)
 		if((otmp->otyp==LOADSTONE || otmp->otyp==LUCKSTONE) &&
@@ -411,7 +411,6 @@ pleased() {
 	int trouble = in_trouble ();	/* what's your worst difficulty? */
 	int pat_on_head = 0;
 
-	if (u.ugangr > 0) u.ugangr--;
 	You("feel that %s is pleased.",
 #ifndef ALTARS
 		   u_gname());
@@ -675,6 +674,8 @@ register struct obj *otmp;
 {
 	if (Hallucination)
     pline ("Your sacrifice sprouts wings and a propeller and roars away!");
+	else if (Blind && u.ualigntyp == U_LAWFUL)
+		pline("Your sacrifice disappears!");
 	else pline ("Your sacrifice is consumed in a %s!",
 		    u.ualigntyp == U_LAWFUL ? "flash of light" : "burst of flame");
 	useup(otmp);
@@ -718,7 +719,7 @@ dosacrifice()
 	    register struct permonst *mtmp = &mons[otmp->corpsenm];
 	    extern int monstr[];
 
-	    if (otmp->corpsenm == PM_ACID_BLOB || (moves <= otmp->age + 50))
+	    if (otmp->corpsenm == PM_ACID_BLOB || (monstermoves <= otmp->age + 50))
 		value = monstr[otmp->corpsenm] + 1;
 
 	    if (is_human(mtmp)) { /* Human sacrifice! */
@@ -777,7 +778,7 @@ dosacrifice()
 		int unicalign;
 
 		if (mtmp == &mons[PM_BLACK_UNICORN]) unicalign = -1;
-		else if (mtmp == &mons[PM_GREY_UNICORN]) unicalign = 0;
+		else if (mtmp == &mons[PM_GRAY_UNICORN]) unicalign = 0;
 		else if (mtmp == &mons[PM_WHITE_UNICORN]) unicalign = 1;
 		if (unicalign == u.ualigntyp) {
 		    pline("Such an action is an insult to %s!", (unicalign== -1)

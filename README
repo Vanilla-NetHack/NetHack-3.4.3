@@ -37,7 +37,7 @@ Please read items (1), (2) and (3) BEFORE doing anything with your new code.
     directory as the 'Top' directory.  It makes no difference what you
     call it.
 
-2.  If there is no flaw in the packaging, FIVE sub-directories will be
+2.  If there is no flaw in the packaging, SIX sub-directories will be
     automatically created, and files will be deposited in them: 
 
     a.  A 'src' directory, which will contain general *.c files.
@@ -45,6 +45,7 @@ Please read items (1), (2) and (3) BEFORE doing anything with your new code.
     c.  An 'auxil' directory, which will contain a variety of data files.
     d.  An 'amiga' directory, which will contain the Amiga-specific files.
     e.  An 'others' directory, which will contain MSDOS and TOS files.
+    f.  A 'vms' directory, which will contain VMS files.
 
     The names of these directories should not be changed, unless you are
     ready to go through the makefiles and the makedefs program and change
@@ -86,6 +87,8 @@ Please read items (1), (2) and (3) BEFORE doing anything with your new code.
 	Commodore Amiga (probably -- there have been some changes since
 		the Amiga port was done, but we believe it should still work)
 	Atari 1040ST under TOS
+	DEC vaxen running VMS (probably still requires tweaking) 
+	Data General AViiON systems under DG/UX
 
 			- - - - - - - - - - -
 

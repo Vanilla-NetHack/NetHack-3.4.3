@@ -43,9 +43,11 @@ Amiga is similar, with the differences stated below:
 For floppy users (as I am), source is split over two diskettes, SRC1 and
 SRC2. The first contains roughly [a-l]*.c, the second [m-z]*.c. Include
 files are in the Assigned directory INCLUDE:, on SRC1:include. You may want
-to rename hack.h to _hack.h, see below. Amiga specific files are in AMIGA:,
-in SRC1:amiga. The modified stdio.h and friends also go there. There must
-also be an AUXIL: somewhere.
+to (initially) copy hack.h to _hack.h, see below. Amiga specific files are
+in AMIGA:, in SRC1:amiga. The modified stdio.h and friends also go there.
+There must also be an AUXIL: somewhere. I put all files that are not
+necessary for the Amiga version on the same disk as AUXIL:, otherwise it
+will not fit.
 
 On a harddisk, you can either Assign SRC1: and SRC2: to the same directory,
 or change the makefile slightly.
@@ -114,18 +116,18 @@ and the directory listing below for that.
   hh				      2606
   history			      1503
   license			      4417
-  NetHack			    654324  #
-  NetHack.cnf			      1990  #
+  NetHack			    654324
+  NetHack.cnf			      1990
   opthelp			      3549
   oracles			      3370
   perm					 0
-  record			       197  #
+  record			       197
   rumors			     16899
   tower1			       369
   tower2			       337
   tower3			       371
 
-# These sizes may vary
+These sizes may vary from version to version
 
 Happy NetHacking!
 

@@ -186,7 +186,7 @@ int sx, sy;
 	register struct monst *mtmp;
 	int atype;
 
-	if (rn2(100) < dlevel && levl[sx][sy].mmask == 0 &&
+	if (rn2(100) < dlevel && !MON_AT(sx, sy) &&
 				(mtmp=makemon(mkclass(S_MIMIC),sx,sy))) {
 		mtmp->mimic = 1;
 		/* note: makemon will set the mimic symbol to a shop item */
@@ -258,7 +258,7 @@ struct mkroom	*sroom;
 			return(-1);
 		    }
 
-	if(levl[sx][sy].mmask) rloc(m_at(sx, sy)); /* insurance */
+	if(MON_AT(sx, sy)) rloc(m_at(sx, sy)); /* insurance */
 
 	/* now initialize the shopkeeper monster structure */
 	if(!(shk = makemon(&mons[PM_SHOPKEEPER], sx, sy))) return(-1);

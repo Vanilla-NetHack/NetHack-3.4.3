@@ -38,6 +38,9 @@ doversion(){
 #ifdef UNIX
 		"Unix",
 #endif
+#ifdef VMS
+		"VMS",
+#endif
 		VERSION,
 #ifndef BETA
 		PATCHLEVEL,

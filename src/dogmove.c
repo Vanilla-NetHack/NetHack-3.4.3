@@ -81,7 +81,7 @@ long allowflags;
 			edog->droptime = moves;
 		}
 	} else {
-		if(obj = o_at(omx,omy)) if(!index(nofetch, obj->olet)){
+		if((obj=level.objects[omx][omy]) && !index(nofetch,obj->olet)){
 		    if((otyp = dogfood(mtmp, obj)) <= CADAVER){
 			nix = omx;
 			niy = omy;
@@ -211,7 +211,7 @@ long allowflags;
 		if(dist(nx, ny) > 4 && mtmp->mleashed) continue;
 #endif
 		if(info[i] & ALLOW_M) {
-			if(levl[nx][ny].mmask) {
+			if(MON_AT(nx, ny)) {
 			    register struct monst *mtmp2 = m_at(nx,ny);
 
 			    if(mtmp2->m_lev >= mtmp->m_lev+2 ||
@@ -318,10 +318,8 @@ newdogpos:
 			(void) mattacku(mtmp);
 			return(0);
 		}
-		levl[omx][omy].mmask = 0;
-		levl[nix][niy].mmask = 1;
-		mtmp->mx = nix;
-		mtmp->my = niy;
+		remove_monster(omx, omy);
+		place_monster(mtmp, nix, niy);
 		for(j=MTSZ-1; j>0; j--) mtmp->mtrack[j] = mtmp->mtrack[j-1];
 		mtmp->mtrack[0].x = omx;
 		mtmp->mtrack[0].y = omy;
@@ -350,17 +348,11 @@ newdogpos:
 		cc.x = mtmp->mx;
 		cc.y = mtmp->my;
 dognext:
-		levl[mtmp->mx][mtmp->my].mmask = 0;
-		levl[cc.x][cc.y].mmask = 1;
-		mtmp->mx = cc.x;
-		mtmp->my = cc.y;
+		remove_monster(mtmp->mx, mtmp->my);
+		place_monster(mtmp, cc.x, cc.y);
 		pmon(mtmp);
 		set_apparxy(mtmp);
 	}
 #endif
-
-	if(mintrap(mtmp) == 2)		/* he died */
-		return(2);
-	pmon(mtmp);
 	return(1);
 }

@@ -29,9 +29,13 @@ int all;
 	dummygold.oy = u.uy;
 	dummygold.olet = GOLD_SYM;
 	dummygold.nobj = fobj;
+	dummygold.nexthere = level.objects[u.ux][u.uy];
 	dummygold.cobj = 0;
 
-	if(Levitation) return;
+	if(Levitation) {
+		if (all && !flags.pickup) read_engr_at(u.ux,u.uy);
+		return;
+	}
 	if (all && !flags.pickup) {
 		int ct = 0;
 
@@ -65,8 +69,7 @@ int all;
 		register int ct = 0;
 
 		if (gold) ct++;
-		for(obj = fobj; obj; obj = obj->nobj)
-		    if(obj->ox == u.ux && obj->oy == u.uy)
+		for(obj = level.objects[u.ux][u.uy]; obj; obj = obj->nexthere)
 			if(!obj->cobj) ct++;
 		if(ct < 2)
 			all++;
@@ -76,7 +79,7 @@ int all;
 
 	/* added by GAN 10/24/86 to allow selective picking up */
 	if(!all)  {
-		register struct obj *otmp = fobj;
+		register struct obj *otmp = level.objects[u.ux][u.uy];
 
 		ilets[iletct] = 0;
 		if(gold) {
@@ -84,12 +87,11 @@ int all;
 			ilets[iletct] = 0;
 		}
 		while(otmp) {
-			if(!index(ilets, otmp->olet) && !otmp->cobj &&
-			   otmp->ox == u.ux && otmp->oy == u.uy)  {
+			if(!index(ilets, otmp->olet) && !otmp->cobj) {
 				ilets[iletct++] = otmp->olet;
 				ilets[iletct] = 0;
 			}
-			otmp = otmp->nobj;
+			otmp = otmp->nexthere;
 		}
 		if(iletct == 1)
 			Strcpy(buf,ilets);
@@ -127,9 +129,10 @@ int all;
 	}
 	if(all_of_a_type && !olets[0]) all = TRUE;
 
-	for(obj = (gold ? &dummygold : fobj); obj; obj = obj2) {
-	    obj2 = obj->nobj;   /* perhaps obj will be picked up */
-	    if(!obj->cobj && obj->ox == u.ux && obj->oy == u.uy) {
+	for(obj = (gold ? &dummygold : level.objects[u.ux][u.uy]); obj;
+			obj = obj2) {
+	    obj2 = obj->nexthere;   /* perhaps obj will be picked up */
+	    if(!obj->cobj) {
 		if(flags.run) nomul(0);
 
 		if(!all)  {
@@ -282,7 +285,7 @@ int all;
 		  obj->quan = pickquan; /* to fool prinv() */
 		  if(uwep && uwep == obj) mrg_to_wielded = TRUE;
 		  prinv(obj);
-		  if(mrg_to_wielded) mrg_to_wielded = FALSE;
+		  mrg_to_wielded = FALSE;
 		  obj->quan = mergquan;
 		}
 	    }
@@ -368,7 +371,7 @@ register struct obj *obj;
 	if((obj->otyp == LOADSTONE) && obj->cursed) {
 		obj->bknown = 1;
 		pline("The stone%s won't leave your person.",
-			obj->quan==1 ? "" : "s");
+			plur((long)obj->quan));
 		return(0);
 	}
 	/* Prohibit Amulets in containers; if you allow it, monsters can't
@@ -407,7 +410,7 @@ register struct obj *obj;
 	obj->nobj = fcobj;
 	fcobj = obj;
 
-	if(Icebox)	obj->age = moves - obj->age;	/* actual age */
+	if(Icebox) obj->age = monstermoves - obj->age; /* actual age */
 
 	else if(Is_mbag(obj->cobj) &&
 		(Is_mbag(obj) ||
@@ -452,8 +455,8 @@ register struct obj *obj;
 	dec_cwt(current_container, obj);
 	obj->cobj = (struct obj *) 0;
 
-	if (Icebox)
-		obj->age = moves - obj->age;	/* simulated point of time */
+	if (Icebox) obj->age = monstermoves - obj->age;
+	/* simulated point of time */
 
 	(void) addinv(obj);
 	return 0;

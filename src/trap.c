@@ -101,9 +101,9 @@ register int x, y;
 	boolean	tmp1, tmp2, tmp3;
 #  ifdef POLYSELF
 	tmp1 = isok(x,y) && (!IS_ROCK(levl[x][y].typ) ||
-		passes_walls(uasmon)) && !levl[x][y].mmask;
+		passes_walls(uasmon)) && !MON_AT(x, y);
 #  else
-	tmp1 = isok(x,y) && !IS_ROCK(levl[x][y].typ) && !levl[x][y].mmask;
+	tmp1 = isok(x,y) && !IS_ROCK(levl[x][y].typ) && !MON_AT(x, y);
 #  endif
 	tmp2 = !sobj_at(BOULDER,x,y) && !t_at(x,y);
 	tmp3 = !(is_pool(x,y) &&
@@ -122,7 +122,7 @@ register int x, y;
 #  else
 		!IS_ROCK(levl[x][y].typ) &&
 #  endif
-		!levl[x][y].mmask &&
+		!MON_AT(x, y) &&
 		!sobj_at(BOULDER,x,y) && !t_at(x,y) &&
 		!(is_pool(x,y) &&
 		!(Levitation || Wwalking
@@ -206,6 +206,7 @@ register struct trap *trap;
 #endif
 		    break;
 		case STATUE_TRAP:
+		    deltrap(trap);
 		    for(otmp=fobj; otmp; otmp=otmp->nobj) {
 			if(otmp->otyp == STATUE && otmp->ox == u.ux &&
 				otmp->oy == u.uy && otmp->corpsenm == trap->pm)
@@ -215,7 +216,6 @@ register struct trap *trap;
 				break;
 			    }
 		    }
-		    deltrap(trap);
 		    break;
 		case MONST_TRAP:
 		    if(mtmp=makemon(&mons[trap->pm],u.ux,u.uy)) {
@@ -226,7 +226,8 @@ register struct trap *trap;
 			    if(uarmh)
 				pline("Its blow glances off your helmet.");
 			    else
-				(void) thitu(3,d(4,6),"falling piercer");
+				(void) thitu(3,d(4,6),(struct obj *)0,
+					"falling piercer");
 			    break;
 			default:	/* monster surprises you. */
 			    pline("%s attacks you by surprise!",
@@ -238,7 +239,7 @@ register struct trap *trap;
 		    break;
 		case ARROW_TRAP:
 		    pline("An arrow shoots out at you!");
-		    if(!thitu(8,rnd(6),"arrow")){
+		    if(!thitu(8,rnd(6),(struct obj *)0,"arrow")){
 			(void) mksobj_at(ARROW, u.ux, u.uy);
 			fobj->quan = 1;
 			fobj->owt = weight(fobj);
@@ -294,7 +295,7 @@ register struct trap *trap;
 		    break;
 		case DART_TRAP:
 		    pline("A little dart shoots out at you!");
-		    if(thitu(7,rnd(3),"little dart")) {
+		    if(thitu(7,rnd(3),(struct obj *)0,"little dart")) {
 			if(!rn2(6)) poisoned("dart",A_CON,"poison dart");
 		    } else {
 			(void) mksobj_at(DART, u.ux, u.uy);
@@ -1122,11 +1123,14 @@ register boolean pet_by_u = next_to_u();
 	    } while(!digit(buf[0]) && (buf[0] != '-' || !digit(buf[1])));
 	    newlevel = atoi(buf);
 	} else {
-	    newlevel = rn2(5) | !Fire_resistance ? rnd(dlevel + 3) :
 #ifdef STRONGHOLD
-		stronghold_level + 1;
+	    /* We cannot send them to Hell if STRONGHOLD is defined, since
+	     * they may find themselves trapped on the other side of the
+	     * stronghold...
+	     */
+	    newlevel = rn2(5) ? rnd(dlevel + 3) : rnd(stronghold_level);
 #else
-		HELLLEVEL;
+	    newlevel = rn2(5) || !Fire_resistance ? rnd(dlevel + 3) : HELLLEVEL;
 #endif
 	    if(dlevel == newlevel)
 		if(is_maze_lev) newlevel--; else newlevel++;
@@ -1259,7 +1263,7 @@ domagictrap() {
 		       /* below pline added by GAN 10/30/86 */
 		       adjattrib(A_CHA,1,FALSE);
 		       for(i = -1; i <= 1; i++) for(j = -1; j <= 1; j++)
-		       if(levl[u.ux+i][u.uy+j].mmask)
+		       if(MON_AT(u.ux+i, u.uy+j))
 			   (void) tamedog(m_at(u.ux+i, u.uy+j), (struct obj *)0);
 		       break;
 		   }
@@ -1289,7 +1293,11 @@ drown() {
 
 	/* Scrolls and potions get affected by the water */
 	for(obj = invent; obj; obj = obj->nobj) {
-		if(obj->olet == SCROLL_SYM && rn2(12) > u.uluck)
+		if(obj->olet == SCROLL_SYM && rn2(12) > u.uluck
+#ifdef MAIL
+			&& obj->otyp != SCR_MAIL
+#endif
+								)
 			obj->otyp = SCR_BLANK_PAPER;
 		if(obj->olet == POTION_SYM && rn2(12) > u.uluck) {
 			if (obj->spe == -1) {
@@ -1458,8 +1466,7 @@ dountrap() {	/* disarm a trapped object */
 	}
 }
 
-/* this is only called when the player is doing something to the chest
- * -- i.e., the player and the chest are in the same position */
+/* only called when the player is doing something to the chest directly */
 void
 chest_trap(obj, bodypart)
 register struct obj *obj;

@@ -9,7 +9,9 @@
 /*
  * Section 1:	OS selection.
  *		Select the version of the OS you are using.
- *		For "UNIX" select either SYSV or BSD in unixconf.h
+ *		For "UNIX" select either SYSV or BSD in unixconf.h.
+ *		A "VMS" option is not needed since the VMS C-compiler
+ *		provides it (comment out the default OS option here).
  */
 
 #define	UNIX		/* delete if no fork(), exec() available */

@@ -1,4 +1,4 @@
-/*      SCCS Id: @(#)amiconf.h  3.0     89/04/28
+/*	SCCS Id: @(#)amiconf.h  3.0     89/09/04
 /* NetHack may be freely redistributed.  See license for details. */
 
 #ifndef AMICONF_H
@@ -22,6 +22,9 @@
 
 #undef  index
 #undef  rindex
+extern char  *index P((const char *,int));
+extern char  *rindex P((const char *,int));
+#define memcpy(dest, source, size)  movmem(source, dest, size)
 
 /*
  *  Configurable Amiga options:

@@ -37,6 +37,10 @@ typedef long  off_t;
 # endif
 #endif
 
+#ifdef VMS
+# define off_t long
+#endif
+
 /* You may want to change this to fit your system, as this is almost
  * impossible to get right automatically.
  * This is the type of signal handling functions.
@@ -170,10 +174,26 @@ E int sprintf P((char *,const char *,...));
 #endif
 #endif
 
+#ifdef NEED_VARARGS
+#if defined(USE_STDARG) || defined(USE_VARARGS)
+E int vsprintf P((char *, const char *, va_list));
+E int vprintf P((const char *, va_list));
+#else
+#   define vprintf		printf
+#   define vsprintf		sprintf
+#   define vpline		pline
+#endif
+#endif /* NEED_VARARGS */
+
 #define Sprintf	(void) sprintf
 #define Strcat	(void) strcat
 #define Strcpy	(void) strcpy
 #define Printf  (void) printf
+
+#ifdef NEED_VARARGS
+#define Vprintf (void) vprintf
+#define Vsprintf (void) vsprintf
+#endif
 
 E int tgetent P((char *,char *));
 E int tgetnum P((char *));

@@ -739,8 +739,11 @@ makelevel() {
 	doorindex = 0;
 	rooms[0].hx = -1;	/* in case we are in a maze */
 
-	for(x=0; x<COLNO; x++) for(y=0; y<ROWNO; y++)
+	for(x=0; x<COLNO; x++) for(y=0; y<ROWNO; y++) {
 		levl[x][y] = zerorm;
+		level.objects[x][y] = (struct obj *)0;
+		level.monsters[x][y] = (struct monst *)0;
+	}
 
 	oinit();	/* assign level dependent obj probabilities */
 	fountsound = 0;
@@ -1109,7 +1112,8 @@ register struct mkroom *croom;
 			    else	my = croom->ly-1;
 			    mx = somex(croom);
 			}
-		} while(levl[mx][my].mmask);
+		} while
+			(MON_AT(mx, my));
 
 		if((mtmp = makemon(mkclass(S_MIMIC), mx, my))) {
 		    mtmp->mimic = 1;

@@ -28,6 +28,12 @@ int
 rn2(x)		/* 0 <= rn2(x) < x */
 register int x;
 {
+#ifdef DEBUG
+	if (x == 0) {
+		impossible("rn2(0) attempted");
+		return(0);
+	}
+#endif
 	return(RND(x));
 }
 
@@ -50,6 +56,12 @@ int
 rnd(x)		/* 1 <= rnd(x) <= x */
 register int x;
 {
+#ifdef DEBUG
+	if (x == 0) {
+		impossible("rnd(0) attempted");
+		return(1);
+	}
+#endif
 	return(RND(x)+1);
 }
 

@@ -13,12 +13,12 @@ E int occtime;
 E int nroom;
 E int multi;
 E int hackpid;
-#ifdef UNIX
+#if defined(UNIX) || defined(VMS)
 E int locknum;
+#endif
 #ifdef DEF_PAGER
 E char *catmore;
 #endif	/* DEF_PAGER */
-#endif	/* UNIX */
 E char SAVEF[];
 E char *hname;
 E const char *hu_stat[];	/* defined in eat.c */
@@ -97,7 +97,7 @@ E uchar dig_level;
 E coord dig_pos;
 E boolean dig_down;
 
-E long moves;
+E long moves, monstermoves;
 E long wailmsg;
 
 E boolean in_mklev;
@@ -121,14 +121,38 @@ E int in_doagain;
 #endif
 
 #ifdef TEXTCOLOR
+
+#define BLACK		0
 #define RED		1
 #define GREEN		2
-#define YELLOW		3
+#define BROWN		3	/* on IBM, lo-intensity yellow is brown */
 #define BLUE		4
 #define MAGENTA 	5
 #define CYAN		6
 #define WHITE		7
-E char *HI_COLOR[8];	/* termcap.c */
+#define GRAY		7	/* lo-intensity white */
+#define BRIGHT		8
+#define ORANGE_COLORED	9
+#define YELLOW		11
+#define MAXCOLORS	16	/* 8 basic + 8 bright */
+
+/* these can be configured */
+#  define HI_MON	RED + BRIGHT		/* red slaps! */
+#  define HI_OBJ	MAGENTA
+#  define HI_METAL	CYAN
+#  define HI_COPPER	YELLOW
+#  define HI_SILVER	GRAY
+#  define HI_GOLD	YELLOW
+#  define HI_LEATHER	BROWN
+#  define HI_CLOTH	BROWN
+#  define HI_ORGANIC	GREEN
+#  define HI_WOOD	BROWN
+#  define HI_PAPER	BROWN
+#  define HI_GLASS	CYAN + BRIGHT
+#  define HI_MINERAL	GRAY
+#  define HI_ZAP	BLUE + BRIGHT		/* blue zaps! */
+
+E char *hilites[MAXCOLORS];
 #endif
 
 #ifndef OBJ_H

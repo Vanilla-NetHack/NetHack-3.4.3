@@ -16,7 +16,7 @@ SRC	= ..\src
 # no stack frame.
 # Note: There is a bug in Turbo C 2.0's -Z.  If you have weird problems,
 #	use -Z-.
-CFLAGS	= -m$(MODEL) -I$(INCL) $(WIZARD) -K- -O -A -Z -k- -w-pia -w-pro
+CFLAGS	= -c -no -m$(MODEL) -I$(INCL) -K- -O -A -Z -k- -w-pia -w-pro $(WIZARD)
 CC	= tcc
 
 TARG	= pc
@@ -30,7 +30,7 @@ TERMLIB =
 # 	High-quality BSD random number generation routines.
 RANDOM = o\random.obj
 
-LFLAGS	= /noi
+LFLAGS  = /noi
 TLFLAGS = /x/c
 # No need to link in the floating point library
 LIBS	= $(LIB)\c$(MODEL)
@@ -75,26 +75,28 @@ SPLEVOBJS = o\lev_comp.obj o\lev_lex.obj o\lev_main.obj o\monst.obj o\objects.ob
 # other things that have to be reconfigured are in config.h,
 # {unixconf.h, pcconf.h, tosconf.h}, and possibly system.h
 
-VOBJS = o\main.obj o\tty.obj o\unix.obj o\hack.obj \
-	o\pri.obj o\prisym.obj o\topl.obj o\cmd.obj o\getline.obj \
-	o\decl.obj o\monst.obj o\objects.obj o\timeout.obj $(RANDOM) \
-	o\mkobj.obj o\makemon.obj o\mon.obj o\monmove.obj o\mondata.obj
-VOBJM = o\apply.obj o\artifact.obj o\attrib.obj o\bones.obj o\dbridge.obj \
-	o\demon.obj o\do.obj o\do_name.obj o\do_wear.obj o\dog.obj \
-	o\dogmove.obj o\dokick.obj o\dothrow.obj o\eat.obj o\engrave.obj \
-	o\exper.obj o\fountain.obj o\invent.obj o\lock.obj \
-	o\mcastu.obj o\mhitm.obj o\mhitu.obj o\msdos.obj o\mthrowu.obj \
-	o\music.obj o\objnam.obj o\options.obj o\pager.obj o\pickup.obj \
-	o\polyself.obj o\potion.obj o\pray.obj o\priest.obj o\read.obj \
-	o\restore.obj o\rip.obj o\rnd.obj o\rumors.obj o\save.obj \
-	o\search.obj o\shk.obj o\sit.obj o\sounds.obj o\spell.obj \
-	o\steal.obj o\termcap.obj o\track.obj o\trap.obj o\uhitm.obj \
+VOBJS = o\allmain.obj o\main.obj o\tty.obj o\unix.obj o\hack.obj o\termcap.obj \
+	o\getline.obj o\pri.obj o\prisym.obj o\topl.obj o\cmd.obj o\msdos.obj \
+	o\decl.obj o\monst.obj o\objects.obj \
+	o\timeout.obj $(RANDOM) o\rnd.obj \
+	o\monmove.obj o\dogmove.obj o\mondata.obj o\exper.obj o\mon.obj \
+	o\mhitu.obj o\uhitm.obj o\mkobj.obj o\makemon.obj o\invent.obj \
+	o\pager.obj o\restore.obj
+VOBJM = o\apply.obj o\artifact.obj o\attrib.obj o\dbridge.obj o\demon.obj \
+	o\do.obj o\do_name.obj o\do_wear.obj o\dog.obj o\dokick.obj \
+	o\dothrow.obj o\eat.obj o\lock.obj o\mcastu.obj o\mhitm.obj \
+	o\mthrowu.obj o\objnam.obj o\options.obj o\pickup.obj o\polyself.obj \
+	o\potion.obj o\pray.obj o\priest.obj o\read.obj o\search.obj \
+	o\shk.obj o\sit.obj o\sounds.obj o\steal.obj o\track.obj o\trap.obj \
 	o\vault.obj o\weapon.obj o\were.obj o\wield.obj o\wizard.obj \
 	o\worm.obj o\worn.obj o\write.obj o\zap.obj
-VOBJL = o\mklev.obj o\mkmaze.obj o\extralev.obj o\sp_lev.obj o\mkroom.obj \
-	o\shknam.obj o\topten.obj o\end.obj o\o_init.obj o\u_init.obj
-VOBJ  = $(VOBJS) $(VOBJM) $(VOBJL)
-HOBJ  = $(VOBJ) o\version.obj
+VOBJ1 = o\engrave.obj o\fountain.obj o\spell.obj o\rumors.obj o\music.obj
+VOBJ2 = o\save.obj o\mklev.obj o\mkmaze.obj o\extralev.obj \
+	o\sp_lev.obj o\mkroom.obj o\bones.obj o\shknam.obj
+VOBJL = o\topten.obj o\end.obj o\o_init.obj o\u_init.obj o\rip.obj
+
+VOBJ  = $(VOBJS) $(VOBJM) $(VOBJ1) $(VOBJ2) $(VOBJL)
+HOBJ  = $(VOBJS) $(VOBJM) $(VOBJ1) $(VOBJ2) o\version.obj $(VOBJL)
 
 #
 # Weird order, isn't it?  It puts the most often used utility routines
@@ -134,7 +136,7 @@ $(GAMEFILE): o $(HOBJ) Makefile
 $(GAME): $(GAMEFILE)
 
 .c.obj:
-	$(CC) $(CFLAGS) -c -no $<
+	$(CC) $(CFLAGS) $<
 
 all:	o $(GAME) auxil
 	@echo Done.
@@ -188,13 +190,13 @@ rumors: $(AUX)\rumors.tru $(AUX)\rumors.fal makedefs.exe
 #	The following programs vary depending on what OS you are using.
 #
 o\main.obj:	$(HACK_H) $(TARG)main.c
-	$(CC) $(CFLAGS) -o$@ -c $(TARG)main.c
+	$(CC) $(CFLAGS) -o$@ $(TARG)main.c
 
 o\tty.obj:	$(HACK_H) $(INCL)\func_tab.h $(TARG)tty.c
-	$(CC) $(CFLAGS) -o$@ -c $(TARG)tty.c
+	$(CC) $(CFLAGS) -o$@ $(TARG)tty.c
 
 o\unix.obj:	$(HACK_H) $(TARG)unix.c
-	$(CC) $(CFLAGS) -o$@ -c $(TARG)unix.c
+	$(CC) $(CFLAGS) -o$@ $(TARG)unix.c
 
 #
 # Secondary targets
@@ -239,6 +241,7 @@ spotless: clean
 
 # GO AHEAD, DELETE THIS LINE
 
+o\allmain.obj:  $(HACK_H)
 o\alloc.obj:  $(CONFIG_H)
 o\apply.obj:  $(HACK_H) $(INCL)\edog.h
 o\artifact.obj:  $(HACK_H) $(INCL)\artifact.h
@@ -280,8 +283,8 @@ o\mon.obj:  $(HACK_H) $(INCL)\mfndpos.h $(INCL)\artifact.h
 o\mondata.obj:  $(HACK_H) $(INCL)\eshk.h $(INCL)\epri.h
 o\monmove.obj:  $(HACK_H) $(INCL)\mfndpos.h $(INCL)\artifact.h
 o\monst.obj:  $(CONFIG_H) $(PERMONST_H) $(INCL)\eshk.h $(INCL)\vault.h $(INCL)\epri.h
-o\msdos.obj:  $(HACK_H)
-	$(CC) $(CFLAGS) -A- -oo\$*.obj -c $*.c
+o\msdos.obj:  $(HACK_H) msdos.c
+	$(CC) $(CFLAGS) -A- $*.c
 # set ANSI only off; many MS-DOS specific things.
 o\mthrowu.obj:  $(HACK_H)
 o\music.obj:  $(HACK_H)
@@ -301,8 +304,8 @@ o\prisym.obj:  $(HACK_H) $(INCL)\lev.h $(INCL)\wseg.h
 o\random.obj:
 o\read.obj:  $(HACK_H)
 o\restore.obj:  $(HACK_H) $(INCL)\lev.h $(INCL)\wseg.h
-o\rip.obj:  $(HACK_H)
-	$(CC) $(CFLAGS) -d- -oo\$*.obj -c $*.c
+o\rip.obj:  $(HACK_H) rip.c
+	$(CC) $(CFLAGS) -d- $*.c
 # must not merge strings, or the tombstone lines will overlap.
 o\rnd.obj:  $(HACK_H)
 o\rumors.obj:  $(HACK_H)

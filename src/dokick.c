@@ -60,10 +60,8 @@ register boolean clumsy;
 	    	mdy = mon->my + u.dy;
 	    	if(goodpos(mdx, mdy, mon->data)) {
 			kludge("%s reels from the blow.", Monnam(mon));
-			levl[mon->mx][mon->my].mmask = 0;
-			levl[mdx][mdy].mmask = 1;
-			mon->mx = mdx;
-			mon->my = mdy;
+			remove_monster(mon->mx, mon->my);
+			place_monster(mon, mdx, mdy);
 			pmon(mon);
 			set_apparxy(mon);
 	    	}
@@ -214,8 +212,9 @@ register long amount;
 			} else {
 				if(mtmp->mpeaceful) {
 				    ESHK(mtmp)->credit += amount;
-				    You("have %ld zorkmids in credit.",
-						ESHK(mtmp)->credit);
+				    You("have %ld zorkmid%s in credit.",
+					ESHK(mtmp)->credit, 
+					plur(ESHK(mtmp)->credit));
 				} else verbalize("Thanks, scum!");
 			}
 		}
@@ -256,7 +255,7 @@ register int ddx, ddy, range;
 	while(range-- > 0) {
 		bhitpos.x += ddx;
 		bhitpos.y += ddy;
-		if(levl[bhitpos.x][bhitpos.y].mmask) {
+		if(MON_AT(bhitpos.x, bhitpos.y)) {
 			mtmp = m_at(bhitpos.x,bhitpos.y);
 			tmp_at(-1, -1); /* close call */
 			return(mtmp);
@@ -444,7 +443,8 @@ gotcha:
 	/* will move, so there is no need to worry about the location,	*/
 	/* which merely needs to be something other than ox, oy.	*/
 	move_object(obj, u.ux, u.uy);
-	if(cnt == 1 && !levl[x][y].mmask) newsym(x, y);
+	if(cnt == 1 && !MON_AT(x, y))
+	    newsym(x, y);
 
 	mon = bhit(u.dx, u.dy, range, obj->olet,
 			(int (*)()) 0, (int (*)()) 0, obj);
@@ -460,7 +460,8 @@ gotcha:
 	if(costly && !costly_spot(bhitpos.x,bhitpos.y)) addtobill(obj, FALSE);
 	move_object(obj, bhitpos.x, bhitpos.y);
 	stackobj(obj);
-	if(!levl[obj->ox][obj->oy].mmask) newsym(obj->ox, obj->oy);
+	if(!MON_AT(obj->ox, obj->oy))
+	    newsym(obj->ox, obj->oy);
 	return(1);
 }
 #endif /* KICK */
@@ -532,7 +533,7 @@ dokick() {		/* try to kick the door down - noisy! */
 	/* their present order: monsters, objects, */
 	/* non-doors, doors.			   */ 
 
-	if(maploc->mmask) {
+	if(MON_AT(x, y)) {
 		kick_monster(x, y);
 		return(1);
 	}

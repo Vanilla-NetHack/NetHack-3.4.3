@@ -237,10 +237,8 @@ proceed:
 	fcp->ftyp = typ;
 newpos:
 	if(EGD->gddone) nx = ny = 0;
-	levl[guard->mx][guard->my].mmask = 0;
-	levl[nx][ny].mmask = 1;
-	guard->mx = nx;
-	guard->my = ny;
+	remove_monster(guard->mx, guard->my);
+	place_monster(guard, nx, ny);
 	pmon(guard);
 	restfakecorr();
 	return(1);
@@ -270,8 +268,8 @@ paygd()
 	if (!u.ugold) return;
 
 	if (u.uinvault) {
-	    Your("%ld Zorkmids goes into the Magic Memory Vault.",
-		u.ugold);
+	    Your("%ld zorkmid%s goes into the Magic Memory Vault.",
+		u.ugold, plur(u.ugold));
 	    mkgold(u.ugold, u.ux, u.uy);
 	    u.ugold = 0L;
 	} else if (guard) {

@@ -72,7 +72,7 @@ char *HI = DUMMY, *HE = DUMMY, *AS = DUMMY, *AE = DUMMY, *CD = DUMMY;
 int CO = 0, LI = 0;	/* set up in termcap.c: usually COLNO and ROWNO+3 */
 
 #ifdef TEXTCOLOR
-char *HI_COLOR[8];		/* terminal escapes for the various colors */
+char *hilites[MAXCOLORS];	/* terminal escapes for the various colors */
 #endif
 
 #ifdef MSDOS
@@ -89,7 +89,11 @@ int saveprompt = TRUE;
 const char *alllevels = "levels.*";
 const char *allbones = "bones.*";
 #else
-char lock[PL_NSIZ+4] = "1lock";	/* long enough for login name .99 */
+# ifdef VMS
+char lock[PL_NSIZ+16] = "1lock";/* long enough for uic+login_name+.99;1 */
+# else
+char lock[PL_NSIZ+14] = "1lock";/* long enough for uic+login_name+.99 */
+# endif
 #endif
 
 int dig_effort = 0;	/* effort expended on current pos */
@@ -125,15 +129,14 @@ coord bhitpos = DUMMY;
 coord doors[DOORMAX] = DUMMY;
 
 struct mkroom rooms[MAXNROFROOMS+1] = DUMMY;
-struct rm levl[COLNO][ROWNO] = DUMMY;		/* level map */
-struct monst *fmon = 0;
+level_t level;		/* level map */
 struct trap *ftrap = 0;
 struct gold *fgold = 0;
 struct monst youmonst = DUMMY;	/* dummy; used as return value for boomhit */
 struct flag flags = DUMMY;
 struct you u = DUMMY;
 
-struct obj *fobj = 0, *fcobj = 0, *invent = 0, *uwep = 0, *uarm = 0,
+struct obj *fcobj = 0, *invent = 0, *uwep = 0, *uarm = 0,
 #ifdef SHIRT
 	*uarmu = 0,		/* under-wear, so to speak */
 #endif
@@ -186,7 +189,7 @@ struct symbols savesyms = DUMMY;
 struct spell spl_book[MAXSPELL + 1] = DUMMY;
 #endif
 
-long moves = 1;
+long moves = 1, monstermoves = 1; /* These diverge when player is Fast */
 long wailmsg = 0;
 
 struct obj zeroobj = DUMMY;	/* used to zero all elements of a struct obj */

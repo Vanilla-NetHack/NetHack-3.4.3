@@ -223,7 +223,7 @@ register struct monst *oracl;
 			You("have no money.");
 			return(0);
 		}
-		pline("\"Wilt thou settle for a minor consultation?\"  (50 Zorkmids) ");
+		pline("\"Wilt thou settle for a minor consultation?\"  (50 zorkmids) ");
 		ans = ynq();
 		if(ans == 'y') {
 			if(u.ugold < 50) {
@@ -237,7 +237,7 @@ register struct monst *oracl;
 			return(1);
 		} else if(ans == 'q') return(0);
 		else {
-			pline("\"Then dost thou desire a major one?\"  (1000 Zorkmids) ");
+			pline("\"Then dost thou desire a major one?\"  (1000 zorkmids) ");
 			if (yn() != 'y') return(0);
 		}
 		if(u.ugold < 1000) {

@@ -113,7 +113,7 @@ register struct obj *obj;
 			return(1);
 		}
 	} else {
-		if(obj->otyp == PICK_AXE && shkcatch(obj))
+		if(shkcatch(obj))
 		    return(1);
 
 		range = (int)((ACURR(A_STR) > 18 ? 20 : ACURR(A_STR))/2 - obj->owt/4);
@@ -150,7 +150,11 @@ register struct obj *obj;
 		/* the code following might become part of dropy() */
 		if (breaks(obj, TRUE)) {
 			tmp_at(-1, let);
+#ifdef TEXTCOLOR
+			tmp_at(-3, (int)objects[obj->otyp].oc_color);
+#else
 			tmp_at(-3, (int)AT_OBJ);
+#endif
 			tmp_at(bhitpos.x, bhitpos.y);
 			tmp_at(-1, -1);
 			return(1);
@@ -166,7 +170,7 @@ register struct obj *obj;
 		if(obj != uball && costly_spot(bhitpos.x, bhitpos.y) &&
 		   !(mon && mon->isshk && bhitpos.x == mon->mx &&
 		     bhitpos.y == mon->my && !(obj->unpaid)))
-			subfrombill(obj);
+			sellobj(obj);
 		stackobj(obj);
 		if(obj == uball &&
 			(bhitpos.x != u.ux || bhitpos.y != u.uy)){
@@ -260,6 +264,7 @@ register struct obj   *obj;
 		    else    tmp += uwep->spe;
 		} else if(obj->otyp == BOOMERANG) tmp += 4;
 		tmp += obj->spe;
+		tmp += hitval(obj, mon->data);
 		if(tmp >= rnd(20)) {
 			if(hmon(mon,obj,1) == TRUE){
 			  /* mon still alive */
@@ -329,7 +334,7 @@ register struct obj *obj;
 		    if(mon->data == &mons[
 				((u.ualigntyp== U_CHAOTIC) ? PM_BLACK_UNICORN :
 				 (u.ualigntyp == U_LAWFUL) ? PM_WHITE_UNICORN
-						  : PM_GREY_UNICORN)]) {
+						  : PM_GRAY_UNICORN)]) {
 			    Strcat(buf, addluck);
 			    change_luck(5);
 		    } else {

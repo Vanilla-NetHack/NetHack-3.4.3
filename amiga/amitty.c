@@ -4,6 +4,7 @@
 /* tty.c - (Amiga) version */
 
 
+#define NEED_VARARGS
 #include "hack.h"
 
 extern int Enable_Abort;
@@ -40,12 +41,13 @@ char *s;
 
 /* fatal error */
 /*VARARGS1*/
-void error(s,x,y)
-char *s;
-{
+void error VA_DECL(char *, s)
+	VA_START(s);
+	VA_INIT(s, char *);
 	end_screen();
 	putchar('\n');
-	printf(s,x,y);
+	vprintf(s,VA_ARGS);
 	putchar('\n');
+	VA_END();
 	abort(1);
 }

@@ -85,10 +85,8 @@ pick_move:
 #endif
 
 	if(nix != omx || niy != omy) {
-		levl[omx][omy].mmask = 0;
-		levl[nix][niy].mmask = 1;
-		mtmp->mx = nix;
-		mtmp->my = niy;
+		remove_monster(omx, omy);
+		place_monster(mtmp, nix, niy);
 		pmon(mtmp);
 		if(ib) {
 			if (cansee(mtmp->mx,mtmp->my))
@@ -110,7 +108,8 @@ register int x, y;
 {
 	register int roomno = inroom(x, y);
 
-	if (roomno < 0 || rooms[roomno].rtype != TEMPLE) return(FALSE);
+	if (roomno < 0 || rooms[roomno].rtype != TEMPLE)
+		return((struct mkroom *)0);
 	return(&rooms[roomno]);
 }
 
@@ -183,7 +182,7 @@ register int lvl, sx, sy, align;
 #ifdef SPELLS
 	register int cnt;
 #endif
-	if(levl[sx+1][sy].mmask) rloc(m_at(sx+1, sy)); /* insurance */
+	if(MON_AT(sx+1, sy)) rloc(m_at(sx+1, sy)); /* insurance */
 
 	if(priest = makemon(&mons[!rn2(2) ? PM_TEMPLE_PRIEST : 
 			PM_TEMPLE_PRIESTESS], sx+1, sy)) {

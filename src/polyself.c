@@ -102,8 +102,14 @@ newname:	more();
 		    goto newname;
 		}
 		(void)strncpy(plname, buf, sizeof(plname)-1);
+#ifdef VMS
+		Sprintf(SAVEF, "[.save]%d%s", getuid(), plname);
+		regularize(SAVEF+7);
+		Strcat(SAVEF, ";1");
+#else
 		Sprintf(SAVEF, "save/%d%s", getuid(), plname);
 		regularize(SAVEF+5);		/* avoid . or / in name */
+#endif
 #ifdef WIZARD
 	}
 #endif
@@ -123,7 +129,7 @@ polyself()
 	int mntmp = -1;
 	int tries=0;
 	boolean draconian = (uarm && uarm->otyp==DRAGON_SCALE_MAIL &&
-		uarm->corpsenm >= PM_GREY_DRAGON &&
+		uarm->corpsenm >= PM_GRAY_DRAGON &&
 		uarm->corpsenm <= PM_YELLOW_DRAGON);
 	boolean iswere = (u.ulycn > -1 || is_were(uasmon));
 	boolean isvamp = (u.usym == S_VAMPIRE || u.umonnum == PM_VAMPIRE_BAT);
@@ -222,9 +228,18 @@ polymon(mntmp)	/* returns 1 if polymorph successful */
 		u.acurr = u.macurr;
 		u.amax = u.mamax;
 	}
+	tmp = u.umonnum;
 	u.umonnum = mntmp;
 	set_uasmon();
 	u.usym = mons[mntmp].mlet;
+
+	if (tmp != mntmp)
+		You("turn into a%s %s!",
+			index(vowels, *(mons[mntmp].mname)) ? "n" : "",
+			mons[mntmp].mname);
+	else
+		You("feel like a new %s!", mons[mntmp].mname);
+
 	/* New stats for monster, to last only as long as polymorphed.
 	 * Currently only strength gets changed.
 	 */
@@ -238,7 +253,7 @@ polymon(mntmp)	/* returns 1 if polymorph successful */
 		Sick = 0;
 		You("no longer feel sick.");
 	}
-	if (u.usym == S_DRAGON && mntmp >= PM_GREY_DRAGON) u.mhmax = 80;
+	if (u.usym == S_DRAGON && mntmp >= PM_GRAY_DRAGON) u.mhmax = 80;
 #ifdef GOLEMS
 	else if (is_golem(uasmon)) u.mhmax = golemhp(mntmp);
 #endif /* GOLEMS */
@@ -255,9 +270,6 @@ polymon(mntmp)	/* returns 1 if polymorph successful */
 		else u.mhmax = d(tmp, 8);
 	}
 	u.mh = u.mhmax;
-	You("turn into a%s %s!",
-		index(vowels, *(mons[mntmp].mname)) ? "n" : "",
-		mons[mntmp].mname);
 	if (uskin && mntmp != uskin->corpsenm)
 		skinback();
 	break_armor();
@@ -433,6 +445,7 @@ dospit() {
 
 	if (!getdir(1)) return(0);
 	otmp = mksobj(u.umonnum==PM_COBRA ? BLINDING_VENOM : ACID_VENOM, FALSE);
+	otmp->spe = 1; /* to indicate it's yours */
 	(void) throwit(otmp);
 	return(1);
 }

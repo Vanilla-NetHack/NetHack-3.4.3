@@ -59,7 +59,7 @@ register struct monst *mtmp;
 		    here->doormask = D_BROKEN;
 		}
 	    }
-	else pile = 12; /* it doesn't leave rocks if it didn't dig */
+	else return TRUE; /* it doesn't leave rocks if it didn't dig */
 
 	/* Left behind a pile? */
 	if(pile < 5) {
@@ -68,10 +68,10 @@ register struct monst *mtmp;
 	    else
 		(void) mksobj_at(ROCK, mtmp->mx, mtmp->my);
 	}
-	if(canseeit) {
-	    here->seen = TRUE;
+	here->seen = TRUE; /* required for newsym and mnewsym to work */
+	if(canseeit && mtmp->minvis && !See_invisible)
 	    newsym(mtmp->mx,mtmp->my);
-	} else
+	else
 	    mnewsym(mtmp->mx,mtmp->my);
 	return(TRUE);
 }
@@ -271,6 +271,8 @@ register struct monst *mtmp;
  			if(Hallucination) pmon(mtmp);
  			break;
  		    case 1:	/* monster moved */
+			/* Maybe it stepped on a trap and fell asleep... */
+			if(mtmp->msleep || mtmp->mfroz) return(0);
  			if(!nearby && ranged_attk(mdat)) break;
  			else if(mdat->mmove <= 12) return(0);
  			break;
@@ -349,8 +351,8 @@ register int after;
 
 	set_apparxy(mtmp);
 	/* where does mtmp think you are? */
-	/* Not necessary if m_move called from here, but necessary in
-	 * other calls of m_move (i.e. leprechauns dodging)
+	/* Not necessary if m_move called from this file, but necessary in
+	 * other calls of m_move (ex. leprechauns dodging)
 	 */
 	can_tunnel = tunnels(ptr) &&
 #ifdef REINCARNATION
@@ -360,8 +362,11 @@ register int after;
 #ifdef WORM
 	if(mtmp->wormno) goto not_special;
 #endif
-	/* my dog gets a special treatment */
-	if(mtmp->mtame) return( dog_move(mtmp, after) );
+	/* my dog gets special treatment */
+	if(mtmp->mtame) {
+	    mmoved = dog_move(mtmp, after);
+	    goto postmov;
+	}
 
 	/* likewise for shopkeeper */
 	if(mtmp->isshk) {
@@ -485,7 +490,7 @@ not_special:
 		   (likemagic && index(magical, otmp->olet)) ||
 		   (likerock && otmp->otyp == BOULDER) ||
 		   (likegems && otmp->olet == GEM_SYM &&
-			otmp->otyp < LAST_GEM + 5) ||
+			otmp->otyp < LAST_GEM + 6) ||
 		   (conceals && !cansee(otmp->ox,otmp->oy)) ||
 		   (ptr == &mons[PM_GELATINOUS_CUBE] &&
 					!index(indigestion, otmp->olet))
@@ -527,14 +532,14 @@ not_special:
 	    nx = poss[i].x;
 	    ny = poss[i].y;
 
-	    for(j=0; j < MTSZ && j < cnt-1; j++)
+	    if (appr != 0) for(j=0; j < MTSZ && j < cnt-1; j++)
 		if(nx == mtmp->mtrack[j].x && ny == mtmp->mtrack[j].y)
 		    if(rn2(4*(cnt-j))) goto nxti;
 
 	    nearer = (dist2(nx,ny,gx,gy) < dist2(nix,niy,gx,gy));
 
 	    if((appr == 1 && nearer) || (appr == -1 && !nearer) ||
-		   	!mmoved || (!appr && !rn2(++chcnt))) {
+		   	(!appr && !rn2(++chcnt)) || !mmoved) {
 		nix = nx;
 		niy = ny;
 		chi = i;
@@ -561,20 +566,18 @@ not_special:
 	    if((info[chi] & ALLOW_M) ||
 		   (nix == mtmp->mux && niy == mtmp->muy)) {
 		mtmp2 = 
-		    (levl[nix][niy].mmask ? m_at(nix,niy) : (struct monst *)0);
+		    (MON_AT(nix, niy) ? m_at(nix,niy) : (struct monst *)0);
 		if(mattackm(mtmp, mtmp2) == 1 && rn2(4) &&
 			mtmp2->mlstmv != moves && mattackm(mtmp2, mtmp) == 2)
 		    return(2);
 		return(3);
 	    }
 #ifdef WORM
-	    /* The square now has a worm segment and must keep its mmask */
+	    /* The square now has a worm segment and must keep its MON_AT() state */
 	    if (!mtmp->wormno)
 #endif
-		    levl[omx][omy].mmask = 0;
-	    levl[nix][niy].mmask = 1;
-	    mtmp->mx = nix;
-	    mtmp->my = niy;
+		    remove_monster(omx, omy);
+	    place_monster(mtmp, nix, niy);
 	    for(j = MTSZ-1; j > 0; j--)
 		mtmp->mtrack[j] = mtmp->mtrack[j-1];
 	    mtmp->mtrack[0].x = omx;
@@ -688,8 +691,8 @@ postmov:
 		    mtmp->mdy = mtmp->my;
 		}
 	    }
+	    pmon(mtmp);
 	}
-	pmon(mtmp);
 	return(mmoved);
 }
 
@@ -732,3 +735,36 @@ set_apparxy(mtmp)		/* where does mtmp think you are standing? */
 	       )
 	);
 }
+
+#ifdef STUPID_CPP	/* otherwise these functions are macros in rm.h */
+/*
+ * Functions for encapsulation of level.monsters references.
+ */
+void place_monster(mtmp, x, y)
+register struct monst *mtmp;
+int x, y;
+{
+    level.monsters[x][y] = mtmp;
+    mtmp->mx = x;
+    mtmp->my = y;
+}
+
+void place_worm_seg(mtmp, x, y)
+register struct monst *mtmp;
+int x, y;
+{
+    level.monsters[x][y] = mtmp;
+}
+
+void remove_monster(x, y)
+int x, y;
+{
+    level.monsters[x][y] = (struct monst *)0;
+}
+
+struct monst *m_at(x, y)
+int x, y;
+{
+    return(level.monsters[x][y]);
+}
+#endif	/* STUPID_CPP */

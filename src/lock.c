@@ -228,7 +228,7 @@ pick_lock(pick) /* pick a lock with a given object */
 	    struct monst *mtmp;
 
 	    door = &levl[x][y];
-	    if (door->mmask && canseemon(mtmp = m_at(x,y)) && !mtmp->mimic) {
+	    if (MON_AT(x, y) && canseemon(mtmp = m_at(x,y)) && !mtmp->mimic) {
 		if (picktyp == CREDIT_CARD &&
 #ifdef ORACLE
 		    (mtmp->isshk || mtmp->data == &mons[PM_ORACLE]))
@@ -373,7 +373,7 @@ doopen() {		/* try to open a door */
 	y = u.uy + u.dy;
 	if((x == u.ux) && (y == u.uy)) return(0);
 
-	if(levl[x][y].mmask && (mtmp = m_at(x,y))->mimic && 
+	if(MON_AT(x, y) && (mtmp = m_at(x,y))->mimic && 
 				mtmp->mappearance == DOOR_SYM &&
 				!Protection_from_shape_changers) {
 		stumble_onto_mimic(mtmp);
@@ -430,7 +430,7 @@ boolean
 obstructed(x,y)
 register int x, y;
 {
-	if(levl[x][y].mmask) {
+	if(MON_AT(x, y)) {
 		if (m_at(x,y)->mimic) goto obj;	  
 		pline("%s stands in the way!", Blind ?
 			"Some creature" : Monnam(m_at(x,y)));
@@ -459,7 +459,7 @@ doclose() {		/* try to close a door */
 		return(1);
 	}
 
-	if(levl[x][y].mmask && (mtmp = m_at(x,y))->mimic && 
+	if(MON_AT(x, y) && (mtmp = m_at(x,y))->mimic && 
 				mtmp->mappearance == DOOR_SYM &&
 				!Protection_from_shape_changers) {
 		stumble_onto_mimic(mtmp);
@@ -624,7 +624,7 @@ doorlock(otmp,x,y)	/* door was hit with spell effect otmp */
 #endif
 		if(door->doormask & (D_LOCKED | D_CLOSED)) {
 		    if(door->doormask & D_TRAPPED) {
-			if (levl[x][y].mmask)
+			if (MON_AT(x, y))
 			    (void) mb_trapped(m_at(x,y));
 			else if (flags.verbose)
 			    if (cansee(x,y))

@@ -1,0 +1,44 @@
+Instructions for installing NetHack 3.0 on a VMS system
+=======================================================
+
+First, consider reading Install.unix.  While many of the details will differ,
+it should give you an idea of how the NetHack files are set up, and what a
+full installation process is like.
+
+You should not have to move any files from their default positions, but you
+will want to edit config.h and vmsconf.h.  Then run vms_build.com and
+spec_lev.com.  These will create all the necessary files, but not install
+them anywhere in particular.  That is left as an exercise for the installer.
+
+
+Some additional notes:
+
+VMS Nethack uses the termcap routines supplied with GNU Emacs.  These have
+been supplied for those who do not already have GNU Emacs, but they are not
+properly a part of the NetHack distribution.  Since these files (vmstermcap.c
+and vmstparam.c) bear the usual GNU license, any executable made with these
+files is also under the GNU license, which among other things means you must
+be prepared to distribute all the source that went into the executable if you
+distribute the executable.  See the GNU license in the files for further
+details.
+
+No termcap file is supplied.  One should be snarfable from any Unix system.
+If you do not have GNU Emacs installed, you will need to define the logical
+TERMCAP to point to the termcap file.
+
+There is code which attempts to make Nethack secure in case it is installed
+with privileges (to allow the playground to be protected against world write).
+THIS HAS NOT BEEN TESTED.  Install Nethack with privileges at your own risk.
+If you do so, however, we would love to hear of your experiences, good or bad.
+
+VMS Nethack uses SMG$READ_KEYSTROKE to read characters from the keyboard.
+This means that arrow keys work!  It also means that using escape to abort
+commands doesn't!  If you want to abort a command use ^Z.  Just about any
+non-arrow function key should also work.  Note that under Unix ^Z is the
+suspend command.  This is of little use on VMS so our use is harmless.
+
+Nethack does not run in PASTHRU or PASSALL mode.  This is to allow ^C
+interrupts.  An unpleasant (albeit minor) side-effect of this is that some
+wizard commands don't work (^G, ^O, ^X).  Another side-effect is that ^Y and
+^C echo the stupid, inverse-video "CANCEL" and "INTERRUPT" banners.  Is there
+no other way to turn these off???

@@ -51,6 +51,9 @@ struct flag {
 	boolean  silent;	/* whether the bell rings or not */
 	boolean  pickup;	/* whether you pickup or move and look */
 	boolean  num_pad;	/* use numbers for movement commands */
+#ifdef TEXTCOLOR
+	boolean  use_color;	/* use color grapics */
+#endif
 #ifdef DGK
 	boolean  IBMBIOS;	/* whether we can use a BIOS call for
 				 * redrawing the screen and character input */

@@ -16,7 +16,7 @@ char bones[FILENAME];
 extern long bytes_counted;
 #endif
 #else
-char bones[] = "bones.xx";
+char bones[] = "bones.xxxx";
 #endif
 
 #ifdef COMPRESS
@@ -130,6 +130,9 @@ savebones(){
 	for(f=ffruit; f; f=f->nextf) f->fid = -f->fid;
 #endif
 
+	/* check iron balls separately--maybe they're not carrying it */
+	if (uball) uball->owornmask = uchain->owornmask = 0;
+
 	/* drop everything; the corpse's possessions are usually cursed */
 	otmp = invent;
 	while(otmp) {
@@ -177,7 +180,7 @@ savebones(){
 #ifdef TUTTI_FRUTTI
 		    if(otmp->otyp == SLIME_MOLD) goodfruit(otmp->spe);
 #endif
-		    if(uses_known(otmp)) otmp->known = 0;
+		    if(objects[otmp->otyp].oc_uses_known) otmp->known = 0;
 		    if(otmp->otyp == AMULET_OF_YENDOR && !otmp->spe) {
 			otmp->spe = -1;  /* no longer the actual amulet */
 			curse(otmp);
@@ -201,7 +204,7 @@ savebones(){
 #endif
 		   )
 			otmp->onamelth = 0;
-		if(uses_known(otmp)) otmp->known = 0;
+		if(objects[otmp->otyp].oc_uses_known) otmp->known = 0;
 #ifdef TUTTI_FRUTTI
 		if(otmp->otyp == SLIME_MOLD) goodfruit(otmp->spe);
 #endif
@@ -355,17 +358,21 @@ gotbones:
  * but be careful if you use it for other things -dgk
  */
 void
-name_file(file, level)
+name_file(file, lev)
 char *file;
-int level;
+int lev;
 {
 	char *tf;
 
 	if (tf = rindex(file, '.'))
-	    Sprintf(tf+1, "%d", level);
+#ifdef VMS
+	    Sprintf(tf+1, "%d;1", lev);
+#else
+  	    Sprintf(tf+1, "%d", lev);
+#endif
 #ifdef MSDOS /* for glo() */
 	else if (tf = eos(file))
-	    Sprintf(tf, ".%d", level);
+	    Sprintf(tf, ".%d", lev);
 #endif
 	return;
 }

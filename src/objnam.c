@@ -203,7 +203,7 @@ register char *un = objects[obj->otyp].oc_uname;
 	    case TOOL_SYM:
 		if(nn)	Strcat(buf, an);
 		else	Strcat(buf, dn);
-		if(obj->otyp == FIGURINE && obj->known) {
+		if(obj->otyp == FIGURINE) {
 			Sprintf(eos(buf), " of a%s %s",
 				index(vowels, *mons[obj->corpsenm].mname)
 								? "n" : "",
@@ -503,6 +503,8 @@ plus:
 		}
 		break;
 	case FOOD_SYM:
+		if(OEATEN(obj))
+		    Strcat(prefix, "partly eaten ");
 		if(obj->otyp == CORPSE) {
 		    Strcat(prefix, mons[obj->corpsenm].mname);
 		    Strcat(prefix, " ");
@@ -524,9 +526,13 @@ plus:
 	}
 
 	if((obj->owornmask & W_WEP) && !mrg_to_wielded) {
-		Strcat(bp, " (weapon in ");
-		Strcat(bp, body_part(HAND));
-		Strcat(bp, ")");
+		if (obj->quan != 1)
+			Strcat(bp, " (wielded)");
+		else {
+			Strcat(bp, " (weapon in ");
+			Strcat(bp, body_part(HAND));
+			Strcat(bp, ")");
+		}
 	}
 	if(obj->unpaid)
 		Strcat(bp, " (unpaid)");
@@ -541,7 +547,7 @@ plus:
 	return(bp);
 }
 
-/* used only in fight.c (thitu) */
+/* used only in mthrowu.c (thitu) */
 void
 setan(str,buf)
 register char *str,*buf;
@@ -562,7 +568,7 @@ char prefix[PREFIX];
 	}
 
 	if(verb) {
-		/* verb is given in plural (i.e., without trailing s) */
+		/* verb is given in plural (without trailing s) */
 		Strcat(bp, " ");
 		if(otmp->quan != 1)
 			Strcat(bp, verb);
@@ -633,7 +639,7 @@ char *oldstr;
 	}
 	Strcpy(str, oldstr);
 
-	/* Search for common compounds, i.e. lump of royal jelly */
+	/* Search for common compounds, ex. lump of royal jelly */
 	for(excess=(char *)0, spot=str; *spot; spot++) {
 		if (!strncmp(spot, " of ", 4)
 				|| !strncmp(spot, " labeled ", 9)
@@ -825,9 +831,9 @@ register char *bp;
 	register char *p;
 	register int i;
 	register struct obj *otmp;
-	int cnt, spe, spesgn, typ, heavy, blessed, uncursed;
-	int iscursed, ispoisoned, mntmp, contents, iskey=0;
-	int  isnamedbox=0;
+	int cnt, spe, spesgn, typ, heavy, blessed, uncursed, halfeaten;
+	int iscursed, ispoisoned, mntmp, contents;
+	int iskey, isnamedbox;
 #ifdef TUTTI_FRUTTI
 	struct fruit *f;
 	int ftype = current_fruit;
@@ -845,8 +851,8 @@ register char *bp;
 	int fake=0;
 #endif
 
-	cnt = spe = spesgn = typ = heavy = 
-		blessed = uncursed = iscursed = ispoisoned = 0;
+	cnt = spe = spesgn = typ = heavy = blessed = uncursed = iscursed =
+		ispoisoned = halfeaten = iskey = isnamedbox = 0;
 	mntmp = -1;
 #define UNDEFINED 0
 #define EMPTY 1
@@ -875,9 +881,15 @@ register char *bp;
 			cnt = atoi(bp);
 			while(digit(*bp)) bp++;
 			while(*bp == ' ') bp++;
-		} else if(!strncmp(bp,"blessed ",8) || !strncmp(bp,"holy ",5)) {
+		} else if(!strncmp(bp, "partly eaten ", 13)) {
+			halfeaten = 1;
+			bp += 13;
+		} else if(!strncmp(bp,"blessed ",8)) {
 			blessed=1;
 			bp += 8;
+		} else if(!strncmp(bp,"holy ",5)) {
+			blessed=1;
+			bp += 5;
 		} else if(!strncmp(bp,"cursed ",7) || !strncmp(bp,"unholy ",7)){
 			iscursed=1;
 			bp += 7;
@@ -996,6 +1008,7 @@ register char *bp;
 	}
 	/* Find corpse type w/o "of" (red dragon scale mail, yeti corpse) */
 	if (strncmp(bp, "samurai sword", 13)) /* not the "samurai" monster! */
+	if (strncmp(bp, "wizard lock", 11)) /* not the "wizard" monster! */
 	if (strncmp(bp, "orcish", 6)) /* not the "orc" monster! */
 	if (mntmp < 0) if ((mntmp = name_to_mon(bp)) >= 0) {
 		bp += strlen(mons[mntmp].mname);
@@ -1161,7 +1174,7 @@ sing:
 #endif
 						) cnt=5000;
 		if (cnt < 1) cnt=1;
-		pline("%d gold piece%s.", cnt, cnt==1 ? "" : "s");
+		pline("%d gold piece%s.", cnt, plur((long)cnt));
 		u.ugold += cnt;
 		flags.botl=1;
 		return (&zeroobj);
@@ -1213,7 +1226,7 @@ sing:
 	/* helmet is not generic */
 
 	an = bp;
-	if (!dn) dn = an; /* i.e., "black cap" */
+	if (!dn) dn = an; /* ex. "black cap" */
 srch:
 	i = 1;
 	if(let) i = bases[letindex(let)];
@@ -1262,13 +1275,15 @@ typfnd:
 	 * wizards to wish for it since it's faster than polymorphing and
 	 * spitting.
 	 */
-	if(otmp->olet==VENOM_SYM
+	if(otmp->olet==VENOM_SYM) {
 #ifdef WIZARD
-				&& !wizard
+		if (!wizard) {
 #endif
-						) {
-		free((genericptr_t) otmp);
-		return((struct obj *)0);
+			free((genericptr_t) otmp);
+			return((struct obj *)0);
+#ifdef WIZARD
+		} else otmp->spe = 1;
+#endif
 	}
 	if(iskey) otmp->spe = (iskey-1);
 	if(isnamedbox && (otmp->otyp==LARGE_BOX || otmp->otyp==CHEST))
@@ -1303,7 +1318,7 @@ typfnd:
 		if (spe > otmp->spe) spe = otmp->spe;
 	}
 
-	if (spesgn == -1 && spe > 0) spe = -spe;
+	if (spesgn == -1) spe = -spe;
 
 	/* set otmp->spe.  This may, or may not, use spe... */
 	switch (typ) {
@@ -1379,7 +1394,7 @@ typfnd:
 		case DRAGON_SCALE_MAIL: /* Not actually possible unless they
 				   typed "red dragon dragon scale mail" */
 		case SCALE_MAIL:
-			if (mntmp >= PM_GREY_DRAGON &&
+			if (mntmp >= PM_GRAY_DRAGON &&
 			    mntmp <= PM_YELLOW_DRAGON)
 				otmp->corpsenm = mntmp;
 			if (otmp->corpsenm >= 0)
@@ -1420,28 +1435,8 @@ typfnd:
 	if (name) otmp = oname(otmp, name, 0);
 	otmp->owt = weight(otmp);
 	if (heavy) otmp->owt += 15;
+	if (halfeaten && otmp->olet == FOOD_SYM) OEATEN(otmp) = 1;
 	return(otmp);
-}
-
-boolean
-uses_known(otmp)
-register struct obj *otmp;
-/* returns TRUE if otmp->known would be used to affect the full description
- * of the item
- * if not, otmp->dknown and otmp->bknown give all the information of otmp->known
- * and otmp->known should always be set to avoid problems with items not
- * merging due to different values of otmp->known
- */
-{
-	return (otmp->olet == ARMOR_SYM ||
-		otmp->olet == WAND_SYM ||
-		otmp->olet == WEAPON_SYM ||
-		((otmp->olet == TOOL_SYM || otmp->olet == RING_SYM) &&
-		    objects[otmp->otyp].oc_charged) ||
-		otmp->otyp == FIGURINE ||
-		otmp->otyp == EGG ||
-		otmp->otyp == TIN ||
-		otmp->otyp == AMULET_OF_YENDOR);
 }
 
 static int

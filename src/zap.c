@@ -145,6 +145,12 @@ register struct obj *otmp;
 		break;
 #endif
 	case WAN_OPENING:
+		if(u.uswallow && mtmp == u.ustuck) {
+			if (Blind) pline("Its mouth opens!");
+			else pline("%s opens its mouth!", Monnam(mtmp));
+			regurgitates(mtmp);
+			break;
+		}
 	case WAN_LOCKING:
 #ifdef SPELLS
 	case SPE_KNOCK:
@@ -189,7 +195,7 @@ boolean ininv;
 				montype = PM_UNARMORED_SOLDIER;
 #endif
 			mons[montype].pxlth += nl;
-			mtmp = mkmon_at(mons[montype].mname, x, y);
+			mtmp = makemon(&mons[montype], x, y);
 			mons[montype].pxlth -= nl;
 			if (mtmp) {
 				/* Monster retains its name */
@@ -219,6 +225,9 @@ register struct obj *obj;
 	    obj->otyp == STATUE ||
 #ifdef MAIL
 	    obj->otyp == SCR_MAIL ||
+#endif
+#ifdef TUTTI_FRUTTI
+	    obj->otyp == SLIME_MOLD ||
 #endif
 	    obj->otyp == KEY || obj->otyp == SKELETON_KEY ||
 	    obj->otyp == LARGE_BOX || obj->otyp == CHEST))
@@ -286,7 +295,7 @@ register struct obj *obj, *otmp;	/* returns TRUE if sth was done */
 			otmp2->opoisoned = 1;
 
 		/* Turn dragon corpses into dragon armors */
-		if (obj->otyp == CORPSE && obj->corpsenm >= PM_GREY_DRAGON
+		if (obj->otyp == CORPSE && obj->corpsenm >= PM_GRAY_DRAGON
 				&& obj->corpsenm <= PM_YELLOW_DRAGON) {
 			if (!rn2(10)) { /* Random failure */
 				otmp2->otyp = TIN;
@@ -781,7 +790,9 @@ register struct	obj	*obj;
 			if(u.uswallow) {
 				register struct monst *mtmp = u.ustuck;
 
-				You("pierce %s's stomach wall!", mon_nam(mtmp));
+				if (Blind) You("pierce its stomach wall!");
+				else You("pierce %s's stomach wall!",
+					mon_nam(mtmp));
 				mtmp->mhp = 1;	/* almost dead */
 				regurgitates(mtmp);
 				break;
@@ -939,7 +950,11 @@ struct obj *obj;			/* 2nd arg to fhitm/fhito */
 
 	if(sym) {
 		tmp_at(-1, sym);	/* open call */
+#ifdef TEXTCOLOR
+		tmp_at(-3, (int)objects[obj->otyp].oc_color);
+#else
 		tmp_at(-3, (int)AT_OBJ);
+#endif
 	}
 	while(range-- > 0) {
 #ifdef STRONGHOLD
@@ -949,7 +964,7 @@ struct obj *obj;			/* 2nd arg to fhitm/fhito */
 		bhitpos.y += ddy;
 #ifdef STRONGHOLD
 		x = bhitpos.x; y = bhitpos.y;
-		if (find_drawbridge(&x,&y))
+		if (find_drawbridge(&x,&y) && !sym)
 		    switch (obj->otyp) {
 			case WAN_OPENING:
 # ifdef SPELLS
@@ -970,7 +985,7 @@ struct obj *obj;			/* 2nd arg to fhitm/fhito */
 			    destroy_drawbridge(x,y);
 		    }
 #endif /* STRONGHOLD /**/
-		if(levl[bhitpos.x][bhitpos.y].mmask){
+		if(MON_AT(bhitpos.x, bhitpos.y)){
 			mtmp = m_at(bhitpos.x,bhitpos.y);
 			if(sym) {
 				tmp_at(-1, -1);	/* close call */
@@ -995,7 +1010,7 @@ struct obj *obj;			/* 2nd arg to fhitm/fhito */
 		    if(hitanything)	range--;
 		}
 		typ = levl[bhitpos.x][bhitpos.y].typ;
-		if(IS_DOOR(typ) || typ == SDOOR) {
+		if((IS_DOOR(typ) || typ == SDOOR) && !sym) {
 		    switch (obj->otyp) {
 			case WAN_OPENING:
 			case WAN_LOCKING:
@@ -1065,7 +1080,7 @@ int dx, dy;
 		dy = ydir[i];
 		bhitpos.x += dx;
 		bhitpos.y += dy;
-		if(levl[bhitpos.x][bhitpos.y].mmask){
+		if(MON_AT(bhitpos.x, bhitpos.y)){
 			tmp_at(-1,-1);
 			return(m_at(bhitpos.x,bhitpos.y));
 		}
@@ -1075,8 +1090,10 @@ int dx, dy;
 			break;
 		}
 		if(bhitpos.x == u.ux && bhitpos.y == u.uy) { /* ct == 9 */
-			if(rn2(20) >= ACURR(A_DEX)){ /* we hit ourselves */
-				(void) thitu(10, rnd(10), "boomerang");
+			if(Fumbling || rn2(20) >= ACURR(A_DEX)){
+				/* we hit ourselves */
+				(void) thitu(10, rnd(10), (struct obj *)0,
+					"boomerang");
 				break;
 			} else {	/* we catch it */
 				tmp_at(-1,-1);
@@ -1186,11 +1203,11 @@ register int type, nd;
 }
 
 /*
- * burn scrolls on floor at position x,y
- * return the number of scrolls burned
+ * burn scrolls and spell books on floor at position x,y
+ * return the number of scrolls and spell books burned
  */
 static int
-burn_floor_scrolls(x, y)
+burn_floor_paper(x, y)
 int x, y;
 {
 	register struct obj *obj, *obj2;
@@ -1200,7 +1217,12 @@ int x, y;
 	for(obj = fobj; obj; obj = obj2) {
 	    obj2 = obj->nobj;
 	    /* Bug fix - KAA */
-	    if(obj->ox == x && obj->oy == y && obj->olet == SCROLL_SYM) {
+	    if(obj->ox == x && obj->oy == y &&
+#ifdef SPELLS
+	       (obj->olet == SCROLL_SYM || obj->olet == SPBOOK_SYM)) {
+#else
+	       obj->olet == SCROLL_SYM) {
+#endif
 		scrquan = obj->quan;
 		for(i = 1; i <= scrquan ; i++)
 		    if(!rn2(3))  {
@@ -1391,12 +1413,12 @@ register int dx,dy;
 			}
 		}
 		if(OBJ_AT(sx, sy) && abstype == 1)
-			if(burn_floor_scrolls(sx,sy) && cansee(sx,sy))  {
+			if(burn_floor_paper(sx,sy) && cansee(sx,sy))  {
 			    mnewsym(sx,sy);
 			    if(!Blind)
 				You("see a puff of smoke.");
 			}
-		if(levl[sx][sy].mmask){
+		if(MON_AT(sx, sy)){
 			mon = m_at(sx,sy);
 			/* Cannot use wakeup() which also angers the monster */
 			mon->msleep = 0;
@@ -1863,27 +1885,27 @@ register int	damage, tell;
 {
 	register int	resisted = 0;
 #ifdef HARD
-	register int	level;
+	register int	lev;
 
 	switch(olet)  {
 
 	    case WAND_SYM:
-			level = 8;
+			lev = 8;
 			break;
 
 	    case SCROLL_SYM:
-			level = 6;
+			lev = 6;
 			break;
 
 	    case POTION_SYM:
-			level = 5;
+			lev = 5;
 			break;
 
-	    default:	level = u.ulevel;
+	    default:	lev = u.ulevel;
 			break;
 	}
 
-	resisted = (rn2(100) - mtmp->m_lev + level) < mtmp->data->mr;
+	resisted = (rn2(100) - mtmp->m_lev + lev) < mtmp->data->mr;
 	if(resisted) {
 
 		if(tell) {
@@ -1925,9 +1947,8 @@ retry:
 	}
 	if (otmp != &zeroobj) {
 	    if(dropit) {
-		pline("Oops!  The %s drop%s to the floor!", xname(otmp),
-			otmp->quan > 1 ? "" : "s");
-		dropy(otmp);
+	        pline("Oops!  The %s to the floor!", aobjnam(otmp, "drop"));
+	        dropy(otmp);
 	    } else {
 	    	wishquan = otmp->quan;
 	    	otmp = addinv(otmp);

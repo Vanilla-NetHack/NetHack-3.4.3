@@ -27,7 +27,7 @@
 void
 setrandom()
 {
-#ifdef SYSV
+#if defined(SYSV) || defined(DGUX)
 	(void) Srand((long) time ((time_t *) 0));
 #else
 #ifdef ULTRIX

@@ -8,6 +8,7 @@
 
 /* block some unused #defines to avoid overloading some cpp's */
 #define MONATTK_H
+#define MONFLAG_H
 #include "hack.h"
 
 #if defined(BSD) || defined(ULTRIX)

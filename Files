@@ -1,7 +1,7 @@
-This is a listing of all files in a full NetHack 3.0 distribution, organized in
-their standard manner on a UNIX system.  It indicates which files are necessary
-for which versions, so that you can tell which files may be deleted from or not
-transferred to your system if you wish.
+This is a listing of all files in a full NetHack 3.0 distribution, organized
+in their standard manner on a UNIX system.  It indicates which files are 
+necessary for which versions, so that you can tell which files may be deleted
+from or not transferred to your system if you wish.
 
 
 (files in top directory)
@@ -27,8 +27,8 @@ Makefile.auxil  lev_comp.6      nethack.6       nethack.sh
 
 others:
 (files for MSDOS version)
-Make.ini        Makefile.msc    Makefile.os2    Makefile.tcc    Maketcc.ini
-NetHack.cnf     termcap         termcap.uu
+Make.ini        Makefile.msc    Makefile.pc     Makefile.os2    Makefile.tcc
+Maketcc.ini     NetHack.cnf     termcap         termcap.uu
 (files for MSDOS, Amiga, and Atari versions)
 pcmain.c        pctty.c         pcunix.c
 (file for MSDOS and new Atari versions)
@@ -37,7 +37,7 @@ msdos.c
 Makefile.st
 (file for old Atari version)
 oldtos.c
-(file with random number routines, which may be included in any version)
+(Berkeley random number file, which may be included in any version)
 random.c
 
 
@@ -51,7 +51,7 @@ mondata.h       monflag.h       monst.h         monsym.h        msdos.h
 obj.h           objclass.h      patchlevel.h    pcconf.h        permonst.h
 prop.h          rm.h            sp_lev.h        spell.h         system.h
 tosconf.h       tradstdc.h      trap.h          trapname.h      unixconf.h
-vault.h         wseg.h          you.h           youprop.h
+vault.h         vmsconf.h       wseg.h          you.h           youprop.h
 (file for special level compiler (STRONGHOLD option))
 lev_comp.h
 
@@ -79,3 +79,10 @@ worn.c          write.c         zap.c
 lev_comp.c      lev_comp.l      lev_comp.y      lev_lex.c       lev_main.c
 (files for UNIX versions)
 Makefile.src    unixmain.c      unixtty.c       unixunix.c
+
+vms:
+(files for VMS version)
+Install.vms     spec_lev.com    vmsbuild.com    vmsmain.c       vmsmisc.c
+vmstty.c        vmsunix.c
+(GNU termcap files that support VMS version)
+vmstermcap.c    vmstparam.c

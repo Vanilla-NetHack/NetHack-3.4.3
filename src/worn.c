@@ -138,7 +138,7 @@ boolean on;
 
 	if (obj->otyp != DRAGON_SCALE_MAIL) return;
 	switch(obj->corpsenm) {
-		case PM_GREY_DRAGON:
+		case PM_GRAY_DRAGON:
 			mask = &Antimagic;
 			break;
 		case PM_RED_DRAGON:

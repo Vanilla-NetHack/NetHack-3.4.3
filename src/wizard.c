@@ -80,14 +80,12 @@ register struct monst *mtmp;
 			    mnexto(mtmp);
 			    return(0);
 			}
-			if(!levl[otmp->ox][otmp->oy].mmask ||
+			if(!MON_AT(otmp->ox, otmp->oy) ||
 			    (mtmp->mx == otmp->ox && mtmp->my == otmp->oy)) {
 
 			    /* teleport to it and pick it up */
-			    levl[mtmp->mx][mtmp->my].mmask = 0;
-			    levl[otmp->ox][otmp->oy].mmask = 1;
-			    mtmp->mx = otmp->ox;
-			    mtmp->my = otmp->oy;
+			    remove_monster(mtmp->mx, mtmp->my);
+			    place_monster(mtmp, otmp->ox, otmp->oy);
 			    freeobj(otmp);
 			    mpickobj(mtmp, otmp);
 			    pmon(mtmp);

@@ -348,6 +348,7 @@ wiz_level_tele()
 
 void
 enlightenment() {
+	char buf[BUFSZ];
 
 	cornline(0, "Current Attributes:");
 
@@ -355,6 +356,12 @@ enlightenment() {
 	else if (u.ualign > 3) cornline(1, "You are stridently aligned.");
 	else if (u.ualign > 0) cornline(1, "You are haltingly aligned.");
 	else cornline(1, "You have strayed.");
+#ifdef WIZARD
+	if (wizard) {
+		Sprintf(buf, "Your alignment is %d.", u.ualign);
+		cornline(1, buf);
+	}
+#endif
 
 	if (Adornment) cornline(1, "You are adorned.");
 	if (Teleportation) cornline(1, "You can teleport.");
@@ -388,8 +395,6 @@ enlightenment() {
 	if (Invisible) cornline(1, "You are invisible.");
 	else if (Invis) cornline(1, "You are invisible to others.");
 	if (Wounded_legs) {
-		char buf[41];
-
 		Sprintf(buf, "You have wounded %s.",
 						makeplural(body_part(LEG)));
 		cornline(1, buf);
@@ -397,8 +402,6 @@ enlightenment() {
 	if (Stoned) cornline(1, "You are turning to stone.");
 	/* if (Hallucination) cornline(1, "You are hallucinating."); */
 	if (Glib) {
-		char buf[41];
-
 		Sprintf(buf, "You have slippery %s.",
 						makeplural(body_part(FINGER)));
 		cornline(1, buf);
@@ -420,6 +423,12 @@ enlightenment() {
 		if (stone_luck(FALSE) >= 0)
 			cornline(1, "Good luck does not time out for you.");
 	}
+#ifdef WIZARD
+	if (wizard) {
+		Sprintf(buf, "Your luck is %d.", u.uluck);
+		cornline(1, buf);
+	}
+#endif
 
 	cornline(2, "");
 	return;

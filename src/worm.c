@@ -47,7 +47,7 @@ struct monst *mtmp;
 register struct wseg *wtmp;
 {
 	if (mtmp->mx != wtmp->wx || mtmp->my != wtmp->wy)
-		levl[wtmp->wx][wtmp->wy].mmask = 0;
+		remove_monster(wtmp->wx, wtmp->wy);
 	if(wtmp->wdispl) newsym(wtmp->wx, wtmp->wy);
 	free((genericptr_t) wtmp);
 }
@@ -181,7 +181,7 @@ unsigned weptyp;		/* uwep->otyp or 0 */
 	/* sometimes the tail end dies */
 	if(rn2(3) || !getwn(mtmp2)){
 		monfree(mtmp2);
-		levl[mtmp2->mx][mtmp2->my].mmask = 1;
+		place_worm_seg(mtmp, mtmp2->mx, mtmp2->my);
 			/* since mtmp is still on that spot */
 		tmp2 = 0;
 	} else {
@@ -196,21 +196,20 @@ unsigned weptyp;		/* uwep->otyp or 0 */
 		remseg(mtmp, wtmp->nseg);
 		wtmp->nseg = 0;
 		if(tmp2) {
-		    You("cut the worm in half.");
+		    kludge("You cut %s in half.", mon_nam(mtmp));
 		/* devalue the monster level of both halves of the worm */
 		    mtmp->m_lev = (mtmp->m_lev <= 2) ? 2 : mtmp->m_lev - 2;
 		    mtmp2->m_lev = mtmp->m_lev;
 		/* calculate the mhp on the new (lower) monster level */
 		    mtmp2->mhpmax = mtmp2->mhp = d((int)mtmp2->m_lev, 8);
-		    mtmp2->mx = wtmp->wx;
-		    mtmp2->my = wtmp->wy;
-		    levl[mtmp2->mx][mtmp2->my].mmask = 1;
+		    place_monster(mtmp2, wtmp->wx, wtmp->wy);
 		    mtmp2->nmon = fmon;
 		    fmon = mtmp2;
 		    mtmp2->mdispl = 0;
 		    pmon(mtmp2);
 		} else {
-			You("cut off part of the worm's tail.");
+			if (Blind) You("cut off part of its tail.");
+			else You("cut off part of %s's tail.", mon_nam(mtmp));
 			remseg(mtmp, wtmp);
 		}
 		mtmp->mhp /= 2;

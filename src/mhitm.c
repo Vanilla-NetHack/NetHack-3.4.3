@@ -263,8 +263,8 @@ gulpmm(magr, mdef, mattk)
 	magr->my = mdef->my;
 	if(cansee(magr->mx, magr->my))	pmon(magr);
 	if((tmp = mdamagem(magr, mdef, mattk)) == 2) {
-		levl[mx][my].mmask = 0;
-		levl[magr->mx][magr->my].mmask = 1;
+		remove_monster(mx, my);
+		place_monster(magr, magr->mx, magr->my);
 		/* if mdamagem left a corpse it erased magr's symbol */
 		unpmon(magr);
 		pmon(magr);

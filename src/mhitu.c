@@ -217,9 +217,8 @@ doattack:
 		    coord cc; /* maybe we need a unexto() function? */
 
 		    unpmon(mtmp);
-		    levl[mtmp->mx][mtmp->my].mmask = 0;
-		    mtmp->mx = u.ux; mtmp->my = u.uy;
-		    levl[mtmp->mx][mtmp->my].mmask = 1;
+		    remove_monster(mtmp->mx, mtmp->my);
+		    place_monster(mtmp, u.ux, u.uy);
 		    pmon(mtmp);
 		    enexto(&cc, u.ux, u.uy, &playermon);
 		    teleds(cc.x, cc.y);
@@ -243,8 +242,9 @@ doattack:
 		     pline("Wait, %s!  There's a %s named %s hiding under %s!",
 			mtmp->mnamelth ? NAME(mtmp) : mtmp->data->mname,
 			uasmon->mname, plname,
-			OBJ_AT(u.ux, u.uy) ? doname(o_at(u.ux,u.uy)) :
-			"some gold");
+			OBJ_AT(u.ux,u.uy)
+			   ? doname(level.objects[u.ux][u.uy]) :
+			   "some gold");
 		    prme();
 		}
 		return(0);
@@ -465,7 +465,7 @@ hitmu(mtmp, mattk)
 		register struct obj *obj;
 
 		if(OBJ_AT(mtmp->mx, mtmp->my)) {
-		    if(obj = o_at(mtmp->mx,mtmp->my))
+		    if(obj = level.objects[mtmp->mx][mtmp->my])
 			pline("%s was hidden under %s!",
 				  Xmonnam(mtmp), doname(obj));
 		} else if (levl[mtmp->mx][mtmp->my].gmask == 1)
@@ -719,6 +719,7 @@ dopois:
 		hitmsg(mtmp, mattk);
 #ifdef POLYSELF
 		if (ctmp && !rn2(4) && u.ulycn == -1
+		    && !Protection_from_shape_changers
 # ifdef NAMED_ITEMS
 		    && !defends(AD_WERE,uwep)
 # endif
@@ -1020,10 +1021,8 @@ gulpmu(mtmp, mattk)	/* monster swallows you, or damage if u.uswallow */
 #endif
 
 	if(!u.uswallow) {	/* swallow him */
-		levl[mtmp->mx][mtmp->my].mmask = 0;
-		mtmp->mx = u.ux;
-		mtmp->my = u.uy;
-		levl[mtmp->mx][mtmp->my].mmask = 1;
+		remove_monster(mtmp->mx, mtmp->my);
+		place_monster(mtmp, u.ux, u.uy);
 		u.ustuck = mtmp;
 		pmon(mtmp);
 		kludge("%s engulfs you!", Monnam(mtmp));
@@ -1461,6 +1460,7 @@ register struct monst *mon;
 	mayberem(uarmf, "boots");
 	mayberem(uarmg, "gloves");
 	mayberem(uarms, "shield");
+	mayberem(uarmh, "helmet");
 #ifdef SHIRT
 	if(!uarmc && !uarm)
 		mayberem(uarmu, "shirt");
@@ -1571,10 +1571,10 @@ register struct monst *mon;
 			if (!cost) cost=1;
 		}
 		if (cost > u.ugold) cost = u.ugold;
-		if (!cost) pline("%s says: \"It's on the house!\"", Monnam(mon));
+		if (!cost) verbalize("It's on the house!");
 		else {
-		    pline("%s takes %ld Zorkmid%s for services rendered!",
-			    Monnam(mon), cost, (cost==1) ? "" : "s");
+		    pline("%s takes %ld zorkmid%s for services rendered!",
+			    Monnam(mon), cost, plur(cost));
 		    u.ugold -= cost;
 		    mon->mgold += cost;
 		    flags.botl = 1;
@@ -1599,7 +1599,7 @@ char *str;
 		if (yn() == 'n') return;
 	} else pline("\"Take off your %s; %s.\"", str,
 			(obj == uarm)  ? "let's get a little closer" :
-			(obj == uarmc) ? "it's in the way" :
+			(obj == uarmc || obj == uarms) ? "it's in the way" :
 			(obj == uarmf) ? "let me rub your feet" :
 			(obj == uarmg) ? "they're too clumsy" :
 #ifdef SHIRT

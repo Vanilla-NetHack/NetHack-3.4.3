@@ -96,7 +96,9 @@ register struct obj *pen;
 	getlin(namebuf);
 	if(namebuf[0] == '\033' || !namebuf[0])
 		return;
-	Strcpy(scrbuf,"scroll of ");
+	scrbuf[0] = '\0';
+	if(strncmp(namebuf,"scroll of ",10) != 0)
+		Strcpy(scrbuf,"scroll of ");
 	Strcat(scrbuf,namebuf);
 	newscroll = readobjnam(scrbuf);
 

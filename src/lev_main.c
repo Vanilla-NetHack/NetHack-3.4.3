@@ -26,7 +26,12 @@ char **argv;
 	    yyparse();
 	else 			/* Otherwise every argument is a filename */
 	    for(i=1; i<argc; i++) {
+#ifdef VMS
+		    extern FILE *yyin;
+		    yyin = fin = fopen(argv[i], "r");
+#else
 		    fin = freopen(argv[i], "r", stdin);
+#endif
 		    fname = argv[i];
 		    if (!fin) 
 			fprintf(stderr,"Can't open %s\n", argv[i]);

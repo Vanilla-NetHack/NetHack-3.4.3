@@ -42,14 +42,21 @@ topten(){
 	int rank, rank0 = -1, rank1 = 0;
 	int occ_cnt = PERSMAX;
 	register struct toptenentry *t0, *t1, *tprev;
-	char *recfile = RECORD;
 #ifdef UNIX
 	char *reclock = "record_lock";
 # ifdef NO_FILE_LINKS
 	int lockfd ;
 # endif
-	int sleepct = 100;
 #endif /* UNIX */
+#ifdef VMS
+	char *reclock = "record_lock;1";
+	char recfile[] = RECORD;
+#else
+	char *recfile = RECORD;
+#endif
+#if defined(UNIX) || defined(VMS)
+	int sleepct = 100;
+#endif
 	FILE *rfile;
 	register int flg = 0;
 #ifdef LOGFILE
@@ -57,8 +64,13 @@ topten(){
 	FILE *lfile;
 # ifdef UNIX
 	char *loglock = "logfile_lock";
-	int sleeplgct = 30;
 # endif /* UNIX */
+# ifdef VMS
+	char *loglock = "logfile_lock;1";
+# endif /* VMS */
+# if defined(UNIX) || defined(VMS)
+	int sleeplgct = 30;
+# endif /* UNIX or VMS */
 #endif /* LOGFILE */
 
 #ifdef MSDOS
@@ -84,7 +96,7 @@ topten(){
 	Strcpy(t0->date, getdate());
 
 #ifdef LOGFILE		/* used for debugging (who dies of what, where) */
-# ifdef UNIX
+# if defined(UNIX) || defined(VMS)
 #  ifdef NO_FILE_LINKS
 	loglock = (char *)alloc(sizeof(LOCKDIR)+1+strlen(lgfile)+6);
 	Strcpy(loglock,LOCKDIR) ;
@@ -108,12 +120,12 @@ topten(){
 		HUP Printf("Waiting for access to log file. (%d)\n",
  			sleeplgct);
 		HUP (void) fflush(stdout);
-#  if defined(SYSV) || defined(ULTRIX)
+#  if defined(SYSV) || defined(ULTRIX) || defined(VMS)
 		(void)
 #  endif
 		    sleep(1);
 	}
-# endif /* UNIX */
+# endif /* UNIX or VMS */
 	if(!(lfile = fopen(lgfile,"a"))){
 		HUP (void) puts("Cannot open log file!");
 		goto lgend;
@@ -124,9 +136,9 @@ topten(){
 	    t0->hp, t0->maxhp, t0->points,
 	    t0->plchar, t0->sex, t0->name, t0->death);
 	(void) fclose(lfile);
-# ifdef UNIX
+# if defined(UNIX) || defined(VMS)
 	(void) unlink(loglock);
-# endif /* UNIX */
+# endif /* UNIX or VMS */
       lgend:;
 # ifdef NO_FILE_LINKS
 	(void) close(lockfd) ;
@@ -140,7 +152,7 @@ topten(){
 # endif
 #endif /* LOGFILE */
 
-#ifdef UNIX
+#if defined(UNIX) || defined(VMS)
 # ifdef NO_FILE_LINKS
 	reclock = (char *)alloc(sizeof(LOCKDIR)+1+strlen(recfile)+7);
 	Strcpy(reclock,LOCKDIR) ;
@@ -160,12 +172,12 @@ topten(){
 		HUP Printf("Waiting for access to record file. (%d)\n",
 			sleepct);
 		HUP (void) fflush(stdout);
-# if defined(SYSV) || defined(ULTRIX)
+# if defined(SYSV) || defined(ULTRIX) || defined(VMS)
 		(void)
 # endif
 		    sleep(1);
 	}
-#endif /* UNIX */
+#endif /* UNIX or VMS */
 	if(!(rfile = fopen(recfile,"r"))){
 		HUP (void) puts("Cannot open record file!");
 		goto unlock;
@@ -244,6 +256,14 @@ topten(){
 	}
 	if(flg) {	/* rewrite record file */
 		(void) fclose(rfile);
+#ifdef VMS
+		{
+			char *sem = rindex(recfile, ';');
+
+			if (sem)
+				*sem = '\0';
+		}
+#endif
 		if(!(rfile = fopen(recfile,"w"))){
 			HUP (void) puts("Cannot write record file\n");
 			goto unlock;
@@ -295,8 +315,15 @@ topten(){
 	if(rank0 >= rank) if(!done_stopprint)
 		(void) outentry(0, t0, 1);
 	(void) fclose(rfile);
+#ifdef VMS
+	if (flg) {
+		delete(RECORD);
+		rename(recfile, RECORD);
+	}
+# undef unlink
+#endif
 unlock:	;
-#ifdef UNIX
+#if defined(UNIX) || defined(VMS)
 # ifdef NO_FILE_LINKS
 	(void) close(lockfd) ;
 # endif
@@ -693,9 +720,10 @@ pickentry:
 	} else {
 		otmp->corpsenm = classmon(tt->plchar, (tt->sex == 'F'));
 		otmp->owt = weight(otmp);
-		/* Note: oname() is safe since otmp is first in chain */
+		/* Note: oname() is safe since otmp is first in chains */
 		otmp = oname(otmp, tt->name, 0);
 		fobj = otmp;
+		level.objects[otmp->ox][otmp->oy] = otmp;
 		free((genericptr_t) tt);
 		return otmp;
 	}

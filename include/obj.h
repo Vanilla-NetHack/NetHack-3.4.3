@@ -7,6 +7,7 @@
 
 struct obj {
 	struct obj *nobj;
+	struct obj *nexthere;		/* for location lists */
 	struct obj *cobj;		/* id of container object is in */
 /*	unsigned o_cwt;			/* container weight capacity */
 	unsigned o_id;
@@ -45,10 +46,11 @@ struct obj {
 	Bitfield(onamelth,6);
 	long age;		/* creation date */
 	long owornmask;
+#define oeaten		rustfree
 
 /* note that TIMEOUT in you.h is defined as 07777L; no bits for items that
- * confer properties may overlap that mask, or timeout.c will happily rearrange
- * the bits behind the back of the property code
+ * confer properties may overlap that mask, or timeout.c will happily 
+ * rearrange the bits behind the back of the property code
  * shirts, balls, and chains are currently safe
  */
 #define	W_BALL	02000L
@@ -75,14 +77,12 @@ struct obj {
 				   is flexible; amount for tmp gold objects */
 };
 
-extern struct obj *fobj;
-
 #define newobj(xl)	(struct obj *) alloc((unsigned)(xl) + sizeof(struct obj))
 #define	ONAME(otmp)	((char *) otmp->oextra)
 #define	OGOLD(otmp)	(otmp->oextra[0])
+#define	OEATEN(otmp)	(otmp->oeaten)
 
 # ifndef STUPID_CPP	/* otherwise these macros are functions */
-/* #define OBJ_AT(x,y)	(levl[x][y].omask) */
 
 #define Is_container(otmp)	(otmp->otyp >= ICE_BOX && otmp->otyp <= BAG_OF_TRICKS)
 #define Is_box(otmp)	(otmp->otyp == LARGE_BOX || otmp->otyp == CHEST)

@@ -76,8 +76,8 @@ int x,y;
 	register struct obj *otmp;
 
 	mksx = x; mksy = y;
-	/* We might need to know the X, Y coordinates while creating the
-	 * object, i.e. to insure shop boxes are empty.
+	/* We need to know the X, Y coordinates while creating the object,
+	 * to insure shop boxes are empty.
 	 * Yes, this is a horrible kludge...
 	 */
 	otmp = mkobj(let,TRUE);
@@ -215,13 +215,13 @@ boolean artif;
 
 	otmp = newobj(0);
 	*otmp = zeroobj;
-	otmp->age = moves;
+	otmp->age = monstermoves;
 	otmp->o_id = flags.ident++;
 	otmp->quan = 1;
 	otmp->olet = let;
 	otmp->otyp = otyp;
 	otmp->dknown = index(dknowns, let) ? 0 : 1;
-	if (!uses_known(otmp))
+	if (!objects[otmp->otyp].oc_uses_known)
 		otmp->known = 1;
 	switch(let) {
 	case WEAPON_SYM:
@@ -239,6 +239,7 @@ boolean artif;
 #endif
 		break;
 	case FOOD_SYM:
+		OEATEN(otmp) = 0L;
 		if(otmp->otyp == CORPSE) {
 		    /* overridden by mkcorpstat() */
 		    do otmp->corpsenm = rndmonnum();
@@ -302,11 +303,11 @@ boolean artif;
 					break;
 		case BAG_OF_TRICKS:	otmp->spe = rnd(20);
 					break;
-		case FIGURINE:	{	int tryct = 0;
+		case FIGURINE:	{	int tryct2 = 0;
 					do
 					    otmp->corpsenm = rndmonnum();
 					while(is_human(&mons[otmp->corpsenm])
-						&& tryct++ < 30);
+						&& tryct2++ < 30);
 					blessorcurse(otmp, 4);
 					break;
 				}
@@ -356,8 +357,8 @@ boolean artif;
 			otmp->blessed = rn2(2);
 		} else	blessorcurse(otmp, 10);
 		if(otmp->otyp == DRAGON_SCALE_MAIL)
-			otmp->corpsenm = PM_GREY_DRAGON +
-			    rn2(PM_YELLOW_DRAGON-PM_GREY_DRAGON+1);
+			otmp->corpsenm = PM_GRAY_DRAGON +
+			    rn2(PM_YELLOW_DRAGON-PM_GRAY_DRAGON+1);
 		break;
 	case WAND_SYM:
 #ifdef HARD
@@ -543,9 +544,10 @@ register int lth;
 
 	otmp = mkcorpstat(objtype,ptr,x,y);
 	if (lth > 0) {
-		/* Note: oname() is safe since otmp is first in chain */
+		/* Note: oname() is safe since otmp is first in both chains */
 		otmp = oname(otmp, nm, FALSE);
 		fobj = otmp;
+		level.objects[x][y] = otmp;
 	}
 	return(otmp);
 }
@@ -575,52 +577,47 @@ register struct obj *otmp;
 }
 #endif
 
+
 /*
- * These functions encapsulate operations on the omask bit.  Someday soon they
- * will turn into list-manipulation functions.
+ * These routines maintain the single-linked lists headed in level.objects[][]
+ * and threaded through the nexthere fields in the object-instance structure.
  */
-boolean
-OBJ_AT(x, y)
+
+void
+place_object(otmp, x, y)
+/* put an object on top of the pile at the given location */
+register struct obj *otmp;
 int x, y;
 {
-	return levl[x][y].omask;
+    otmp->nexthere = level.objects[x][y];
+    level.objects[x][y] = otmp;
+
+    /* set the new object's location */
+    otmp->ox = x;
+    otmp->oy = y;
 }
 
 void
-place_object(obj, x, y)
-struct obj *obj;
-register int x, y;
+remove_object(otmp)
+register struct obj *otmp;
 {
-	obj->ox = x;
-	obj->oy = y;
-	levl[x][y].omask = 1;
+    register struct obj *odel;
+
+    if (otmp == level.objects[otmp->ox][otmp->oy])
+	level.objects[otmp->ox][otmp->oy] = otmp->nexthere;
+    else
+	for (odel = level.objects[otmp->ox][otmp->oy];
+						    odel; odel = odel->nexthere)
+	    if (odel->nexthere == otmp)
+		odel->nexthere = otmp->nexthere;
 }
 
-void
-move_object(obj, x, y)
-struct obj *obj;
-register int x, y;
+void move_object(otmp, x, y)
+register struct obj *otmp;
+int x, y;
 {
-	register int oldx = obj->ox, oldy = obj->oy;
-
-	obj->ox = x;
-	obj->oy = y;
-	levl[x][y].omask = 1;
-	levl[oldx][oldy].omask = (o_at(oldx, oldy) != (struct obj *)0);
+    remove_object(otmp);
+    place_object(otmp, x, y);
 }
 
-void
-remove_object(obj)
-struct obj *obj;
-{
-	register int oldx = obj->ox, oldy = obj->oy;
 
-/*
- * This cannot be used since it screws up unpobj().  It's only necessary so
- * that o_at() doesn't mistakenly find the object, but this is called only
- * in situations with the object already removed from the chain anyway.
-	obj->ox = 0;
-	obj->oy = 0;
- */
-	levl[oldx][oldy].omask = (o_at(oldx, oldy) != (struct obj *)0);
-}

@@ -46,6 +46,9 @@ struct permonst {
 	uchar		msound;			/* noise it makes */
 	long		mflags1,		/* boolean bitflags */
 			mflags2;		/* more boolean bitflags */
+# ifdef TEXTCOLOR
+	uchar		mcolor;			/* color to use */
+# endif
 };
 
 extern struct permonst mons[];		/* the master list of monster types */

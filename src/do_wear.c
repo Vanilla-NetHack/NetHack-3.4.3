@@ -241,7 +241,7 @@ Helmet_on() {
 		}
 		break;
 	case HELM_OF_OPPOSITE_ALIGNMENT:
-		if (u.ualigntyp == U_NEUTRAL) u.ualigntyp = rnd(2) ? -1 : 1;
+		if (u.ualigntyp == U_NEUTRAL) u.ualigntyp = rn2(2) ? -1 : 1;
 		else u.ualigntyp = -(u.ualigntyp);
 		makeknown(uarmh->otyp);
 		flags.botl = 1;
@@ -446,8 +446,14 @@ newname:	more();
 		}
 		flags.botl = 1;
 		(void)strncpy(plname, buf, sizeof(plname)-1);
+#ifdef VMS
+		Sprintf(SAVEF, "[.save]%d%s", getuid(), plname);
+		regularize(SAVEF+7);
+		Strcat(SAVEF, ";1");
+#else
 		Sprintf(SAVEF, "save/%d%s", getuid(), plname);
 		regularize(SAVEF+5);		/* avoid . or / in name */
+#endif
 #ifdef WIZARD
 		}
 #endif

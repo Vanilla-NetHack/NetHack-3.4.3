@@ -36,13 +36,13 @@ setgemprobs()
 {
 	register int j,first;
 #ifdef STRONGHOLD
-	int level = (dlevel > MAXLEVEL) ? MAXLEVEL : dlevel;
+	int lev = (dlevel > MAXLEVEL) ? MAXLEVEL : dlevel;
 #endif
 
 	first = bases[letindex(GEM_SYM)];
 
 #ifdef STRONGHOLD
-	for(j = 0; j < 9-level/3; j++)
+	for(j = 0; j < 9-lev/3; j++)
 #else
 	for(j = 0; j < 9-dlevel/3; j++)
 #endif
@@ -54,7 +54,7 @@ setgemprobs()
 		Printf("Not enough gems? - first=%d j=%d LAST_GEM=%d\n",
 			first, j, LAST_GEM);
 	for(j = first; j < LAST_GEM; j++)
-		objects[j].oc_prob = (180+j-first)/(LAST_GEM-first);
+		objects[j].oc_prob = (184+j-first)/(LAST_GEM-first);
 }
 
 /* shuffle descriptions on objects o_low to o_high */
@@ -66,6 +66,9 @@ shuffle(o_low, o_high, domaterial)
 {
 	register int i, j;
 	char *desc;
+#ifdef TEXTCOLOR
+	int color;
+#endif /* TEXTCOLOR */
 	int tmp;
 
 	for(j=o_low; j <= o_high; j++) {
@@ -73,6 +76,11 @@ shuffle(o_low, o_high, domaterial)
 		desc = objects[j].oc_descr;
 		objects[j].oc_descr = objects[i].oc_descr;
 		objects[i].oc_descr = desc;
+#ifdef TEXTCOLOR
+		color = objects[j].oc_color;
+		objects[j].oc_color = objects[i].oc_color;
+		objects[i].oc_color = color;
+#endif /* TEXTCOLOR */
 		/* shuffle discovery list */
 		tmp = disco[j];
 		disco[j] = disco[i];

@@ -84,8 +84,8 @@ register struct monst *mtmp;
 	    return mtmp->mpeaceful = 0;
 	else {
 
-	    pline("%s demands %ld Zorkmids for safe passage.",
-		  Xmonnam(mtmp), demand);
+	    pline("%s demands %ld zorkmid%s for safe passage.",
+		  Xmonnam(mtmp), demand, plur(demand));
 
 	    if((offer = bribe(mtmp)) >= demand) {
 		pline("%s vanishes laughing about cowardly mortals.",
@@ -127,8 +127,8 @@ struct monst *mtmp;
  	} else if(offer >= u.ugold) {
 		You("give %s all your gold.", x_monnam(mtmp, 0));
 		offer = u.ugold;
-	} else You("give %s %ld Zorkmid%s.", x_monnam(mtmp, 0), offer,
-		   offer == 1 ? "" : "s");
+	} else You("give %s %ld zorkmid%s.", x_monnam(mtmp, 0), offer,
+		   plur(offer));
 
 	u.ugold -= offer;
 	return(offer);

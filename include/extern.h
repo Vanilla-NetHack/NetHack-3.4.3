@@ -5,12 +5,20 @@
 #ifndef EXTERN_H
 #define EXTERN_H
 
-#if defined(MSDOS) && !defined(__TURBOC__)
+#if defined(MSDOS) && defined(MSC)
 /* MSC include files do not contain "extern" keyword */
 #define E
 #else
 #define E extern
 #endif
+
+/* ### allmain.c ### */
+
+E int (*occupation)();
+E int (*afternmv)();
+E void moveloop();
+E void stop_occupation();
+E void newgame();
 
 /* ### alloc.c ### */
 
@@ -341,8 +349,6 @@ E void freeinv P((struct obj *));
 E void delobj P((struct obj *));
 E void freeobj P((struct obj *));
 E void freegold P((struct gold *));
-E struct monst *m_at P((int,int));
-E struct obj *o_at P((int,int));
 E struct obj *sobj_at P((int,int,int));
 E int carried P((struct obj *));
 E struct obj *carrying P((int));
@@ -404,7 +410,6 @@ E struct monst *makemon P((struct permonst *,int,int));
 E void enexto P((coord *,XCHAR_P,XCHAR_P,struct permonst *));
 E int goodpos P((int,int, struct permonst *));
 E void rloc P((struct monst *));
-E struct monst *mkmon_at P((char *,int,int));
 E void init_monstr();
 E struct permonst *rndmonst();
 E struct permonst *mkclass P((CHAR_P));
@@ -490,7 +495,6 @@ E boolean is_flammable P((struct obj *));
 E boolean is_rustprone P((struct obj *));
 E boolean is_corrodeable P((struct obj *));
 #endif
-E boolean OBJ_AT P((int,int));
 E void place_object P((struct obj *,int,int));
 E void move_object P((struct obj *,int,int));
 E void remove_object P((struct obj *));
@@ -528,7 +532,6 @@ E void monfree P((struct monst *));
 E void unstuck P((struct monst *));
 E void killed P((struct monst *));
 E void xkilled P((struct monst *,int));
-E void kludge V((char *,char *,...));
 E void rescham();
 E void restartcham();
 E int newcham P((struct monst *,struct permonst *));
@@ -578,6 +581,12 @@ E int dochug P((struct monst *));
 E int m_move P((struct monst *,int));
 E void set_apparxy P((struct monst *));
 E boolean mdig_tunnel P((struct monst *));
+#ifdef STUPID_CPP
+E void place_monster P((struct monst *, int, int));
+E void place_worm_seg P((struct monst *, int, int));
+E void remove_monster P((int, int));
+E struct monst *m_at P((int, int));
+#endif
 
 /* ### monst.c ### */
 
@@ -617,11 +626,13 @@ E void get_scr_size();
 #ifdef TOS
 E int _copyfile P((char *, char *));
 E int kbhit();
+E void restore_colors();
+E void set_colors();
 #endif /* TOS */
 
 /* ### mthrowu.c ### */
 
-E int thitu P((int,int,char *));
+E int thitu P((int,int,struct obj *,char *));
 E int thrwmu P((struct monst *));
 E int spitmu P((struct monst *));
 E int breamu P((struct monst *,struct attack *));
@@ -657,7 +668,6 @@ E char *Doname2 P((struct obj *));
 E void lcase P((char *));
 E char *makeplural P((char *));
 E struct obj *readobjnam P((char *));
-E boolean uses_known P((struct obj *));
 
 /* ### options.c ### */
 
@@ -689,20 +699,18 @@ E int page_file P((char *,BOOLEAN_P));
 #ifdef SHELL
 E int dosh();
 #endif /* SHELL */
+#if defined(SHELL) || defined(DEF_PAGER) || defined(DEF_MAILREADER)
 E int child P((int));
+#endif
 #endif /* UNIX */
 
 /* ### pcmain.c ### */
 
 #ifdef MSDOS
-E int (*occupation)();
-E int (*afternmv)();
 E void askname();
-E void impossible V((char *,...));
 #ifdef CHDIR
 E void chdirx P((char *,BOOLEAN_P));
 #endif /* CHDIR */
-E void stop_occupation();
 #endif /* MSDOS */
 
 /* ### pctty.c ### */
@@ -957,7 +965,7 @@ E boolean paybill();
 E void pay_for_door P((int,int,char *));
 E void addtobill P((struct obj *,BOOLEAN_P));
 E void splitbill P((struct obj *,struct obj *));
-E void subfrombill P((struct obj *));
+E void sellobj P((struct obj *));
 E int doinvbill P((int));
 E int shkcatch P((struct obj *));
 E int shk_move P((struct monst *));
@@ -1060,13 +1068,20 @@ E void addtopl P((char *));
 E void more();
 E void cmore P((char *));
 E void clrlin();
+#ifdef NEED_VARARGS
+#if defined(USE_STDARG) || defined(USE_VARARGS)
+E void vpline P((const char *, va_list));
+#endif
+#endif
 E void pline V((const char *,...));
 E void Norep V((const char *,...));
 E void You V((const char *,...));
 E void Your V((const char *,...));
+E void kludge V((char *,char *,...));
 E void putsym P((CHAR_P));
 E void putstr P((char *));
 E char yn_function P((char *,CHAR_P));
+E void impossible V((char *,...));
 
 /* ### topten.c ### */
 
@@ -1129,12 +1144,8 @@ E void stumble_onto_mimic P((struct monst *));
 /* ### unixmain.c ### */
 
 #ifdef UNIX
-E int (*occupation)();
-E int (*afternmv)();
 E void glo P((int));
 E void askname();
-E void impossible V((char *,...));
-E void stop_occupation();
 #endif /* UNIX */
 
 /* ### unixtty.c ### */
@@ -1175,6 +1186,56 @@ E void paygd();
 /* ### version.c ### */
 
 E int doversion();
+
+/* ### vmsmain.c ### */
+
+#ifdef VMS
+#ifdef CHDIR
+E void chdirx P((char *,char));
+#endif /* CHDIR */
+E void glo P((int));
+E void askname();
+#endif /* VMS */
+
+/* ### vmsmisc.c ### */
+
+#ifdef VMS
+E void vms_abort();
+E void vms_exit();
+#endif /* VMS */
+
+/* ### vmstty.c ### */
+
+#ifdef VMS
+E void gettty();
+E void settty P((char *));
+E void setftty();
+E void intron();
+E void introff();
+E void error V((char *,...));
+#endif /* VMS */
+
+/* ### vmsunix.c ### */
+
+#ifdef VMS
+E void setrandom();
+E int getyear();
+E char *getdate();
+E int phase_of_the_moon();
+E int night();
+E int midnight();
+E void gethdate P((char *));
+E int uptodate P((int));
+E void getlock();
+E void regularize P((char *));
+E int vms_creat P((char *,unsigned int));
+E int vms_getuid();
+E void privoff();
+E void privon();
+# ifdef SHELL
+E int dosh();
+# endif
+#endif /* VMS */
 
 /* ### weapon.c ### */
 

@@ -146,19 +146,17 @@ dodrink() {
 	register struct obj *otmp;
 
 #ifdef FOUNTAINS
-
-      /* Is there something to drink here, i.e., a fountain? */
-       if (IS_FOUNTAIN(levl[u.ux][u.uy].typ)) {
-	   pline("Drink from the fountain? ");
-	   if(yn() == 'y') {
-	    (void) drinkfountain();
-	    return(1);
-	  }
-       }
-
-#endif /* FOUNTAINS /**/
+	/* Is there a fountain to drink from here? */
+        if (IS_FOUNTAIN(levl[u.ux][u.uy].typ)) {
+		pline("Drink from the fountain? ");
+		if(yn() == 'y') {
+			(void) drinkfountain();
+			return 1;
+		}
+	}
+#endif
 #ifdef SINKS
-	/* Now, check for kitchen sinks... */
+	/* Or a kitchen sink? */
 	if (IS_SINK(levl[u.ux][u.uy].typ)) {
 		pline("Drink from the sink? ");
 		if (yn() == 'y') {
@@ -168,7 +166,6 @@ dodrink() {
 	}
 #endif
 
-	unkn = 0;
 	otmp = getobj(beverages, "drink");
 	if(!otmp) return(0);
 	if(objects[otmp->otyp].oc_descr && !strcmp(objects[otmp->otyp].oc_descr, "smoky") && !rn2(13)) {
@@ -190,7 +187,7 @@ register struct obj *otmp;
 {
 	int retval;
 
-	nothing = 0;
+	nothing = unkn = 0;
 	if((retval = peffects(otmp)) >= 0) return(retval);
 
 	if(nothing) {
@@ -807,8 +804,8 @@ dodip()
 	if(!(obj = getobj("#", "dip")))
 		return(0);
 #ifdef FOUNTAINS
-	/* Is there something to dip into here, i.e., a fountain? */
-	if (levl[u.ux][u.uy].typ == FOUNTAIN) {
+	/* Is there a fountain to dip into here? */
+	if (IS_FOUNTAIN(levl[u.ux][u.uy].typ)) {
 		pline("Dip it into the fountain? ");
 		if(yn() == 'y') {
 			dipfountain(obj);
@@ -959,7 +956,7 @@ dodip()
 		char buf[BUFSZ];
 		Strcpy(buf, xname(potion));
 		pline("The %s form%s a coating on the %s.",
-			buf, (potion->quan==1) ? "s" : "", xname(obj));
+			buf, potion->quan==1 ? "s" : "", xname(obj));
 		obj->opoisoned = 1;
 		goto poof;
 	    } else if(obj->opoisoned && 

@@ -216,7 +216,7 @@ prl(x,y)
 	    /* the only lit corridor squares should be the entrances to
 	     * outside castle areas */
 		return;
-	if(room->mmask) mtmp = m_at(x,y);
+	if(MON_AT(x, y)) mtmp = m_at(x,y);
 	if(mtmp && !mtmp->mhide &&
 		(!mtmp->minvis || See_invisible)) {
 #ifdef WORM
@@ -227,7 +227,7 @@ prl(x,y)
 		pmon(mtmp);
 	}
 	else if(OBJ_AT(x, y) && !is_pool(x,y)) {
-		otmp = o_at(x,y);
+		otmp = level.objects[x][y];
 		atl(x,y,Hallucination ? rndobjsym() : otmp->olet);
 	}
 	else if(room->gmask && !is_pool(x,y))
@@ -263,7 +263,7 @@ register xchar x,y;
 	if(!room->seen) tmp = STONE_SYM;
 	else if(room->typ == POOL || room->typ == MOAT) tmp = POOL_SYM;
 	else if(OBJ_AT(x, y) && !Blind && room->scrsym) {
-		otmp = o_at(x,y);
+		otmp = level.objects[x][y];
 		tmp = Hallucination ? rndobjsym() : otmp->olet;
 	}
 	else if(room->gmask && !Blind && room->scrsym) 
@@ -483,7 +483,7 @@ register int x, y;
 {
 	if(x == u.ux && y == u.uy && !Invisible) return(1);
 
-	if(levl[x][y].mmask)
+	if(MON_AT(x, y))
 		if (Blind && Telepat || canseemon(m_at(x,y)))
 		    return(1);
 		else return ((HTelepat & WORN_HELMET) &&

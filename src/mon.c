@@ -8,6 +8,10 @@
 #  include "artifact.h"
 #endif
 
+#ifdef WORM
+#  include "wseg.h"
+#endif
+
 #ifdef HARD
 static boolean restrap();
 #  include <ctype.h>
@@ -17,7 +21,7 @@ long lastwarntime;
 int lastwarnlev;
 static const char *warnings[] = {
 	"white", "pink", "red", "ruby", "purple", "black" };
-struct monst *fdmon;	/* chain of dead monsters, need not to be saved */
+struct monst *fdmon;	/* chain of dead monsters, need not be saved */
 
 /* Creates a monster corpse, a "special" corpse, or nothing if it doesn't
  * leave corpses.  Monsters which leave "special" corpses should have
@@ -112,12 +116,13 @@ register struct monst *mtmp;
 	/* All special cases should precede the G_NOCORPSE check */
 
 	/* Note: oname() cannot be used generically for non-inventory objects
-	 * unless you fix the link from the previous object in the chain.
+	 * unless you fix the link from the previous object in the chains.
 	 * (Here we know it's the first one, so there was no link.)
 	 */
 	if (mtmp->mnamelth) {
 		obj = oname(obj, NAME(mtmp), 0);
 		fobj = obj;
+		level.objects[x][y] = obj;
 	}
 	stackobj(fobj);
 	newsym(x, y);
@@ -376,7 +381,7 @@ mpickgems(mtmp)
 
 	for(otmp = fobj; otmp; otmp = otmp->nobj)
 	  if(throws_rocks(mtmp->data) ? otmp->otyp == BOULDER :
-			(otmp->olet == GEM_SYM && otmp->otyp < LAST_GEM+5))
+			(otmp->olet == GEM_SYM && otmp->otyp < LAST_GEM+6))
 	    if(otmp->ox == mtmp->mx && otmp->oy == mtmp->my)
 	      if(mtmp->data->mlet != S_UNICORN
 		 || objects[otmp->otyp].g_val != 0){
@@ -542,7 +547,7 @@ nexttry:	/* eels prefer the water, but if there is no water nearby,
 			if(!(flag & ALLOW_U)) continue;
 			info[cnt] |= ALLOW_U;
 		} else {
-			if(levl[nx][ny].mmask) {
+			if(MON_AT(nx, ny)) {
 				if(!(flag & ALLOW_M)) continue;
 				info[cnt] |= ALLOW_M;
 				if((m_at(nx,ny))->mtame) {
@@ -697,10 +702,10 @@ register struct monst *mtmp;
 	    /* Dead Kops may come back. */
 	    switch(rnd(5)) {
 		case 1:	     /* returns near the stairs */
-			(void) mkmon_at(mtmp->data->mname,xdnstair,ydnstair);
+			(void) makemon(mtmp->data,xdnstair,ydnstair);
 			break;
 		case 2:	     /* randomly */
-			(void) mkmon_at(mtmp->data->mname,0,0);
+			(void) makemon(mtmp->data,0,0);
 			break;
 		default:
 			break;
@@ -728,12 +733,21 @@ register struct monst *mtmp, *mtmp2;
 {
 	relmon(mtmp);
 	monfree(mtmp);
-	levl[mtmp2->mx][mtmp2->my].mmask = 1;
+	place_monster(mtmp2, mtmp2->mx, mtmp2->my);
 	mtmp2->nmon = fmon;
 	fmon = mtmp2;
 	if(u.ustuck == mtmp) u.ustuck = mtmp2;
 	if(mtmp2->isshk) replshk(mtmp,mtmp2);
 	if(mtmp2->isgd) replgd(mtmp,mtmp2);
+#ifdef WORM
+	if(mtmp2->wormno) {
+		/* Each square the worm is on has a pointer; fix them all */
+		register struct wseg *wtmp;
+
+		for(wtmp=wsegs[mtmp2->wormno]; wtmp; wtmp=wtmp->nseg)
+			place_worm_seg(mtmp2, wtmp->wx, wtmp->wy);
+	}
+#endif
 }
 
 void
@@ -744,7 +758,7 @@ register struct monst *mon;
 
 	if (fmon == 0)  panic ("relmon: no fmon available.");
 
-	levl[mon->mx][mon->my].mmask = 0;
+	remove_monster(mon->mx, mon->my);
 
 	if(mon == fmon) fmon = fmon->nmon;
 	else {
@@ -760,7 +774,7 @@ void
 monfree(mtmp) register struct monst *mtmp; {
 	mtmp->nmon = fdmon;
 	fdmon = mtmp;
-	levl[mtmp->mx][mtmp->my].mmask = 0;
+	remove_monster(mtmp->mx, mtmp->my);
 }
 
 void
@@ -862,7 +876,7 @@ xkilled(mtmp, dest)
 	}
 	if((mtmp->mpeaceful && !rn2(2)) || mtmp->mtame)	change_luck(-1);
 	if ((mdat==&mons[PM_BLACK_UNICORN] && u.ualigntyp == U_CHAOTIC) ||
-	    (mdat==&mons[PM_GREY_UNICORN] && u.ualigntyp == U_NEUTRAL) ||
+	    (mdat==&mons[PM_GRAY_UNICORN] && u.ualigntyp == U_NEUTRAL) ||
 	    (mdat==&mons[PM_WHITE_UNICORN] && u.ualigntyp == U_LAWFUL))
 		change_luck(-5);
 
@@ -959,17 +973,6 @@ xkilled(mtmp, dest)
 		if (chance)
 			(void) make_corpse(mtmp);
 	}
-}
-
-/*VARARGS2*/
-void
-kludge(str, arg, arg2, arg3)
-	register char *str,*arg,*arg2,*arg3;
-{
-	if(Blind || !flags.verbose) {
-		if(*str == '%') pline(str,"It",arg2,arg3);
-		else pline(str,"it",arg2,arg3);
-	} else pline(str,arg,arg2,arg3);
 }
 
 void
@@ -1094,10 +1097,8 @@ mnexto(mtmp)	/* Make monster mtmp next to you (if possible) */
 {
 	coord mm;
 	enexto(&mm, u.ux, u.uy, mtmp->data);
-	levl[mtmp->mx][mtmp->my].mmask = 0;
-	levl[mm.x][mm.y].mmask = 1;
-	mtmp->mx = mm.x;
-	mtmp->my = mm.y;
+	remove_monster(mtmp->mx, mtmp->my);
+	place_monster(mtmp, mm.x, mm.y);
 	pmon(mtmp);
 	set_apparxy(mtmp);
 }
@@ -1115,10 +1116,8 @@ mnearto(mtmp,x,y,gz)	/* Make monster near (or at) location if possible */
 	}
 	if(x == mtmp->mx && y == mtmp->my) /* that was easy */
 		return;
-	levl[mtmp->mx][mtmp->my].mmask = 0;
-	levl[x][y].mmask = 1;
-	mtmp->mx = x;
-	mtmp->my = y;
+	remove_monster(mtmp->mx, mtmp->my);
+	place_monster(mtmp, x, y);
 	pmon(mtmp);
 	set_apparxy(mtmp);
 }

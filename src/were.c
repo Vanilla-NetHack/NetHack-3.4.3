@@ -10,16 +10,16 @@ register struct monst *mon;
 {
 	register int pm = monsndx(mon->data);
 
-	if(Protection_from_shape_changers) return;
 	if(is_were(mon->data))
 	    if(is_human(mon->data)) {
+		if(Protection_from_shape_changers) return;
 		if(!rn2(50-(night()*20)) || flags.moonphase == FULL_MOON) {
 		    new_were(mon);
-		    if(pm != PM_WERERAT && flags.soundok)
+		    if(mons[pm].msound == MS_BARK && flags.soundok)
 			You("hear a %s howling at the moon.",
 			      pm == PM_WEREJACKAL ? "jackal" : "wolf");
 		}
-	    } else if(!rn2(30)) new_were(mon);
+	    } else if(!rn2(30) || Protection_from_shape_changers) new_were(mon);
 }
 
 static int
@@ -69,7 +69,7 @@ register boolean yours;
 	register struct monst *mtmp;
 	boolean success = FALSE;
 
-	if(Protection_from_shape_changers)
+	if(Protection_from_shape_changers && !yours)
 		return FALSE;
 	for(i = rnd(5); i > 0; i--) {
 	   switch(pm) {

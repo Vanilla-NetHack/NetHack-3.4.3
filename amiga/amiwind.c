@@ -10,7 +10,6 @@
 
 #define MANX			/* Define for the Manx compiler */
 
-
 #include <exec/types.h>
 #include <exec/alerts.h>
 #include <exec/io.h>
@@ -39,6 +38,7 @@ struct IntuiMessage *GetMsg();
 struct MenuItem *ItemAddress();
 struct Process *FindTask();         /* Cheating */
 long DeadKeyConvert(), OpenDevice(), CloseDevice();
+struct MsgPort *CreatePort();
 extern struct Library *IconBase;
 void abort();
 
@@ -100,7 +100,6 @@ struct TextAttr Hack80 = {
     TOPAZ_EIGHTY, FS_NORMAL, FPF_DISKFONT | FPF_ROMFONT
 };
 
-
 #define BARHEIGHT	11
 #define WINDOWHEIGHT	192
 #define WIDTH		640
@@ -124,7 +123,6 @@ struct NewWindow NewHackWindow = {
 #ifdef MAIL
 		      | DISKINSERTED
 #endif
-
     , BORDERLESS | BACKDROP | ACTIVATE,
     NULL, NULL, NULL,
     NULL, NULL, -1,-1,-1,-1, CUSTOMSCREEN
@@ -178,12 +176,16 @@ register struct IntuiMessage *message;
 
     control = (qualifier &  IEQUALIFIER_CONTROL) != 0;
     shift   = (qualifier & (IEQUALIFIER_LSHIFT | IEQUALIFIER_RSHIFT)) != 0;
+    alt     = (qualifier & (IEQUALIFIER_LALT   | IEQUALIFIER_RALT  )) != 0;
+    /* Allow ALT to function as a META key ... */
+    qualifier &= ~(IEQUALIFIER_LALT | IEQUALIFIER_RALT);
+    numeric_pad = (qualifier & IEQUALIFIER_NUMERICPAD) != 0;
 
     /*
-     *	Shortcut for HELP and arrow keys... I suppose this is allowed...
-     *	the defines are in intuition/intuition.h, and the keys
-     *	don't serve 'text' input, normally.
-     *	Also, parsing their escape sequences is such a mess...
+     *	Shortcut for HELP and arrow keys. I suppose this is allowed.
+     *	The defines are in intuition/intuition.h, and the keys don't
+     *	serve 'text' input, normally. Also, parsing their escape
+     *	sequences is such a mess...
      */
 
     switch (message->Code) {
@@ -199,10 +201,8 @@ register struct IntuiMessage *message;
     case CURSORRIGHT:
 	length = 'l';
     arrow:
-	if (control)
-	    length &= 0x1F;	    /* ToControl... */
-	else if (shift)
-	    length &= 0x5F;	    /* ToUpper... */
+	if (!flags.num_pad)	/* Give digits if set, letters otherwise */
+	    goto wasarrow;
     no_arrow:
 	BufferQueueChar(length);
 	return;
@@ -215,11 +215,6 @@ register struct IntuiMessage *message;
     }
 #endif
 
-    numeric_pad = (qualifier & IEQUALIFIER_NUMERICPAD) != 0;
-    if (alt = (qualifier & (IEQUALIFIER_LALT | IEQUALIFIER_RALT)) != 0)
-		/* Don't want dead keys... */
-	qualifier &= ~(IEQUALIFIER_LALT | IEQUALIFIER_RALT);
-
     theEvent.ie_Class = IECLASS_RAWKEY;
     theEvent.ie_Code = message->Code;
     theEvent.ie_Qualifier = numeric_pad ? IEQUALIFIER_NUMERICPAD :
@@ -230,7 +225,8 @@ register struct IntuiMessage *message;
 
     if (length == 1) {   /* Plain ASCII character */
 	length = buffer[0];
-	if (numeric_pad && length >= '1' && length <= '9') {
+	if (!flags.num_pad && numeric_pad && length >= '1' && length <= '9') {
+wasarrow:
 	    length -= '1';
 	    if (control) {
 		length = ctrl_numpad[length];
@@ -240,6 +236,8 @@ register struct IntuiMessage *message;
 		length = numpad[length];
 	    }
 	}
+	if (alt)
+	    length |= 0x80;
 	BufferQueueChar(length);
     } /* else shift, ctrl, alt, amiga, F-key, shift-tab, etc */
 }
@@ -314,8 +312,8 @@ int kbhit()
 
 int WindowGetchar()
 {
-    while ( !kbhit() ) {
-	Wait( 1L << HackWindow->UserPort->mp_SigBit );
+    while (!kbhit()) {
+	WaitPort(HackWindow->UserPort);
     }
     return BufferGetchar();
 }
@@ -346,7 +344,7 @@ void WindowFlush()
  *  Queue a single character for output to the console screen.
  */
 
-int WindowPutchar(c)
+void WindowPutchar(c)
 char c;
 {
     if (Buffered >= CONBUFFER)
@@ -429,6 +427,8 @@ void CleanUp()
 	CloseDevice(&ConsoleIO);
 	ConsoleDevice = NULL;
     }
+    if (ConsoleIO.io_Message.mn_ReplyPort)
+	DeletePort(ConsoleIO.io_Message.mn_ReplyPort);
     if (HackWindow) {
 	register struct IntuiMessage *msg;
 
@@ -561,6 +561,7 @@ void Initialize()
 
     ConsoleIO.io_Data = (APTR) HackWindow;
     ConsoleIO.io_Length = sizeof(*HackWindow);
+    ConsoleIO.io_Message.mn_ReplyPort = CreatePort(NULL, 0L);
     if (OpenDevice("console.device", 0L, &ConsoleIO, 0L) != 0)
 	abort(AG_OpenDev | AO_ConsoleDev);
 

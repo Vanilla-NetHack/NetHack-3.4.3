@@ -93,8 +93,8 @@ do_mname(){
 		plname);
 		return(0);
 	}
-	if (!cansee(cx, cy) || !levl[cx][cy].mmask ||
-	    (mtmp = m_at(cx, cy))->mimic) {
+	if (!cansee(cx,cy) || !MON_AT(cx,cy) || (mtmp = m_at(cx, cy))->mimic
+		    || (mtmp->minvis && !See_invisible) || mtmp->mundetected) {
 		pline("I see no monster there.");
 		return(0);
 	}

@@ -9,7 +9,7 @@
 
 
 /* #define BETA		/* if a beta-test copy  [MRS] */
-#define VERSION	"3.0f"	/* version number. */
+#define VERSION	"3.0g"	/* version number. */
 
 /*
  * Files expected to exist in the playground directory.
@@ -117,6 +117,11 @@ typedef	xchar	boolean;		/* 0 or 1 */
 #ifndef COORD_H
 #include "coord.h"
 #endif
+
+#if defined(VMS) && !defined(VMSCONF_H)
+# include "vmsconf.h"
+#endif
+
 #if defined(UNIX) && !defined(UNIXCONF_H)
 # include "unixconf.h"
 #endif

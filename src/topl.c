@@ -2,6 +2,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
+#define NEED_VARARGS
 #include "hack.h"
 
 char toplines[BUFSIZ];
@@ -134,21 +135,43 @@ clrlin(){
 }
 
 /*VARARGS1*/
-/* Because the modified mstatusline has 9 arguments KAA */
+/* Note the modified mstatusline has 9 arguments KAA */
+
+/* Also note that these declarations rely on knowledge of the internals
+ * of the variable argument handling stuff in "tradstdc.h"
+ */
+
+#if defined(USE_STDARG) || defined(USE_VARARGS)
 void
-pline(line,arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9)
-#ifndef TOS
-register
+pline VA_DECL(const char *, line)
+	VA_START(line);
+	VA_INIT(line, char *);
+	vpline(line, VA_ARGS);
+	VA_END();
+}
+
+# ifdef USE_STDARG
+void
+vpline(const char *line, va_list the_args) {
+# else
+void
+vpline(line, the_args) const char *line; va_list the_args; {
+# endif
+
+#else  /* USE_STDARG | USE_VARARG */
+
+void
+pline VA_DECL(const char *, line)
 #endif
-const char *line,*arg1,*arg2,*arg3,*arg4,*arg5,*arg6,*arg7,*arg8,*arg9;
-{
+
 	char pbuf[BUFSZ];
 	register char *bp = pbuf, *tl;
 	register int n,n0;
+/* Do NOT use VA_START and VA_END in here... see above */
 
 	if(!line || !*line) return;
 	if(!index(line, '%')) Strcpy(pbuf,line); else
-	Sprintf(pbuf,line,arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9);
+	Vsprintf(pbuf,line,VA_ARGS);
 	if(no_repeat && flags.toplin == 1 && !strcmp(pbuf, toplines)) return;
 	nscr();		/* %% */
 
@@ -206,50 +229,69 @@ again:
 
 /*VARARGS1*/
 void
-Norep(line,arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9)
-#ifndef TOS
-register
-#endif
-const char *line,*arg1,*arg2,*arg3,*arg4,*arg5,*arg6,*arg7,*arg8,*arg9;
-{
+Norep VA_DECL(const char *, line)
+	VA_START(line);
+	VA_INIT(line, const char *);
 	no_repeat = TRUE;
-	pline(line, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
+	vpline(line, VA_ARGS);
 	no_repeat = FALSE;
+	VA_END();
 	return;
 }
 
 /*VARARGS1*/
 void
-You(line,arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9)
-#ifndef TOS
-register
-#endif
-const char *line,*arg1,*arg2,*arg3,*arg4,*arg5,*arg6,*arg7,*arg8,*arg9;
-{
+You VA_DECL(const char *, line)
 	char *tmp;
+	VA_START(line);
+	VA_INIT(line, const char *);
 	tmp = (char *)alloc((unsigned int)(strlen(line) + 5));
 	Strcpy(tmp, "You ");
 	Strcat(tmp, line);
-	pline(tmp, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
+	vpline(tmp, VA_ARGS);
 	free(tmp);
+	VA_END();
 	return;
 }
 
 /*VARARGS1*/
 void
-Your(line,arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9)
-#ifndef TOS
-register
-#endif
-const char *line,*arg1,*arg2,*arg3,*arg4,*arg5,*arg6,*arg7,*arg8,*arg9;
-{
+Your VA_DECL(const char *,line)
 	char *tmp;
+	VA_START(line);
+	VA_INIT(line, const char *);
 	tmp = (char *)alloc((unsigned int)(strlen(line) + 6));
 	Strcpy(tmp, "Your ");
 	Strcat(tmp, line);
-	pline(tmp, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
+	vpline(tmp, VA_ARGS);
 	free(tmp);
+	VA_END();
 	return;
+}
+
+/*ARGSUSED*/
+/*VARARGS2*/
+void
+kludge  VA_DECL2(char *, str, char *, arg)
+#ifdef VA_NEXT
+	char *other1, *other2, *other3;
+#endif
+	VA_START(arg);
+	VA_INIT(str, char *);
+	VA_INIT(arg, char *);
+#ifdef VA_NEXT
+	VA_NEXT(other1, char *);
+	VA_NEXT(other2, char *);
+	VA_NEXT(other3, char *);
+# define OTHER_ARGS other1,other2,other3
+#else
+# define OTHER_ARGS arg1,arg2,arg3
+#endif
+	if(Blind || !flags.verbose) {
+		if(*str == '%') pline(str,"It",OTHER_ARGS);
+		else pline(str,"it",OTHER_ARGS);
+	} else pline(str,arg,OTHER_ARGS);
+	VA_END();
 }
 
 void
@@ -311,4 +353,14 @@ char *resp, def;
 	flags.toplin = 2;
 
 	return q;
+}
+
+/*VARARGS1*/
+void
+impossible VA_DECL(char *, s)
+	VA_START(s);
+	VA_INIT(s, char *);
+	vpline(s,VA_ARGS);
+	pline("Program in disorder - perhaps you'd better Quit.");
+	VA_END();
 }

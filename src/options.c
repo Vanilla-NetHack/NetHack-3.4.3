@@ -5,7 +5,8 @@
 #include "hack.h"
 static boolean set_order;
 
-static void nmcpy();
+static void nmcpy P((char *, char *, int));
+static int next_opt P((char *));
 
 void
 initoptions()
@@ -28,6 +29,9 @@ initoptions()
 	nmcpy(pl_fruit, objects[SLIME_MOLD].oc_name, PL_FSIZ);
 #endif
 	flags.num_pad = FALSE;
+#ifdef TEXTCOLOR
+	flags.use_color = TRUE;
+#endif
 #ifdef MSDOS
 #ifdef DECRAINBOW
 	flags.DECRainbow = FALSE;
@@ -259,6 +263,13 @@ boolean from_env;
 		flags.num_pad = !negated;
 		return;
 	}
+
+#ifdef TEXTCOLOR
+	if (!strncmp(opts, "col", 3)) {
+		flags.use_color = !negated;
+		return;
+	}
+#endif
 
 #ifdef DGK
 	if (!strncmp(opts, "IBM", 3)) {
@@ -546,6 +557,9 @@ doset()
 		Strcat(buf, inv_order);
 		Strcat(buf, ",");
 	    }
+#ifdef TEXTCOLOR
+	    if (flags.use_color) Strcat(buf, "color,");
+#endif
 	    if (flags.confirm) Strcat(buf,"confirm,");
 	    if (flags.safe_dog) Strcat(buf,"safe_pet,");
 	    if (flags.pickup) Strcat(buf,"pickup,");
@@ -580,6 +594,7 @@ dotogglepickup() {
 }
 
 #define Page_line(x)	if(page_line(x)) goto quit
+#define Next_opt(x)	if (next_opt(x)) goto quit
 
 void
 option_help() {
@@ -601,24 +616,39 @@ option_help() {
 	Page_line("");
 
 	Page_line("Boolean options (which can be negated by prefixing them with '!' or \"no\"):");
-	Page_line("confirm, (fe)male, fixinv, pickup, rest_on_space, safe_pet, silent, sortpack,");
 #ifdef MSDOS
-#ifdef NEWS
-	Page_line("time, tombstone, verbose, news, number_pad, rawio, and IBM_BIOS");
-#else
-	Page_line("time, tombstone, verbose, number_pad, rawio, and IBM_BIOS");
+# ifdef DECRAINBOW
+	Next_opt("DEC_Rainbow, ");
+# endif
+	Next_opt("IBM_BIOS, ");
 #endif
-#ifdef DECRAINBOW
-	Page_line("and DEC_Rainbow.");
-#endif /* DECRAINBOW */
-#else /* MSDOS */
-#ifdef NEWS
-	Page_line("time, tombstone, verbose, news, null, ignintr, and standout.");
-#else
-	Page_line("time, tombstone, verbose, null, ignintr, and standout.");
+#ifdef TEXTCOLOR
+	Next_opt("color, ");
 #endif
-#endif /* MSDOS */
-	Page_line("");
+	Next_opt("confirm, ");
+	Next_opt("(fe)male, "); Next_opt("fixinv, ");
+#ifdef UNIX
+	Next_opt("ignintr, ");
+#endif
+#ifdef NEWS
+	Next_opt("news, ");
+#endif
+#ifdef UNIX
+	Next_opt("null, ");
+#endif
+	Next_opt("number_pad, ");
+	Next_opt("pickup, ");
+#ifdef MSDOS
+	Next_opt("rawio, ");
+#endif
+	Next_opt("rest_on_space, "); Next_opt("safe_pet, ");
+	Next_opt("silent, "); Next_opt("sortpack, ");
+#ifdef UNIX
+	Next_opt("standout, ");
+#endif
+	Next_opt("time, "); Next_opt("tombstone, ");
+	Next_opt("and verbose.");
+	Next_opt("");
 
 	Page_line("Compound options:");
 	Page_line("`name'      - your character's name (e.g., name:Merlin-W),");
@@ -642,6 +672,31 @@ option_help() {
 quit:
 	set_pager(2);
 	return;
+}
+
+/*
+ * prints the next boolean option, on the same line if possible, on a new
+ * line if not
+ */
+static int
+next_opt(str)
+	char *str;
+{
+	static char buf[80];
+	static int i = 0;
+	int r = 0;
+
+	i += strlen(str);
+	if (i > (CO - 2) || !*str) {
+		r = page_line(buf);
+		buf[0] = 0;
+		i = strlen(str);
+	}
+	if (*str)
+		strcat(buf, str);
+	else
+		(void) page_line(str);	/* always returns 0 on "" */
+	return r;
 }
 
 #ifdef TUTTI_FRUTTI

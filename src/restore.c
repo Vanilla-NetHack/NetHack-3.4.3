@@ -39,6 +39,34 @@ register struct obj *cobj;
 		}
 }
 
+/* Recalculate level.objects[x][y], since this info was not saved. */
+static void
+find_lev_obj()
+{
+	register struct obj *fobjtmp = (struct obj *)0;
+	register struct obj *otmp;
+	int x,y;
+
+	for(x=0; x<COLNO; x++) for(y=0; y<ROWNO; y++)
+		level.objects[x][y] = (struct obj *)0;
+
+	/* Reverse the entire fobj chain, which is necessary so that we can
+	 * place the objects in the proper order.
+	 */
+	while(otmp = fobj) {
+		fobj = otmp->nobj;
+		otmp->nobj = fobjtmp;
+		fobjtmp = otmp;
+	}
+	/* Set level.objects (as well as reversing the chain back again) */
+	while(otmp = fobjtmp) {
+		place_object(otmp, otmp->ox, otmp->oy);
+		fobjtmp = otmp->nobj;
+		otmp->nobj = fobj;
+		fobj = otmp;
+	}
+}
+
 static struct obj *
 restobjchn(fd, ghostly)
 register int fd;
@@ -74,7 +102,7 @@ boolean ghostly;
 	 * new player's clock.  Assumption: new player arrived immediately
 	 * after old player died.
 	 */
-		if (ghostly) otmp->age = moves-omoves+otmp->age;
+		if (ghostly) otmp->age = monstermoves-omoves+otmp->age;
 		otmp2 = otmp;
 	}
 	if(first && otmp2->nobj){
@@ -211,6 +239,7 @@ register int fd;
 	mread(fd, (genericptr_t) &dlevel, sizeof dlevel);
 	mread(fd, (genericptr_t) &maxdlevel, sizeof maxdlevel);
 	mread(fd, (genericptr_t) &moves, sizeof moves);
+	mread(fd, (genericptr_t) &monstermoves, sizeof monstermoves);
 	mread(fd, (genericptr_t) &wiz_level, sizeof wiz_level);
 	mread(fd, (genericptr_t) &medusa_level, sizeof medusa_level);
 	mread(fd, (genericptr_t) &bigroom_level, sizeof bigroom_level);
@@ -328,8 +357,18 @@ register int fd;
 #endif
 	getlev(fd, 0, (xchar)0, FALSE);
 	(void) close(fd);
-#ifdef EXPLORE_MODE
-	if(!discover)
+#if defined(WIZARD) || defined(EXPLORE_MODE)
+	if(
+# ifdef WIZARD
+	   !wizard
+#  ifdef EXPLORE_MODE
+		   &&
+#  endif
+# endif
+# ifdef EXPLORE_MODE
+		      !discover
+# endif
+				)
 #endif
 		(void) unlink(SAVEF);
 #ifdef REINCARNATION
@@ -372,6 +411,7 @@ boolean ghostly;
 {
 	register struct gold *gold;
 	register struct trap *trap;
+	register struct monst *mtmp;
 #ifdef WORM
 	register struct wseg *wtmp;
 	register int tmp;
@@ -666,6 +706,7 @@ boolean ghostly;
 	}
 	free((genericptr_t) trap);
 	fobj = restobjchn(fd, ghostly);
+	find_lev_obj();
 	billobjs = restobjchn(fd, ghostly);
 	rest_engravings(fd);
 	mread(fd, (genericptr_t)rooms, sizeof(rooms));
@@ -683,6 +724,14 @@ boolean ghostly;
 	}
 	mread(fd, (genericptr_t)wgrowtime, sizeof(wgrowtime));
 #endif
+
+	/* reset level.monsters for new level */
+	for (x = 0; x < COLNO; x++)
+	    for (y = 0; y < ROWNO; y++)
+		level.monsters[x][y] = (struct monst *) 0;
+	for (mtmp = level.monlist; mtmp; mtmp = mtmp->nmon)
+	    place_monster(mtmp, mtmp->mx, mtmp->my);
+
 #ifdef TUTTI_FRUTTI
 	/* Now get rid of all the temp fruits... */
 	if (ghostly) {

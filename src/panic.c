@@ -6,6 +6,7 @@
  */
 /* NetHack may be freely redistributed.  See license for details. */
 
+#define NEED_VARARGS
 #include	"config.h"
 
 #ifdef MSDOS
@@ -17,9 +18,9 @@ extern void exit P((int));
 boolean panicking;
 
 void
-panic(str,a1,a2,a3,a4,a5,a6)
-char *str;
-{
+panic VA_DECL(char *,str)
+	VA_START(str);
+	VA_INIT(str, char *);
 	if(panicking++)
 #ifdef SYSV
 	    (void)
@@ -27,14 +28,15 @@ char *str;
 		abort();    /* avoid loops - this should never happen*/
 
 	(void) fputs(" ERROR:  ", stderr);
-	Printf(str,a1,a2,a3,a4,a5,a6);
+	Vprintf(str,VA_ARGS);
 	(void) fflush(stderr);
-#ifdef UNIX
+#if defined(UNIX) || defined(VMS)
 # ifdef SYSV
 		(void)
 # endif
 		    abort();	/* generate core dump */
 #endif
+	VA_END();
 	exit(1);		/* redundant */
 	return;
 }

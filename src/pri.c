@@ -10,11 +10,22 @@
 #include "epri.h"
 #endif
 
-static void hilite P((UCHAR_P, UCHAR_P));
+static void hilite P((int,int,UCHAR_P, UCHAR_P));
 static void cornbot P((int));
 static boolean ismnst P((CHAR_P));
-#if !defined(DECRAINBOW) && !defined(UNIX)
+#ifdef TEXTCOLOR
+static uchar mimic_color P((UCHAR_P));
+#endif
+
+#if defined(MSDOS) && !defined(TERMLIB) && !defined(DECRAINBOW)
 #  define g_putch  (void) putchar
+#endif
+
+/* This is the same logic used for "#define IBMXASCII" in file "termcap.c" */
+#if !defined(AMIGA) && !defined(TOS)
+# if defined(TERMLIB) || !(defined(DECRAINBOW) || defined(OS2))
+#  define g_putch  (void) putchar
+# endif
 #endif
 
 #ifndef g_putch
@@ -49,7 +60,7 @@ register int first;
 	curx = u.ux+2;
 	curs(u.ux-1, u.uy+2);
 	(void) putchar('|');
-	hilite(u.usym, AT_MON);
+	hilite(u.ux, u.uy, u.usym, AT_MON);
 	(void) putchar('|');
 	curx = u.ux+2;
 	curs(u.ux-1, u.uy+3);
@@ -140,7 +151,7 @@ uchar ch,typ;
 	y += 2;
 	curs(x,y);
 
-	hilite(ch,typ);
+	hilite(x, y-2, ch, typ);
 	curx++;
 }
 
@@ -385,13 +396,13 @@ seeobjs()
 	    if(obj->olet == FOOD_SYM && obj->otyp == CORPSE) {
 
 		if(mons[obj->corpsenm].mlet == S_TROLL &&
-		    obj->age + 20 < moves) {
+		    obj->age + 20 < monstermoves) {
 			boolean visible = cansee(obj->ox,obj->oy);
 			struct monst *mtmp = revive(obj, FALSE);
 
 			if (mtmp && visible)
 				pline("%s rises from the dead!", Monnam(mtmp));
-		} else if (obj->age + 250 < moves) delobj(obj);
+		} else if (obj->age + 250 < monstermoves) delobj(obj);
 	    }
 	}
 
@@ -399,7 +410,7 @@ seeobjs()
 	    obj2 = obj->nobj;
 	    if(obj->otyp == CORPSE) {
 		if(mons[obj->corpsenm].mlet == S_TROLL
-			    && obj->age + 20 < moves) {
+			    && obj->age + 20 < monstermoves) {
 		    boolean wielded = (obj==uwep);
 		    struct monst *mtmp = revive(obj, TRUE);
 
@@ -408,7 +419,7 @@ seeobjs()
 				mtmp->data->mname, xname(obj));
 		    else if (mtmp)
 			You("feel squirming in your backpack!");
-		} else if (obj->age + 250 < moves) useup(obj);
+		} else if (obj->age + 250 < monstermoves) useup(obj);
 	    }
 	}
 }
@@ -1070,26 +1081,10 @@ hcolor()
 	return hcolors[rn2(SIZE(hcolors))];
 }
 
-/*  Bug: if a level character is the same as an object/monster, it may be
- *  hilited, because we use a kludge to figure out if a character is an
- *  object/monster symbol.  It's smarter than it was in 2.3, but you
- *  can still fool it (ex. if an object is in a doorway you have not seen,
- *  and you look at a map, the '+' will be taken as a spellbook symbol).
- *
- *  The problem is that whenever a portion of the map needs to be redrawn
- *  (by ^R, after an inventory dropover, after regurgitation...), the
- *  levl[][].scrsym field is used to redraw the map.  A great duplication
- *  of code would be needed to trace back every scrsym to find out what color
- *  it should be.
- *
- *  What is really needed is a levl[][].color field; the color be figured
- *  out at the same time as the screen symbol, and be restored with
- *  redraws.  Unfortunately, as this requires much time and testing,
- *  it will have to wait for NetHack 3.1.  -3.
- */
-
+/*ARGSUSED*/
 static void
-hilite(let,typ)
+hilite(x, y, let, typ)
+int x, y;
 uchar let, typ;
 {
 
@@ -1122,31 +1117,21 @@ uchar let, typ;
 		    case S_MIMIC_DEF:
 			typ = HI_OBJ;
 			break;
-		    case S_YLIGHT:	/* make 'em "glow" */
-			typ = YELLOW;
-			break;
 		    default:
-			typ = HI_MON;
+                        if (u.ux == x && u.uy == y)
+                            typ = uasmon->mcolor;
+			else
+			    typ = level.monsters[x][y]->data->mcolor;
 		}
 		break;
 	    case AT_OBJ:
-		switch (let) {
-		    case GOLD_SYM:
-			typ = HI_GOLD;
-			break;
-		    case WEAPON_SYM:
-		    case ARMOR_SYM:
-		    case RING_SYM:
-		    case AMULET_SYM:
-			typ = HI_METAL;
-			break;
-		    case FOOD_SYM:
-		    case POTION_SYM:
-			typ = HI_ORGANIC;
-			break;
-		    default:
-			typ = HI_OBJ;
-		}
+		if (let == GOLD_SYM)
+		    typ = HI_GOLD;
+		else if (level.objects[x][y] && 
+			 let == objects[level.objects[x][y]->otyp].oc_olet)
+		    typ = objects[level.objects[x][y]->otyp].oc_color;
+		else
+		    typ = mimic_color(let);
 		break;
 	    case AT_MAP:
 #ifdef FOUNTAINS
@@ -1154,25 +1139,28 @@ uchar let, typ;
 #else
 		typ = (let == POOL_SYM
 #endif
-			&& HI_COLOR[BLUE] != HI ? BLUE : 0);
+			&& hilites[BLUE] != HI ? BLUE :
+#ifdef THRONES
+		       let == THRONE_SYM && hilites[HI_GOLD] != HI ? HI_GOLD :
+#endif
+		       0);
 		break;
 	    case AT_ZAP:
 		typ = HI_ZAP;
 		break;
 	}
-	if (typ)
-		xputs(HI_COLOR[typ]);
-#else
-	if (typ == AT_MON) revbeg();
+	if (typ && flags.use_color)
+		xputs(hilites[typ]);
+	else
 #endif
+	if (typ == AT_MON) revbeg();
 
 	g_putch(let);
 
 #ifdef TEXTCOLOR
-	if (typ) xputs(HE);
-#else
-	if (typ == AT_MON) m_end();
+	if (typ && flags.use_color) xputs(HE); else
 #endif
+	if (typ == AT_MON) m_end();
 }
 
 static boolean
@@ -1194,3 +1182,20 @@ char let;
 #endif
 	return 0;
 }
+
+#ifdef TEXTCOLOR
+/* pick an appropriate color for a mimic imitating an object */
+
+static uchar
+mimic_color(let)
+uchar let;
+{
+	int i;
+
+	for(i = 0; i < NROFOBJECTS; i++) {
+		if (objects[i].oc_olet == let)
+			return objects[i].oc_color;
+	}
+	return HI_OBJ;
+}
+#endif

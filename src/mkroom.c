@@ -296,8 +296,7 @@ mkswamp()	/* Michiel Huisjes & Fred de Wilde */
 		for(sx = sroom->lx; sx <= sroom->hx; sx++)
 		for(sy = sroom->ly; sy <= sroom->hy; sy++)
 		if(!OBJ_AT(sx, sy) && levl[sx][sy].gmask == 0 &&
-		   levl[sx][sy].mmask == 0 &&
-		   !t_at(sx,sy) && !nexttodoor(sx,sy)) {
+		   !MON_AT(sx, sy) && !t_at(sx,sy) && !nexttodoor(sx,sy)) {
 		    if((sx+sy)%2) {
 			levl[sx][sy].typ = POOL;
 			levl[sx][sy].scrsym = POOL_SYM;
@@ -324,7 +323,8 @@ mkdelphi()
 
 	if(!place_oracle(sroom,&dy,&xx,&yy)) return;
 
-	if(levl[xx][yy].mmask) rloc(m_at(xx, yy)); /* insurance */
+	if(MON_AT(xx, yy))
+	    rloc(m_at(xx, yy)); /* insurance */
 
 	/* set up Oracle and environment */
 	if(!(oracl = makemon(&mons[PM_ORACLE],xx,yy))) return;

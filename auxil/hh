@@ -7,53 +7,53 @@ b j n	1 2 3		g<dir>:   run in direction <dir> until something
 			G<dir>,   same, except a branching corridor isn't
 			^<dir>:     considered interesting
 			m<dir>:   move without picking up objects
-		If the numberpad option is set, the number keys move instead.
+		If the number_pad option is set, the number keys move instead.
 
-Meta commands:
-?	help	print one of several informative texts
+General commands:
+?	help	display one of several informative texts
 Q	quit	end the game
 S	save	save the game (to be continued later)
 !	sh	escape to some SHELL (if allowed)
 ^Z	suspend suspend the game (independent of your current suspend char)
 O	options set options
-/	whatis	give name (and sometimes more info) of specified monster
-\	known	print list of what's been discovered
-v	version	print version number
-V	history	print game history
-^A	again	redo the previous command
-^R	redraw	redraw the screen (^R denotes the symbol CTRL/R)
-^P	print	repeat last message  (subsequent ^P's repeat earlier messages)
-#		introduces a long command (# ? for list of long commands)
+/	whatis	tell what a map symbol represents
+\	known	display list of what's been discovered
+v	version	display version number
+V	history	display game history
+^A	again	redo the previous command (^A denotes the keystroke CTRL-A)
+^R	redraw	redraw the screen
+^P	prevmsg	repeat previous message (subsequent ^P's repeat earlier ones)
+#		introduces an extended command (#? for a list of them)
 
 Game commands:
-^T	'port	teleport (if you can)
 ^D	kick	kick (a door, or something else)
+^T	'port	teleport (if you can)
 a	apply	apply or use a tool (pick-axe, key, camera, etc.)
-A	remove	take off all armor
+A	armor	take off all armor
 c	close	close a door
-C	name	name an individual monster (e.g., baptize your dog)
+C	call	name an individual monster (ex. baptize your dog)
 d	drop	drop an object.  d7a:  drop seven items of object 'a'
-D	drop	drop several things
+D	Drop	drop selected types of objects
 e	eat	eat something
 E	engrave write a message in the dust on the floor  (E-  use fingers)
-i	invent	list the inventory (all objects you are carrying)
-I	invent	list selected parts of the inventory
+i	invent	list your inventory (all objects you are carrying)
+I	Invent	list selected parts of your inventory
 		Iu: list unpaid objects
 		Ix: list unpaid but used up items
 		I$: count your money
 o	open	open a door
-p	pay	pay your bill
-P	wear	put on a ring
+p	pay	pay your bill (in a shop)
+P	puton	put on a ring
 q	quaff	drink a potion
 r	read	read a scroll or spell book
 R	remove	remove a ring
 s	search	search for secret doors, hidden traps and monsters
 t	throw	throw or shoot a weapon
-T	remove	take off some armor
+T	takeoff	take off some armor
 w	wield	wield a weapon	(w-  wield nothing)
 W	wear	put on some armor
 z	zap	zap a wand
-Z	cast	cast a spell
+Z	Zap	cast a spell
 <	up	go up the stairs
 >	down	go down the stairs
 ^	trap_id identify a previously found trap
@@ -62,17 +62,31 @@ $	gold	count your gold
 +	spells	list the spells you know
 .	rest	wait a moment
 ,	pickup	pick up all you can carry
-@		turn "autopickup" on and off
+@		toggle "pickup" (auto pickup) option on and off
 :	look	look at what is here
 
-And if the "number_pad" option is on, these additional commands:
+Keyboards that have a meta key can also use these extended commands:
+
+M-c	chat	talk to someone
+M-d	dip	dip an object into something
+M-f	force	force a lock
+M-j	jump	jump to another location
+M-l	loot	loot a box on the floor
+M-m	monster	use a monster's special ability (only if defined)
+M-N	name	name an item or type of object
+M-o	offer	offer a sacrifice to the gods (only if defined)
+M-p	pray	pray to the gods for help (only if defined)
+M-r	rub	rub a lamp
+M-s	sit	sit down
+M-t	turn	turn undead
+M-u	untrap	untrap something (usually a trapped object)
+M-w	wipe	wipe off your face
+
+If the "number_pad" option is on, these additional commands are available:
 
 n		followed by number of times to repeat the next command
-j	jump	jump to a location
-k	kick	kick a door
+j	jump	jump to another location
+k	kick	kick something (usually a door)
 l	loot	loot a box on the floor
-N	name	name an object or type of object
-u	untrap	untrap a trapped object
-
-If your keyboard has a meta key, 'jump' 'loot', 'name' and 'untrap' are
-available as M-j, M-l, M-N or M-u respectively.
+N	name	name an item or type of object
+u	untrap	untrap something (usually a trapped object)

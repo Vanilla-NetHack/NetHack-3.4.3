@@ -4,7 +4,7 @@
 .ds vr "NetHack Version 3.0
 .ds f0 "\*(vr
 .ds f1
-.ds f2 "August 13, 1989
+.ds f2 "September 6, 1989
 .mt
 A Guide to the Mazes of Menace
 .au
@@ -497,27 +497,57 @@ escape to a shell.
 .lp #
 perform an extended command.  As you can see, the authors of NetHack
 used up all the letters, so this is a way to introduce the less useful
-commands.  You may obtain a list of them by entering `?'.  What
-extended commands are available depend on what features the game was
-compiled with.  Most extended commands are used only under limited
-circumstances. Note that if your keyboard has a meta key (that is, one which
-when pressed in combination with another key modified it by turning on
-the 'meta' or 0x80 bit) these extended commands can be invoked by meta-ing the
-first letter of the command.
+commands, or commands used under limited circumstances.  You may obtain a
+list of them by entering `?'.  What extended commands are available
+depend on what features the game was compiled with.
+.pg
+If your keyboard has a meta key (which, when pressed in combination
+with another key, modifies it by setting the `meta' [8th, or `high']
+bit), you can invoke the extended commands by meta-ing the first
+letter of the command.  In PC NetHack and ST NetHack, the `Alt' key
+can be used in this fashion.
+.lp M-c
+talk to someone.
+.lp M-d
+dip an object into something.
+.lp M-f
+force a lock.
+.lp M-j
+jump to another location.
+.lp M-l
+loot a box on the floor.
+.lp M-m
+use a monster's special ability.
+.lp M-N
+Name an item or type of object.
+.lp M-o
+offer a sacrifice to the gods.
+.lp M-p
+pray to the gods for help.
+.lp M-r
+rub a lamp.
+.lp M-s
+sit down.
+.lp M-t
+turn undead.
+.lp M-u
+untrap something (usually a trapped object).
+.lp M-w
+wipe off your face.
 .pg
 If the
 .op number_pad
 option is on, some additional letter commands are available:
 .lp j
-jump to another location.  Same as ``#jump'' or meta-j.
+jump to another location.  Same as ``#jump'' or ``M-j''.
 .lp k
 kick something (usually a door).  Same as `^D'.
 .lp l
-loot a box on the floor.  Same as ``#loot'' or meta-l.
+loot a box on the floor.  Same as ``#loot'' or ``M-l''.
 .lp N
-name an object or type of object.  Same as ``#name'' or meta-n.
+name an item or type of object.  Same as ``#name'' or ``M-N''.
 .lp u
-untrap a trapped object or door.  Same as ``#untrap'' or meta-u.
+untrap a trapped object or door.  Same as ``#untrap'' or ``M-u''.
 
 .hn 1
 Rooms and corridors
@@ -537,7 +567,7 @@ command; to close it again, use the `c' (close) command.
 .pg
 You can get through a locked door by using a tool to pick the lock
 with the `a' (apply) command, or by kicking it open with the `^D'
-command.
+(kick) command.
 .pg
 Secret doors [and corridors] are hidden.  You can find them with the
 `s' (search) command.
@@ -824,7 +854,7 @@ details completely and must relearn it.
 .pg
 The command to read a spell book is the same as for scrolls, `r'
 (read).  The `+' command lists your current spells and the number of
-spell points they require.  The `Z' command casts a spell.
+spell points they require.  The `Z' (cast) command casts a spell.
 .hn 2
 Tools (`(')
 .pg
@@ -1019,7 +1049,7 @@ symbols for the various object types.
 (default on) pick up things you move onto by default.
 .lp rawio\ \ \ 
 (default off) force raw (non-cbreak) mode for faster output and more
-bulletproof input (MS-DOS sometimes treats ^P as a printer toggle
+bulletproof input (MS-DOS sometimes treats `^P' as a printer toggle
 without it).  Note: DEC Rainbows hang if this is turned on.
 Cannot be set with the `O' command.
 .lp rest_on_space

@@ -88,8 +88,8 @@ SPLEVOBJS = o\lev_comp.o o\lev_lex.o o\lev_main.o o\alloc.o o\monst.o o\objects.
 # other things that have to be reconfigured are in config.h,
 # {unixconf.h, pcconf.h, tosconf.h}, and possibly system.h
 
-VOBJ =	o\alloc.o o\apply.o o\artifact.o o\attrib.o o\bones.o o\cmd.o \
-	o\dbridge.o o\decl.o o\demon.o o\do.o o\do_name.o o\do_wear.o \
+VOBJ =	o\allmain.o o\alloc.o o\apply.o o\artifact.o o\attrib.o o\bones.o \
+	o\cmd.o o\dbridge.o o\decl.o o\demon.o o\do.o o\do_name.o o\do_wear.o \
 	o\dog.o o\dogmove.o o\dokick.o o\dothrow.o o\eat.o o\end.o o\engrave.o \
 	o\exper.o o\extralev.o o\fountain.o o\getline.o o\hack.o o\invent.o \
 	o\lock.o o\mail.o o\main.o o\makemon.o o\mcastu.o o\mhitm.o o\mhitu.o \
@@ -245,6 +245,7 @@ spotless: clean
 
 # GO AHEAD, DELETE THIS LINE
 
+o\allmain.o:  $(HACK_H)
 o\alloc.o:  $(CONFIG_H)
 o\apply.o:  $(HACK_H) $(INCL)\edog.h
 o\artifact.o:  $(HACK_H) $(INCL)\artifact.h

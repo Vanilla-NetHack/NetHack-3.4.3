@@ -14,7 +14,7 @@
 #ifndef NO_SIGNAL
 #include <signal.h>
 #endif /* !NO_SIGNAL */
-#ifdef EXPLORE_MODE
+#if defined(EXPLORE_MODE) && !defined(O_RDONLY)
 #include <fcntl.h>
 #endif /* EXPLORE_MODE */
 
@@ -75,9 +75,14 @@ dosave(){
 #ifndef NOSAVEONHANGUP
 int
 hangup(){
-	hu = TRUE;
-	(void) dosave0();
-	exit(1);
+	if (!hu)
+	{
+		hu = TRUE;
+		(void) dosave0();
+# ifndef VMS
+		exit(1);
+# endif
+	}
 	return 0;
 }
 #endif
@@ -95,7 +100,11 @@ dosave0() {
 #ifdef COMPRESS
 	char	cmd[80];
 #endif
-#ifdef UNIX
+
+	if (!SAVEF[0])
+		return 0;
+
+#if defined(UNIX) || defined(VMS)
 	(void) signal(SIGHUP, SIG_IGN);
 #endif
 #if !defined(__TURBOC__) && !defined(OLD_TOS)
@@ -164,6 +173,7 @@ again:
 	bwrite(fd, (genericptr_t) &dlevel, sizeof dlevel);
 	bwrite(fd, (genericptr_t) &maxdlevel, sizeof maxdlevel);
 	bwrite(fd, (genericptr_t) &moves, sizeof moves);
+	bwrite(fd, (genericptr_t) &monstermoves, sizeof monstermoves);
 	bwrite(fd, (genericptr_t) &wiz_level, sizeof wiz_level);
 	bwrite(fd, (genericptr_t) &medusa_level, sizeof medusa_level);
 	bwrite(fd, (genericptr_t) &bigroom_level, sizeof bigroom_level);
@@ -355,7 +365,7 @@ xchar lev;
 	else
 #endif
 		bwrite(fd, (genericptr_t) &showsyms, sizeof(struct symbols));
-	bwrite(fd,(genericptr_t) &moves,sizeof(long));
+	bwrite(fd,(genericptr_t) &monstermoves,sizeof(long));
 	bwrite(fd,(genericptr_t) &xupstair,sizeof(xupstair));
 	bwrite(fd,(genericptr_t) &yupstair,sizeof(yupstair));
 	bwrite(fd,(genericptr_t) &xdnstair,sizeof(xdnstair));

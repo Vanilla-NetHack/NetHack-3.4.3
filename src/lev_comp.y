@@ -12,7 +12,12 @@
 #define MONDATA_H
 #include "hack.h"
 #include "sp_lev.h"
-#include <fcntl.h>
+#ifndef O_WRONLY
+# include <fcntl.h>
+#endif
+#ifndef O_CREAT	/* some older BSD systems do not define O_CREAT in <fcntl.h> */
+# include <sys/file.h>
+#endif
 
 #ifdef AMIGA
 char *fgets();

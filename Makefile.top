@@ -1,6 +1,18 @@
 #	Hack Makefile.
 #	SCCS Id: @(#)Makefile.top	3.0	89/03/23
 
+# newer makes predefine $(MAKE) to 'make' and do smarter processing of
+# recursive make calls if $(MAKE) is used
+# these makes allow $(MAKE) to be overridden by the environment if someone
+# wants to (or has to) use something other than the standard make, so we do
+# not want to unconditionally set $(MAKE) here
+#
+# unfortunately, some older makes do not predefine $(MAKE); if you have one of
+# these, uncomment the following line
+# (you will know that you have one if you get complaints about unable to
+# execute things like 'data' and 'rumors')
+# MAKE = make
+
 # make NetHack
 GAME     = nethack
 GAMEUID  = games
@@ -55,6 +67,7 @@ update: $(GAME) data rumors spec_levs
 #	(don't yank the old version out from under people who're playing it)
 	mv $(GAMEDIR)/$(GAME) $(GAMEDIR)/$(GAME).old
 	cp src/$(GAME) $(GAMEDIR)
+	-rm -f $(SHELLDIR)/$(GAME)
 	sed -e 's;/usr/games/lib/nethackdir;$(GAMEDIR);' \
 		-e 's;HACKDIR/nethack;HACKDIR/$(GAME);' \
 		< auxil/nethack.sh \
@@ -82,6 +95,7 @@ install: $(GAME) data rumors spec_levs
 # copy over the game files
 	( cd auxil ; cp $(AUX) $(GAMEDIR) )
 	cp src/$(GAME) $(GAMEDIR)
+	-rm -f $(SHELLDIR)/$(GAME)
 	sed -e 's;/usr/games/lib/nethackdir;$(GAMEDIR);' \
 		-e 's;HACKDIR/nethack;HACKDIR/$(GAME);' \
 		< auxil/nethack.sh \

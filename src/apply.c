@@ -31,7 +31,7 @@ bchit(ddx,ddy,range,sym) register int ddx,ddy,range; char sym; {
 	while(range--) {
 		bchx += ddx;
 		bchy += ddy;
-		if(levl[bchx][bchy].mmask) {
+		if(MON_AT(bchx, bchy)) {
 			mtmp = m_at(bchx,bchy);
 			break;
 		}
@@ -155,7 +155,7 @@ register int rx, ry;
 		return;
 	}
 	lev = &levl[rx][ry];
-	if(lev->mmask) {
+	if(MON_AT(rx, ry)) {
 		mtmp = m_at(rx,ry);
 		mstatusline(mtmp);
 		if (mtmp->mundetected) {
@@ -288,7 +288,7 @@ struct obj *obj;
 		return;
 	}
 
-	if(levl[x][y].mmask == 0) {
+	if(!MON_AT(x, y)) {
 		pline("There is no creature here.");
 		return;
 	}
@@ -441,8 +441,9 @@ dig() {
 	if(Fumbling && !rn2(3)) {
 		switch(rn2(3)) {
 		case 0:  if(!welded(uwep)) {
-			     You("fumble and drop your %s", xname(uwep));
+			     You("fumble and drop your %s.", xname(uwep));
 			     dropx(uwep);
+			     setuwep((struct obj *)0);
 			 } else {
 			     pline("Ouch!  Your %s bounces and hits you!",
 				xname(uwep));
@@ -516,8 +517,7 @@ dig() {
 			digtxt = "You just broke a hole through the door.";
 			if(!(lev->doormask & D_TRAPPED))
 				lev->doormask = D_BROKEN;
-		} else
-		  digtxt = "Now what exactly was it that you were digging in?";
+		} else return(0); /* statue or boulder got taken */
 		mnewsym(dpx, dpy);
 		prl(dpx, dpy);
 		if (digtxt) pline(digtxt);	/* after mnewsym & prl */
@@ -537,7 +537,9 @@ dig() {
 			IS_DOOR(lev->typ) ? "door" : "wall");
 			return(0);
 		    }
-		}
+		} else if (!IS_ROCK(lev->typ) && !sobj_at(STATUE, dpx, dpy)
+				&& !sobj_at(BOULDER, dpx, dpy))
+			return(0); /* statue or boulder got taken */
 		if(!did_dig_msg) {
 		    You("hit the %s with all your might.",
 			sobj_at(STATUE, dpx, dpy) ? "statue" :
@@ -552,7 +554,8 @@ dig() {
 /* When will hole be finished? Very rough indication used by shopkeeper. */
 int
 holetime() {
-	return( (occupation == dig) ? (250 - dig_effort)/20 : -1);
+	if(occupation != dig || !in_shop(u.ux, u.uy)) return(-1);
+	return((250 - dig_effort)/20);
 }
 
 void
@@ -679,7 +682,7 @@ struct obj *obj;
 		rx = u.ux + u.dx;
 		ry = u.uy + u.dy;
 		lev = &levl[rx][ry];
-		if(lev->mmask && attack(m_at(rx, ry)))
+		if(MON_AT(rx, ry) && attack(m_at(rx, ry)))
 			return(1);
 		if(!isok(rx, ry)) {
 			pline("Clash!");
@@ -1076,7 +1079,7 @@ dojump()
 	} else if (!cansee(cc.x, cc.y)) {
 		You("cannot see where to land!");
 		return 0;
-	} else if (levl[cc.x][cc.y].mmask) {
+	} else if (MON_AT(cc.x, cc.y)) {
 		mtmp = m_at(cc.x, cc.y);
 		You("cannot trample %s!", mon_nam(mtmp));
 		return 0;

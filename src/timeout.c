@@ -29,7 +29,7 @@ static const char *choke_texts[] = {
 	"You find it hard to breathe.",
 	"You're gasping for air.",
 	"You can no longer breathe.",
-	"You're turning blue.",
+	"You're turning %s.",
 	"You suffocate."
 };
 
@@ -39,7 +39,8 @@ choke_dialogue()
 	register long i = (Strangled & TIMEOUT);
 
 	if(i > 0 && i <= SIZE(choke_texts))
-		pline(choke_texts[SIZE(choke_texts) - i]);
+		pline(choke_texts[SIZE(choke_texts) - i], Hallucination ?
+			hcolor() : blue);
 }
 
 void
@@ -77,7 +78,7 @@ timeout()
 		if(upp->p_tofn) (*upp->p_tofn)();
 		else switch(upp - u.uprops){
 		case STONED:
-			killer = "cockatrice";
+			if (!killer) killer = "cockatrice";
 			done(STONING);
 			break;
 		case SICK:
@@ -171,12 +172,12 @@ register struct obj *otmp;
 	int yours = otmp->spe;
 #endif
 
-	if(moves-otmp->age > 200)  /* very old egg - it's dead */
+	if(monstermoves-otmp->age > 200)  /* very old egg - it's dead */
 	    otmp->corpsenm = -1;
 #ifdef LINT	/* long conv. ok */
 	else if(rnd(150) > 150) {
 #else
-	else if(rnd((int)(moves-otmp->age)) > 150) {
+	else if(rnd((int)(monstermoves-otmp->age)) > 150) {
 #endif
 	    mtmp = makemon(&mons[big_to_little(otmp->corpsenm)], u.ux, u.uy);
 	    useup(otmp);
@@ -202,7 +203,7 @@ register struct obj *otmp;
 		}
 #endif
 		if(mtmp->data->mlet == S_DRAGON) {
-		    pline("\"Gleep!\"");		/* Mything eggs :-) */
+		    verbalize("Gleep!");		/* Mything eggs :-) */
 		    (void) tamedog(mtmp, (struct obj *)0);
 		}
 	    }

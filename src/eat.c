@@ -347,7 +347,7 @@ eatcorpse(otmp) register struct obj *otmp; {
 #ifdef LINT	/* problem if more than 320K moves before try to eat */
 	rotted = 0;
 #else
-	rotted = (moves - otmp->age)/((long)(10 + rn2(20)));	/* how decomposed? */
+	rotted = (monstermoves - otmp->age)/((long)(10 + rn2(20)));
 #endif
 
 	if(otmp->cursed) rotted += 2;
@@ -505,7 +505,7 @@ doeat() {
 	    if (otmp->otyp != FORTUNE_COOKIE &&
 		otmp->otyp != DEAD_LIZARD &&
 		(otmp->cursed ||
-		 ((moves - otmp->age) > otmp->blessed ? 50 : 30)) &&
+		 ((monstermoves - otmp->age) > otmp->blessed ? 50 : 30)) &&
 		  !rn2(7)) {
 
 		rottenfood();

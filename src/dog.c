@@ -185,7 +185,7 @@ register struct monst *mtmp;
 			continue;
 		}
 		relmon(mtmp);
-		mtmp->mx = mtmp->my = 0; /* to avoid mnexto()/mmask problem */
+		mtmp->mx = mtmp->my = 0; /* avoid mnexto()/MON_AT() problem */
 		mtmp->nmon = mydogs;
 		mydogs = mtmp;
 		unpmon(mtmp);
@@ -213,7 +213,7 @@ register int tolev;
 	mtmp->mx = tolev; 
 	mtmp->my = 0;
 		/* make sure to reset mtmp->mx to 0 when releasing, */
-		/* so rloc() on next level doesn't affect mmask */
+		/* so rloc() on next level doesn't affect MON_AT() state */
 }
 
 /* return quality of food; the lower the better */

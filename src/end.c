@@ -4,6 +4,8 @@
 
 /* block some unused #defines to avoid overloading some cpp's */
 #define MONATTK_H
+#define NEED_VARARGS
+
 #include "hack.h"
 #ifndef NO_SIGNAL
 #include <signal.h>
@@ -56,11 +58,16 @@ done2()
 		curs_on_u();
 		(void) fflush(stdout);
 		if(multi > 0) nomul(0);
+		multi = 0;
 		return 0;
 	}
-#if defined(WIZARD) && defined(UNIX)
+#if defined(WIZARD) && (defined(UNIX) || defined(VMS))
 	if(wizard) {
+#ifdef VMS
+	    pline("Enter debugger? ");
+#else
 	    pline("Dump core? ");
+#endif
 	    if(yn() == 'y') {
 		(void) signal(SIGINT, (SIG_RET_TYPE) done1);
 		settty(NULL);
@@ -83,14 +90,14 @@ done_intr(){
 	done_stopprint++;
 #ifndef NO_SIGNAL
 	(void) signal(SIGINT, SIG_IGN);
-#ifdef UNIX
+#if defined(UNIX) || defined(VMS)
 	(void) signal(SIGQUIT, SIG_IGN);
 #endif
 #endif /* TOS /* */
 	return 0;
 }
 
-#ifdef UNIX
+#if defined(UNIX) || defined(VMS)
 static
 int
 done_hangup(){
@@ -148,9 +155,9 @@ boolean panicking;
 extern boolean hu;	/* from save.c */
 
 void
-panic(str,a1,a2,a3,a4,a5,a6)
-char *str;
-{
+panic VA_DECL(char *, str)
+	VA_START(str);
+	VA_INIT(str, char *);
 	if(panicking++)
 #ifdef SYSV
 	    (void)
@@ -159,29 +166,36 @@ char *str;
 				    /* was exit(1) */
 	home(); cls();
 	(void) puts(" Suddenly, the dungeon collapses.");
-#ifdef WIZARD
-# ifndef MSDOS
+#if defined(WIZARD) && !defined(MSDOS)
 	if(!wizard) {
 	    pline("Report error to %s and it may be possible to rebuild.",WIZARD);
 	    more();
 	}
-	Sprintf (SAVEF, "%s.e", SAVEF);
+#ifdef VMS
+	{
+		char *sem = rindex(SAVEF, ';');
+
+		if (sem)
+			*sem = '\0';
+	}
+	Strcat(SAVEF, ".e;1");
+#else
+	Strcat(SAVEF, ".e");
+#endif
 	hu = FALSE;
 	(void) dosave0();
-# endif
 #endif
 	(void) fputs(" ERROR:  ", stdout);
-	Printf(str,a1,a2,a3,a4,a5,a6);
+	Vprintf(str,VA_ARGS);
 	more();				/* contains a fflush() */
-#ifdef WIZARD
-# ifdef UNIX
+#if defined(WIZARD) && (defined(UNIX) || defined(VMS))
 	if (wizard)	
-#  ifdef SYSV
+# ifdef SYSV
 		(void)
-#  endif
-		    abort();	/* generate core dump */
 # endif
+		    abort();	/* generate core dump */
 #endif
+	VA_END();
 	done(PANICKED);
 }
 
@@ -257,7 +271,7 @@ int how;
 die:
 #ifndef NO_SIGNAL
 	(void) signal(SIGINT, (SIG_RET_TYPE) done_intr);
-#ifdef UNIX
+#if defined(UNIX) || defined(VMS)
 	(void) signal(SIGQUIT, (SIG_RET_TYPE) done_intr);
 	(void) signal(SIGHUP, (SIG_RET_TYPE) done_hangup);
 #endif
@@ -406,7 +420,7 @@ die:
 					continue;
 				}
 				u.urexp += i;
-				Printf("        %s (worth %ld Zorkmids),\n",
+				Printf("        %s (worth %ld zorkmids),\n",
 				    doname(otmp), i);
 			} else if(otmp->olet == AMULET_SYM) {
 				otmp->known = 1;
@@ -414,7 +428,7 @@ die:
 					otmp->otyp == AMULET_OF_YENDOR ?
 							5000 : 500;
 				u.urexp += i;
-				Printf("        %s (worth %ld Zorkmids),\n",
+				Printf("        %s (worth %ld zorkmids),\n",
 				    doname(otmp), i);
 			}
 		}
@@ -467,9 +481,9 @@ clearlocks(){
 	if (ramdisk)
 		eraseall(permbones, alllevels);
 #else
-#if defined(UNIX) || (defined(MSDOS) && !defined(OLD_TOS))
+#if defined(UNIX) || (defined(MSDOS) && !defined(OLD_TOS)) || defined(VMS)
 	register int x;
-#ifdef UNIX
+#if defined(UNIX) || defined(VMS)
 	(void) signal(SIGHUP,SIG_IGN);
 #endif
 	for(x = maxdlevel; x >= 0; x--) {
@@ -486,7 +500,9 @@ hangup()
 {
 	(void) signal(SIGINT, SIG_IGN);
 	clearlocks();
+# ifndef VMS
 	exit(1);
+# endif
 }
 #endif
 
@@ -494,6 +510,7 @@ void
 end_box_display()
 {
 	register struct obj *box, *obj;
+	int boxcnt = 0;
 	char buf[BUFSZ];
 
 	for(box=invent; box; box=box->nobj) {
@@ -504,7 +521,10 @@ end_box_display()
 		    if (obj->cobj == box) {
 			if (!cnt) {
 			    Sprintf(buf, "Contents of the %s:",xname(box));
-			    cornline(0, buf);
+			    if (!boxcnt)
+				cornline(0, buf);
+			    else
+				cornline(1, buf);
 			}
 			makeknown(obj->otyp);
 			obj->known = obj->bknown = obj->dknown = 1;
@@ -512,8 +532,16 @@ end_box_display()
 			cnt++;
 		    }
 		}
-		if (!cnt) pline("The %s is empty.", xname(box));
-		else cornline(2,"");
+		if (!cnt) {
+		    Sprintf(buf, "The %s is empty.", xname(box));
+		    if (!boxcnt)
+			cornline(0, buf);
+		    else
+			cornline(1, buf);
+		} else
+		    cornline(1," ");
+		boxcnt++;
 	    }
 	}
+	if (boxcnt) cornline(2,"");
 }

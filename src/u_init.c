@@ -93,6 +93,11 @@ struct trobj Healer[] = {
 	{ POT_HEALING, 0, POTION_SYM, 4, 1, UNDEF_BLESS },
 	{ POT_EXTRA_HEALING, 0, POTION_SYM, 4, 1, UNDEF_BLESS },
 	{ WAN_SLEEP, UNDEF_SPE, WAND_SYM, 1, 1, UNDEF_BLESS },
+#ifdef SPELLS
+	/* always blessed, so it's guaranteed readable */
+	{ SPE_HEALING, 0, SPBOOK_SYM, 1, 1, 1 },
+	{ SPE_EXTRA_HEALING, 0, SPBOOK_SYM, 1, 1, 1 },
+#endif
 	{ APPLE, 0, FOOD_SYM, 5, 1, 0 },
 	{ 0, 0, 0, 0, 0, 0 }
 };
@@ -542,12 +547,12 @@ register struct trobj *trop;
 		 */
 		if (undefined) {
 #ifdef POLYSELF
-			int nocreate = STRANGE_OBJECT;
+			static unsigned nocreate = STRANGE_OBJECT;
 #  ifdef SPELLS
-			int nocreate2 = STRANGE_OBJECT;
+			static unsigned nocreate2 = STRANGE_OBJECT;
 #  endif
 #endif
-			int nocreate3 = STRANGE_OBJECT;
+			static unsigned nocreate3 = STRANGE_OBJECT;
 
 			while(obj->otyp == WAN_WISHING
 #ifdef POLYSELF
@@ -601,7 +606,7 @@ register struct trobj *trop;
 		}
 
 		obj->bknown = trop->trknown;
-		if(uses_known(obj)) obj->known = trop->trknown;
+		if(objects[obj->otyp].oc_uses_known) obj->known = trop->trknown;
 		/* not obj->dknown = 1; - let him look at it at least once */
 		obj->cursed = 0;
 		if(obj->olet == TOOL_SYM){ /* problem with multiple tools */

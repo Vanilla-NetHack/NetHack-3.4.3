@@ -10,7 +10,8 @@ static struct IntuiText nam = \
   {0,1,JAM2,0,0,(struct TextAttr*)NULL,(UBYTE*)str,(struct IntuiText*)NULL}
 
 	/* Commands */
-	TEXT(T_HELP,  "?   Display help");
+	TEXT(T_HELP,  "?   Display help menu");
+	TEXT(T_amp,   "&   Explain a command");
 	TEXT(T_O,     "O   Set options");
 	TEXT(T_SHELL, "!   AmigaDos commands");
 	TEXT(T_v,     "v   Version number");
@@ -33,11 +34,10 @@ static struct IntuiText nam = \
 	TEXT(T_a,     "a   Apply/use something");
 	TEXT(T_e,     "e   Eat something");
 	TEXT(T_q,     "q   Quaff a potion");
-	TEXT(T_r,     "r   Read a scroll");
+	TEXT(T_r,     "r   Read scroll/book");
 	TEXT(T_t,     "t   Throw/shoot weapon");
 	TEXT(T_z,     "z   Zap a wand");
 	TEXT(T_Z,     "Z   Cast a spell");
-	TEXT(T_X,     "X   Learn a spell");
 	TEXT(T_HASH,  "#   Extended command");
 
 	/* Preparations */
@@ -73,19 +73,20 @@ static struct IntuiText nam = \
 
 static struct MenuItem cmdsub[] = {
     { &cmdsub[1], IDATA('?', T_HELP,   0) }, /*   Display help */
-    { &cmdsub[2], IDATA('O', T_O,     10) }, /*   Set options */
-    { &cmdsub[3], IDATA('!', T_SHELL, 20) }, /*   AmigaDos commands */
-    { &cmdsub[4], IDATA('v', T_v,     30) }, /*   Version number */
-    { &cmdsub[5], IDATA(022, T_CR,    40) }, /*R  Redraw screen */
-    { &cmdsub[6], IDATA(020 ,T_CP,    50) }, /*P  Repeat last message */
-    { &cmdsub[7], IDATA('Q', T_Q,     60) }, /*   Quit game */
-    { NULL,	  IDATA('S', T_S,     70) }, /*   Save the game */
+    { &cmdsub[2], IDATA('&', T_amp,   10) }, /*   Explain a command */
+    { &cmdsub[3], IDATA('O', T_O,     20) }, /*   Set options */
+    { &cmdsub[4], IDATA('!', T_SHELL, 30) }, /*   AmigaDos commands */
+    { &cmdsub[5], IDATA('v', T_v,     40) }, /*   Version number */
+    { &cmdsub[6], IDATA(022, T_CR,    50) }, /*R  Redraw screen */
+    { &cmdsub[7], IDATA(020 ,T_CP,    60) }, /*P  Repeat last message */
+    { &cmdsub[8], IDATA('Q', T_Q,     70) }, /*   Quit game */
+    { NULL,	  IDATA('S', T_S,     80) }, /*   Save the game */
 };
 
 /* Inventory */
 
 #undef	WDT
-#define WDT 200
+#define WDT 184
 
 static struct MenuItem invsub[] = {
     { &invsub[1], IDATA('i', T_i,      0) }, /*   Inventory */
@@ -106,12 +107,11 @@ static struct MenuItem actsub[] = {
     { &actsub[1], IDATA('a', T_a,     0) }, /*   Apply/use something */
     { &actsub[2], IDATA('e', T_e,    10) }, /*   Eat something */
     { &actsub[3], IDATA('q', T_q,    20) }, /*   Quaff a potion */
-    { &actsub[4], IDATA('r', T_r,    30) }, /*   Read a scroll */
+    { &actsub[4], IDATA('r', T_r,    30) }, /*   Read a scroll/spellbook */
     { &actsub[5], IDATA('t', T_t,    40) }, /*   Throw/shoot weapon */
     { &actsub[6], IDATA('z', T_z,    50) }, /*   Zap a wand */
     { &actsub[7], IDATA('Z', T_Z,    60) }, /*   Cast a spell */
-    { &actsub[8], IDATA('X', T_X,    70) }, /*   Learn a spell */
-    { NULL	, IDATA('#', T_HASH, 80) }, /*   Extended command */
+    { NULL	, IDATA('#', T_HASH, 70) }, /*   Extended command */
 };
 
 /* Preparations */

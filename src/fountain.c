@@ -11,9 +11,8 @@ static
 void
 dowatersnakes() /* Fountain of snakes! */ {
 	register int num = rnd(6);
-	if (!(mons[PM_WATER_MOCCASIN].geno & G_GENOD)) {	/* && chgd to &*/
-
-		pline("Good Lord!  An endless stream of snakes pours forth!");
+	if (!(mons[PM_WATER_MOCCASIN].geno & G_GENOD)) {
+		pline("An endless stream of snakes pours forth!");
 		while(num-- > 0) (void) makemon(&mons[PM_WATER_MOCCASIN],u.ux,u.uy);
 	} else
 		pline("The fountain bubbles furiously for a moment, then calms.");
@@ -105,7 +104,7 @@ dofindgem() /* Find a gem in the sparkling waters. */ {
 
 void
 dryup(){
-	if (!rn2(3) && (levl[u.ux][u.uy].typ == FOUNTAIN)) {
+	if (!rn2(3) && IS_FOUNTAIN(levl[u.ux][u.uy].typ)) {
 		pline("The fountain dries up!");
 		levl[u.ux][u.uy].typ = ROOM;
 		levl[u.ux][u.uy].doormask = 0;

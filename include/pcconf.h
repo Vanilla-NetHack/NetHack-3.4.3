@@ -93,15 +93,5 @@ extern const char *configfile;
 #  define TEXTCOLOR /* */
 #endif
 
-#ifdef TEXTCOLOR
-/* configurable colors */
-#  define HI_MON	RED	/* red slaps! */
-#  define HI_OBJ	MAGENTA
-#  define HI_METAL	CYAN
-#  define HI_ORGANIC	GREEN
-#  define HI_GOLD	YELLOW
-#  define HI_ZAP	BLUE	/* blue zaps! */
-#endif
-
-#endif
+#endif /* PCCONF_H /* */
 #endif /* MSDOS /* */
