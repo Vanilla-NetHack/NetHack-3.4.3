@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)options.c	2.0	87/09/14
+/*	SCCS Id: @(#)options.c	2.3	87/12/12
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 #include "config.h"
@@ -149,7 +149,7 @@ boolean from_env;
 				goto bad;		/* bad char in order */
 			else if (index(sp + 1, *sp))
 				goto bad;		/* dup char in order */
-		tmp = (char *) alloc(strlen(inv_order) + 1);
+		tmp = (char *) alloc((unsigned)(strlen(inv_order)+1));
 		(void) strcpy(tmp, op);
 		for (sp = inv_order, tmpend = strlen(tmp); *sp; sp++)
 			if (!index(tmp, *sp)) {
@@ -233,8 +233,9 @@ boolean from_env;
 		else
 		    opts = op + 1;
 /*
- * You could have problems here if you configure FOUNTAINS, SPIDERS or NEWCLASS
- * in or out and forget to change the tail entries in your graphics string.
+ * You could have problems here if you configure FOUNTAINS, SPIDERS, NEWCLASS
+ * or SINKS in or out and forget to change the tail entries in your graphics
+ * string.
  */
 #define SETPCHAR(f, n)	showsyms.f = (strlen(opts) > n) ? opts[n] : defsyms.f
 		SETPCHAR(stone, 0);
@@ -259,6 +260,9 @@ boolean from_env;
 #endif
 #ifdef SPIDERS
 		SETPCHAR(web, 16);
+#endif
+#ifdef SINKS
+		SETPCHAR(sink, 17);
 #endif
 #undef SETPCHAR
 		return;
@@ -427,7 +431,7 @@ option_help() {
 #ifndef QUEST
 			"Hack");
 #else
-			"Quest);
+			"Quest");
 #endif
 	if(page_line("") || page_line(buf) || page_line(""))	 goto quit;
 
@@ -443,7 +447,7 @@ option_help() {
 	Page_line("");
 
 #ifdef DGK
-	Page_line("Boolean options are confirm, pickup, rawio, silent, sortpack, time, IBMBIOS,")
+	Page_line("Boolean options are confirm, pickup, rawio, silent, sortpack, time, IBMBIOS,");
 	Page_line("and DECRainbow.  These can be negated by prefixing them with '!' or \"no\".");
 #else
 	Page_line("Boolean options are rest_on_space, news, time, null tombstone, and (fe)male,");

@@ -1,7 +1,14 @@
-/*	SCCS Id: @(#)fountain.c	2.1	87/10/19
-/* fountain.c  v 1.4.3 */
+/*	SCCS Id: @(#)fountain.c	2.3	88/01/21
+/* fountain.c  v 1.4.4 */
 
 /*
+ * Revision 1.4.4  88/02/11  08:31:00  M. Stephenson
+ * Implemented "coins" fixes by woodbury@bme.unc.edu
+ * Fixed minor bugs.
+ *
+ * Revision 1.4.3  87/11/25  19:16:00  M. Stephenson
+ * Implemented levitation bug fixes.
+ *
  * Revision 1.4.3  87/11/25  19:16:00  M. Stephenson
  * Implemented levitation bug fixes.
  *
@@ -35,8 +42,8 @@ extern struct obj *mkobj_at();
 extern char genocided[];
 
 #ifdef FOUNTAINS
-#define somex() ((rand()%(croom->hx-croom->lx+1))+croom->lx)
-#define somey() ((rand()%(croom->hy-croom->ly+1))+croom->ly)
+#define somex() ((int)(rand()%(croom->hx-croom->lx+1))+croom->lx)
+#define somey() ((int)(rand()%(croom->hy-croom->ly+1))+croom->ly)
 
 dowatersnakes() /* Fountain of snakes! */ {
 	register int num = rnd(6);
@@ -313,9 +320,19 @@ register struct obj *obj;
 			pline("You feel a sudden chill.");
 			break;
 		case 28: /* Strange feeling */
-		pline("An urge to take a bath nearly overwhelms you.");
+		pline("An urge to take a bath overwhelms you.");
+			if (u.ugold > 10) {
+			     	u.ugold -= somegold()/10;
+			  pline("You lost some of your gold in the fountain!");
+	 		}
 			break;
 		case 29: /* You see coins */
+
+		/* We make fountains have more coins the closer you are to the
+		 * surface.  After all, there will have been more people going
+		 * by.  Just like a shopping mall!  Chris Woodbury  */
+
+			mkgold((long)(rnd((MAXLEVEL-dlevel)*2)+5),u.ux,u.uy);
 		pline("Far below you, you see coins glistening in the water.");
 			break;
 		default:

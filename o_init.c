@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)o_init.c	2.0	87/09/16
+/*	SCCS Id: @(#)o_init.c	2.3	88/01/24
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 #include	"config.h"		/* for typedefs */
@@ -17,9 +17,6 @@ register char ch;
 
 init_objects(){
 register int i, j, first, last, sum, end;
-#ifdef MSDOS
-register int tmp_i;
-#endif
 register char let, *tmp;
 
 	/* bug fix to prevent "initialization error" abort on Intel Xenix.
@@ -31,11 +28,6 @@ register char let, *tmp;
 	/* init base; if probs given check that they add up to 100, 
 	   otherwise compute probs; shuffle descriptions */
 	end = SIZE(objects);
-#ifdef MSDOS
-	/* Assign indices to all oc_descr_i first */
-	for (i = 0; i < end; i++)
-		objects[i].oc_descr_i = i;
-#endif
 	first = 0;
 	while( first < end ) {
 		let = objects[first].oc_olet;
@@ -64,18 +56,36 @@ register char let, *tmp;
 			while(last < end && objects[last].oc_olet == let)
 				last++;
 			j = last;
-			while(--j > first) {
+			if (let == GEM_SYM) {
+			    while(--j > first)
+				/* NOTE:  longest color name must be default */
+				if(!strcmp(objects[j].oc_name,"turquoise")) {
+				    if(rn2(2)) /* change from green? */
+					strcpy(objects[j].oc_descr,"blue");
+				} else if (!strcmp(objects[j].oc_name,"aquamarine")) {
+				    if(rn2(2)) /* change from green? */
+					strcpy(objects[j].oc_descr,"blue");
+				} else if (!strcmp(objects[j].oc_name,"fluorite")) {
+				    switch (rn2(4)) { /* change from violet? */
+					case 0:  break;
+					case 1:
+					    strcpy(objects[j].oc_descr,"blue");
+					    break;
+					case 2:
+					    strcpy(objects[j].oc_descr,"white");
+					    break;
+					case 3:
+					    strcpy(objects[j].oc_descr,"green");
+					    break;
+					}
+				}
+			} else
+			    while(--j > first) {
 				i = first + rn2(j+1-first);
 				tmp = objects[j].oc_descr;
 				objects[j].oc_descr = objects[i].oc_descr;
 				objects[i].oc_descr = tmp;
-#ifdef MSDOS
-	/* keep track of where the description came from */
-				tmp_i = objects[j].oc_descr_i;
-				objects[j].oc_descr_i = objects[i].oc_descr_i;
-				objects[i].oc_descr_i = tmp_i;
-#endif
-			}
+			    }
 		}
 		first = last;
 	}
@@ -106,7 +116,7 @@ setgemprobs()
 		printf("Not enough gems? - first=%d j=%d LAST_GEM=%d\n",
 			first, j, LAST_GEM);
 	for(j = first; j < LAST_GEM; j++)
-		objects[j].oc_prob = (20+j-first)/(LAST_GEM-first);
+		objects[j].oc_prob = (18+j-first)/(LAST_GEM-first);
 }
 
 oinit()			/* level dependent initialization */
@@ -119,6 +129,8 @@ extern long *alloc();
 savenames(fd) register fd; {
 register int i;
 unsigned len;
+struct objclass *now = &objects[0];
+	bwrite(fd, (char *) &now, sizeof now);
 	bwrite(fd, (char *) bases, sizeof bases);
 	bwrite(fd, (char *) objects, sizeof objects);
 	/* as long as we use only one version of Hack/Quest we
@@ -136,32 +148,38 @@ unsigned len;
 restnames(fd) register fd; {
 register int i;
 unsigned len;
-#ifdef MSDOS
-	char *oc_descr[NROFOBJECTS + 1], *oc_name;
-
-	mread(fd, (char *) bases, sizeof bases);
-
-	/* Read in objects 1 at a time, correcting oc_name pointer and
-	 * saving pointer to current description.
-	 */
-	for (i = 0; i < SIZE(objects); i++) {
-		oc_name = objects[i].oc_name;
-		oc_descr[i] = objects[i].oc_descr;
-		mread(fd, (char *) &objects[i], sizeof (struct objclass));
-		objects[i].oc_name = oc_name;
-	}
-
-	/* Convert from saved indices into pointers */
-	for (i = 0; i < SIZE(objects); i++)
-		objects[i].oc_descr = oc_descr[objects[i].oc_descr_i];
-#else
+struct objclass *then;
+long differ;
+	mread(fd, (char *) &then, sizeof then);
 	mread(fd, (char *) bases, sizeof bases);
 	mread(fd, (char *) objects, sizeof objects);
+#ifndef MSDOS
+	differ = (char *)&objects[0] - (char *)then;
+#else
+	differ = (long)&objects[0] - (long)then;
 #endif
-	for(i=0; i < SIZE(objects); i++) if(objects[i].oc_uname) {
-		mread(fd, (char *) &len, sizeof len);
-		objects[i].oc_uname = (char *) alloc(len);
-		mread(fd, objects[i].oc_uname, len);
+	for(i=0; i < SIZE(objects); i++) {
+		if (objects[i].oc_name) {
+#ifndef MSDOS
+			objects[i].oc_name += differ;
+#else
+			objects[i].oc_name =
+			    (char *)((long)(objects[i].oc_name) + differ);
+#endif
+		}
+		if (objects[i].oc_descr) {
+#ifndef MSDOS
+			objects[i].oc_descr += differ;
+#else
+			objects[i].oc_descr =
+			    (char *)((long)(objects[i].oc_descr) + differ);
+#endif
+		}
+		if (objects[i].oc_uname) {
+			mread(fd, (char *) &len, sizeof len);
+			objects[i].oc_uname = (char *) alloc(len);
+			mread(fd, objects[i].oc_uname, len);
+		}
 	}
 }
 

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)lev.c	2.1	87/10/19
+/*	SCCS Id: @(#)lev.c	2.3	88/01/24
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 #include <stdio.h>
@@ -84,21 +84,11 @@ xchar lev;
 	savetrapchn(fd, ftrap);
 	saveobjchn(fd, fobj);
 	saveobjchn(fd, billobjs);
-	billobjs = 0;
 	save_engravings(fd);
 #ifndef QUEST
 	bwrite(fd,(char *) rooms,sizeof(rooms));
 	bwrite(fd,(char *) doors,sizeof(doors));
 #endif
-#ifdef DGK
-	if (!count_only)
-#endif
-	{
-		fgold = 0;
-		ftrap = 0;
-		fmon = 0;
-		fobj = 0;
-	}
 #ifndef NOWORM
 	bwrite(fd,(char *) wsegs,sizeof(wsegs));
 	for(tmp=1; tmp<32; tmp++){
@@ -159,80 +149,6 @@ register struct obj *otmp;
 	bwrite(fd, (char *) &minusone, sizeof(int));
 }
 
-#ifdef MSDOS
-/* We don't want to save any pointers in any files, so convert
- * the pointers to indices before writing the monsters to disk -dgk
- */
-savemonchn(fd,mtmp)
-register fd;
-register struct monst *mtmp;
-{
-	register struct monst *mtmp2;
-	unsigned xl;
-	int minusone = -1;
-	struct permonst *permonstp;
-	int monsindex;
-	extern struct permonst li_dog, dog, la_dog;
-#ifdef KAA
-	int mi;
-	extern struct permonst hell_hound;
-# ifdef HARD
-	extern struct permonst d_lord, d_prince;
-# endif
-# ifdef KJSMODS
-	extern struct permonst pm_guard, pm_ghost, pm_eel;
-# endif
-#endif /* KAA /**/
-
-	while(mtmp) {
-		mtmp2 = mtmp->nmon;
-		xl = mtmp->mxlth + mtmp->mnamelth;
-		bwrite(fd, (char *) &xl, sizeof(int));
-		/* store an index where the pointer used to be */
-		permonstp = mtmp->data;
-		if (permonstp == &li_dog)
-			monsindex = mi = -1;	/* fake index */
-		else if (permonstp == &dog)
-			monsindex = --mi;	/* fake index */
-		else if (permonstp == &la_dog)
-			monsindex = --mi;	/* fake index */
-#ifdef KAA
-		else if (permonstp == &hell_hound)
-			monsindex = --mi;	/* fake index */
-# ifdef HARD
-		else if (permonstp == &d_lord)
-			monsindex = --mi;	/* fake index */
-
-		else if (permonstp == &d_prince)
-			monsindex = --mi;	/* fake index */
-# endif
-# ifdef KJSMODS
-		else if (permonstp == &pm_guard)
-			monsindex = -mi;	/* fake index */
-
-		else if (permonstp == &pm_ghost)
-			monsindex = -mi;	/* fake index */
-
-		else if (permonstp == &pm_eel)
-			monsindex = -mi;	/* fake index */
-# endif
-#endif
-		else			
-			monsindex = permonstp - &mons[0];
-		*((int *)&mtmp->data) = monsindex;
-		bwrite(fd, (char *) mtmp, xl + sizeof(struct monst));
-		mtmp->data = permonstp;		/* restore the pointer */
-		if(mtmp->minvent) saveobjchn(fd,mtmp->minvent);
-#ifdef DGK
-		if (!count_only)
-#endif
-			free((char *) mtmp);
-		mtmp = mtmp2;
-	}
-	bwrite(fd, (char *) &minusone, sizeof(int));
-}
-#else
-
 savemonchn(fd,mtmp)
 register fd;
 register struct monst *mtmp;
@@ -255,7 +171,6 @@ register struct monst *mtmp;
 	}
 	bwrite(fd, (char *) &minusone, sizeof(int));
 }
-#endif
 
 savegoldchn(fd,gold)
 register fd;
@@ -323,8 +238,6 @@ xchar lev;
 		done("tricked");
 	}
 
-	fgold = 0;
-	ftrap = 0;
 	mread(fd, (char *) levl, sizeof(levl));
 #ifdef GRAPHICS
 	/* Corners are poorly implemented.  They only exist in the
@@ -445,22 +358,20 @@ xchar lev;
 	}
 
 	setgd();
-	gold = newgold();
-	mread(fd, (char *)gold, sizeof(struct gold));
-	while(gold->gx) {
+	fgold = 0;
+	while(gold = newgold(),
+	      mread(fd, (char *)gold, sizeof(struct gold)),
+              gold->gx) {
 		gold->ngold = fgold;
 		fgold = gold;
-		gold = newgold();
-		mread(fd, (char *)gold, sizeof(struct gold));
 	}
 	free((char *) gold);
-	trap = newtrap();
-	mread(fd, (char *)trap, sizeof(struct trap));
-	while(trap->tx) {
+	ftrap = 0;
+	while (trap = newtrap(),
+	       mread(fd, (char *)trap, sizeof(struct trap)),
+	       trap->tx) {
 		trap->ntrap = ftrap;
 		ftrap = trap;
-		trap = newtrap();
-		mread(fd, (char *)trap, sizeof(struct trap));
 	}
 	free((char *) trap);
 	fobj = restobjchn(fd);

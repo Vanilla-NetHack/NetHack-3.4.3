@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)pctty.c	2.1	87/11/09
+/*	SCCS Id: @(#)pctty.c	2.3	87/12/12
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* tty.c - (PC) version */
 
@@ -9,6 +9,8 @@
 #include <stdio.h>
 #include "hack.h"
 #include "func_tab.h"
+
+extern void savech();
 
 static char erase_char, kill_char;
 
@@ -288,4 +290,4 @@ register char *bufp;
 	}
 
 }
-#endif COM_COMPL
+#endif /* COM_COMPL /* */

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)config.h	2.2	87/11/11
+/*	SCCS Id: @(#)config.h	2.3	87/12/12
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 #ifndef CONFIG	/* make sure the compiler does not see the typedefs twice */
@@ -17,14 +17,17 @@
  * rindex		strrchr
  * Also, the code for suspend and various ioctls is only given for BSD4.2
  */
-/* #define MSDOS 	/* define for MS-DOS (actually defined by compiler) */
+#ifdef __MSDOS__	/* Turbo C auto-defines __MSDOS__, others MSDOS */
+/* # define MSDOS 	/* define for MS-DOS (actually defined by compiler) */
+#endif
 #define	UNIX		/* delete if no fork(), exec() available */
 /* #define	GENIX		/* Yet Another Unix Clone */
 #define BSD		/* defind for 4.n BSD  */
 /* #define SYSV		/* define for System V */
+/* #define NETWORK	/* if running on a networked system */
 
 /* #define BETA		/* if a beta-test copy  [MRS] */
-#define VERSION	"2.2a"	/* version number. */
+#define VERSION	"2.3e"	/* version number. */
 
 #define PYRAMID_BUG 	/* avoid a bug on the Pyramid */
 /* #define APOLLO		/* same for the Apollo */
@@ -37,11 +40,15 @@
 #define	signal	ssignal
 #endif
 
-#define WIZARD  "mike"	/* the person allowed to use the -D option */
-#define RECORD	"record"/* the file containing the list of topscorers */
-#define	NEWS	"news"	/* the file containing the latest hack news */
-#define	HELP	"help"	/* the file containing a description of the commands */
-#define	SHELP	"hh"	/* abbreviated form of the same */
+#ifndef WIZARD		/* allow for compile-time or Makefile changes */
+# define WIZARD  "mike"	/* the person allowed to use the -D option */
+#endif
+
+#define RECORD	"record"  /* the file containing the list of topscorers */
+#define	LOGFILE	"logfile" /* larger file for debugging purposes */
+#define	NEWS	"news"	  /* the file containing the latest hack news */
+#define	HELP	"help"	  /* the file containing command descriptions */
+#define	SHELP	"hh"	  /* abbreviated form of the same */
 #define	RUMORFILE	"rumors"	/* a file with fortune cookies */
 #define	DATAFILE	"data"	/* a file giving the meaning of symbols used */
 #define	FMASK	0660	/* file creation mask */
@@ -149,6 +156,7 @@ typedef	unsigned char	uchar;
  */
 typedef schar	xchar;
 typedef	xchar	boolean;		/* 0 or 1 */
+/* #define void	int			/* define if no "void" data type. */
 #define	TRUE	1
 #define	FALSE	0
 
@@ -219,9 +227,17 @@ typedef	xchar	boolean;		/* 0 or 1 */
 #define KJSMODS		/* Various changes made by Kevin Sweet */
 #define	BVH		/* Additions by Bruce Holloway */
 #define SAC		/* Soldiers, barracks by Steve Creps */
+#define	SHIRT		/* Hawaiian shirt code by Steve Linhart */
+#define THEOLOGY	/* Smarter gods - The Unknown Hacker */
+#define	STOOGES		/* Three wild and crazy guys - Bruce Mewborne */
+#define SINKS		/* Kitchen sinks - Janet Walz */
 
-#if defined(MSDOS) && defined(GRAPHICS)
-#define MSDOSCOLOR
+#ifdef MSDOS
+#define TERMLIB		/* enable use of termcap file c:\etc\termcap	*/
+			/* or .\termcap.cnf for MSDOS (SAC)		*/
+# ifdef GRAPHICS
+#  define MSDOSCOLOR
+# endif
 #endif
 
 /*
@@ -230,6 +246,7 @@ typedef	xchar	boolean;		/* 0 or 1 */
 
 #define	GOLD_ON_BOTL
 #define	EXP_ON_BOTL
+#define SCORE_ON_BOTL		/* added by Gary Erickson (erickson@ucivax) */
 	 
 #ifdef REDO
 #define DOAGAIN	'\001'		/* Used in tty.c and cmd.c */

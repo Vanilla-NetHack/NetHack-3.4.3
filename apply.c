@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)apply.c	2.1	87/09/23
+/*	SCCS Id: @(#)apply.c	2.3	88/01/21
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 #include	"hack.h"
@@ -12,6 +12,9 @@ extern char *occtxt;
 extern char quitchars[];
 extern char pl_character[];
 
+#ifdef DGKMOD
+extern void set_occupation();
+#endif
 #ifdef KAA
 extern boolean unweapon;
 #endif
@@ -23,6 +26,7 @@ extern int dowrite();
 #ifdef RPH
 static use_mirror();
 #endif
+static use_lamp();
 
 doapply() {
 	register struct obj *obj;
@@ -54,6 +58,10 @@ doapply() {
 		use_mirror(obj);
 		break;
 #endif
+	case LAMP:
+	case MAGIC_LAMP:
+		use_lamp(obj);
+		break;
 #ifdef WALKIES
 	case LEASH:
 		use_leash(obj);
@@ -81,14 +89,29 @@ doapply() {
 		break;
 #endif
 	case BLINDFOLD:
-		if (Blindfolded) {
+		if (Blindfolded && obj->owornmask) {
+		    pline("You remove the blindfold.");
 		    Blindfolded = 0;
-		    if (!Blinded)	Blinded = 1;	/* see on next move */
+		    obj->owornmask = 0;
+		    if (!Blinded)	Blinded = 1;	/* see on nexte */
 		    else		pline("You still cannot see.");
-		} else {
-		    Blindfolded = 1;
+		} else if (!Blindfolded) {
+		    pline("You put the blindfold on.");
+		    Blindfolded = INTRINSIC;
+		    obj->owornmask = W_TOOL;
 		    seeoff(0);
-		}
+		} else pline("You are already wearing a blindfold!");
+		break;
+	case BADGE:
+		if (Badged && obj->owornmask) {
+		    pline("You remove the badge.");
+		    Badged = 0;
+		    obj->owornmask = 0;
+		} else if (!Badged) {
+		    pline("You pin the badge on your chest.");
+		    Badged = INTRINSIC;
+		    obj->owornmask = W_TOOL;
+		} else pline("You are already wearing a badge!");
 		break;
 	default:
 		pline("Sorry, I don't know how to use that.");
@@ -342,6 +365,7 @@ register struct monst *mtmp = fmon;
 static
 use_leash(obj) struct obj *obj; {
 register struct monst *mtmp = fmon;
+extern char *lmonnam();
 
 	while(mtmp && !mtmp->mleashed) mtmp = mtmp->nmon;
 
@@ -732,3 +756,33 @@ struct obj *obj;
 }/* use_mirror */
 
 #endif
+
+static
+use_lamp(obj)
+struct obj *obj;
+{
+	if(obj->spe <= 0 || obj->otyp == MAGIC_LAMP ) {
+		pline("This lamp has no oil.");
+		return;
+	}
+	litroom(TRUE);
+	obj->spe -= 1;
+}
+
+dorub() {
+
+     if (!(carrying(LAMP) || carrying(MAGIC_LAMP))) {
+	  pline("You do not have a lamp!");
+	  return;
+     }
+     if (!(uwep->otyp == LAMP || uwep->otyp == MAGIC_LAMP)) {
+	  pline("You must wield the lamp to rub it!");
+	  return;
+     }
+     if (uwep->otyp == MAGIC_LAMP && uwep->spe > 0 && !rn2(3)) {
+	  uwep->spe = 0;
+	  djinni_from_bottle();
+     } else if (uwep->otyp == MAGIC_LAMP && rn2(2) && !Blind)
+		pline("You see a puff of smoke.");
+	else pline("Nothing happens.");
+}

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)pri.c	2.1	87/11/09
+/*	SCCS Id: @(#)pri.c	2.3	87/12/12
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 #include <stdio.h>
@@ -436,6 +436,12 @@ extern char *eos();
 	(void) strcat(newbot, hu_stat[u.uhs]);
 	if(flags.time)
 	    (void) sprintf(eos(newbot), "  %ld", moves);
+#ifdef SCORE_ON_BOTL
+	(void) sprintf(eos(newbot)," S:%lu "
+	    ,(u.ugold - u.ugold0 > 0 ? u.ugold - u.ugold0 : 0)
+	    + u.urexp + (50 * maxdlevel)
+	    + (maxdlevel > 20? 1000*((maxdlevel > 30) ? 10 : maxdlevel - 20) :0));
+#endif
 	if(strlen(newbot) >= COLNO) {
 		register char *bp0, *bp1;
 		bp0 = bp1 = newbot;
@@ -468,7 +474,7 @@ mstatusline(mtmp) register struct monst *mtmp; {
 
 extern char plname[];
 ustatusline() {
-	pline("Status of %s ", plname);
+	pline("Status of %s%s ", (Badged) ? "Officer " : "", plname);
 	pline("Level %d, gold %lu, hit points %d(%d), AC %d.",
 # ifdef KAA
 		u.ulevel, u.ugold, u.mtimedone ? u.mh : u.uhp,

@@ -1,10 +1,11 @@
-/*	SCCS Id: @(#)monmove.c	2.1	87/10/18
+/*	SCCS Id: @(#)monmove.c	2.3	87/12/12
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 #include "hack.h"
 #include "mfndpos.h"
 #define	NULL	(char *) 0
 
+extern struct obj *mksobj_at();
 extern int warnlevel;	/* defined in mon.c */
 
 dochugw(mtmp) register struct monst *mtmp; {
@@ -31,7 +32,12 @@ register struct monst *mtmp;
 	register tmp, nearby, scared, onscary;
 
 	if(mtmp->cham && !rn2(6))
-		(void) newcham(mtmp, &mons[dlevel+14+rn2(CMNUM-14-dlevel)]);
+	    (void) newcham(mtmp,
+#ifndef RPH
+			   &mons[dlevel+14+rn2(CMNUM-14-dlevel)]);
+#else
+			   (struct permonst *)0);
+#endif
 	mdat = mtmp->data;
 	if(mdat->mlevel < 0)
 		panic("bad monster %c (%d)",mdat->mlet,mdat->mlevel);
@@ -111,7 +117,8 @@ register struct monst *mtmp;
 #endif
 	}
 #ifdef HARD	/* Demonic Blackmail!!! */
-	if(mdat->mlet == '&' && mtmp->mpeaceful && !mtmp->mtame)
+	if(mdat->mlet == '&' && mtmp->mpeaceful 
+	   && !mtmp->mtame && !mtmp->isdjinni)
 		if(demon_talk(mtmp))
 			 return(1);	/* you paid it off */
 #endif

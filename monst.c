@@ -1,8 +1,9 @@
-/*	SCCS Id: @(#)monst.c	2.2	87/11/29
+/*	SCCS Id: @(#)monst.c	2.3	87/12/16
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 #include "hack.h"
 #include "eshk.h"
+#include "edog.h"
 extern char plname[PL_NSIZ];
 
 struct permonst mons[CMNUM+2] = {
@@ -87,15 +88,13 @@ struct permonst mons[CMNUM+2] = {
 	{ "trapper",		',', 12,  3, 3,  0, 0,  0, 0 },
 	{ "purple worm",	'P', 15,  9, 6, 20, 2,  8, 0 },
 	{ "demon",		'&', 10, 12,-4, 30, 1,  4, 0 },
-#ifdef SAC
-	{ "soldier",		'3', 12,  9,-3, 15,10,  4, 0 },
-#endif /* SAC */
 	{ "minotaur",		'm', 15, 15, 6,  0, 4, 10, 0 },
 	{ "shopkeeper", 	'@', 12, 18, 0, 50, 4,  8, sizeof(struct eshk) }
 };
 
 struct permonst pm_ghost = { "ghost", ' ', 10, 3, -5, 50, 1, 1, sizeof(plname) };
 #ifdef SAC
+struct permonst pm_soldier = { "soldier", '3', 12, 4, -3, 15, 10, 4, 0 };
 struct permonst pm_wizard = { "wizard of Yendor", '1', 20, 12, -8, 100, 2, 12, 0 };
 #else
 struct permonst pm_wizard = { "wizard of Yendor", '1', 15, 12, -2, 70, 1, 12, 0 };
@@ -106,5 +105,11 @@ struct permonst pm_medusa = {"medusa", '8', 15, 12, 2, 50, 1, 8, 0};
 #ifdef MAIL
 struct permonst pm_mail_daemon = { "mail daemon", '2', 100, 1, 10, 127, 0, 0, 0 };
 #endif
-struct permonst pm_eel = { "giant eel", ';', 15, 6, -3, 0, 3, 6, 0 };
-
+struct permonst pm_eel    = {"electric eel", ';', 15, 6, -3, 0, 3, 6, 0};
+struct permonst pm_djinni = {"djinni",  '&', 10, 12, 0, 30, 2, 8, 0};
+struct permonst pm_gremlin= {"gremlin", 'G', 3, 12, 2, 25, 1, 8, 0};
+#ifdef STOOGES
+struct permonst pm_larry  = {"Larry",   '@', 3, 12, 10, 0, 1, 6, 0};
+struct permonst pm_curly  = {"Curly",   '@', 3, 12, 10, 0, 1, 6, 0};
+struct permonst pm_moe    = {"Moe",     '@', 3, 12, 10, 0, 1, 6, 0};
+#endif

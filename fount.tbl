@@ -1,0 +1,57 @@
+.S 9 10
+.TS H
+tab (#), center, expand, box;
+c c
+l | l.
+Message#Effect
+_
+.TH
+``Good Lord!  An endless stream of snakes pours forth!''#3-4 snakes appear
+``The fountain bubbles furiously for a moment, then calms.''#makemon failed
+_
+``You have unleashed a water demon!''#Infrequent, but dangerous
+``Grateful for his release, he grants you a wish!''#Very unlikely (3%)
+_
+``You have attracted a water nymph!''#Nymph appears, will steal
+``A large bubble rises to the surface and pops.''#makemon failed
+_
+``Water gushes forth from the overflowing fountain!''#Drowning pools
+_
+``You spot a gem in the sparkling waters!''#Real gem appears
+_
+``The fountain dries up!''#Usually happens after 2-5 dips
+_
+``The cool draught refreshes you.''#Decreases hunger
+_
+``The water is foul!  You gag and vomit.''#Hunger
+``What a relief!''#Cures if already sick
+_
+``The water is contaminated!''#Poison damage, - strength
+``Perhaps it is run off from the nearby orange farm.''#If poison resistant
+_
+``This water's no good!''#Curses an object, hunger
+_
+``You see an image of someone stalking you. But it disappears.''#Permanent see invisible
+_
+``You sense the presence of monsters.''#Detect monster
+``You feel oddly disturbed.''#If no monsters
+_
+``This water gives you bad breath!''#Cause fear
+_
+``Your weapon rusts somewhat.''#-1 damage (swords only)
+``Your weapon looks quite rusted.''#If < -6 already
+_
+``A murky hand from the depths reaches up to bless the sword.''#+5 Excalibur
+``As the hand retreats, the fountain disappears!''
+_
+``Well, it looks wet now.''#Sword may be stickeycursed
+``The water glows for a moment.''#Lift curse from weapon
+``A feeling of loss comes over you.''#Missed lift curse
+_
+``Your thirst is quenched.''#No effect
+``A strange tingling runs up your arm.''#No effect
+``You feel a sudden chill.''#No effect
+``An urge to take a bath nearly overwhelms you.''#No effect
+``Far below you, you see coins glistening in the water.''#No effect
+.TE
+.S

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)wizard.c	2.2	87/11/29
+/*	SCCS Id: @(#)wizard.c	2.3	88/02/11
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 /* wizard code - inspired by rogue code from Merlyn Leroy (digi-g!brian) */
@@ -7,7 +7,7 @@
 #include "hack.h"
 extern struct permonst pm_wizard;
 extern struct monst *makemon();
-extern struct obj *carrying();
+extern struct obj *carrying(), *mksobj_at();
 
 #if defined(HARD) || defined(DGKMOD)
 # ifdef SAC
@@ -237,6 +237,10 @@ register struct obj *obj;
 			range = 0;
 		}
 		tmp_at(bhitpos.x, bhitpos.y);
+#ifdef SINKS
+		if(IS_SINK(levl[bhitpos.x][bhitpos.y].typ))
+			break;	/* thrown objects fall on sink */
+#endif
 	}
 	tmp_at(-1, -1);
 }
@@ -317,7 +321,8 @@ register struct monst *mtmp;
 #endif
 	    case 'D':
 		/* spit fire in the direction of @ (not nec. hitting) */
-		buzz(-1,mtmp->mx,mtmp->my,sgn(tx),sgn(ty));
+		buzz((int) - 10 - (mtmp->dragon),
+			mtmp->mx,mtmp->my,sgn(tx),sgn(ty));
 		break;
 #ifdef HARD
 	    case '&':
@@ -387,7 +392,8 @@ register struct monst *mtmp;
 			/* Only if not Invisible */
 			pline("You hear a clap of thunder!");
 			/* shoot a bolt of fire or cold, or a sleep ray */
-			buzz(-rnd(3),mtmp->mx,mtmp->my,sgn(tx),sgn(ty));
+			/* or death, or lightning, but not  magic missile */
+			buzz(-rnd(5),mtmp->mx,mtmp->my,sgn(tx),sgn(ty));
 			break;
 		    }
 		}

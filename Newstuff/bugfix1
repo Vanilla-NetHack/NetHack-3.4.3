@@ -1,0 +1,42 @@
+
+I got it to compile under Turbo C 1.5.  These are the changes I needed
+to make it compile:
+
+topten.c : I wrote a little link() procedure for the LOGFILE code.
+Basically the pseudo-link() only looks to see if the lock file exists,
+and if not, creates it.
+
+makedefs.c : Either use a -DMSDOS, or (like I did for portability),
+add an #ifdef __MSDOS__, #define MSDOS, #endif.
+
+mkshop.c : Add a void mkzoo(), mkswamp() in mkshop() after the #ifdef
+WIZARD.
+
+rip.c : Add ", 3" parameter to the strncmp(.., "Mr."/"Ms.") calls.
+
+Then it compiled, but put little H's all over the screen.  I found the
+bug in tgoto.c in the termcap code.  Just add a *out = 0 before it
+returns.
+
+Two other little mites:
+
+msdos.c : the read_config_file() still reads 17 GRAPHICS values, just
+expand it in the obvious places if you want to customize the sink
+symbol.
+
+pray.c : THEOLOGY knows about cursed armor, but doesn't know about
+Hawaiian shirts.  You can add uarmu to the end of the uarm... if's,
+enclosed in #IFDEF SHIRT of course.
+
+One big mite:
+
+All these changes made, it runs real pretty, but it goes catatonic
+when i go downstairs from the first level.  I'm looking for this one.
+I'll post the diffs for these problems when I get it working.
+-- 
+"...billions and billions..."			| Mike Threepoint (D-ro 3)
+			-- not Carl Sagan	| linhart@topaz.rutgers.edu
+"...hundreds if not thousands..."		| FidoNet 1:107/513
+			-- Pnews		| AT&T +1 (201)878-0937
+
+

@@ -1,13 +1,56 @@
-/*	SCCS Id: @(#)mkshop.c	2.1	87/09/23
+/*	SCCS Id: @(#)mkshop.c	2.3	87/12/12
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
+/*
+ * Entry points:
+ *	mkroom() -- make and stock a room of a given type
+ *	nexttodoor() -- return TRUE if adjacent to a door
+ *	has_dnstairs() -- return TRUE if given room has a down staircase
+ *	has_upstairs() -- return TRUE if given room has an up staircase
+ *	dist2() -- Euclidean square-of-distance function
+ *	courtmon() -- generate a court monster
+ *
+ * (note: this module should become mkroom.c in the next major release)
+ */
 #ifndef QUEST
 #include "hack.h"
 #include "mkroom.h"
 extern struct monst *makemon();
-extern struct obj *mkobj_at();
+extern struct permonst pm_soldier;
+extern struct obj *mkobj_at(), *mksobj_at();
+extern void stock_room();
 extern int nroom;
 
+static boolean
+isbig(sroom)
+register struct mkroom *sroom;
+{
+	register int area = (sroom->hx - sroom->lx) * (sroom->hy - sroom->ly);
+	return( area > 20 );
+}
+
+void
+mkroom(roomtype)
+/* make and stock a room of a given type */
+int	roomtype;
+{
+    void mkshop(), mkzoo(), mkswamp();
+
+    if (roomtype >= SHOPBASE)
+	mkshop();	/* someday, we should be able to specify shop type */
+    else switch(roomtype)
+    {
+    case COURT: mkzoo(COURT); break;
+    case ZOO: mkzoo(ZOO); break;
+    case BEEHIVE: mkzoo(BEEHIVE); break;
+    case MORGUE: mkzoo(MORGUE); break;
+    case BARRACKS: mkzoo(BARRACKS); break;
+    case SWAMP: mkswamp(); break;
+    default:	impossible("Tried to make a room of type %d.", roomtype);
+    }
+}
+
+static void
 mkshop(){
 register struct mkroom *sroom;
 int roomno, i = -1;
@@ -36,6 +79,12 @@ extern char *getenv();
 				return;
 			}
 #endif
+#ifdef SAC
+			if(*ep == '3'){
+				mkzoo(BARRACKS);
+				return;
+			}
+#endif /* SAC */
 			if(*ep == 's' || *ep == 'S'){
 				mkswamp();
 				return;
@@ -85,6 +134,7 @@ gottype:
 	stock_room(&(shtypes[i]), sroom);
 }
 
+static void
 mkzoo(type)
 int type;
 {
@@ -122,6 +172,9 @@ int type;
 #ifdef NEWCLASS
 		   (type == COURT) ? courtmon() :
 #endif
+#ifdef SAC
+		   (type == BARRACKS) ? PM_SOLDIER :
+#endif
 		   (type == MORGUE) ? morguemon() :
 		   (type == BEEHIVE) ? PM_KILLER_BEE : (struct permonst *) 0,
 		   sx, sy);
@@ -158,7 +211,7 @@ int type;
 
 }
 
-struct permonst *
+static struct permonst *
 morguemon()
 {
 	extern struct permonst pm_ghost;
@@ -169,6 +222,7 @@ morguemon()
 	return((i < 40) ? PM_GHOST : (i < 60) ? PM_WRAITH : PM_ZOMBIE);
 }
 
+static void
 mkswamp()	/* Michiel Huisjes & Fred de Wilde */
 {
 	register struct mkroom *sroom;
@@ -197,6 +251,7 @@ mkswamp()	/* Michiel Huisjes & Fred de Wilde */
 	}
 }
 
+boolean
 nexttodoor(sx,sy)
 register sx,sy;
 {
@@ -205,10 +260,11 @@ register sx,sy;
 	for(dx = -1; dx <= 1; dx++) for(dy = -1; dy <= 1; dy++)
 		if((lev = &levl[sx+dx][sy+dy])->typ == DOOR ||
 		    lev->typ == SDOOR || lev->typ == LDOOR)
-			return(1);
-	return(0);
+			return(TRUE);
+	return(FALSE);
 }
 
+boolean
 has_dnstairs(sroom)
 register struct mkroom *sroom;
 {
@@ -216,6 +272,7 @@ register struct mkroom *sroom;
 		   sroom->ly <= ydnstair && ydnstair <= sroom->hy);
 }
 
+boolean
 has_upstairs(sroom)
 register struct mkroom *sroom;
 {
@@ -223,17 +280,12 @@ register struct mkroom *sroom;
 		   sroom->ly <= yupstair && yupstair <= sroom->hy);
 }
 
-isbig(sroom)
-register struct mkroom *sroom;
-{
-	register int area = (sroom->hx - sroom->lx) * (sroom->hy - sroom->ly);
-	return( area > 20 );
-}
-
+int
 dist2(x0,y0,x1,y1){
 	return((x0-x1)*(x0-x1) + (y0-y1)*(y0-y1));
 }
 
+static int
 sq(a) int a; {
 	return(a*a);
 }

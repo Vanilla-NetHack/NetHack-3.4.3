@@ -138,6 +138,7 @@ initial:
 	mkdir $(GAMEDIR) $(GAMEDIR)/save
 	touch $(GAMEDIR)/perm
 	touch $(GAMEDIR)/record
+	touch $(GAMEDIR)/logfile
 	chown $(GAMEUID) $(GAMEDIR) $(GAMEDIR)/*
 	chgrp $(GAMEGRP) $(GAMEDIR) $(GAMEDIR)/*
 	chmod 666 $(GAMEDIR)/*

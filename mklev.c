@@ -1,19 +1,23 @@
-/*	SCCS Id: @(#)mklev.c	2.1	87/09/23
+/*	SCCS Id: @(#)mklev.c	2.3	87/12/12
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 #include "hack.h"
 
 extern char *getlogin(), *getenv();
-extern struct monst *makemon();
-extern struct obj *mkobj_at();
+extern struct monst *makemon(), *mkmon_at();
+extern struct obj *mkobj_at(), *mksobj_at();
 extern struct trap *maketrap();
 
 #ifdef RPH
 extern struct permonst pm_medusa;
 #endif
 
-#define somex() ((rand()%(croom->hx-croom->lx+1))+croom->lx)
-#define somey() ((rand()%(croom->hy-croom->ly+1))+croom->ly)
+#ifdef STOOGES
+extern struct permonst pm_larry, pm_curly, pm_moe;
+#endif
+
+#define somex() ((int)(rand()%(croom->hx-croom->lx+1))+croom->lx)
+#define somey() ((int)(rand()%(croom->hy-croom->ly+1))+croom->ly)
 
 #include "mkroom.h"
 #define	XLIM	4	/* define minimum required space around a room */
@@ -60,13 +64,11 @@ makelevel()
 	oinit();	/* assign level dependent obj probabilities */
 #ifdef RPH
 	if (u.wiz_level == 0) {
-	    u.medusa_level = rn1(3,25);
-	    u.wiz_level    = d(3,10) + u.medusa_level;
-# ifdef WIZARD
-	    if (wizard && dlevel == 1)
-	        pline ("The wiz is at %d, and the medusa at %d",
-			u.wiz_level, u.medusa_level);
-# endif
+	    u.medusa_level = rn1(3, (MAXLEVEL > 30) ? 25 : (MAXLEVEL - 4) ); 
+	    u.wiz_level    = rn1(MAXLEVEL-u.medusa_level, u.medusa_level)+1;
+#ifdef STOOGES
+	    u.stooge_level = rn1(6,4);
+#endif
 	}
 	if (dlevel > u.medusa_level) {
 	    makemaz();
@@ -94,6 +96,27 @@ makelevel()
 	if (dlevel == u.medusa_level) 
 	    if (mtmp = makemon(PM_MEDUSA, xdnstair, ydnstair))
 	        mtmp->msleep = 1;
+	}
+#endif
+#ifdef STOOGES
+	{ struct monst *mtmp;
+	if (dlevel == u.stooge_level) {    /* probably should use enexto */
+		mtmp = makemon(PM_MOE, xdnstair, ydnstair);
+		if (mtmp) mtmp->isstooge = 1;
+		if (mtmp) mtmp->mpeaceful = 1;
+		if (goodpos(xdnstair+1, ydnstair))
+	    		mtmp = makemon(PM_LARRY, xdnstair+1, ydnstair);
+		else if (goodpos(xdnstair-1, ydnstair))
+	    		mtmp = makemon(PM_LARRY, xdnstair-1, ydnstair);
+		if (mtmp) mtmp->isstooge = 1;
+		if (mtmp) mtmp->mpeaceful = 1;
+		if (goodpos(xdnstair, ydnstair+1))
+	    		mtmp = makemon(PM_CURLY, xdnstair, ydnstair+1);
+	    	else if (goodpos(xdnstair, ydnstair-1))
+	    		mtmp = makemon(PM_CURLY, xdnstair, ydnstair-1);
+		if (mtmp) mtmp->isstooge = 1;
+		if (mtmp) mtmp->mpeaceful = 1;
+	 	}
 	}
 #endif
 	if(nroom > 1) {
@@ -136,6 +159,9 @@ makelevel()
 #ifdef FOUNTAINS
 		if(!rn2(10)) mkfount(0,croom);
 #endif
+#ifdef SINKS
+		if(!rn2(80)) mksink(croom);
+#endif
 		if(!rn2(3)) {
 			(void) mkobj_at(0, somex(), somey());
 			tryct = 0;
@@ -168,20 +194,25 @@ makelevel()
 	}
 
 #ifdef WIZARD
-	if(wizard && getenv("SHOPTYPE")) mkshop(); else
+	if(wizard && getenv("SHOPTYPE")) mkroom(SHOPBASE); else
 #endif
-	if(dlevel > 1 && dlevel < 20 && rn2(dlevel) < 3) mkshop();
+	if(dlevel > 1 && dlevel < 20 && rn2(dlevel) < 3) mkroom(SHOPBASE);
 	else
 #ifdef NEWCLASS
-	if(dlevel > 4 && !rn2(6)) mkzoo(COURT);
+	if(dlevel > 4 && !rn2(6)) mkroom(COURT);
+	else
 #endif
-	if(dlevel > 6 && !rn2(7)) mkzoo(ZOO);
+	if(dlevel > 6 && !rn2(7)) mkroom(ZOO);
 	else
-	if(dlevel > 9 && !rn2(5)) mkzoo(BEEHIVE);
+	if(dlevel > 9 && !rn2(5)) mkroom(BEEHIVE);
 	else
-	if(dlevel > 11 && !rn2(6)) mkzoo(MORGUE);
+	if(dlevel > 11 && !rn2(6)) mkroom(MORGUE);
 	else
-	if(dlevel > 18 && !rn2(6)) mkswamp();
+#ifdef SAC
+	if(dlevel > 14 && !rn2(4)) mkroom(BARRACKS);
+	else
+#endif
+	if(dlevel > 18 && !rn2(6)) mkroom(SWAMP);
 }
 
 makerooms() {
@@ -700,6 +731,15 @@ char    *engravings[] = {       "", "", "", "", "",
 #ifdef SPELLS
 				,""
 #endif
+#ifdef KAA
+				,""
+#ifdef RPH
+				,""
+#endif
+#endif
+#ifdef SAC
+				,""
+#endif
 				};
 
 makeniche(trap_type)
@@ -777,6 +817,9 @@ register
 #ifdef NEWCLASS
 		    nospikes, nolevltp,
 #endif
+#ifdef SAC
+		    nolandmine,
+#endif
 		    tryct = 0;
 
 	xchar mx,my;
@@ -791,6 +834,9 @@ register
 #ifdef SPIDERS
 		nospider = (dlevel < 7) ? 1 : 0;
 #endif
+#ifdef SAC
+		nolandmine = (dlevel < 5) ? 1 : 0;
+#endif
 		nomimic = (dlevel < 9 || goldseen ) ? 1 : 0;
 		if(index(fut_geno, 'M')) nomimic = 1;
 
@@ -804,6 +850,9 @@ register
 #ifdef NEWCLASS
 			   || (kind == SPIKED_PIT && nospikes)
 			   || (kind == LEVEL_TELEP && nolevltp)
+#endif
+#ifdef SAC
+			   || (kind == LANDMINE && nolandmine)
 #endif
 			   )  kind = NO_TRAP;
 		} while(kind == NO_TRAP);
@@ -907,3 +956,31 @@ register mazeflag;
 }
 #endif /* FOUNTAINS /**/
 
+#ifdef SINKS
+mksink(croom)
+register struct mkroom *croom;
+{
+      register xchar mx,my;
+      register int tryct = 0;
+
+      do {
+	      if(++tryct > 200)
+		      return;
+	      mx = somex();
+	      my = somey();
+      } while(t_at(mx, my) || levl[mx][my].typ == STAIRS
+#ifdef FOUNTAINS
+	      || IS_FOUNTAIN(levl[mx][my].typ)
+#endif
+#ifdef NEWCLASS
+	      || IS_THRONE(levl[mx][my].typ)
+#endif
+	     );
+
+       /* Put a sink at mx, my */
+
+       levl[mx][my].typ = SINK;
+       levl[mx][my].scrsym = SINK_SYM;
+
+}
+#endif /* SINKS /**/

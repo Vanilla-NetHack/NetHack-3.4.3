@@ -1,5 +1,5 @@
 #	Hack or Quest Makefile.
-#	SCCS Id: @(#)Makefile.att	2.2	87/11/11
+#	SCCS Id: @(#)Makefile.att	2.3	88/02/12
 
 include $(MAKEINC)/Makepre.h
 
@@ -68,7 +68,7 @@ all:	$(GAME) lint
 	@echo "Done."
 
 makedefs:	makedefs.c alloc.o config.h
-	cc -o makedefs alloc.o makedefs.c
+	cc ${CFLAGS} -o makedefs alloc.o makedefs.c
 
 RUMORFILES= rumors.base rumors.kaa rumors.mrx
 
@@ -129,6 +129,7 @@ initial:
 	mkdir $(GAMEDIR) $(GAMEDIR)/save
 	touch $(GAMEDIR)/perm
 	touch $(GAMEDIR)/record
+	touch $(GAMEDIR)/logfile
 	chown $(GAMEUID) $(GAMEDIR) $(GAMEDIR)/*
 	chgrp $(GAMEGRP) $(GAMEDIR) $(GAMEDIR)/*
 	chmod 666 $(GAMEDIR)/*

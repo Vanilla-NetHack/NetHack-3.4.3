@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)msdos.c	2.1	87/10/19
+/*	SCCS Id: @(#)msdos.c	2.3	87/12/16
 /* An assortment of MSDOS functions.
  */
 
@@ -90,7 +90,7 @@ dosh() {
 	char *comspec;
 
 	if (comspec = getcomspec()) {
-		settty("To return to HACK, type \"exit\" at the DOS prompt.\n");
+		settty("To return to NetHack, type \"exit\" at the DOS prompt.\n");
 		chdirx(orgdir, 0);
 		if (spawnl(P_WAIT, comspec, comspec, NULL) < 0) {
 			printf("\nCan't spawn %s !\n", comspec);

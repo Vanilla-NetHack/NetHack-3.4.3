@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)objclass.h	2.1	87/09/23
+/*	SCCS Id: @(#)objclass.h	2.3	88/01/24
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 /* definition of a class of objects */
@@ -31,9 +31,7 @@ struct objclass {
 #define	wldam		oc_oc2	/* for weapons and PICK_AXE */
 
 #define	g_val		oc_oi	/* for gems: value on exit */
-#ifdef MSDOS
-	int oc_descr_i;		/* where the description comes from */
-#endif
+
 #ifdef SPELLS
 #define spl_lev		oc_oi	/* for books: spell level */
 #endif

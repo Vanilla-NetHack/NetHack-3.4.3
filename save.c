@@ -1,10 +1,11 @@
-/*	SCCS Id: @(#)save.c	2.1	87/10/07
+/*	SCCS Id: @(#)save.c	2.3	88/01/24
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 #include <signal.h>
 #include <stdio.h>
 #include "hack.h"
-extern char genocided[60];		/* defined in Decl.c */
+
+extern char genocided[60];		/* defined in decl.c */
 extern char fut_geno[60];		/* idem */
 extern struct permonst	pm_wizard;	/* since the wizard evolves */
 
@@ -61,7 +62,7 @@ dosave0(hu) int hu; {
 		return(0);
 	}
 	if(flags.moonphase == FULL_MOON)	/* ut-sally!fletcher */
-		u.uluck--;			/* and unido!ab */
+		change_luck(-1);		/* and unido!ab */
 #ifdef DGKMOD
 	home();
 	cl_end();
@@ -211,7 +212,12 @@ register fd;
 	mread(fd, (char *) genocided, sizeof genocided);
 	mread(fd, (char *) fut_geno, sizeof fut_geno);
 #ifdef HARD
+	{
+	/* Save name pointer from being munged -- tom@uw-warp */
+	char *name = pm_wizard.mname;
 	mread(fd, (char *) &pm_wizard, sizeof(struct permonst));
+	pm_wizard.mname = name;
+	}
 #endif
 	restnames(fd);
 #ifdef DGK
@@ -335,80 +341,7 @@ register fd;
 	}
 	return(first);
 }
-#ifdef MSDOS
-struct monst *
-restmonchn(fd)
-register fd;
-{
-	register struct monst *mtmp, *mtmp2;
-	register struct monst *first = 0;
-	int xl;
-	int monsindex, mi;
-	extern struct permonst li_dog, dog, la_dog;
-#ifdef KAA
-	extern struct permonst hell_hound;
-# ifdef HARD
-	extern struct permonst d_lord, d_prince;
-# endif
-# ifdef KJSMODS
-	extern struct permonst pm_guard, pm_ghost, pm_eel;
-# endif
-#endif
 
-#ifdef lint
-	/* suppress "used before set" warning from lint */
-	mtmp2 = 0;
-#endif /* lint /**/
-	while(1) {
-		mread(fd, (char *) &xl, sizeof(xl));
-		if(xl == -1) break;
-		mtmp = newmonst(xl);
-		if(!first) first = mtmp;
-		else mtmp2->nmon = mtmp;
-		mread(fd, (char *) mtmp, (unsigned) xl + sizeof(struct monst));
-		if(!mtmp->m_id)
-			mtmp->m_id = flags.ident++;
-		monsindex = *((int *)&mtmp->data);
-		if (monsindex == (mi = -1))	/* Special fake index */
-			mtmp->data = &li_dog;
-		else if (monsindex == --mi)	/* Special fake index */
-			mtmp->data = &dog;
-		else if (monsindex == --mi)	/* Special fake index */
-			mtmp->data = &la_dog;
-#ifdef KAA
-		else if (monsindex == --mi)
-			mtmp->data = &hell_hound;
-# ifdef HARD
-		else if (monsindex == --mi)
-			mtmp->data = &d_lord;
-
-		else if (monsindex == --mi)
-			mtmp->data = &d_prince;
-# endif
-# ifdef KJSMODS
-		else if (monsindex == --mi)
-			mtmp->data = &pm_guard;
-
-		else if (monsindex == --mi)
-			mtmp->data = &pm_ghost;
-
-		else if (monsindex == --mi)
-			mtmp->data = &pm_eel;
-# endif
-#endif
-		else
-			mtmp->data = &mons[monsindex];
-		if(mtmp->minvent)
-			mtmp->minvent = restobjchn(fd);
-		mtmp2 = mtmp;
-	}
-	if(first && mtmp2->nmon){
-		impossible("Restmonchn: error reading monchn.");
-		mtmp2->nmon = 0;
-	}
-	return(first);
-}
-#else
 struct monst *
 restmonchn(fd)
 register fd;
@@ -421,7 +354,11 @@ register fd;
 	long differ;
 
 	mread(fd, (char *)&monbegin, sizeof(monbegin));
+#ifndef MSDOS
 	differ = (char *)(&mons[0]) - (char *)(monbegin);
+#else
+	differ = (long)(&mons[0]) - (long)(monbegin);
+#endif
 
 #ifdef LINT
 	/* suppress "used before set" warning from lint */
@@ -436,8 +373,13 @@ register fd;
 		mread(fd, (char *) mtmp, (unsigned) xl + sizeof(struct monst));
 		if(!mtmp->m_id)
 			mtmp->m_id = flags.ident++;
+#ifndef MSDOS
 		mtmp->data = (struct permonst *)
 			((char *) mtmp->data + differ);
+#else
+		mtmp->data = (struct permonst *)
+			((long) mtmp->data + differ);
+#endif
 		if(mtmp->minvent)
 			mtmp->minvent = restobjchn(fd);
 		mtmp2 = mtmp;
@@ -448,4 +390,3 @@ register fd;
 	}
 	return(first);
 }
-#endif

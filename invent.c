@@ -1,10 +1,11 @@
-/*	SCCS Id: @(#)invent.c	2.1	87/10/19
+/*	SCCS Id: @(#)invent.c	2.3	88/01/21
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 #include	<stdio.h>
 #include	"hack.h"
 extern struct obj *splitobj();
 extern struct obj zeroobj;
+extern void savech();
 extern char morc;
 extern char quitchars[];
 static char *xprname();
@@ -811,6 +812,12 @@ dolook() {
 	pline("There is an opulent throne here.");
     }    
 #endif
+#ifdef SINKS
+    if(IS_SINK(levl[u.ux][u.uy].typ))  {
+	fd++;
+	pline("There is a kitchen sink here.");
+    }
+#endif
     if(u.ux == xupstair && u.uy == yupstair)  {
 	fd++;
 	pline("There is a stairway up here.");
@@ -941,12 +948,23 @@ doprwep(){
 }
 
 doprarm(){
+#ifdef SHIRT
+	if(!uarm && !uarmg && !uarms && !uarmh && !uarmu)
+#else
 	if(!uarm && !uarmg && !uarms && !uarmh)
+#endif
 		pline("You are not wearing any armor.");
 	else {
+#ifdef SHIRT
+		char lets[7];
+#else
 		char lets[6];
+#endif
 		register int ct = 0;
 
+#ifdef SHIRT
+		if(uarmu) lets[ct++] = obj_to_let(uarmu);
+#endif
 		if(uarm) lets[ct++] = obj_to_let(uarm);
 		if(uarm2) lets[ct++] = obj_to_let(uarm2);
 		if(uarmh) lets[ct++] = obj_to_let(uarmh);
@@ -1020,7 +1038,7 @@ char let;
 	static char *buf = NULL;
 
 	if (buf == NULL)
-	    buf = (char *) alloc (strlen(HI) + strlen(HE) + 15 + 1);
+	    buf = (char *) alloc ((unsigned)(strlen(HI)+strlen(HE)+15+1));
 
 	if (pos == NULL) pos = obj_symbols;
 	if (HI && HE)

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)potion.c	2.1	87/09/29
+/*	SCCS Id: @(#)potion.c	2.3	88/02/11
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 #include "hack.h"
@@ -40,6 +40,10 @@ dodrink() {
 	if(!otmp) return(0);
 	if(!strcmp(objects[otmp->otyp].oc_descr, "smoky") && !rn2(13)) {
 		ghost_from_bottle();
+		goto use_it;
+	}
+	if(!strcmp(objects[otmp->otyp].oc_descr, "glowing") && !rn2(13)) {
+		djinni_from_bottle();
 		goto use_it;
 	}
 	if((retval = peffects(otmp)) >= 0) return(retval);
@@ -582,6 +586,45 @@ ghost_from_bottle(){
 	pline("As you open the bottle, an enormous ghost emerges!");
 	pline("You are frightened to death, and unable to move.");
 	nomul(-3);
+}
+
+djinni_from_bottle(){
+	extern struct permonst pm_djinni;
+	register struct monst *mtmp;
+
+	if(!(mtmp = makemon(PM_DJINNI,u.ux,u.uy))){
+		pline("It turns out to be empty.");
+		return;
+	}
+
+	mtmp->isdjinni = 1;
+	mnexto(mtmp);
+	if (!Blind) {
+		pline("In a cloud of smoke, a djinni emerges!");
+		pline("%s speaks.", Monnam(mtmp));
+	} else {
+		pline("You smell fumes!");
+		pline("Something speaks.");
+	}
+
+	switch (rn2(5)) {
+	case 0 : pline("'I am in your debt. I will grant one wish!'");
+		makewish();
+		mondied(mtmp);
+		break;
+	case 1 : pline("'Thank you for freeing me!'");
+		tamedog(mtmp, (struct obj *) 0);
+		break;
+	case 2 : pline("'You freed me!'");
+		mtmp->mpeaceful = 1;
+		break;
+	case 3 : pline("'It is about time!'");
+		pline("The djinni vanishes!");
+		mondied(mtmp);
+		break;
+	default: pline("You disturbed me fool!");
+		break;
+	}
 }
 
 gainstr(inc)

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)do.c	2.0	87/09/15
+/*	SCCS Id: @(#)do.c	2.3	88/02/11
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 /* Contains code for 'd', 'D' (drop), '>', '<' (up, down) and 't' (throw) */
@@ -47,7 +47,7 @@ drop(obj) register struct obj *obj; {
 		free((char *) obj);
 		return(1);
 	}
-	if(obj->owornmask & (W_ARMOR | W_RING)){
+	if(obj->owornmask & (W_ARMOR | W_RING | W_TOOL)){
 		pline("You cannot drop something you are wearing.");
 		return(0);
 	}
@@ -67,6 +67,18 @@ drop(obj) register struct obj *obj; {
                 return (0);
             }
         }
+#endif
+#ifdef SINKS
+	if((obj->olet == RING_SYM) && IS_SINK(levl[u.ux][u.uy].typ))
+	    if (u.uswallow) {
+		freeinv(obj);
+		mpickobj(u.ustuck,obj);
+		return(1);
+	    }
+	    else {
+		dosinkring(obj);
+		return(1);
+	    }
 #endif
 	pline("You dropped %s.", doname(obj));
 	dropx(obj);
@@ -401,3 +413,113 @@ heal_legs()
 		Wounded_legs = 0;
 	}
 }
+
+#ifdef SINKS
+trycall(obj)
+register struct obj *obj;
+{
+	if(!objects[obj->otyp].oc_name_known &&
+	   !objects[obj->otyp].oc_uname)
+	   docall(obj);
+}
+
+dosinkring(obj)  /* obj is a ring being dropped over a kitchen sink */
+register struct obj *obj;
+{
+register struct obj *otmp,*otmp2;
+register short eaten;
+	pline("You drop %s down the drain.", doname(obj));
+	switch(obj->otyp) {
+	    case RIN_ADORNMENT:  {
+		pline("The faucets flash brightly for a moment.");
+		trycall(obj);
+		break;
+		}
+	    case RIN_REGENERATION:  {
+		pline("The sink looks as good as new.");
+		trycall(obj);
+		break;
+		}
+	    case RIN_SEARCHING:
+		break;
+	    case RIN_SEE_INVISIBLE:
+		break;
+	    case RIN_STEALTH:  {
+		pline("The sink seems to blend into the floor for a moment.");
+		trycall(obj);
+		break;
+		}
+	    case RIN_LEVITATION:  {
+		pline("The sink quivers upward for a moment.");
+		trycall(obj);
+		break;
+		}
+	    case RIN_POISON_RESISTANCE:
+		break;
+	    case RIN_AGGRAVATE_MONSTER:
+		break;
+	    case RIN_HUNGER:  {
+		eaten = 0;
+		for(otmp=fobj; otmp; otmp=otmp2) {
+		    otmp2 = otmp->nobj;
+		    if(otmp->ox == u.ux && otmp->oy == u.uy)
+			if(!Punished ||
+			    (otmp->otyp != HEAVY_IRON_BALL && otmp->otyp != IRON_CHAIN)) {
+			    eaten++;
+			    pline("Suddenly, %s vanishes from the sink!",doname(otmp));
+			    delobj(otmp);
+			}
+		}
+		if(eaten)
+		    trycall(obj);
+		break;
+		}
+	    case RIN_FIRE_RESISTANCE:  {
+		pline("The hot water faucet flashes brightly for a moment.");
+		trycall(obj);
+		break;
+		}
+	    case RIN_COLD_RESISTANCE:  {
+		pline("The cold water faucet flashes brightly for a moment.");
+		trycall(obj);
+		break;
+		}
+	    case RIN_PROTECTION_FROM_SHAPE_CHAN:  {
+		pline("The sink momentarily looks nothing like a fountain.");
+		trycall(obj);
+		break;
+		}
+	    case RIN_CONFLICT:
+		break;
+	    case RIN_GAIN_STRENGTH:
+		break;
+	    case RIN_INCREASE_DAMAGE:
+		break;
+	    case RIN_PROTECTION:
+		break;
+	    case RIN_WARNING:  {
+		pline("The sink glows white for a moment.");
+		trycall(obj);
+		break;
+		}
+	    case RIN_TELEPORTATION:	/* fall through */
+	    case RIN_TELEPORT_CONTROL:  {
+		pline("The sink momentarily vanishes.");
+		trycall(obj);
+		break;
+		}
+	    case RIN_POLYMORPH:		/* fall through */
+	    case RIN_POLYMORPH_CONTROL:  {
+		pline("The sink momentarily looks like a fountain.");
+		trycall(obj);
+		break;
+		}
+	}
+	if (!rn2(20)) {
+		pline("The sink backs up, leaving %s.", doname(obj));
+		dropx(obj);
+	}
+	else
+		useup(obj);
+}
+#endif

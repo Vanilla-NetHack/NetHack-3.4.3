@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)permonst.h	2.2	87/11/29
+/*	SCCS Id: @(#)permonst.h	2.3	87/12/16
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 struct permonst {
@@ -38,14 +38,8 @@ extern struct permonst mons[];
 /* The ones below changed to include giants. */
 #define	PM_DEMON	&mons[55]
 
-#ifdef SAC
-#define PM_SOLDIER	&mons[56]
-#define	PM_MINOTAUR	&mons[57]	/* last in mons array */
-#define	PM_SHK		&mons[58]	/* very last */
-#else
-#define	PM_MINOTAUR	&mons[56]
-#define	PM_SHK		&mons[57]
-#endif
+#define	PM_MINOTAUR	&mons[56]	/* last in mons array */
+#define	PM_SHK		&mons[57]	/* very last */
 
 #define	PM_GHOST	&pm_ghost
 #define	PM_EEL		&pm_eel
@@ -54,7 +48,13 @@ extern struct permonst mons[];
 #define PM_MEDUSA	&pm_medusa
 #endif
 #ifdef SAC
-#define	CMNUM		57		/* number of common monsters */
-#else
-#define	CMNUM		56
+#define PM_SOLDIER	&pm_soldier
 #endif
+#define	CMNUM		56		/* number of common monsters */
+#ifdef STOOGES
+#define PM_LARRY	&pm_larry
+#define PM_CURLY	&pm_curly
+#define PM_MOE		&pm_moe
+#endif
+#define PM_DJINNI	&pm_djinni
+#define PM_GREMLIN	&pm_gremlin

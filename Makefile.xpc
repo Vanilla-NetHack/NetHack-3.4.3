@@ -1,0 +1,253 @@
+
+
+   Here is my makefile stuff for PC NetHack. It works with NDmake 4.3
+and contains four files. makefile is the makefile for NetHack.
+linkit.bat is a batch file to link it, and nethack.lnk is used by
+linkit.bat. Finally there is another makefile for creating termlib.lib.
+Hope this comes in handy for someone.
+
+-	-	-	-	-	-	-	-	-
+Steve Creps on the VAX 8650 running Ultrix 2.0-1 at Indiana University.
+	creps@silver.bacs.indiana.edu
+"F-14 Tomcat! There IS no substitute."
+
+
+
+makefile
+#
+#      SCCS Id: @(#)Makefile.pc        2.2
+# 	Makefile for NetHack (PC) version 1.0 written using
+#	Microsoft(tm) "C" v3.0 or better.
+# 
+# Large memory model, register bug, remove stack probes:
+CC = msc
+LINK = link
+MODEL = L
+CFLAGS = /A$(MODEL) /DREGBUG /DLINT_ARGS /Ot /Gt48
+LIBS = l:\
+LFLAGS =
+SETARGV = $(LIBS)$(MODEL)SETARGV
+ 
+# The game name
+GAME = nethack
+ 
+# The game directory
+GAMEDIR = c:\games\nethack
+ 
+# All object modules
+OBJS = o\decl.obj o\apply.obj o\bones.obj o\cmd.obj o\do.obj o\dothrow.obj \
+	o\do_name.obj o\do_wear.obj o\dog.obj o\dogmove.obj o\eat.obj \
+	o\end.obj o\engrave.obj o\fight.obj o\fountain.obj o\hack.obj \
+	o\invent.obj o\lev.obj o\pcmain.obj o\makemon.obj o\mhitu.obj \
+	o\mklev.obj o\mkmaze.obj o\mkobj.obj o\mkshop.obj o\mon.obj \
+	o\monmove.obj o\monst.obj o\o_init.obj o\objnam.obj o\options.obj \
+	o\pager.obj o\polyself.obj o\potion.obj o\pray.obj o\pri.obj \
+	o\prisym.obj o\read.obj o\rip.obj o\rumors.obj o\save.obj \
+	o\search.obj o\shk.obj o\shknam.obj o\sit.obj o\spell.obj o\steal.obj \
+	o\termcap.obj o\timeout.obj o\topl.obj o\topten.obj o\track.obj \
+	o\trap.obj o\pctty.obj o\pcunix.obj o\u_init.obj o\vault.obj \
+	o\wield.obj o\wizard.obj o\worm.obj o\worn.obj o\write.obj o\zap.obj \
+	o\version.obj o\rnd.obj o\alloc.obj o\msdos.obj
+ 
+.c.obj:; $(CC) $*.c, o\$*.obj $(CFLAGS);
+.c.exe:;
+	$(CC) $*.c, o\$*.obj $(CFLAGS);
+	$(LINK) o\$*.obj $(SETARGV), $@,, $(LIBS) $(LFLAGS);
+ 
+# The main target
+#
+$(GAME) : $(GAME).exe
+ 
+$(GAME).exe : $(GAMEDIR)\$(GAME).exe
+ 
+$(GAMEDIR)\$(GAME).exe : $(OBJS)
+	- .\linkit
+ 
+#	variable auxilary files.
+#
+VARAUX = $(GAMEDIR)\data $(GAMEDIR)\rumors
+ 
+install : $(GAMEDIR)\$(GAME).exe $(VARAUX)
+	- exepack $(GAME).exe $(GAMEDIR)\$(GAME).exe
+	- exemod $(GAMEDIR)\$(GAME).exe /max 1
+ 
+clean :
+	erase $(GAME)
+ 
+spotless : clean
+	erase o\*.obj
+ 
+#	Other dependencies
+#
+o :
+	mkdir o
+ 
+RUMORFILES= rumors.bas rumors.kaa rumors.mrx
+ 
+makedefs : makedefs.exe
+ 
+o\makedefs.obj : makedefs.c config.h
+ 
+o\alloc.obj : alloc.c
+ 
+makedefs.exe :  o\makedefs.obj o\alloc.obj
+	$(LINK) o\makedefs.obj o\alloc.obj;
+ 
+rumors :  config.h $(RUMORFILES) makedefs.exe
+	makedefs -r
+ 
+$(GAMEDIR)\rumors : rumors
+	mv rumors $(GAMEDIR)
+ 
+data :  config.h data.bas makedefs.exe
+	makedefs -d
+ 
+$(GAMEDIR)\data : data
+	mv data $(GAMEDIR)
+ 
+hack.h :  config.h objclass.h monst.h gold.h trap.h obj.h flag.h rm.h \
+	permonst.h onames.h spell.h extern.h you.h
+	touch hack.h
+ 
+objects.h :  config.h objclass.h
+	touch objects.h
+ 
+onames.h :  config.h objects.h makedefs.exe
+       makedefs -o
+ 
+extern.h : config.h
+	touch extern.h
+ 
+#	Below is a kludge.  date.h should actually depend on any source
+#	module being changed. (but hack.h is close enough for most).
+#
+date.h :  hack.h makedefs.exe
+       makedefs -D
+ 
+trap.h :  config.h makedefs.exe
+       makedefs -t
+ 
+o\pcmain.obj : pcmain.c hack.h
+o\pctty.obj : pctty.c hack.h
+o\pcunix.obj : pcunix.c hack.h mkroom.h
+o\decl.obj :  hack.h mkroom.h decl.c
+o\apply.obj :  hack.h edog.h mkroom.h apply.c
+o\bones.obj :  hack.h bones.c
+o\hack.obj :  hack.h hack.c
+o\cmd.obj :  hack.h func_tab.h msdos.h cmd.c
+o\do.obj :  hack.h do.c
+o\do_name.obj :  hack.h do_name.c
+o\do_wear.obj :  hack.h do_wear.c
+o\dog.obj :  hack.h edog.h mkroom.h dog.c
+o\dogmove.obj :  hack.h mfndpos.h dogmove.c
+o\dothrow.obj :  hack.h dothrow.c
+o\eat.obj :  hack.h eat.c
+o\end.obj :  hack.h end.c
+o\engrave.obj :  hack.h engrave.c
+o\fight.obj :  hack.h fight.c
+o\fountain.obj :  hack.h fountain.c
+o\invent.obj :  hack.h wseg.h invent.c
+o\ioctl.obj :  config.h ioctl.c
+o\lev.obj :  hack.h mkroom.h wseg.h lev.c
+o\makemon.obj :  hack.h makemon.c
+o\mhitu.obj :  hack.h mhitu.c
+o\mklev.obj :  hack.h mkroom.h mklev.c
+o\mkmaze.obj :  hack.h mkroom.h mkmaze.c
+o\mkobj.obj :  hack.h mkobj.c
+o\mkshop.obj :  hack.h mkroom.h eshk.h mkshop.c
+o\mon.obj :  hack.h mfndpos.h mon.c
+o\monmove.obj :  hack.h mfndpos.h monmove.c
+o\monst.obj :  hack.h eshk.h monst.c
+o\o_init.obj :  config.h objects.h onames.h o_init.c
+o\objnam.obj :  hack.h objnam.c
+o\options.obj :  config.h hack.h options.c
+o\pager.obj :  hack.h pager.c
+o\polyself.obj :  hack.h polyself.c
+o\potion.obj :  hack.h potion.c
+o\pray.obj :  hack.h pray.c
+o\pri.obj :  hack.h pri.c
+o\prisym.obj :  hack.h wseg.h prisym.c
+o\read.obj :  hack.h read.c
+o\rip.obj :  hack.h rip.c
+o\rumors.obj :  config.h rumors.c
+o\save.obj :  hack.h save.c
+o\search.obj :  hack.h search.c
+o\shk.obj :  hack.h mfndpos.h mkroom.h eshk.h shk.c
+o\shknam.obj :  hack.h shknam.c
+o\sit.obj :  hack.h sit.c
+o\spell.obj :  hack.h spell.c
+o\steal.obj :  hack.h steal.c
+o\termcap.obj :  config.h flag.h termcap.c
+o\timeout.obj :  hack.h timeout.c
+o\topl.obj :  hack.h topl.c
+o\topten.obj :  hack.h topten.c
+o\track.obj :  hack.h track.c
+o\trap.obj :  hack.h mkroom.h trap.c
+o\u_init.obj :  hack.h u_init.c
+o\vault.obj :  hack.h mkroom.h vault.c
+o\version.obj : hack.h date.h version.c
+o\wield.obj :  hack.h wield.c
+o\wizard.obj :  hack.h wizard.c
+o\worm.obj :  hack.h wseg.h worm.c
+o\worn.obj :  hack.h worn.c
+o\write.obj :  hack.h write.c
+o\zap.obj :  hack.h zap.c
+o\msdos.obj : msdos.h msdos.c
+
+
+
+
+
+
+linkit.bat
+echo on
+link @nethack.lnk,nethack.exe,nethack.map,ltermlib.lib /NOIG /STACK:0xf00 /SEGMENTS:400 /EXEPACK
+
+
+
+
+
+nethack.lnk
+o\decl.obj o\apply.obj o\bones.obj o\cmd.obj +
+o\do.obj o\dothrow.obj o\do_name.obj o\do_wear.obj +
+o\dog.obj o\dogmove.obj o\eat.obj o\end.obj +
+o\engrave.obj o\fight.obj o\fountain.obj o\hack.obj +
+o\invent.obj o\lev.obj o\pcmain.obj o\makemon.obj +
+o\mhitu.obj o\mklev.obj o\mkmaze.obj o\mkobj.obj +
+o\mkshop.obj o\mon.obj o\monmove.obj o\monst.obj +
+o\o_init.obj o\objnam.obj o\options.obj o\pager.obj +
+o\polyself.obj o\potion.obj o\pray.obj o\pri.obj +
+o\prisym.obj o\read.obj o\rip.obj o\rumors.obj +
+o\save.obj o\search.obj o\shk.obj o\shknam.obj +
+o\sit.obj o\spell.obj o\steal.obj o\termcap.obj +
+o\timeout.obj o\topl.obj o\topten.obj o\track.obj +
+o\trap.obj o\pctty.obj o\pcunix.obj o\u_init.obj +
+o\vault.obj o\wield.obj o\wizard.obj o\worm.obj +
+o\worn.obj o\write.obj o\zap.obj o\version.obj +
+o\rnd.obj o\alloc.obj o\msdos.obj
+
+
+
+
+makefile (for termlib)
+#
+MODEL	=	L
+CFLAGS	=	/A$(MODEL) /DDGK
+#
+TSOURCES =	testtcp.c 
+LSOURCES =	tgetent.c tgetflag.c tgetnum.c tgetstr.c tgoto.c \
+		tputs.c isdigit.c fgetlr.c
+#
+TOBJECTS =	testtcp.obj
+LOBJECTS =	tgetent.obj tgetflag.obj tgetnum.obj tgetstr.obj \
+		tgoto.obj tputs.obj isdigit.obj fgetlr.obj
+#
+$(MODEL) : $(MODEL)termlib.lib
+ 
+$(MODEL)termlib : $(MODEL)termlib.lib
+ 
+$(MODEL)termlib.lib :	$(LOBJECTS)
+	lib $(MODEL)termlib.lib tgetent+tgetflag+tgetnum+tgetstr+tgoto+tputs+isdigit+fgetlr
+ 
+
+

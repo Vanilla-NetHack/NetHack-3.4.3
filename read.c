@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)read.c	2.2	87/11/29
+/*	SCCS Id: @(#)read.c	2.3	88/01/21
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 #include "hack.h"
@@ -679,6 +679,11 @@ destroy_arm() {
 	if(uarm) {
 		pline("Your armor turns to dust and falls to the floor!");
 		useup(uarm);
+#ifdef SHIRT
+	} else if(uarmu) {
+		pline("Your shirt crumbles into tiny threads and falls apart!");
+		useup(uarmu);
+#endif
 	} else if(uarmh) {
 		pline("Your helmet turns to dust and is blown away!");
 		useup(uarmh);

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)fight.c	2.1	87/10/17
+/*	SCCS Id: @(#)fight.c	2.3	87/12/12
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 #include	<stdio.h>
@@ -14,11 +14,50 @@ extern char *nomovemsg, *defmonnam();
 extern struct monst *mkmon_at();
 #endif
 #ifdef RPH
-extern struct obj *mk_named_obj();
+extern struct obj *mk_named_obj_at();
 #endif
 
 static boolean far_noise;
 static long noisetime;
+
+#ifdef STOOGES
+char random_joke[][30] = {"Why I ought a ...",
+			"You'll get what's comming!",
+			"I'll murder you!",
+			"I get no respect!",
+			"Right in the kisser!",
+			"Wait a minute!",
+			"Take it easy!",
+			"Alright already!",
+			"That's more like it!",
+			"Well excuse me!",
+			"Take that!",
+			"I'll fix you!",
+			"I'm sorry!",
+			"Your mama!",
+			"Shut up!",
+			"Listen you!",
+			"Pardon me!",
+			"Not that!",
+			"Quiet!",
+			"Relax!",
+			"Certainly!",
+			"Ouch!",
+			"What happened?",
+			"What was that for?",
+			"What's the matter with you?",
+			"Oh Yea?",
+			"Wise guy eh?",
+			"How about a knuckle sandwich?",
+			"You coward!",
+			"You rat you!",
+			"You chuckelhead!",
+			"You bonehead!",
+			"You numbskull!",
+			"Nyak Nyak Nyak ...",
+			"Woop Woop Woop Woop ..."};
+#define RAND_JOKE	35
+#endif
 
 /* hitmm returns 0 (miss), 1 (hit), or 2 (kill) */
 hitmm(magr,mdef) register struct monst *magr,*mdef; {
@@ -53,6 +92,45 @@ boolean vis;
 				farq ? " in the distance" : "");
 		}
 	}
+#ifdef STOOGES
+	if (hit && magr->isstooge) {
+		if (!rn2(6) && !index("afgvyF",mdef->data->mlet)) {
+			if(vis)
+				pline("%s is poked in the eye!", Monnam(mdef));
+			mdef->mcansee = 0;
+			mdef->mblinded += rnd(10);
+			if (mdef->mblinded <= 0) mdef->mblinded = 127;
+		} else if (vis && mdef->isstooge)
+			switch (rn2(100)) {
+			case 0 : pline("%s is shoved!", Monnam(mdef)); 
+				break;
+			case 1 : pline("%s is kicked!", Monnam(mdef));
+				break;
+			case 2 : pline("%s is slapped!", Monnam(mdef));
+				break;
+			case 3 : pline("%s is slugged!", Monnam(mdef));
+				break;
+			case 4 : pline("%s is punched!", Monnam(mdef));
+				break;
+			case 5 : pline("%s is pinched!", Monnam(mdef));
+				break;
+			case 6 : pline("But %s dodges!", monnam(mdef));
+				break;
+			case 7 : pline("But %s ducks!", monnam(mdef));
+				break;
+			case 8 : pline("%s gets a black eye!", Monnam(mdef));
+				break;
+			case 9 : pline("%s gets a bloody nose!", Monnam(mdef));
+				break;
+			case 10: pline("%s gets a broken tooth!", Monnam(mdef));
+				break;
+			}
+		if (!rn2(2))
+			stoogejoke();
+	}
+	if (magr->isstooge && mdef->isstooge)
+		return(hit);	/* stooges don't damage each other */
+#endif
 	if(hit){
 		if(magr->data->mlet == 'c' && !magr->cham) {
 			magr->mhpmax += 3;
@@ -99,6 +177,8 @@ register struct permonst *pd = mdef->data;
 	     * corpse (like Keystone Kops above). */
 	    if(!(pd->mlet == 'r' && dlevel < 4))
 #endif
+	    if(!(pd->mlet == '&' && mdef->isdjinni))  /* no djinni corpse */
+	    if(!(pd->mlet == 'G' && mdef->isgremlin)) /* no gremlin corpse */
 		if(letter(pd->mlet) && rn2(3)) {
 		    if (pd->mlet == '1') panic("mondied: making obj '1'");
 #ifndef RPH
@@ -321,6 +401,9 @@ register thrown;
 	    else if(mon->data->mlet == 'O' && obj->otyp == TWO_HANDED_SWORD
 		    && !strcmp(ONAME(obj), "Orcrist"))	tmp += rnd(10);
 
+	    else if((obj->otyp == SHORT_SWORD || obj->otyp == DAGGER)
+		   && !strcmp(ONAME(obj), "Sting")) tmp += rnd(5);
+
 	} else	switch(obj->otyp) {
 		case HEAVY_IRON_BALL:
 			tmp = rnd(25); break;
@@ -329,8 +412,7 @@ register thrown;
 #ifdef RPH
 		case MIRROR:
 			pline("You break your mirror.  That's bad luck!");
-		        u.uluck -= 2;
-		        if ((int)u.uluck < LUCKMIN) u.uluck = LUCKMIN;
+		        change_luck(-2);
 			freeinv(obj);
 			if(obj->owornmask)
 				setworn((struct obj *) 0, obj->owornmask);
@@ -466,7 +548,7 @@ register struct monst *mtmp;
 		char *dname;		/* added by Janet Walz (walz@mimsy) */
 		mtmp->mflee = 1;
 		mtmp->mfleetim = rnd(6);
-		if (dname = NAME(mtmp))
+		if(*(dname = NAME(mtmp)))
 		    pline("You stop to avoid hitting %s.",dname);
 		else
 		    pline("You stop to avoid hitting your dog.");
@@ -606,8 +688,14 @@ register struct monst *mtmp;
 	      nomul((u.ulevel > 6 || rn2(4)) ? rn1(20,-21) : -200);
 	    } else {
 	      pline("%s cannot defend itself.", Amonnam(mtmp,"blinded"));
-	      if(!rn2(500)) if((int)u.uluck > LUCKMIN) u.uluck--;
+	      if(!rn2(500)) change_luck(-1);
 	    }
 	}
 	return(TRUE);
 }
+
+#ifdef STOOGES
+stoogejoke() {		/* have the stooges say something funny */
+	pline("'%s'", random_joke[rn2(RAND_JOKE)]);
+}
+#endif

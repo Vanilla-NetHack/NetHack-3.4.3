@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)unixunix.c	1.4	87/08/08
+/*	SCCS Id: @(#)unixunix.c	2.3	87/12/12
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.unix.c - version 1.0.3 */
 
 /* This file collects some Unix dependencies; pager.c contains some more */
 
@@ -165,7 +164,11 @@ veryold(fd) {
 		/* From: Rick Adams <seismo!rick>
 		/* This will work on 4.1cbsd, 4.2bsd and system 3? & 5.
 		/* It will do nothing on V7 or 4.1bsd. */
-		if(!(kill(lockedpid, 0) == -1 && errno == ESRCH))
+#ifndef NETWORK
+		/* It will do a VERY BAD THING if the playground is shared
+		   by more than one machine! -pem */
+  		if(!(kill(lockedpid, 0) == -1 && errno == ESRCH))
+#endif
 			return(0);
 	}
 	(void) close(fd);
@@ -333,7 +336,8 @@ newmail() {
 	if(md = makemon(&pm_mail_daemon, u.ux, u.uy)) /* always succeeds */
 		mdrush(md,0);
 
-	pline("\"Hello, %s! I have some mail for you.\"", plname);
+	pline("\"Hello, %s%s! I have some mail for you.\"", 
+		(Badged) ? "Officer " : "", plname);
 	if(md) {
 		if(dist(md->mx,md->my) > 2)
 			pline("\"Catch!\"");

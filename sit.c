@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)sit.c	2.1	87/11/09
+/*	SCCS Id: @(#)sit.c	2.3	88/02/02
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 #include "hack.h"
@@ -40,8 +40,11 @@ dosit() {
 				gainstr(0);
 				break;
 			    case 3:
-				pline("A massive charge of electricity shoots through your body!");
-				losehp(rnd(30), "electric chair");
+				pline("A%s charge of electricity shoots through your body!",
+				      (Shock_resistance) ? "" : " massive");
+				if(Shock_resistance)
+					losehp(rnd(6), "electric chair");
+				else	losehp(rnd(30), "electric chair");
 				break;
 			    case 4:
 				pline("you feel much, much better!");
@@ -66,7 +69,7 @@ dosit() {
 				if(u.uluck + rn2(5) < 0) {
 
 				    pline("you feel your luck is changing.");
-				    u.uluck++;
+				    change_luck(1);
 				} else	    makewish();
 				break;
 			    case 7:
@@ -160,3 +163,63 @@ rndcurse() {			/* curse a few inventory items at random! */
 	    }
 }
 #endif
+
+attrcurse() {			/* remove a random INTRINSIC ability */
+	switch(rnd(10)) {
+	case 1 : if (HFire_resistance & INTRINSIC) {
+			HFire_resistance &= ~INTRINSIC;
+			if (Inhell && !Fire_resistance) {
+			    pline("You burn to a crisp.");
+			    killer = "gremlin curse";
+			    done("died");
+			} else pline("You feel warmer!");
+			break;
+		}
+	case 2 : if (HTeleportation & INTRINSIC) {
+			HTeleportation &= ~INTRINSIC;
+			pline("You don't feel jumpy!");
+			break;
+		}
+	case 3 : if (HPoison_resistance & INTRINSIC) {
+			HPoison_resistance &= ~INTRINSIC;
+			pline("You feel a little sick!");
+			break;
+		}
+	case 4 : if (HTelepat & INTRINSIC) {
+			HTelepat &= ~INTRINSIC;
+			pline("Your senses fail!");
+			break;
+		}
+	case 5 : if (HCold_resistance & INTRINSIC) {
+			HCold_resistance &= ~INTRINSIC;
+			pline("You feel colder!");
+			break;
+		}
+	case 6 : if (HInvis & INTRINSIC) {
+			HInvis &= ~INTRINSIC;
+			pline("You feel paranoid!");
+			break;
+		}
+	case 7 : if (HSee_invisible & INTRINSIC) {
+			HSee_invisible &= ~INTRINSIC;
+			pline("You think you see something!");
+			break;
+		}
+	case 8 : if (Fast & INTRINSIC) {
+			Fast &= ~INTRINSIC;
+			pline("You feel slower!");
+			break;
+		}
+	case 9 : if (Stealth & INTRINSIC) {
+			Stealth &= ~INTRINSIC;
+			pline("You feel clumsy!");
+			break;
+		}
+	case 10: if (Protection & INTRINSIC) {
+			Protection &= ~INTRINSIC;
+			pline("You feel vulnerable!");
+			break;
+		}
+	default: break;
+	}
+}

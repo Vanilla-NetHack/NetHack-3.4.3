@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)steal.c	1.4	87/08/08
+/*	SCCS Id: @(#)steal.c	2.3	88/01/21
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* steal.c - version 1.0.3 */
 
 #include "hack.h"
 
@@ -103,13 +102,23 @@ struct monst *mtmp;
 			otmp->cursed = 0;
 			stop_occupation();
 			if(flags.female)
-				pline("%s charms you.  You gladly hand over your humble garments.",
-				Monnam(mtmp));
+			    pline("%s charms you.  You gladly %s your %s.",
+				  Monnam(mtmp),
+				  curssv ? "hand over"
+				         : "let her take",
+#ifdef SHIRT
+				  (otmp == uarmu) ? "shirt" :
+#endif
+				  (otmp == uarmg) ? "gloves" :
+				  (otmp == uarmh) ? "helmet" : "armor");
 			else
 				pline("%s seduces you and %s off your %s.",
 				Amonnam(mtmp, Blind ? "gentle" : "beautiful"),
-				otmp->cursed ? "helps you to take"
-					    : "you start taking",
+				curssv	? "helps you to take"
+					: "you start taking",
+#ifdef SHIRT
+				(otmp == uarmu) ? "shirt" :
+#endif
 				(otmp == uarmg) ? "gloves" :
 				(otmp == uarmh) ? "helmet" : "armor");
 			named++;

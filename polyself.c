@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)polyself.c	2.2	87/11/29
+/*	SCCS Id: @(#)polyself.c	2.3	88/01/21
 /* Polymorph self routine.  Called in zap.c. Copyright 1987 by Ken Arromdee */
 
 #include "hack.h"
@@ -122,7 +122,7 @@ newname:    more();
 	    u.mtimedone = 500 + rn2(500);
 	    flags.botl = 1;
 	    if (u.usym == 'D')
-		pline("Use the command #breathe to breathe.");
+		pline("Use the command #breathe to breathe fire.");
 	    if (u.usym == 'N')
 		pline("Use the command #remove if you have to remove an iron ball.");
 	    find_ac();
@@ -139,21 +139,31 @@ char turninto;
 {
      struct obj *otmp;
      if (uarm) {
-	  if (index("CDMPRUXYdejlouz,'9", turninto)) {
-	       pline("The transformation causes you to break out of your armor!");
-	       if (uarm2) useup(uarm2);
-	       useup(uarm);
-	  } else if (index("abcfghikpqrstvxyABEFJQS", turninto)) {
-	       pline("Your armor falls around you!");
-	       if (otmp = uarm2) {
+	if (index("CDMPRUXYdejlouz,'9", turninto)) {
+	    pline("The transformation causes you to %s out of your armor!",
+		   (uarm2 || uarm->otyp != ELVEN_CLOAK) ? "break" : "tear");
+#ifdef SHIRT
+	    if (uarmu) useup(uarmu);
+#endif
+	    if (uarm2) useup(uarm2);
+	    useup(uarm);
+	} else	if (index("abcfghikpqrstvxyABEFJQS", turninto)) {
+		pline("Your armor falls around you!");
+		if (otmp = uarm2) {
 		    setworn((struct obj *)0,otmp->owornmask & W_ARM2);
 		    dropx(otmp);
-	       }
-	       otmp = uarm;
-	       setworn((struct obj *)0, otmp->owornmask & W_ARM);
-	       dropx(otmp);
-	  }
+		}
+		otmp = uarm;
+		setworn((struct obj *)0, otmp->owornmask & W_ARM);
+		dropx(otmp);
+	}
      }
+#ifdef SHIRT
+     else if (uarmu) {
+		pline("The transformation causes you to tear out of your shirt!");
+		if (uarmu) useup(uarmu);
+	}
+#endif
      if (!index("enozCGHIKLNOTUVWXYZ&',", turninto)) {
 	  if (otmp = uarmg) {
 	       pline("You drop your gloves!");
@@ -199,6 +209,12 @@ char c;
      return(!index("@nGHIKLNOTVWZ&',",c));
 }
 
+humanoid(c)   /* creature type c has hands */
+char c;
+{
+	return(!!index("@ehintCGHIKLMNOQTVWZ&",c));
+}
+
 rehumanize()
 {
 	u.mh = u.mhmax = u.mtimedone = 0;
@@ -224,7 +240,7 @@ dobreathe()
 	  if(!getdir(1)) return(0);
 	  if (rn2(4))
 	       pline("You exhale a bit of smoke.");
-	  else buzz(10, u.ux, u.uy, u.dx, u.dy);
+	  else buzz(20, u.ux, u.uy, u.dx, u.dy);
      /* Changes must be made in zap.c to accommodate this. */
      } else pline("You do not have the ability to breathe fire!");
      return(1);

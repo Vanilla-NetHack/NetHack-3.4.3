@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)u_init.c	2.0	87/09/15
+/*	SCCS Id: @(#)u_init.c	2.3	88/01/21
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 #include <stdio.h>
@@ -123,6 +123,11 @@ struct trobj Magicmarker[] = {
 };
 #endif
 
+struct trobj Lamp[] = {
+	{ LAMP, 5, TOOL_SYM, 1, 0 },
+	{ 0, 0, 0, 0, 0 }
+};
+
 #ifdef WALKIES
 struct trobj Leash[] = {
 	{ LEASH, 0, TOOL_SYM, 1, 0 },
@@ -141,6 +146,9 @@ struct trobj Tourist[] = {
 	{ POT_EXTRA_HEALING, 0, POTION_SYM, 2, 0 },
 	{ EXPENSIVE_CAMERA, 0, TOOL_SYM, 1, 1 },
 	{ DART, 2, WEAPON_SYM, 25, 1 },	/* quan is variable */
+#ifdef SHIRT
+	{ HAWAIIAN_SHIRT, 0, ARMOR_SYM, 1, 1 },
+#endif
 	{ 0, 0, 0, 0, 0 }
 };
 
@@ -281,8 +289,12 @@ got_suffix:
 	u = zerou;
 	u.usym = '@';
 	u.ulevel = 1;
+	u.uluck  = 0;
 	init_uhunger();
 	uarm = uarm2 = uarmh = uarms = uarmg = uwep =
+#ifdef SHIRT
+	uarmu =
+#endif
 	uball = uchain = uleft = uright = 0;
 
 #ifdef SPELLS
@@ -322,6 +334,7 @@ got_suffix:
 		u.ustr = u.ustrmax = 8;
 		ini_inv(Tourist);
 		if(!rn2(25)) ini_inv(Tinopener);
+		else if(!rn2(4)) ini_inv(Lamp);
 #ifdef MARKER
 		else if(!rn2(25)) ini_inv(Magicmarker);
 #endif
@@ -368,6 +381,7 @@ got_suffix:
 		u.ustr = u.ustrmax = 16;
 		ini_inv(Elf);
 		if(!rn2(5)) ini_inv(Blindfold);
+		else if(!rn2(6)) ini_inv(Lamp);
 		break;
 	case 'v':
 	case 'V':
@@ -377,6 +391,7 @@ got_suffix:
 		u.uhp = u.uhpmax = 16;
 		u.ustr = u.ustrmax = 17;
 		ini_inv(Valkyrie);
+		if(!rn2(6)) ini_inv(Lamp);
 		break;
 	case 'h':
 	case 'H':
@@ -386,6 +401,7 @@ got_suffix:
 		u.uhp = u.uhpmax = 16;
 		u.ustr = u.ustrmax = 15;
 		ini_inv(Healer);
+		if(!rn2(25)) ini_inv(Lamp);
 		break;
 #endif
 	case 'k':
@@ -399,6 +415,7 @@ got_suffix:
 		u.uhp = u.uhpmax = 14;
 		u.ustr = u.ustrmax = 17;
 		ini_inv(Barbarian);
+		if(!rn2(6)) ini_inv(Lamp);
 		break;
 #ifdef NEWCLASS
 	case 's':
@@ -433,6 +450,7 @@ got_suffix:
 # ifdef MARKER
 		if(!rn2(10)) ini_inv(Magicmarker);
 # endif
+		else if(!rn2(10)) ini_inv(Lamp);
 		objects[POT_HOLY_WATER].oc_name_known = 1;
 		break;
 #endif /* NEWCLASS /**/
@@ -494,6 +512,11 @@ extern struct obj *mkobj();
 			case PAIR_OF_GLOVES:
 				if(!uarmg) setworn(obj, W_ARMG);
 				break;
+#ifdef SHIRT
+			case HAWAIIAN_SHIRT:
+				if(!uarmu) setworn(obj, W_ARMU);
+				break;
+#endif
 			case ELVEN_CLOAK:
 				if(!uarm2)
 					setworn(obj, W_ARM);

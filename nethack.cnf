@@ -1,3 +1,6 @@
+#
+#	nethack.cnf	for NetHack release 2.3
+#
 HACKDIR=c:\games\nethack
 SAVE=c:\games\nethack\save
 LEVELS=c:\games\nethack\save
@@ -9,4 +12,4 @@ OPTIONS=silent,endgame:10t/0a
 # An example using the IBM graphics character set.
 # from hack.35: GRAPHICS = 186 205 201 187 200 188 206 249 177
 # from hack.36: GRAPHICS = 179 196 218 191 192 217 206 250 176
-GRAPHICS = 186 205 201 187 200 188 206 249 177
+GRAPHICS = 032 186 205 201 187 200 188 206 249 177

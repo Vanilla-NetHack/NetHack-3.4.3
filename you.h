@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)you.h	2.1	87/11/09
+/*	SCCS Id: @(#)you.h	2.3	87/12/12
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 #ifndef YOU_H
@@ -78,8 +78,11 @@ struct you {
 #define	BLINDFOLDED	(LAST_RING+11)		/* not a ring */
 #define	Blindfolded	u.uprops[BLINDFOLDED].p_flgs
 #define Blind		(Blinded || Blindfolded)
+#define	BADGED		(LAST_RING+12)		/* not a ring */
+#define	Badged		u.uprops[BADGED].p_flgs
+#define LAST_PROP	(BADGED)		/* the last property */
 #define PROP(x) (x-RIN_ADORNMENT)       /* convert ring to index in uprops */
-	struct prop uprops[LAST_RING+11];
+	struct prop uprops[LAST_PROP+1];
 
 	unsigned umconf;
 	char *usick_cause;
@@ -98,7 +101,10 @@ struct you {
 #ifdef RPH
 	int medusa_level;		/* level of wiz and medusa */
 	int wiz_level;
-#endif	
+#endif
+#ifdef STOOGES
+	int stooge_level;
+#endif
 	schar ustr,ustrmax;
 	schar udaminc;
 	schar uac;

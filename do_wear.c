@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)do_wear.c	2.0	87/09/15
+/*	SCCS Id: @(#)do_wear.c	2.3	88/01/21
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 #include <stdio.h>
@@ -13,14 +13,25 @@ off_msg(otmp) register struct obj *otmp; {
 
 doremarm() {
 	register struct obj *otmp;
-	if(!uarm && !uarmh && !uarms && !uarmg) {
+	if(!uarm && !uarmh && !uarms && !uarmg
+#ifdef SHIRT
+           && !uarmu
+#endif
+        ) {
 		pline("Not wearing any armor.");
 		return(0);
 	}
+#ifdef SHIRT
+        otmp = (!uarmh && !uarms && !uarmg) ? (uarm ? uarm : uarmu) :
+                (!uarm && !uarms && !uarmg && !uarmu) ? uarmh :
+                (!uarm && !uarmh && !uarmg && !uarmu) ? uarms :
+                (!uarm && !uarmh && !uarms && !uarmu) ? uarmg :
+#else
 	otmp = (!uarmh && !uarms && !uarmg) ? uarm :
 		(!uarms && !uarm && !uarmg) ? uarmh :
 		(!uarmh && !uarm && !uarmg) ? uarms :
 		(!uarmh && !uarm && !uarms) ? uarmg :
+#endif
 		getobj("[", "take off");
 	if(!otmp) return(0);
 	if(!(otmp->owornmask & (W_ARMOR - W_ARM2))) {
@@ -94,7 +105,7 @@ register int delay = -objects[otmp->otyp].oc_delay;
 			nomovemsg = "You finished taking off your helmet.";
 			break;
 		case PAIR_OF_GLOVES:
-			nomovemsg = "You finished taking off your gloves";
+			nomovemsg = "You finished taking off your gloves.";
 			break;
 		default:
 			nomovemsg = "You finished taking off your suit.";
@@ -144,6 +155,24 @@ doweararm() {
 			err++;
 		} else
 			mask = W_ARMG;
+#ifdef SHIRT
+	} else if( otmp->otyp == HAWAIIAN_SHIRT ) {
+# ifdef KAA
+                if(cantweararm(u.usym)) {
+                        pline("You can't wear a shirt!");
+                        return(0);
+                }
+# endif
+                if (uarm || uarmu) {
+                        if(!uarm) /* then uarmu */
+                           pline("You are already wearing a shirt.");
+                        else
+                           pline("You can't wear that over your %s.",
+                                 uarm->otyp != ELVEN_CLOAK ? "armor" : "cloak" );
+                        err++;
+                } else
+                        mask = W_ARMU;
+#endif
 	} else {
 #ifdef KAA
 		if(cantweararm(u.usym)) {
@@ -299,6 +328,7 @@ register int uac = 10;
 	if(uarmh) uac -= ARM_BONUS(uarmh);
 	if(uarms) uac -= ARM_BONUS(uarms);
 	if(uarmg) uac -= ARM_BONUS(uarmg);
+	if(uarmu) uac -= ARM_BONUS(uarmu);
 	if(uleft && uleft->otyp == RIN_PROTECTION) uac -= uleft->spe;
 	if(uright && uright->otyp == RIN_PROTECTION) uac -= uright->spe;
 #ifdef PRAYERS
@@ -352,6 +382,7 @@ register struct obj *otmph = uarm;
 	if(uarmh && (!otmph || !rn2(4))) otmph = uarmh;
 	if(uarmg && (!otmph || !rn2(4))) otmph = uarmg;
 	if(uarms && (!otmph || !rn2(4))) otmph = uarms;
+	if(!uarm && uarmu && (!otmph || !rn2(4))) otmph = uarmu;
 	return(otmph);
 }
 
@@ -361,6 +392,9 @@ register struct obj *otmph = some_armor();
 		if(otmph->rustfree ||
 		   otmph->otyp == CRYSTAL_PLATE_MAIL ||
 		   otmph->otyp == ELVEN_CLOAK ||
+#ifdef SHIRT
+		   otmph->otyp == HAWAIIAN_SHIRT ||
+#endif
 		   otmph->otyp == LEATHER_ARMOR ||
 		   otmph->otyp == STUDDED_LEATHER_ARMOR) {
 			pline("Your %s not affected!",

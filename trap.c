@@ -1,10 +1,12 @@
-/*	SCCS Id: @(#)trap.c	2.1	87/10/18
+/*	SCCS Id: @(#)trap.c	2.3	87/12/16
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 #include	<stdio.h>
 #include	"hack.h"
 
 extern struct monst *makemon();
+extern struct obj *mksobj_at();
+
 #ifdef KAA
 extern char *Xmonnam();
 extern char *nomovemsg;
@@ -40,8 +42,11 @@ char *traps[] = {
 #ifdef KAA
 	," rust trap"
 # ifdef RPH
-	,"polymorph trap"
+	," polymorph trap"
 # endif
+#endif
+#ifdef SAC
+	," land mine"
 #endif
 };
 
@@ -301,6 +306,24 @@ if(uarmh) pline("Fortunately, you are wearing a helmet!");
 			    }
 		       break;
 #endif
+#ifdef SAC
+		case LANDMINE: {
+			register struct monst *mtmp = fmon;
+
+			pline("KAABLAMM!!!  You stepped on a land mine!");
+			losehp(rnd(16), "land mine");
+			set_wounded_legs(LEFT_SIDE, 40 + rnd(35));
+			set_wounded_legs(RIGHT_SIDE, 40 + rnd(35));
+			/* wake everything on the level */
+			while(mtmp) {
+				if(mtmp->msleep)
+					mtmp->msleep = 0;
+				mtmp = mtmp->nmon;
+			}
+			deltrap(t_at(u.ux, u.uy)); /* mines only explode once */
+			break;
+		}
+#endif /* SAC */
 		default:
 			impossible("You hit a trap of type %u", trap->ttyp);
 		}
@@ -449,6 +472,28 @@ pline("A trap door in the ceiling opens and a rock hits %s!", monnam(mtmp));
 #endif
 #ifdef SPELLS
 		case ANTI_MAGIC:	break;
+#endif
+#ifdef SAC
+		case LANDMINE: {
+			register struct monst *mntmp = fmon;
+
+			if(rn2(3))
+				break; /* monsters usually don't set it off */
+			if(in_sight)
+				pline("KAABLAMM!!! %s steps on a land mine!",
+				      Monnam(mtmp));
+			else
+				pline("Kaablamm! You hear an explosion in the distance!");
+			mtmp->mhp -= rn2(16);
+			deltrap(t_at(mtmp->mx, mtmp->my));
+			/* wake everything on the level */
+			while(mntmp) {
+				if(mntmp->msleep)
+					mntmp->msleep = 0;
+				mntmp = mntmp->nmon;
+			}
+			break;
+		}
 #endif
 		default:
 			impossible("Some monster encountered a strange trap of type %d.",tt);
@@ -684,9 +729,9 @@ register int newlevel;
 	    newlevel = atoi(buf);
 	} else {
 #ifdef DGKMOD
-	    newlevel = rn2(5) | !Fire_resistance ? rnz(dlevel + 3) : 30;
+	    newlevel = rn2(5) | !Fire_resistance ? rnd(dlevel + 3) : 30;
 #else
-	    newlevel = rnz(dlevel + 3);			/* 5 - 24 */
+	    newlevel = rnd(dlevel + 3);			/* 5 - 24 */
 #endif
 	    if(dlevel == newlevel)
 		if(!xdnstair) newlevel--; else newlevel++;

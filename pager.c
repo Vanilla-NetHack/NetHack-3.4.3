@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)pager.c	2.1	87/11/09
+/*	SCCS Id: @(#)pager.c	2.3	87/12/12
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 /* This file contains the command routine dowhatis() and a pager. */
@@ -12,6 +12,7 @@ extern int CO, LI;	/* usually COLNO and ROWNO+2 */
 extern char *CD;
 extern char quitchars[];
 extern char *getenv(), *getlogin();
+extern xchar curx;
 int done1();
 
 dowhatis()
@@ -69,9 +70,12 @@ dowhatis()
 #endif
 #ifdef SPIDERS
 		else if (r == showsyms.web) q = defsyms.web;
+#endif
+#ifdef SINKS
+		else if (r == showsyms.sink) q = defsyms.sink;
+#endif
 		else
 		    q = r;
-#endif
 #endif /* GRAPHICS */
 #ifdef DGKMOD
 		if (index(quitchars, q)) {
@@ -251,7 +255,11 @@ register char *s;
 			cl_eos();
 		}
 	}
+#ifdef TERMINFO
 	xputs(s); xputc('\n');
+#else
+	puts(s);
+#endif
 	cury++;
 	return(0);
 }
@@ -295,14 +303,16 @@ char *text;
 
 	    if(!text) return;	/* superfluous, just to be sure */
 	    linect++;
-	    len = strlen(text);
+	    len = strlen(text) + 1; /* allow for an extra leading space */
 	    if(len > maxlen)
 		maxlen = len;
 	    tl = (struct line *)
 		alloc((unsigned)(len + sizeof(struct line) + 1));
 	    tl->next_line = 0;
 	    tl->line_text = (char *)(tl + 1);
-	    (void) strcpy(tl->line_text, text);
+	    tl->line_text[0] = ' ';
+	    tl->line_text[1] = '\0';
+	    (void) strcat(tl->line_text, text);
 	    if(!texthead)
 		texthead = tl;
 	    else
@@ -328,14 +338,22 @@ char *text;
 		flags.toplin = 0;
 		curline = 1;
 		for (tl = texthead; tl; tl = tl->next_line) {
+#ifdef MSDOS
+		    cmov (lth, curline);
+#else
 		    curs (lth, curline);
+#endif
 		    if(curline > 1)
 			cl_end ();
-		    putsym(' ');
 		    xputs(tl->line_text);
+		    curx = curx + strlen(tl->line_text);
 		    curline++;
 		}
+#ifdef MSDOS
+		cmov (lth, curline);
+#else
 		curs (lth, curline);
+#endif
 		cl_end ();
 		cmore (text);
 		home ();

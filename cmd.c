@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)cmd.c	2.0	87/09/15
+/*	SCCS Id: @(#)cmd.c	2.3	88/01/21
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 #include	"hack.h"
@@ -10,9 +10,14 @@ dopay(),doapply(),dosave(),dowield(),ddoinv(),dozap(),ddocall(),dowhatis(),
 doengrave(),dotele(),dohelp(),doeat(),doddrop(),do_mname(),doidtrap(),
 doprwep(),doprarm(),doprring(),doprgold(),dodiscovered(),dotypeinv(),dolook(),
 doset(),doup(), dodown(), done1(), donull(), dothrow(), doextcmd(), dodip(),
-dopray(), doextlist();
+dopray(), doextlist(), dorub();
+
+#ifdef THEOLOGY
+int dosacrifice ();
+#endif;
+
 #ifdef WIZARD
-int wiz_wish(), wiz_identify();
+int wiz_wish(), wiz_identify(), wiz_map(), wiz_detect(), wiz_attributes();
 #endif
 #ifdef NEWCLASS
 int dosit(), doturn();
@@ -125,17 +130,23 @@ char ch;
 #endif /* REDO */
 
 struct func_tab cmdlist[]={
-#ifdef WIZARD
-	{'\011', wiz_identify},
+#if defined(DGKMOD) && defined(DEBUG_DOESNT_WORK)
+	{'\004', /* ^D */ dodebug},	/* generic debug function */
 #endif
-	{'\020', doredotopl},
-	{'\022', doredraw},
-	{'\024', dotele},
 #ifdef WIZARD
-	{'\027', wiz_wish},
+	{'\005', /* ^E */ wiz_detect},
+	{'\006', /* ^F */ wiz_map},
+	{'\011', /* ^I */ wiz_identify},
+#endif
+	{'\020', /* ^P */ doredotopl},
+	{'\022', /* ^R */ doredraw},
+	{'\024', /* ^T */ dotele},
+#ifdef WIZARD
+	{'\027', /* ^W */ wiz_wish},
+	{'\030', /* ^X */ wiz_attributes},
 #endif
 #ifdef SUSPEND
-	{'\032', dosuspend},
+	{'\032', /* ^Z */ dosuspend},
 #endif
 	{'a', doapply},
 	{'A', doddoremarm},
@@ -196,9 +207,6 @@ struct func_tab cmdlist[]={
 #ifdef DGKMOD
 	{'@', dotogglepickup},
 	{'V', doMSCversion},
-# ifdef DEBUG_DOESNT_WORK
-	{'\004', dodebug},	/* generic debug function */
-# endif
 #endif
 	{WEAPON_SYM,  doprwep},
 	{ARMOR_SYM,  doprarm},
@@ -210,17 +218,23 @@ struct func_tab cmdlist[]={
 
 struct ext_func_tab extcmdlist[] = {
 #ifdef KAA
-	"breathe", "breathe like a dragon", dobreathe,
+	"breathe", "breathe fire like a red dragon", dobreathe,
 #endif
 #ifdef SPELLS
 	"cast", "cast a spell", docast,
 #endif
 	"dip", "dip an object into something", dodip,
+#ifdef PRAYERS
+#ifdef THEOLOGY
+	"sacrifice", "offer a sacrifice to the gods", dosacrifice,
+#endif
 	"pray", "pray to the gods for help", dopray,
+#endif
 #ifdef KAA
 	"remove", "remove a cursed item", doremove,
 #endif
 #ifdef NEWCLASS
+	"rub", "rub a lamp", dorub,
 	"sit", "sit down", dosit,
 	"turn", "turn undead", doturn,
 #endif
@@ -527,6 +541,180 @@ int wiz_identify()
 			if (!objects[obj->otyp].oc_name_known || !obj->known)
 				identify(obj);
 	}
+	return(0);
+}
+
+int wiz_map()
+{
+	if (wizard)	do_mapping();
+	else		pline("If you want a map, you'll have to make one yourself!");
+}
+
+int wiz_detect()
+{
+	if(wizard) {
+		if(!findit()) return;
+	} else	pline("Don't ask me where anything is, I only work here!");
+}
+
+int wiz_attributes()
+{
+	char buf[BUFSZ];
+
+	if (!wizard) {
+		pline("Alas! You are not allowed see attributes.");
+		pline("Nice try though...");
+		return;
+	}
+
+	set_pager(0);
+	if(page_line("Current Attributes:") || page_line(""))  goto quit;
+
+	if (Adornment) {
+		(void) sprintf(buf, "You are adorned.");
+		if(page_line(buf)) goto quit;
+		}
+	if (Teleportation) {
+		(void) sprintf(buf, "You can teleport.");
+		if(page_line(buf)) goto quit;
+		}
+	if (Regeneration) {
+		(void) sprintf(buf, "You regenerate.");
+		if(page_line(buf)) goto quit;
+		}
+	if (Searching) {
+		(void) sprintf(buf, "You have searching.");
+		if(page_line(buf)) goto quit;
+		}
+	if (See_invisible) {
+		(void) sprintf(buf, "You see invisible.");
+		if(page_line(buf)) goto quit;
+		}
+	if (Stealth) {
+		(void) sprintf(buf, "You have stealth.");
+		if(page_line(buf)) goto quit;
+		}
+	if (Levitation) {
+		(void) sprintf(buf, "You are levitated.");
+		if(page_line(buf)) goto quit;
+		}
+	if (Poison_resistance) {
+		(void) sprintf(buf, "You are poison resistant.");
+		if(page_line(buf)) goto quit;
+		}
+	if (Aggravate_monster) {
+		(void) sprintf(buf, "You aggravate monsters.");
+		if(page_line(buf)) goto quit;
+		}
+	if (Hunger) {
+		(void) sprintf(buf, "You have hunger.");
+		if(page_line(buf)) goto quit;
+		}
+	if (Fire_resistance) {
+		(void) sprintf(buf, "You are fire resistant.");
+		if(page_line(buf)) goto quit;
+		}
+	if (Cold_resistance) {
+		(void) sprintf(buf, "You are cold resistant.");
+		if(page_line(buf)) goto quit;
+		}
+	if (Protection_from_shape_changers) {
+		(void) sprintf(buf, "You are protected from shape changers.");
+		if(page_line(buf)) goto quit;
+		}
+	if (Conflict) {
+		(void) sprintf(buf, "You cause conflict.");
+		if(page_line(buf)) goto quit;
+		}
+	if (Gain_strength) {
+		(void) sprintf(buf, "You have extra strength.");
+		if(page_line(buf)) goto quit;
+		}
+	if (Increase_damage) {
+		(void) sprintf(buf, "You cause extra damage.");
+		if(page_line(buf)) goto quit;
+		}
+	if (Protection) {
+		(void) sprintf(buf, "You are protected.");
+		if(page_line(buf)) goto quit;
+		}
+	if (Warning) {
+		(void) sprintf(buf, "You are warned.");
+		if(page_line(buf)) goto quit;
+		}
+	if (Teleport_control) {
+		(void) sprintf(buf, "You have teleport control.");
+		if(page_line(buf)) goto quit;
+		}
+	if (Polymorph) {
+		(void) sprintf(buf, "You are polymorphing.");
+		if(page_line(buf)) goto quit;
+		}
+	if (Polymorph_control) {
+		(void) sprintf(buf, "You have polymorph control.");
+		if(page_line(buf)) goto quit;
+		}
+	if (Shock_resistance) {
+		(void) sprintf(buf, "You are shock resistant.");
+		if(page_line(buf)) goto quit;
+		}
+	if (Telepat) {
+		(void) sprintf(buf, "You have telepathy.");
+		if(page_line(buf)) goto quit;
+		}
+	if (Fast) {
+		(void) sprintf(buf, "You are fast.");
+		if(page_line(buf)) goto quit;
+		}
+	if (Confusion) {
+		(void) sprintf(buf, "You are confused.");
+		if(page_line(buf)) goto quit;
+		}
+	if (Invisible) {
+		(void) sprintf(buf, "You are invisible.");
+		if(page_line(buf)) goto quit;
+		}
+	if (Glib) {
+		(void) sprintf(buf, "You are glib.");
+		if(page_line(buf)) goto quit;
+		}
+	if (Punished) {
+		(void) sprintf(buf, "You are punished.");
+		if(page_line(buf)) goto quit;
+		}
+	if (Sick) {
+		(void) sprintf(buf, "You are sick.");
+		if(page_line(buf)) goto quit;
+		}
+	if (Blinded) {
+		(void) sprintf(buf, "You are blinded.");
+		if(page_line(buf)) goto quit;
+		}
+	if (Wounded_legs) {
+		(void) sprintf(buf, "You have wounded legs.");
+		if(page_line(buf)) goto quit;
+		}
+	if (Stoned) {
+		(void) sprintf(buf, "You are stoned.");
+		if(page_line(buf)) goto quit;
+		}
+	if (Hallucination) {
+		(void) sprintf(buf, "You are hallucinated.");
+		if(page_line(buf)) goto quit;
+		}
+	if (Blindfolded) {
+		(void) sprintf(buf, "You are blindfolded.");
+		if(page_line(buf)) goto quit;
+		}
+	if (Badged) {
+		(void) sprintf(buf, "You are badged.");
+		if(page_line(buf)) goto quit;
+		}
+
+	set_pager(1);
+	return(0);
+quit:
+	set_pager(2);
 	return(0);
 }
 #endif /* WIZARD */

@@ -1,0 +1,131 @@
+                   NetHack Programmers' Guidelines
+
+                            M. Stephenson
+
+                             18-Feb-1988
+
+
+	Introduction:
+
+     This document is intended as a guide for programmers making changes
+and additions to the existing NetHack code-base.  It outlines (approximately)
+my design philosophy and rules for inclusion of additions and changes to
+the code.  Please read it through and keep the basic concepts in mind when
+writing new code for the game.
+
+
+	Bug Fixes:
+
+     I'll gladly accept almost ***anything*** in the form of a bug fix.
+Please make sure you test your fix out before sending it in, however.  Include
+in the submission, how it was tested, as well as any side effects you may have
+noticed due to or in spite of the changes, as they may indicate deficiencies
+in the code to me.
+
+
+	Enhancements:
+
+     Please remember that this is supposed to be a D&D(tm) type game.  Not
+a modern day or space type adventure.  Not that I will automatically reject
+additions to the game of that type.  I would simply like them to be presented
+in a form similar to that which exists now.  You can usually take any concept
+for a game like this and modify it into a fantasy setting.
+
+     NEVER NEVER NEVER make something hardware dependent.  Remember that for
+all of those people out there with a beautiful "xyz" 20" 256 color super
+terminal there are dozens of poor folk with plain old dumb ttys.  Therefore,
+make all uses of special characters, graphics and attributes TOTALLY optional.
+
+     If you are adding a brand new concept to the game, please try to do so
+in a new file (eg. fountains produced fountain.c, spells produced spell.c).
+
+
+	Code Reduction:
+
+     Yes, yes, yes...  If there is any way you can reduce the code while
+maintaining portability and flexibility, please do so.  Part of the work I
+will be doing on 3.0 will concern three major sets of modifications:
+
+	- making some of the "optional" code standard, hence reducing out
+	  other code in #ifdef / #else / #endif sets.
+
+	- attempting to merge DOS & Unix code into one routine whenever
+	  possible.
+
+	- reorganization of routines into more source modules.
+
+     Please test your results as completely as possible.
+
+
+	Responses to E-Mail:
+
+     I try to respond to E-Mail coming into my account.  For any large fix
+or fixes requiring two or three separate files, I will usually generate a
+response.  I don't, however, respond to every bug fix due to time, or some-
+times due to the fact that the mail I send back bounces twice or three times
+while I am trying to get through.  If you don't get a response from me, and
+really want one, either indicate it in the mail, or, failing a response, send
+a message through rec.games.hack.  My Rnmail usually gets things through.
+
+
+	Additional OS Compatibility:
+
+     I am interested in getting NetHack working on as many machines as is
+possible.  MS-DOS, Unix V Rn and BSD4.n are known supported now.  I have the
+mods for OS/9 in my posession, and they will be included in 3.0.  If you have
+mods for any other type of OS, please send them in as soon as possible.  Try
+to use the existing code as much as possible, and introduce new copies of
+existing files only when the alternative is an unreadable mess in the
+original.
+
+	A Small Wish-List:
+
+     Here are some things I would like to see in the game, for 3.0, and if
+anyone out there would like to make a stab at programming one of them, please
+drop me some mail (my ***NEW*** address is at the bottom of this file) and
+I will try to get you in touch with anyone else expressing like interests.
+
+	- True curses implementation of the display.
+	  (termcap implementation will have to remain for backward
+	   compatibility)
+
+	- More monsters!  My initial algorithm is as follows:
+
+	  - any given letter code will represent a "class" of monster
+	    types.
+
+	  - modify the generation code to generate stronger monster
+	    types as the dungeon and player level increases.
+
+	  - optionally, a game difficulty parameter can be introduced
+	    into the code here (using HARD???).
+
+	  - replace all of those uses of the letter code as monster
+	    designation with a code returned from a single routine
+	    which will determine monster type and a set of equates.
+
+	  - add a command to "#look" and be told what monsters (and
+	    possibly objects) are in the room with you.  This means
+	    you won't have to engage with a monster to find out what
+	    it is.
+
+	- Artifacts (including "intelligent" or "aware" weapons).  This
+	  could really be a lot of fun; especially if you have talking
+	  artifacts to cause you trouble, wake up sleeping monsters, etc.
+
+	- More asynchronous events, especially strange sounds.  A real
+	  dungeon would not be deathly silent, except in the area of
+	  a morgue :-).  There should be the sounds of various things
+	  going on, like the bubbling of a fountain in the room you
+	  haven't gone into yet, the dripping of water in a swamp, a
+	  low rumble of conversation inside a throne room, etc...
+
+	- How about locked doors, locked chests, a "key" tool, and a
+	  "thief" character class?
+
+						Mike Stephenson
+
+Mail:	Genamation Inc.		Phone:	(416) 475-9434
+	351 Steelcase Rd. W
+	Markham, Ontario.	UUCP:	uunet!{mnetor,utzoo}!genat!genpyr!mike
+	Canada   L3R 3W1

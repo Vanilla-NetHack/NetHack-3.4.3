@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)end.c	2.1	87/10/07
+/*	SCCS Id: @(#)end.c	2.3	87/12/16
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 #include <stdio.h>
@@ -55,39 +55,26 @@ done_hangup(){
 done_in_by(mtmp)
 register struct monst *mtmp;
 {
-	char *hallmon();
-	static char buf[BUFSZ], *prefix;
+	static char buf[BUFSZ];
 	extern char *eos(), *shkname();
+
 	pline("You die ...");
-	if (Hallucination) { 
-		Sprintf(buf, "hallucinated %s (actually ", hallmon()); 
-		prefix = (index("aeiou",*mtmp->data->mname) ? "an" : "a");
-	}
+	Sprintf(buf, "");
+	if (mtmp->minvis)
+		Sprintf(eos(buf), "invisible ");
+	if (Hallucination)
+		Sprintf(eos(buf), "hallucinogen-distorted ");
+
 	if(mtmp->data->mlet == ' ') {
-		if (Hallucination) Sprintf(eos(buf), "the ghost of %s)",
-					   (char *) mtmp->mextra);
-		else Sprintf(buf, "the ghost of %s", (char *) mtmp->mextra);
-	} else if(mtmp->mnamelth) {
-		if (Hallucination) Sprintf(eos(buf), "%s %s called %s)",
-					   prefix, mtmp->data->mname,
-					   NAME(mtmp));
-		else Sprintf(buf, "%s called %s",
-			     mtmp->data->mname, NAME(mtmp));
-	} else if(mtmp->minvis) {
-		if (Hallucination) Sprintf(eos(buf), "an invisible %s)",
-					   mtmp->data->mname);
-		else Sprintf(buf, "invisible %s", mtmp->data->mname);
+		register char *gn = (char *) mtmp->mextra;
+		if (!Hallucination && !mtmp->minvis && *gn)
+			Sprintf(eos(buf), "the ");
+		Sprintf(eos(buf), (*gn ? "ghost of %s" : "ghost%s"), gn);
 	} else if(mtmp->isshk) {
-		if (Hallucination) Sprintf(eos(buf), "%s %s the shopkeeper)",
-					   rn2(2) ? "Mr." : "Ms.",
-					   shkname(mtmp));
-		else Sprintf(buf, "%s %s, the shopkeeper!",
-			     rn2(2) ? "Mr." : "Ms.", shkname(mtmp));
-	} else {
-		if (Hallucination) Sprintf(eos(buf), "%s %s)",
-					   prefix, mtmp->data->mname);
-		else Sprintf(buf, "%s", mtmp->data->mname);
-	}
+		Sprintf(eos(buf), "%s %s, the shopkeeper)",
+			(rn2(2) ? "Mr." : "Ms."), shkname(mtmp));
+	} else Sprintf(eos(buf), "%s", mtmp->data->mname);
+	if (mtmp->mnamelth) Sprintf(eos(buf), " called %s", NAME(mtmp));
 	killer = buf;
 	done("died");
 }
@@ -202,7 +189,7 @@ die:
 #endif 
 	settty((char *) 0);	/* does a clear_screen() */
 	if(!done_stopprint)
-		printf("Goodbye %s %s...\n\n", pl_character, plname);
+	    printf("Goodbye %s %s...\n\n", (Badged) ? "Officer" : pl_character, plname);
 	{ long int tmp;
 	  tmp = u.ugold - u.ugold0;
 	  if(tmp < 0)
@@ -306,6 +293,9 @@ die:
 		getret();	/* all those pieces of coloured glass ... */
 		cls();
 	}
+#ifdef MSDOSCOLOR
+	end_screen();
+#endif
 #ifdef WIZARD
 	if(!wizard)
 #endif
@@ -313,10 +303,6 @@ die:
 	if(done_stopprint) printf("\n\n");
 #ifdef APOLLO
 	getret();
-#endif
-#ifdef MSDOSCOLOR
-	getret();
-	end_screen();
 #endif
 	exit(0);
 }
@@ -351,22 +337,6 @@ charcat(s,c) register char *s, c; {
 	while(*s) s++;
 	*s++ = c;
 	*s = 0;
-}
-
-char *
-hallmon()
-{
-	register char let;
-	register int ct;
-	register struct permonst *ptr;
-
-	let = rndmonsym();
-	for(ct = 0; ct < CMNUM+1 ; ct++) {
-		ptr = &mons[ct];
-		if(ptr->mlet == let) return(ptr->mname);
-			
-	}
-	return("giant eel");
 }
 
 #ifdef KJSMODS

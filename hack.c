@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include "hack.h"
 #ifdef UNIX
-static	char	SCCS_Id[] = "@(#)hack.c	2.2\t87/12/01";
+static	char	SCCS_Id[] = "@(#)hack.c	2.3\t88/02/18";
 #endif
 extern char news0();
 extern char *nomovemsg;
@@ -244,7 +244,7 @@ domove()
 			u.utrap--;
 #endif
 		} else {
-			pline("You are caught in a beartrap.");
+			pline("You are caught in a bear trap.");
 			if((u.dx && u.dy) || !rn2(5)) u.utrap--;
 		}
 		return;
@@ -304,10 +304,17 @@ domove()
 #ifdef NEWCLASS
 		|| IS_THRONE(levl[u.ux][u.uy].typ)
 #endif
+#ifdef SINKS
+		|| IS_SINK(levl[u.ux][u.uy].typ)
+#endif
 		)
 			nomul(0);
 	}
 
+#ifdef SINKS
+	if(IS_SINK(levl[u.ux][u.uy].typ) && Levitation)
+		dosinkfall();
+#endif
 	if(tmpr->typ == POOL && !Levitation)
 		drown();	/* not necessarily fatal */
 
@@ -1044,3 +1051,37 @@ newuexp()
 {
 	return(10*(1L << (u.ulevel-1)));
 }
+
+change_luck(n)
+	register schar n;
+{
+	u.uluck += n;
+	if (u.uluck < 0 && u.uluck < LUCKMIN)	u.uluck = LUCKMIN;
+	if (u.uluck > 0 && u.uluck > LUCKMAX)	u.uluck = LUCKMAX;
+}
+
+#ifdef SINKS
+dosinkfall() {
+register struct obj *obj;
+	pline("You crash to the floor!");
+	losehp(rn2(15) + 3*u.ulevel,"fall onto a sink");
+	for(obj=fobj; obj; obj=obj->nobj)
+	    if(obj->ox == u.ux && obj->oy == u.uy && obj->olet == WEAPON_SYM) {
+		pline("You fell on %s.",doname(obj));
+		losehp(rn2(3),"fall onto a sink");
+	    }
+
+	Levitation += 1;
+	if(uleft && uleft->otyp == RIN_LEVITATION) {
+	    obj = uleft;
+	    ringoff(obj);
+	    off_msg(obj);
+	}
+	if(uright && uright->otyp == RIN_LEVITATION) {
+	    obj = uright;
+	    ringoff(obj);
+	    off_msg(obj);
+	}
+	Levitation = 0;
+}
+#endif

@@ -1,9 +1,9 @@
-/*	SCCS Id: @(#)zap.c	2.1	87/11/10
+/*	SCCS Id: @(#)zap.c	2.3	88/02/11
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 #include "hack.h"
 
-extern struct obj *mkobj_at();
+extern struct obj *mkobj_at(), *mksobj_at();
 extern struct monst *makemon(), *mkmon_at(), youmonst;
 struct monst *bhit();
 char *exclam();
@@ -12,16 +12,38 @@ extern char *xname();
 #endif
 
 char *fl[]= {
-	"magic missile",
+	"magic missile",	/* Wands must be 0-9 */
 	"bolt of fire",
 	"sleep ray",
 	"bolt of cold",
 	"death ray",
-	"magic missile",	/* Spell equivalents of above wands */
+	"bolt of lightening",
+	"",
+	"",
+	"",
+	"",
+
+	"magic missile",	/* Spell equivalents must be 10-19 */
 	"fireball",
 	"sleep ray",
 	"cone of cold",
-	"finger of death"
+	"finger of death",
+	"bolt of lightening",
+	"",
+	"",
+	"",
+	"",
+
+	"blast of missiles",	/* Dragon breath equivalents 20-29*/
+	"blast of fire",
+	"blast of sleep gas",
+	"blast of frost",
+	"blast of disintegration",
+	"blast of lightening",
+	"blast of poison gas",
+	"blast of acid",
+	"",
+	""
 };
 
 /* Routines for IMMEDIATE wands and spells. */
@@ -299,6 +321,16 @@ int	damage = 0;
 		    pline("You magically bash yourself!");
 		    damage=d(8,6);
 		    break;
+		case WAN_LIGHTNING:
+		    makeknown(WAN_LIGHTNING);
+		    pline("Idiot!  You've shocked yourself!"); 
+		    if (!Shock_resistance) damage=d(12,6);
+		    if (!Blind) {
+			    pline("You are blinded by the flash!");
+			    Blinded += rnd(100);
+			    seeoff(0);
+		    }
+		    break;
 		case WAN_FIRE:
 		    makeknown(WAN_FIRE);
 #ifdef SPELLS
@@ -316,6 +348,7 @@ int	damage = 0;
 #endif
 		    pline("You imitate a popsicle!");
 		    if (!Cold_resistance) damage=d(12,6);
+		    freeze_potions();
 		    break;
 		case WAN_MAGIC_MISSILE:
 		    makeknown(WAN_MAGIC_MISSILE);
@@ -382,9 +415,12 @@ int	damage = 0;
 		    break;
 #ifdef SPELLS
 		case SPE_LIGHT:
-		    pline("You've blinded yourself!");
-		    Blinded += rnd(100);
-		    break;		
+		    if(!Blind) {
+			pline("You've blinded yourself!");
+			Blinded += rnd(100);
+			seeoff(0);
+		    }
+		    break;
 		case SPE_DIG:
 		case SPE_TURN_UNDEAD:
 		case SPE_DETECT_UNSEEN:
@@ -483,7 +519,7 @@ weffects(obj)
 				pline("You loosen a rock from the ceiling.");
 				pline("It falls on your head!");
 				losehp(1, "falling rock");
-				mksobj_at(ROCK, u.ux, u.uy);
+				mksobj_at((int)ROCK, u.ux, u.uy);
 				fobj->quan = 1;
 				stackobj(fobj);
 				if(Invisible) newsym(u.ux, u.uy);
@@ -531,7 +567,7 @@ weffects(obj)
 #ifdef SPELLS
 			if((int) obj->otyp >= SPE_MAGIC_MISSILE) {
 
-				buzz((int) obj->otyp - SPE_MAGIC_MISSILE + 5,
+				buzz((int) obj->otyp - SPE_MAGIC_MISSILE + 10,
 					u.ux, u.uy, u.dx, u.dy);
 			} else
 #endif
@@ -625,6 +661,10 @@ struct obj *obj;			/* 2nd arg to fhitm/fhito */
 			break;
 		}
 		if(sym) tmp_at(bhitpos.x, bhitpos.y);
+#ifdef SINKS
+		if(sym && IS_SINK(typ))
+			break;	/* physical objects fall onto sink */
+#endif
 	}
 
 	/* leave last symbol unless in a pool */
@@ -674,6 +714,10 @@ boomhit(dx,dy) {
 		}
 		tmp_at(bhitpos.x, bhitpos.y);
 		if(ct % 5 != 0) i++;
+#ifdef SINKS
+		if(IS_SINK(levl[bhitpos.x][bhitpos.y].typ))
+			break;	/* boomerang falls on sink */
+#endif
 	}
 	tmp_at(-1, -1);	/* do not leave last symbol */
 	return(0);
@@ -685,16 +729,20 @@ dirlet(dx,dy) register dx,dy; {
 		(dx == dy) ? '\\' : (dx && dy) ? '/' : dx ? HWALL_SYM : VWALL_SYM;
 }
 
-/* type == -1: monster spitting fire at you */
-/* type == -1,-2,-3: bolts sent out by wizard */
+/* type == 0 to 9     : you shooting a wand      */
+/* type == 10 to 19   : you casting a spell      */
+/* type == 20         : you breathing fire       */
+/* type == -1 to -9   : bolts sent out by wizard */
+/* type == -10 to -19 : dragon breathing at you  */
 /* called with dx = dy = 0 with vertical bolts */
 buzz(type,sx,sy,dx,dy)
 register int type;
 register xchar sx,sy;
 register int dx,dy;
 {
-	int abstype = (type == 10) ? 1 : abs(type);
-	register char *fltxt = (type == -1 || type == 10) ? "blaze of fire" : fl[abstype];
+	int abstype = (type == 20) ? 1  : abs(type) % 10;
+	int txttype = (type == 20) ? 21 : (type>-10) ? abs(type) : abs(type)+10;
+	register char *fltxt = fl[txttype];
 	struct rm *lev;
 	xchar range;
 	struct monst *mon;
@@ -751,13 +799,23 @@ register int dx,dy;
 			} else
 				pline("You hear a hissing sound.");
 		}
+		if(lev->typ == POOL && abstype == 3 /* cold */) {
+			range -= 3;
+			lev->typ = ROOM;
+			if(cansee(sx,sy)) {
+				mnewsym(sx,sy);
+				pline("The water freezes.");
+			} else
+				pline("You hear a cracking sound.");
+		}
 		if(o_at(sx,sy) && abstype == 1)
 			if(burn_floor_scrolls(sx,sy) && cansee(sx,sy))  {
 				mnewsym(sx,sy);
 				pline("You see a puff of smoke.");
 			}
 		if((mon = m_at(sx,sy)) &&
-		   (type != -1 || mon->data->mlet != 'D')) {
+		   /* dragons don't hit themselves ??? */
+		   (type > -10 || mon->data->mlet != 'D')) { 
 			wakeup(mon);
 			if(rnd(20) < 18 + mon->data->ac) {
 				register int tmp = zhit(mon,abstype);
@@ -781,11 +839,11 @@ register int dx,dy;
 				range -= 2;
 				pline("The %s hits you!",fltxt);
 				switch(abstype) {
-				case 0:
-				case 5:	dam = d(2,6);
-					break;
-				case 1:
-				case 6:	if(Fire_resistance)
+				case 0:		/* magic missile */
+					dam = d(2,6);
+  					break;
+				case 1:		/* fire */
+					if(Fire_resistance)
 						pline("You don't feel hot!");
 					else dam = d(6,6);
 					if(!rn2(3)) {
@@ -793,20 +851,41 @@ register int dx,dy;
 						burn_scrolls();
 					}
 					break;
-				case 2:
-				case 7:	nomul(-rnd(25)); /* sleep ray */
+				case 2:		/* sleep */
+					nomul(-rnd(25)); /* sleep ray */
 					break;
-				case 3:
-				case 8:	if(Cold_resistance)
+				case 3:		/* cold */
+					if(Cold_resistance)
 						pline("You don't feel cold!");
 					else dam = d(6,6);
+					if(!rn2(3))
+						freeze_potions();
 					break;
-				case 4:
-				case 9:	u.uhp = -1;
+				case 4:		/* death */
+					u.uhp = -1;
+					break;
+				case 5:		/* lightning */
+					if(Shock_resistance)
+						pline("You aren't affected!");
+					else dam = d(6,6);
+					break;
+				case 6:		/* poison */
+					poisoned("blast", "poisoned blast");
+					break;
+				case 7:		/* acid */
+					pline("The acid burns!");
+					dam = d(6,6);
+					if(!rn2(6)) corrode_weapon();
+					if(!rn2(6)) corrode_armor();
 					break;
 				}
 				losehp(dam,fltxt);
 			} else pline("The %s whizzes by you!",fltxt);
+			if (abstype == 5 && !Blind) { /* LIGHTNING */
+		    		pline("You are blinded by the flash!");
+				Blinded += rnd(50);
+				seeoff(0);
+			}
 			stop_occupation();
 		}
 		if(!ZAP_POS(lev->typ)) {
@@ -851,35 +930,61 @@ register type;
 	register int tmp = 0;
 
 	switch(type) {
-	case 0:			/* magic missile */
-	case 5: tmp = d(2,6);
+	case 0:			/* magic missile (wand) */
+	case 10:		/* (spell) */
+	case -10:		/* (breath) */
+		tmp = d(2,6);
 		break;
-	case -1:		/* Dragon blazing fire */
-	case 1:			/* fire wand*/
-	case 6:			/* fire spell */
-	case 10:		/* Polymorphed human blazing fire */
+	case 1:			/* fire wand */
+	case 11:		/* fire spell */
+	case -11:		/* fire breath */
+	case 20:		/* you breathing fire */
 		if(index("Dg", mon->data->mlet)) break;
 		tmp = d(6,6);
 		if(index("YF", mon->data->mlet)) tmp += 7;
 		break;
-	case 2:			/* sleep*/
-	case 7: tmp = 0;
+	case 2:			/* sleep wand */
+	case 12:		/* sleep spell */
+	case -12:		/* sleep breath */
+		tmp = 0;
 		if(!resist(mon, (type == 2) ? '/' : '+', 0, NOTELL))
 			mon->mfroz = 1;
 		break;
-	case 3:			/* cold */
-	case 8:
+	case 3:			/* cold wand */
+	case 13:		/* cold spell */
+	case -13:		/* cold breath */
 		if(index("YFgf", mon->data->mlet)) break;
 		tmp = d(6,6);
 		if(mon->data->mlet == 'D') tmp += 7;
 		break;
-	case 4:			/* death*/
-	case 9:
+	case 4:			/* death wand */
+	case 14:		/* death spell */
+	case -14:		/* death breath */
 		if(index(UNDEAD, mon->data->mlet)) break;
 		tmp = mon->mhp+1;
 		break;
+	case 5:			/* lightning wand */
+	case 15:		/* lightning spell */
+	case -15:		/* lightning breath */
+		if(index("g;", mon->data->mlet)) break;
+		tmp = d(6,6);
+		mon->mblinded += rnd(50);
+		break;
+	case 6:			/* poison wand */
+	case 16:		/* poison spell */
+	case -16:		/* poison breath */
+		if(index("abcghikqsuvxyADFQSVWXZ&", mon->data->mlet)) break;
+		tmp = d(6,6);
+		break;
+	case 7:			/* acid wand */
+	case 17:		/* acid spell */
+	case -17:		/* acid breath */
+		if(index("a", mon->data->mlet)) break;
+		tmp = d(6,6);
+		break;
 	}
-	if (resist(mon, (type < 5) ? '/' : '+', 0, NOTELL)) tmp /= 2;
+	if (type >= 0 && type != 20)
+		if (resist(mon, (type < 10) ? '/' : '+', 0, NOTELL)) tmp /= 2;
 	mon->mhp -= tmp;
 	return(tmp);
 }
@@ -974,7 +1079,26 @@ boil_potions()
 		}
 	}
 }
-				
+
+freeze_potions() {
+	register struct obj *obj, *obj2;
+	register int scrquan, i;
+
+	for(obj = invent; obj; obj = obj2) {
+		obj2 = obj->nobj;
+		if(obj->olet == POTION_SYM) {
+			scrquan = obj->quan;
+			for(i = 1; i <= scrquan; i++) 
+				if(!rn2(3)) {
+					pline("%s %s freezes and shatters!",
+		(obj->quan != 1) ? "One of your" : "Your", xname(obj));
+					useup(obj);
+					losehp(rn2(4),"shattered potion");
+				}
+		}
+	}
+}
+
 burn_scrolls()
 {
 	register struct obj *obj, *obj2;

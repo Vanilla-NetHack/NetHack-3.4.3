@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)unixmain.c	2.1	87/10/18
+/*	SCCS Id: @(#)unixmain.c	2.3	88/01/21
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* main.c - (Unix) version */
 
@@ -232,14 +232,24 @@ char *argv[];
 		(void) fflush(stdout);
 		if(!dorecover(fd))
 			goto not_recovered;
-		pline("Hello %s, welcome to %s!", plname, gamename);
+		pline("Hello %s%s, welcome to %s!", 
+			(Badged) ? "Officer " : "", plname, gamename);
 		flags.move = 0;
 	} else {
 not_recovered:
 		newgame();
 		/* give welcome message before pickup messages */
 		pline("Hello %s, welcome to %s!", plname, gamename);
-
+#ifdef WIZARD
+		if (wizard && dlevel == 1)
+# ifdef STOOGES
+pline ("The wiz is at %d, the medusa is at %d, and the stooges are at %d",
+			u.wiz_level, u.medusa_level, u.stooge_level);
+# else
+	            pline ("The wiz is at %d, and the medusa at %d",
+			   u.wiz_level, u.medusa_level);
+# endif
+#endif
 		pickup(1);
 		read_engr_at(u.ux,u.uy);
 		flags.move = 1;
@@ -248,7 +258,7 @@ not_recovered:
 	flags.moonphase = phase_of_the_moon();
 	if(flags.moonphase == FULL_MOON) {
 		pline("You are lucky! Full moon tonight.");
-		if(!u.uluck) u.uluck++;
+		if(!u.uluck) change_luck(1);
 	} else if(flags.moonphase == NEW_MOON) {
 		pline("Be careful! New moon tonight.");
 	}
@@ -512,6 +522,8 @@ boolean wr;
 
 stop_occupation()
 {
+	extern void pushch();
+
 	if(occupation) {
 		pline("You stop %s.", occtxt);
 		occupation = 0;
@@ -548,6 +560,8 @@ whoami() {
 }
 
 newgame() {
+	extern struct monst *makedog();
+
 	fobj = fcobj = invent = 0;
 	fmon = fallen_down = 0;
 	ftrap = 0;

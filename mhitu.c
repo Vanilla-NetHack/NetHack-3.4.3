@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mhitu.c	2.1	87/10/18
+/*	SCCS Id: @(#)mhitu.c	2.3	88/01/21
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 #include	"hack.h"
@@ -7,6 +7,15 @@ extern struct obj *carrying();
 #ifdef KAA
 extern char pl_character[];
 #endif
+
+char *breathe[]= {	"fragments",
+			"fire",
+			"sleep gas",
+			"frost",
+			"death",
+			"lightening",
+			"poison gas",
+			"acid" };
 
 /*
  * mhitu: monster hits you
@@ -86,13 +95,16 @@ register struct monst *mtmp;
 		tmp += hitu(mtmp,d(mdat->damn,mdat->damd));
 
 	ctmp = tmp && !mtmp->mcan &&
-	  (!uarm || objects[uarm->otyp].a_can < rnd(3) || !rn2(50));
+	  (!uarm || objects[uarm->otyp].a_can < rnz(3));
 	switch(mdat->mlet) {
 	case '1':
 		if(wiz_hit(mtmp)) return(1);	/* he disappeared */
 		break;
 	case '&':
-		demon_hit(mtmp);
+		if(mtmp->isdjinni) {
+			(void) hitu(mtmp,d(mdat->damn, mdat->damd));
+			(void) hitu(mtmp,d(mdat->damn, mdat->damd));
+		} else demon_hit(mtmp);
 		break;
 	case ',':
 		if(tmp) justswld(mtmp,Monnam(mtmp));
@@ -102,6 +114,14 @@ register struct monst *mtmp;
 		break;
 	case ';':
 		if(ctmp) {
+			if (!rn2(6)) {
+				if (!Blind)
+					pline("%s shocks you!", Monnam(mtmp));
+				else	pline("It shocks you!");
+				if (Shock_resistance)
+					pline("You aren't affected!");
+				else	losehp_m(d(4,6),mtmp);
+			} else
 			if(!u.ustuck && !rn2(10)) {
 				pline("%s swings itself around you!",
 					Monnam(mtmp));
@@ -148,8 +168,9 @@ register struct monst *mtmp;
 			(void) hitu(mtmp,rnd(8));
 			break;
 		}
-		kludge("%s breathes fire!",Monnam(mtmp));
-		buzz(-1,mtmp->mx,mtmp->my,u.ux-mtmp->mx,u.uy-mtmp->my);
+		kludge("%s breathes %s!",Monnam(mtmp), breathe[mtmp->dragon]);
+		buzz((int) -10 - (mtmp->dragon),
+			mtmp->mx,mtmp->my,u.ux-mtmp->mx,u.uy-mtmp->my);
 		break;
 	case 'd':
 		(void) hitu(mtmp,d(2, (flags.moonphase == FULL_MOON) ? 3 : 4));
@@ -174,9 +195,19 @@ register struct monst *mtmp;
 		}
 		mondead(mtmp);
 		return(1);
+	case 'G':
+		if(!mtmp->isgremlin || mtmp->mcan) break;
+		if(!rn2(10)) {
+			if (Blind)
+				pline("You hear laughter.");
+			else
+				pline("%s chuckles.", Monnam(mtmp));
+			attrcurse();
+		}
+		break;
 	case 'g':
 		if(ctmp && multi >= 0 && !rn2(3)) {
-		/* fix so we don't know what hit us when blind  KAA */
+		/* fix so we do not know what hit us when blind  KAA */
 		    if (Blind)
 			pline("You are frozen by its juices!");
 		    else
@@ -237,6 +268,9 @@ register struct monst *mtmp;
 		if(!uwep
 #ifdef KAA
 		   && u.usym == '@'
+#endif
+#ifdef SHIRT
+		   && !uarmu
 #endif
 		   && !uarm && !uarmh && !uarms && !uarmg) {
 		    pline("%s hits! (I hope you don't mind)",
@@ -393,6 +427,18 @@ register struct monst *mtmp;
 		(void) hitu(mtmp,d(2,6));
 		break;
 #endif
+#ifdef STOOGES
+	case '@':
+		if(!mtmp->isstooge) break;
+		if(!tmp) break;
+		if(!rn2(6) && !Blind) {
+		        pline ("%s poked you in the eye.", Monnam(mtmp));
+		        pline ("You are blinded!");
+			Blinded += rnd(10);
+			seeoff(0);
+		}
+		break;
+#endif
 	}
 	if(u.uhp < 1) done_in_by(mtmp);
 	return(0);
@@ -413,7 +459,7 @@ register dam;
 		mtmp->mundetected = 0;
 		if(!Blind) {
 			register struct obj *obj;
-			extern char * Xmonnam();
+			extern char *Xmonnam();
 			if(obj = o_at(mtmp->mx,mtmp->my))
 				pline("%s was hidden under %s!",
 					Xmonnam(mtmp), doname(obj));
@@ -468,28 +514,28 @@ register struct monst *mtmp;
 
 	if(uwep && !strcmp(ONAME(uwep), "Excalibur")) {
 
-	    pline("%s looks very angry.", Xmonnam(mtmp, 1));
+	    pline("%s looks very angry.", Xmonnam(mtmp));
 	    mtmp->mpeaceful = mtmp->mtame = 0;
 	    return(0);
 	}
 	if(!strcmp(mtmp->data->mname, "demon")) {  /* not for regular '&'s */
 
 	    pline("%s mutters something about awful working conditions.",
-		  Xmonnam(mtmp, 1));
+		  Xmonnam(mtmp));
 	    return(0);
 	}
 
 	/* Slight advantage given. */
 	if(!strcmp(mtmp->data->mname, "demon prince") && mtmp->minvis) {
 
-	    if (!Blind) pline("%s appears before you.", Xmonnam(mtmp, 1));
+	    if (!Blind) pline("%s appears before you.", Xmonnam(mtmp));
 	    mtmp->minvis = 0;
 	    pmon(mtmp);
 	}
 	if(u.usym == '&') {	/* Won't blackmail their own. */
 
 	    pline("%s says, 'Good hunting %s.' and vanishes",
-		  Xmonnam(mtmp, 1), flags.female ? "Sister" : "Brother");
+		  Xmonnam(mtmp), flags.female ? "Sister" : "Brother");
 	    rloc(mtmp);
 	    return(1);
 	}
@@ -501,7 +547,7 @@ register struct monst *mtmp;
 	    char buf[80];
 
 	    pline("%s demands %d Zorkmids for safe passage.",
-		  Xmonnam(mtmp, 1), demand);
+		  Xmonnam(mtmp), demand);
 	    pline("how many will you offer him?");
 	    getlin(buf);
 	    sscanf(buf, "%d", &offer);

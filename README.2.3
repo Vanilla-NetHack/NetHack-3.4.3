@@ -1,0 +1,181 @@
+			    NetHack V2.3 README
+
+	This file contains information on the 2.3 release of NetHack.  For
+information on previous releases, see the README and README.OLD files.  For
+a detailed history of the game, see the README.ORIG file, which contains
+three separate readme files, dating back to the original release of the game
+(then named "hack") by Jay Fenlason.
+
+			HOW TO INSTALL THIS RELEASE
+
+	To install this release, unpack all of the shar kits.  You will find
+you have a bunch of completely new files, a second bunch of files with a
+".new" suffix (these are all files which have been released fully, since the
+patch file to update them would have been larger than the file itself), a set
+of update patches - context diffs, and finally a shell script to pull every-
+thing together.
+
+	Next ***BACK EVERYTHING UP***.  I don't want to receive irate mail
+about missing files due to some finger error.
+
+	Read "Update.sh".  This script will be used once - and only once -
+to perform the copies and cat's required to make the update.   Once it has
+been run, all of your ".new" files will be moved onto their corresponding
+".c" and ".h" files, and the originals will be backed up with a ".orig"
+suffix.  All of the files which were shipped in parts will be concatenated
+into one file.  And finally Update.sh will be removed. 
+
+	Next run patch(1) with the file Update.2.3 as it's stdin.  This will
+patch the remaining files up to 2.3e standard.  Gods help you if you've done
+any patching on your own.  It probably won't work in that case.  Best bet is
+to start with a virgin 2.2 release.
+
+	Finally, copy "Makefile.<whatever>" to "Makefile", modify "config.h"
+to suit and run "make".  Install it as you wish.
+
+
+			    Release Discription
+
+	This release of the game contains a large number of bug fixes, as
+well as several new features.  There has been a large amount of play-testing
+done on this release.  For a detailed list of bug fixes, and additions look
+at the file "Fixes.2.3".  I cannot guarantee that every modification done has
+been included, but I have done my best to chronicle the changes and fixes
+made there.  Here are the high points:
+
+  1)	New flags in "config.h":
+
+	SAC		Soldiers & barracks code
+	SHIRT		Hawaiian shirt code
+	THEOLOGY	Smarter gods & sacrifices
+	STOOGES		Three wild and crazy guys
+	SINKS		Kitchen Sinks
+
+	SCORE_ON_BOTL	Score (not exactly # of exp) on the bottom line.
+
+	In addition, in an MSDOS enviornment:
+
+	TERMLIB		enable use of termcap file c:\etc\termcap
+			or .\termcap.cnf for MSDOS
+
+	Of the above, I haven't tested TERMLIB.  If you find bugs in these,
+send me the reports.
+
+  2)	New objects:
+
+	Hawaiian shirts (sort of armor - especially for tourists).
+
+	Kitchen Sinks - for the dropping of rings, of course...
+
+	Wand of Lightning
+
+	Ring of Shock Resistance (to balance above)
+
+	A named weapon (dagger or short sword) "Sting" a la Tolkien.
+
+	Lamps and Magic Lamps
+
+	A Badge to identify you as an "Officer".
+
+  3)	New Files:
+
+	A new makefile for the ATT 3B2
+
+	A "Spoilers" manual in mm format and tables for the manual.
+
+	The long-awaited documentation on nansi.sys - nansi.doc.
+
+  4)	Major game changes:
+
+	- Shop generation has been cleaned up.  There are now up to four
+	different types of object inside.  There has also been modifications
+	to room generation to make things cleaner.
+
+	- A new type of room, the barracks (a lair for soldiers) has been
+	added.  In addition, the soldier has been made just a little less
+	deadly to compensate for the large numbers present.
+
+	- A new type of trap, the landmine, (which will be renamed to con-
+	form with a fantasy setting in the future) has been added.
+
+	- A change to shopkeepers has them getting angry more easily if you
+	are wearing a badge, and have robbed them.
+
+	- The "dragon" has been split up into several sub-types.  They now
+	have all sorts of breath weapons - NOTE: a slight bug - eating any
+	of the dead dragon types still gives you intrinsic fire resistance.
+
+	- A new wand, and compensating ring have been added (Lightning).
+
+	- The "Giant Eel" has been replaced with an "Electric Eel".
+
+	- The wand zapping code has been re-written (mostly in buzz()) so
+	that support for new zap effects will be easier in the future.
+
+	- Chameleon shape changes are now dependant on the level for more
+	challenge.
+
+	- An optional "logfile" has been added for game debugging.
+
+	- Some interesting changes to the "pray" code have been added.
+
+	- The restmonchn() code has been merged between Unix and MS-DOS.
+	This results in a fair sized reduction in size and complexity of
+	that particular module.  Please send me any bug reports as I have
+	only tested it on the Unix side.
+
+	- The colour <--> gemstone type code has been fixed so that the
+	colour of an unknown stone now approximates the gem type.
+
+	- For those who like a little fun, three STOOGES have been added
+	(optionally) to the game.  They will show up and fight with each
+	other, producing more of a disturbance than any serious trouble.
+
+	- Lamps have been added.  When applied, they will light a room.
+
+	- Magic lamps have a djinn inside.  Glowing potions may too.
+
+	- A new monster, the Gremlin, can multiply in water, and will
+	potentially steal your hard won inate attributes.
+
+  5)	Minor game changes:
+
+	- The fountain code has been modified to allow coins to fall into or
+	be recovered from a fountain.
+
+	- In wizard mode, the wizard player can now map the level, list all
+	of his/her attributes, and can do a detect for all traps and doors.
+
+	- When wishing, you are no longer limited by the x3/+3 rule.  However,
+	you can't be sure that a "greedy" wish will produce the desired
+	results, the object might be cursed.
+
+	- You can now optionally print your score on the bottom line.  The
+	score printed is close to what would show up on your tombstone.
+
+	- A fix to allow multiple machine play via NFS on a shared playground
+	has been made.  This won't affect us single machine players.
+
+	- The time between prayers is now random.
+
+	- Wizard and Medusa levels are now dependant on the MAXLEVEL param.
+
+	- The spell list is now displayed in the corner.
+
+  6)	Future additions:
+
+	See the "Hackers.doc" file.  I am going to make the next release
+a major modification of the code (3.0).  It will include as many alternate
+OSs supported as I can get patches for.  It will also be constrained towards
+a "fantasy" approach to the game.
+
+PLEASE NOTE MY NEW UUCP ADDRESS BELOW!!!
+						Mike Stephenson
+
+ps:	Sorry this one took so long.  I'm going to fix up an alternative
+	to handle releases in the future.
+
+Mail:	Genamation Inc.		Phone:	(416) 475-9434
+	351 Steelcase Rd. W
+	Markham, Ontario.	UUCP:	uunet!{mnetor,utzoo}!genat!genpyr!mike
+	Canada   L3R 3W1

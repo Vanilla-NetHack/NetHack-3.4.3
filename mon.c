@@ -1,9 +1,9 @@
-/*	SCCS Id: @(#)mon.c	2.1	87/10/17
+/*	SCCS Id: @(#)mon.c	2.3	87/12/12
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 #include "hack.h"
 #include "mfndpos.h"
-extern struct monst *mkmon_at();
+extern struct monst *makemon(), *mkmon_at();
 extern struct trap *maketrap();
 extern struct obj *mkobj_at(), *mksobj_at();
 extern char *hcolor();
@@ -41,11 +41,22 @@ movemon()
 		mtmp->mlstmv = moves;
 
 		/* most monsters drown in pools */
-		{ boolean inpool, iseel;
+		{ boolean inpool,infountain,iseel,isgremlin;
+		  extern struct permonst pm_gremlin;
 
 		  inpool = (levl[mtmp->mx][mtmp->my].typ == POOL);
 		  iseel = (mtmp->data->mlet == ';');
-		  if(inpool && !iseel) {
+		  isgremlin = (mtmp->data->mlet == 'G' && mtmp->isgremlin);
+		  infountain = (levl[mtmp->mx][mtmp->my].typ == FOUNTAIN);
+		  if((inpool || infountain) && isgremlin && rn2(3)) {
+			coord mm;
+			enexto(&mm, mtmp->mx, mtmp->my);
+			if(cansee(mtmp->mx,mtmp->my) && 
+			   makemon(PM_GREMLIN, mm.x, mm.y))
+				pline("%s multiplies.", Monnam(mtmp));
+			if (infountain) dryup();
+		  }
+		  if(inpool && !iseel && !isgremlin) {
 			if(cansee(mtmp->mx,mtmp->my))
 			    pline("%s drowns.", Monnam(mtmp));
 			mondead(mtmp);
@@ -73,7 +84,12 @@ movemon()
 			if(Conflict && cansee(mtmp->mx,mtmp->my)
 				&& (fr = fightm(mtmp)) == 2)
 				continue;
-			if(fr<0 && dochugw(mtmp))
+#ifdef STOOGES
+			if((mtmp->isstooge) && cansee(mtmp->mx,mtmp->my)
+				&& (fr = fightm(mtmp)) == 2)
+				continue;
+#endif
+  			if(fr<0 && dochugw(mtmp))
 				continue;
 		}
 		if(mtmp->mspeed == MFAST && dochugw(mtmp))
@@ -265,12 +281,15 @@ nexttry:	/* eels prefer the water, but if there is no water nearby,
 		{ register struct trap *ttmp = t_at(nx, ny);
 		  register long tt;
 			if(ttmp) {
-				tt = 1L << ttmp->ttyp;
+/*				tt = 1L << ttmp->ttyp;*/
+/* why don't we just have code look like what it's supposed to do? then it
+/* might start working for every case. try this instead: -sac */
+				tt = (ttmp->ttyp < TRAPNUM && ttmp->ttyp > 0);
 				/* below if added by GAN 02/06/87 to avoid
 				 * traps out of range
 				 */
 				if(!(tt & ALLOW_TRAPS))  {
-					impossible("A monster looked at a very strange trap");
+					impossible("A monster looked at a very strange trap of type %d.", ttmp->ttyp);
 					continue;
 				}
 				if(mon->mtrapseen & tt){
@@ -384,7 +403,7 @@ register struct monst *mon;
 
 	if(mon == fmon) fmon = fmon->nmon;
 	else {
-		for(mtmp = fmon; mtmp->nmon != mon; mtmp = mtmp->nmon) ;
+		for(mtmp = fmon; mtmp && mtmp->nmon != mon; mtmp = mtmp->nmon) ;
 		mtmp->nmon = mon->nmon;
 	}
 }
@@ -483,31 +502,15 @@ int	dest;
 	/* punish bad behaviour */
 	if(mdat->mlet == '@') {
 		HTelepat = 0;
-		u.uluck -= 2;
+		change_luck(-2);
 	}
-	if(mtmp->mpeaceful || mtmp->mtame) u.uluck--;
-	if(mdat->mlet == 'u') u.uluck -= 5;
-	if((int)u.uluck < LUCKMIN) u.uluck = LUCKMIN;
+	if(mtmp->mpeaceful || mtmp->mtame)	change_luck(-1);
+	if(mdat->mlet == 'u')			change_luck(-5);
 
 	/* give experience points */
 	tmp = 1 + mdat->mlevel * mdat->mlevel;
 	if(mdat->ac < 3) tmp += 2*(7 - mdat->ac);
-	if(index(
-#ifdef RPH
-# ifdef KAA
-		 "AcsSDXaeRTVWU&In:P89",
-# else
-		 "AcsSDXaeRTVWU&In:P8",
-# endif
-#else
-# ifdef KAA
-		 "AcsSDXaeRTVWU&In:P9",
-# else
-		 "AcsSDXaeRTVWU&In:P",
-# endif
-#endif
-					 mdat->mlet)) tmp += 2*mdat->mlevel;
-
+	if(index("AcsSDXaeRTVWU&In:P389",mdat->mlet)) tmp += 2*mdat->mlevel;
 	if(index("DeV&P",mdat->mlet)) tmp += (7*mdat->mlevel);
 	if(mdat->mlevel > 6) tmp += 50;
 	if(mdat->mlet == ';') tmp += 1000;
@@ -565,7 +568,15 @@ int	dest;
 #ifdef RPH
 	old_nlth = mtmp->mnamelth;
 	if (old_nlth > 0)  (void) strcpy (old_name, NAME(mtmp));
-#endif	    
+#endif
+	if (mdat->mlet == '&' && mtmp->isdjinni) { /* no djinni corpse */
+		mondead(mtmp);
+		return;
+	}
+	if (mdat->mlet == 'G' && mtmp->isgremlin) { /* no gremlin corpse */
+		mondead(mtmp);
+		return;
+	}
 	mondead(mtmp);
 	tmp = mdat->mlet;
 	if(tmp == 'm') { /* he killed a minotaur, give him a wand of digging */
@@ -586,6 +597,12 @@ int	dest;
 		stackobj(fobj);
 	} else
 #endif
+#ifdef SAC
+	if(tmp == '3') {
+		; /* don't do anything special- keep it from failing on */
+		  /* call to letter(tmp) */
+	} else
+#endif /* SAC */
 #ifdef KAA
 	if(tmp == '&') (void) mkobj_at(0, x, y);
 	else
@@ -635,7 +652,8 @@ int	dest;
 						   old_name, old_nlth);
 # ifdef KOPS
 			else if (mdat->mlet == 'K')
-			    obj2 = mksobj_at((rn2(4) ? CLUB : WHISTLE), x, y);
+			    obj2 = mksobj_at((rn2(2) ? CLUB : 
+				   (rn2(2)) ? WHISTLE : BADGE), x, y);
 # endif
 			else
 			    obj2 = mkobj_at(tmp,x,y);
@@ -686,7 +704,16 @@ register struct permonst *mdat;
 {
 	register mhp, hpn, hpd;
 
-	if(mdat == mtmp->data) return(0);	/* still the same monster */
+#ifdef RPH
+	/* mdat = 0 -> caller wants a random monster shape */
+	if (mdat == 0) {
+	    /* ie. minimum shape is mons[15], minimum random range */
+	    /* is 3, and randomness tails off as you descend into the */
+	    /* depths max shape is mons[CMNUM-1] */
+	mdat = &mons[CMNUM-1-rn2((CMNUM-17) - (CMNUM-20)*dlevel/MAXLEVEL)];
+	}
+#endif	
+  	if(mdat == mtmp->data) return(0);	/* still the same monster */
 #ifndef NOWORM
 	if(mtmp->wormno) wormdead(mtmp);	/* throw tail away */
 #endif

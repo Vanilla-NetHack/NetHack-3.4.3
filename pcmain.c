@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)pcmain.c	2.1	87/10/18
+/*	SCCS Id: @(#)pcmain.c	2.3	87/12/12
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* main.c - (PC) version */
 
@@ -35,6 +35,7 @@ char *argv[];
 {
 	register int fd;
 	register char *dir;
+	extern struct monst *makedog();
 #ifdef MSDOS
 	static void moveloop();	/* a helper function for MSC optimizer */
 
@@ -44,7 +45,7 @@ char *argv[];
 	int (*funcp)();
 
 	if (getcwd(orgdir, sizeof orgdir) == NULL) {
-		xputs("hack: current directory path too long\n");
+		xputs("NetHack: current directory path too long\n");
 		_exit(1);
 	}
 	funcp = exit;	/* Kludge to get around LINT_ARGS of signal.
@@ -131,6 +132,7 @@ char *argv[];
 				clearlocks();
 				exit(0);
 			}
+# endif
 			break;
 #endif
 		case 'u':
@@ -222,7 +224,18 @@ char *argv[];
 		(void) fflush(stdout);
 		if(!dorecover(fd))
 			goto not_recovered;
-		pline("Hello %s, welcome to %s!", plname, hname);
+		pline("Hello %s%s, welcome to %s!", 
+			(Badged) ? "Officer " : "", plname, hname);
+#ifdef WIZARD
+		if (wizard && dlevel == 1)
+# ifdef STOOGES
+pline ("The wiz is at %d, the medusa is at %d, and the stooges are at %d",
+			u.wiz_level, u.medusa_level, u.stooge_level);
+# else
+	            pline ("The wiz is at %d, and the medusa at %d",
+			   u.wiz_level, u.medusa_level);
+# endif
+#endif
 		flags.move = 0;
 	} else {
 not_recovered:
@@ -270,7 +283,7 @@ not_recovered:
 	flags.moonphase = phase_of_the_moon();
 	if(flags.moonphase == FULL_MOON) {
 		pline("You are lucky! Full moon tonight.");
-		if(!u.uluck) u.uluck++;
+		if(!u.uluck) change_luck(1);
 	} else if(flags.moonphase == NEW_MOON) {
 		pline("Be careful! New moon tonight.");
 	}
@@ -566,6 +579,8 @@ boolean wr;
 
 stop_occupation()
 {
+	extern void pushch();
+
 	if(occupation) {
 		pline("You stop %s.", occtxt);
 		occupation = 0;

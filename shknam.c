@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)shknam.c	2.1	87/09/23
+/*	SCCS Id: @(#)shknam.c	2.3	87/12/18
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 /* shknam.c -- initialize a shop */
@@ -8,6 +8,7 @@
 #include "eshk.h"
 
 extern struct monst *makemon();
+extern struct obj *mkobj_at(), *mksobj_at();
 
 static char *shkliquors[] = {
     /* Ukraine */
@@ -155,7 +156,7 @@ struct shclass shtypes[] = {
 	{"jewelers", RING_SYM, 3, D_SHOP,
 	    {{90, RING_SYM}, {10, GEM_SYM}, {0, 0}}, shkrings},
 	{"quality apparel and accessories", WAND_SYM, 3, D_SHOP,
-	    {{90, WAND_SYM}, {5, -PAIR_OF_GLOVES}, {5, -ELVEN_CLOAK}},
+	    {{90, WAND_SYM}, {5, -PAIR_OF_GLOVES}, {5, -ELVEN_CLOAK}, {0, 0}},
 	     shkwands},
 #ifdef SPELLS
 	{"rare books", SPBOOK_SYM, 3, D_SHOP,
@@ -175,7 +176,7 @@ int sx, sy;
     int		atype;
 
     /* select an appropriate artifact type at random */
-    for(j = rn2(100), i = 0; j -= shp->iprobs[i].iprob; i++)
+    for(j = rnd(100), i = 0; j -= shp->iprobs[i].iprob; i++)
 	if (j < 0)
 	    break;
 
@@ -323,7 +324,10 @@ saleable(nshop, obj)			/* does "shop" stock this item type */
 	if(shtypes[nshop].symb == RANDOM_SYM) return(1);
 	else {
 	    for(i = 0; shtypes[nshop].iprobs[i].iprob; i++)
-		if(shtypes[nshop].iprobs[i].itype == obj->olet) return(1);
+		if(shtypes[nshop].iprobs[i].itype < 0) {
+		   if(shtypes[nshop].iprobs[i].itype == - obj->otyp) return(1);
+		}
+	        else if(shtypes[nshop].iprobs[i].itype == obj->olet) return(1);
 	}
 	return(0);
 }

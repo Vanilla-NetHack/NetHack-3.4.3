@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)dog.c	1.4	87/08/08
+/*	SCCS Id: @(#)dog.c	2.3	88/03/29
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* dog.c - version 1.0.3 */
 
 #include	"hack.h"
 extern struct monst *makemon();
@@ -31,6 +30,7 @@ register struct monst *mtmp = makemon(&li_dog,u.ux,u.uy);
 		strcpy(NAME(mtmp2), dogname);
 		replmon(mtmp, mtmp2);
 		mtmp = mtmp2;
+		dogname[0] = '\0';	/* name only first dog */
 	}
 #endif	/* DOGNAME */
 	initedog(mtmp);

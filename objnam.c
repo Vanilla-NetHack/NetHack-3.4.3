@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)objnam.c	2.1	87/09/28
+/*	SCCS Id: @(#)objnam.c	2.3	88/01/21
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 #include	"hack.h"
@@ -284,6 +284,8 @@ register char *bp = xname(obj);
 		Sprintf(prefix, "%u ", obj->quan);
 	else
 		Strcpy(prefix, "a ");
+	if((obj->cursed && obj->known))
+		Strcat(prefix, "cursed ");
 	switch(obj->olet) {
 	case AMULET_SYM:
 		if(strncmp(bp, "cheap ", 6))
@@ -306,27 +308,39 @@ register char *bp = xname(obj);
 		break;
 #ifdef MARKER
 	case TOOL_SYM:			/* temp. hack by GAN 11/18/86 */
-		if(obj->otyp != MAGIC_MARKER) break;
+		if(obj->owornmask & W_TOOL) { /* blindfold or badge */
+			Strcat(bp, " (being worn)");
+			break;
+		}
+		if(!(obj->otyp == MAGIC_MARKER || obj->otyp == LAMP)) break;
+		/* if marker or lamp fall trough to show charges */
 #endif
 	case WAND_SYM:
 		if(obj->known)
 			Sprintf(eos(bp), " (%d)", obj->spe);
 		break;
 	case RING_SYM:
-		if(obj->owornmask & W_RINGR) Strcat(bp, " (on right hand)");
-		if(obj->owornmask & W_RINGL) Strcat(bp, " (on left hand)");
+		if(obj->owornmask & W_RINGR) Strcat(bp, " (on right ");
+		if(obj->owornmask & W_RINGL) Strcat(bp, " (on left ");
+		if(obj->owornmask & W_RING) {
+		    if (humanoid(u.usym)) Strcat(bp, "hand)");
+		    else		  Strcat(bp, "paw)");
+		}
 		if(obj->known && (objects[obj->otyp].bits & SPEC)) {
 			Strcat(prefix, sitoa(obj->spe));
 			Strcat(prefix, " ");
 		}
 		break;
 	}
-	if(obj->owornmask & W_WEP)
-		Strcat(bp, " (weapon in hand)");
+	if(obj->owornmask & W_WEP) {
+		Strcat(bp, " (weapon in ");
+		    if (humanoid(u.usym)) Strcat(bp, "hand)");
+		    else		  Strcat(bp, "paw)");
+	}
 	if(obj->unpaid)
 		Strcat(bp, " (unpaid)");
-	if(!strcmp(prefix, "a ") && index(vowels, *bp))
-		Strcpy(prefix, "an ");
+	if(!strcmp(prefix, " a ") && index(vowels, *bp))
+		Strcpy(prefix, " an ");
 	bp = strprepend(bp, prefix);
 	return(bp);
 }
@@ -412,19 +426,18 @@ int blessed=0;
 		cnt = 1;
 		bp += 2;
 	}
-#ifdef KAA
-	if(!strncmp(bp,"blessed ",8)) {
-		blessed=1;
-		bp += 8;
-	}
-#endif
 	if(!cnt && digit(*bp)){
 		cnt = atoi(bp);
 		while(digit(*bp)) bp++;
 		while(*bp == ' ') bp++;
 	}
 	if(!cnt) cnt = 1;		/* %% what with "gems" etc. ? */
-
+#ifdef KAA
+	if(!strncmp(bp, "blessed ",8)) {
+		blessed=1;
+		bp += 8;
+	}
+#endif
 	if(*bp == '+' || *bp == '-'){
 		spesgn = (*bp++ == '+') ? 1 : -1;
 		spe = atoi(bp);
@@ -528,6 +541,13 @@ sing:
 		goto srch;
 	}
 
+#ifdef SHIRT
+	if (!strcmp(bp, "hawaiian shirt")) {
+		*(bp) = 'H';
+		an = bp;
+		goto srch;
+	}
+#endif
 	p = eos(bp);
 #if defined(KOPS) && !defined(KJSMODS)
 	if (!strcmp(p-3, "kop")) {
@@ -607,7 +627,7 @@ typfnd:
 	if(heavy)	otmp->owt += 15;
 
 	if(cnt > 0 && index("%?!*)", let) &&
-		(cnt < 4 ||
+		(cnt < rnd(6) ||
 #ifdef WIZARD
 		wizard ||
 #endif
@@ -618,7 +638,7 @@ typfnd:
 #endif
 		))		otmp->quan = cnt;
 
-	if(spe > 3 && spe > otmp->spe) {
+	if(spe > rnd(5) && spe > otmp->spe) {
 #ifdef WIZARD
 	    if(!wizard)
 #endif
@@ -631,7 +651,7 @@ typfnd:
 		else otmp->dknown=1;
 	}
 #endif
-	if(spe == 3 && u.uluck < 0)
+	if(spe > 2 && u.uluck < 0)
 		spesgn = -1;
 	if(let != WAND_SYM && spesgn == -1)
 		spe = -spe;
@@ -645,6 +665,10 @@ typfnd:
 	else if(typ == MAGIC_MARKER)
 		spe = rn1(50,50);
 #endif
+	else if(typ == LAMP)
+		spe = rnd(10);
+	else if(typ == MAGIC_LAMP)
+		spe = 1;
 	otmp->spe = spe;
 
 	if(spesgn == -1)

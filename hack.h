@@ -1,10 +1,8 @@
-/*	SCCS Id: @(#)hack.h	2.1	87/10/18
+/*	SCCS Id: @(#)hack.h	2.3	87/12/12
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 #ifndef HACK_H
 #define HACK_H
-
-#include "extern.h"
 
 #ifdef __TURBOC__
 /* work around the case-insensitivity of the DOS linker */
@@ -19,6 +17,7 @@
 #define itoa itoa_
 #endif
 
+#include "extern.h"
 
 #define	Null(type)	((struct type *) 0)
 

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)makemon.c	2.2	87/11/29
+/*	SCCS Id: @(#)makemon.c	2.3	87/12/12
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 #include	"hack.h"
@@ -22,6 +22,16 @@ struct permonst giant_rat = { "giant rat",'r',0,12,7,0,1,3,0 };
 # endif
 #endif /* KJSMODS /**/
 
+struct permonst grey_dragon   = { "grey dragon",  'D',10,9,-1,20,3,8,0 };
+struct permonst red_dragon    = { "red dragon",   'D',10,9,-1,20,3,8,0 };
+struct permonst orange_dragon = { "orange dragon",'D',10,9,-1,20,3,8,0 };
+struct permonst white_dragon  = { "white dragon", 'D',10,9,-1,20,3,8,0 };
+struct permonst black_dragon  = { "black dragon", 'D',10,9,-1,20,3,8,0 };
+struct permonst blue_dragon   = { "blue dragon",  'D',10,9,-1,20,3,8,0 };
+struct permonst green_dragon  = { "green dragon", 'D',10,9,-1,20,3,8,0 };
+struct permonst yellow_dragon = { "yellow dragon",'D',10,9,-1,20,3,8,0 };
+extern struct permonst pm_gremlin;
+
 /*
  * called with [x,y] = coordinates;
  *	[0,0] means anyplace
@@ -40,7 +50,7 @@ register struct permonst *ptr;
 	boolean anything = (!ptr);
 	int zlevel = dlevel;
 #ifdef BVH
-	if(has_amulet()) zlevel = 40;
+	if(has_amulet()) zlevel = MAXLEVEL;
 #endif
 	/* if a monster already exists at the position, return */
 	if(x != 0 || y != 0) if(m_at(x,y)) return((struct monst *) 0);
@@ -112,6 +122,26 @@ gotmon:
 	mtmp->mx = x;
 	mtmp->my = y;
 	mtmp->mcansee = 1;
+	if(ptr->mlet == 'D') {
+		mtmp->dragon = rn2(8);
+		switch(mtmp->dragon) {
+			case 0:	mtmp->data = &grey_dragon;	break;
+			case 1:	mtmp->data = &red_dragon;	break;
+			case 2:	mtmp->data = &orange_dragon;	break;
+			case 3:	mtmp->data = &white_dragon;	break;
+			case 4:	mtmp->data = &black_dragon;	break;
+			case 5:	mtmp->data = &blue_dragon;	break;
+			case 6:	mtmp->data = &green_dragon;	break;
+			case 7:	mtmp->data = &yellow_dragon;	break;
+		}
+	}
+	/* if gnome, make a gremlin or if gremlin make sure it stays gremlin */
+	if((ptr->mlet == 'G' && zlevel >= 10 && rn2(4)) || 
+		!strcmp(ptr->mname, "gremlin")) {
+		ptr = PM_GREMLIN;
+		mtmp->data = PM_GREMLIN;
+		mtmp->isgremlin = 1;
+	}
 	if(ptr->mlet == 'M'){
 		mtmp->mimic = 1;
 		mtmp->mappearance = ']';
@@ -138,11 +168,20 @@ gotmon:
 		else {
 			mtmp->cham = 1;
 			(void) newcham(mtmp,
+# ifndef RPH
 				&mons[zlevel+14+rn2(CMNUM-14-zlevel)]);
+# else
+				(struct permonst *)0);
+# endif
 		}
 #else
 		mtmp->cham = 1;
-		(void) newcham(mtmp, &mons[zlevel+14+rn2(CMNUM-14-zlevel)]);
+		(void) newcham (mtmp,
+# ifndef RPH
+				&mons[zlevel+14+rn2(CMNUM-14-zlevel)]);
+# else
+				0);
+# endif
 #endif
 	}
 	if(ptr->mlet == 'I' || ptr->mlet == ';')
@@ -177,6 +216,7 @@ gotmon:
 #ifdef SAC
 	       || ptr->mlet == '3'
 #endif /* SAC /**/
+	       || (ptr->mlet == 'G' && mtmp->isgremlin)
 				  ) {
 
 		coord mm;
@@ -211,20 +251,23 @@ struct monst *mtmp;
 # endif
 # ifdef SAC
 	case '3':			/* Outfit the troops */
-		if (!rn2(4)) {
+		if (!rn2(5)) {
 			otmp = mksobj(HELMET);
 			mpickobj(mtmp, otmp); }
-		if (!rn2(4)) {
+		if (!rn2(5)) {
 			otmp = mksobj(CHAIN_MAIL);
 			mpickobj(mtmp, otmp); }
-		if (!rn2(3)) {
+		if (!rn2(4)) {
 			otmp = mksobj(DAGGER);
 			mpickobj(mtmp, otmp); }
-		if (!rn2(6)) {
+		if (!rn2(7)) {
 			otmp = mksobj(SPEAR);
 			mpickobj(mtmp, otmp); }
+		if (!rn2(3)) {
+			otmp = mksobj(K_RATION);
+			mpickobj(mtmp, otmp); }
 		if (!rn2(2)) {
-			otmp = mksobj(TIN);
+			otmp = mksobj(C_RATION);
 			mpickobj(mtmp, otmp); }
 # endif /* SAC /**/
 # ifdef KOPS

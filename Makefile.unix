@@ -1,5 +1,5 @@
 #	Hack or Quest Makefile.
-#	SCCS Id: @(#)Makefile.unix	2.1	87/10/08
+#	SCCS Id: @(#)Makefile.unix	2.3	88/02/12
 
 # if you are cross-compiling (eg. from Xenix into a Dos enviornment)
 # you will have to redefine these filenames.
@@ -72,7 +72,7 @@ Guidebook:	Guidebook.mn
 	nroff -mn Guidebook.mn > Guidebook
 
 makedefs:	makedefs.c alloc.o config.h
-	cc -o makedefs alloc.o makedefs.c
+	cc $(CFLAGS) -o makedefs alloc.o makedefs.c
 
 RUMORFILES= rumors.base rumors.kaa rumors.mrx
 
@@ -133,12 +133,14 @@ initial:
 	mkdir $(GAMEDIR) $(GAMEDIR)/save
 	touch $(GAMEDIR)/perm
 	touch $(GAMEDIR)/record
+	touch $(GAMEDIR)/logfile
 	chown $(GAMEUID) $(SHELLDIR)/$(GAME) $(GAMEDIR) $(GAMEDIR)/*
 	chgrp $(GAMEGRP) $(SHELLDIR)/$(GAME) $(GAMEDIR) $(GAMEDIR)/*
 	chmod 666 $(GAMEDIR)/*
 	chmod 777 $(GAMEDIR) $(GAMEDIR)/save
 
 install: $(VARAUX) $(GAME)
+	strip $(GAME)
 	-mkdir $(GAMEDIR)
 	-mkdir $(GAMEDIR)/save
 	-rm -f $(GAMEDIR)/$(GAME)

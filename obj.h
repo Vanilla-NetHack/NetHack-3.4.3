@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)obj.h	1.4	87/08/08
+/*	SCCS Id: @(#)obj.h	2.3	88/01/21
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* obj.h - version 1.0.3 */
 
 #ifndef OBJ_H
 #define OBJ_H
@@ -40,7 +39,13 @@ struct obj {
 #define	W_ARMH	04L
 #define	W_ARMS	010L
 #define	W_ARMG	020L
+#define	W_TOOL	040L	/* wearing a blindfold or badge */
+#ifdef SHIRT
+#define W_ARMU  0100L
+#define W_ARMOR		(W_ARM | W_ARM2 | W_ARMH | W_ARMS | W_ARMG | W_ARMU)
+#else
 #define	W_ARMOR		(W_ARM | W_ARM2 | W_ARMH | W_ARMS | W_ARMG)
+#endif
 #define	W_RINGL	010000L	/* make W_RINGL = RING_LEFT (see uprop) */
 #define	W_RINGR	020000L
 #define	W_RING		(W_RINGL | W_RINGR)

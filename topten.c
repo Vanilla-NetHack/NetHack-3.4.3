@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)topten.c	2.1	87/09/28
+/*	SCCS Id: @(#)topten.c	2.3	88/02/01
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 #include <stdio.h>
@@ -9,7 +9,10 @@
 
 #define	Sprintf	(void) sprintf
 extern char plname[], pl_character[];
-extern char *itoa(), *ordin(), *eos();
+#ifndef MSC		/* set by the Microsoft "C" compiler */
+extern	char	*itoa();
+#endif
+extern	char	*ordin(), *eos();
 extern int done_hup, done_stopprint;
 
 #define newttentry() (struct toptenentry *) alloc(sizeof(struct toptenentry))
@@ -46,11 +49,19 @@ topten(){
 	FILE *rfile;
 	register flg = 0;
 	extern char *getdate();
+#ifdef LOGFILE
+	char *lgfile = LOGFILE;
+	FILE *lfile;
+	char *loglock = "logfile_lock";
+	int sleeplgct = 30;
+#endif
+
 #ifndef DGK
 #define	HUP	if(!done_hup)
 #else
 #define HUP
 #endif
+
 #ifdef UNIX
 	while(link(recfile, reclock) == -1) {
 		HUP perror(reclock);
@@ -90,6 +101,32 @@ topten(){
 	/* assure minimum number of points */
 	if(t0->points < POINTSMIN)
 		t0->points = 0;
+#ifdef LOGFILE		/* used for debugging (who dies of what, where) */
+	while(link(lgfile, loglock) == -1) {
+		HUP perror(loglock);
+		if(!sleeplgct--) {
+			HUP puts("I give up. Sorry.");
+			HUP puts("Perhaps there is an old logfile_lock around?");
+			goto lgend;
+		}
+		HUP printf("Waiting for access to log file. (%d)\n",
+ 			sleeplgct);
+		HUP (void) fflush(stdout);
+		sleep(1);
+	}
+	if(!(lfile = fopen(lgfile,"a"))){
+		HUP puts("Cannot open log file!");
+		goto lgend;
+	}
+	fprintf(lfile,"%6s %d %d %d %d %d %ld %c%c %s,%s\n",
+	    t0->date, t0->uid,
+	    t0->level, t0->maxlvl,
+	    t0->hp, t0->maxhp, t0->points,
+	    t0->plchar, t0->sex, t0->name, t0->death);
+	fclose(lfile);
+	(void) unlink(loglock);
+      lgend:;	
+#endif
 
 	t1 = tt_head = newttentry();
 	tprev = 0;
@@ -254,7 +291,7 @@ char linebuf[BUFSZ];
 		(t1->sex == 'F') ? "her" : "his");
 	  else if(!strncmp(t1->death,"starv",5))
 	    Sprintf(eos(linebuf), "starved to death"), starv = TRUE;
-	  else Sprintf(eos(linebuf), "was killed"), killed = TRUE;
+	  else Sprintf(eos(linebuf), ", killed"), killed = TRUE;
 	  Sprintf(eos(linebuf), " on%s level %d",
 	    (killed || starv) ? "" : " dungeon", t1->level);
 	  if(t1->maxlvl != t1->level)

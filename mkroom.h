@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mkroom.h	2.1	87/09/23
+/*	SCCS Id: @(#)mkroom.h	2.3	87/12/12
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 /* mkroom.h - types and structures for room and shop initialization */
@@ -19,7 +19,7 @@ struct shclass {
 	struct itp {
 	    int	iprob;	/* probability of an item type */
 	    int itype;	/* item type: if >=0 a class, if < 0 a specific item */
-	} iprobs[3];
+	} iprobs[5];
 	char **shknms;	/* string list of shopkeeper names for this type */
 };
 extern struct shclass shtypes[];	/* defined in shknam.c */
@@ -37,7 +37,16 @@ extern coord doors[DOORMAX];
 #define	VAULT		 4	/* contains piles of gold */
 #define	BEEHIVE		 5	/* contains killer bees and royal jelly */
 #define	MORGUE		 6	/* contains corpses, undead and ghosts */
-#define	ZOO		 7	/* floor covered with treasure and monsters */
-#define	SHOPBASE	 8	/* everything above this is a shop */
+#define BARRACKS	 7	/* contains soldiers and their gear */
+#define	ZOO		 8	/* floor covered with treasure and monsters */
+#define	SHOPBASE	 9	/* everything above this is a shop */
 
 #define IS_SHOP(x)	((x).rtype >= SHOPBASE)
+
+/* mkshop.c entry points (should become mkroom.c in next major release) */
+extern void mkroom();		/* make and stock a room of a given type */
+extern boolean nexttodoor();	/* TRUE if adjacent to a door */
+extern boolean has_dnstairs();	/* TRUE if given room has a down staircase */
+extern boolean has_upstairs();	/* TRUE if given room has an up staircase */
+extern int dist2();		/* Euclidean square-of-distance function */
+extern struct permonst *courtmon();	/* generate a court monster */

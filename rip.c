@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)rip.c	1.4	87/08/08
+/*	SCCS Id: @(#)rip.c	2.3	88/02/11
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.rip.c - version 1.0.2 */
 
 #include <stdio.h>
 #include "hack.h"
@@ -35,7 +34,7 @@ outrip(){
 	register x,y;
 
 	cls();
-	(void) strcpy(buf, plname);
+	(void) sprintf(buf,"%s%s", (Badged) ? "Officer " : "", plname);
 	buf[16] = 0;
 	center(6, buf);
 	(void) sprintf(buf, "%ld AU", u.ugold);
@@ -43,6 +42,13 @@ outrip(){
 	(void) sprintf(buf, "killed by%s",
 		!strncmp(killer, "the ", 4) ? "" :
 		!strcmp(killer, "starvation") ? "" :
+		!strncmp(killer, "Mr.") ? "" :
+		!strncmp(killer, "Ms.") ? "" :
+#ifdef STOOGES
+		!strcmp(killer, "Larry") ? "" :
+		!strcmp(killer, "Curly") ? "" :
+		!strcmp(killer, "Moe") ? "" :
+#endif
 		index(vowels, *killer) ? " an" : " a");
 	center(8, buf);
 	(void) strcpy(buf, killer);

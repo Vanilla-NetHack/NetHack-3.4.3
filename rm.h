@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)rm.h	2.1	87/10/17
+/*	SCCS Id: @(#)rm.h	2.3	88/03/29
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 /*
@@ -16,12 +16,13 @@
 #define	LDOOR 5
 #define	POOL	6	/* not yet fully implemented */
 			/* this should in fact be a bit like lit */
-#define	DOOR 7
-#define	CORR 8
-#define	ROOM 9
-#define	STAIRS 10
+#define	DOOR	  7
+#define	CORR	  8
+#define	ROOM	  9
+#define	STAIRS 	 10
 #define FOUNTAIN 11
-#define THRONE 12
+#define THRONE	 12
+#define	SINK	 13
 
 /*
  * Avoid using the level types in inequalities:
@@ -42,6 +43,7 @@
 #define IS_POOL(typ)    ((typ) == POOL)
 #define IS_THRONE(typ)    ((typ) == THRONE)
 #define IS_FOUNTAIN(typ)        ((typ) == FOUNTAIN)
+#define IS_SINK(typ)	((typ) == SINK)
 
 /*
  * The level-map symbols may be compiled in or defined at initialization time
@@ -69,6 +71,7 @@
 #define FOUNTAIN_SYM    '{'
 #define THRONE_SYM      '\\'
 #define WEB_SYM         '"'
+#define SINK_SYM	'#'
 #else /* GRAPHICS */
 
 /* screen symbols for using character graphics. */
@@ -83,6 +86,9 @@ struct symbols {
 #endif
 #ifdef SPIDERS
     unsigned char web;
+#endif
+#ifdef SINKS
+    unsigned char sink;
 #endif
 };
 extern struct symbols showsyms, defsyms;
@@ -104,6 +110,7 @@ extern struct symbols showsyms, defsyms;
 #define FOUNTAIN_SYM    showsyms.fountain
 #define THRONE_SYM      showsyms.throne
 #define WEB_SYM         showsyms.web
+#define SINK_SYM	showsyms.sink
 #endif
 
 #define	ERRCHAR	']'

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)version.c	2.1	87/11/09
+/*	SCCS Id: @(#)version.c	2.3	88/02/11
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 #include	"hack.h"
@@ -72,6 +72,8 @@ doMSCversion()
 	pg_line("    Gil Neiger         Ralf Brown         Eric S. Raymond");
 	pg_line("    Eric Backus        Roland McGrath     Greg Laskin");
 	pg_line("    Bruce Holloway     Richard P. Hughey  Kevin Sweet");
+	pg_line("    Steve Linhart      Bruce Mewborne     Janet Walz");
+	pg_line("    and...             The Unknown Hacker");
 	set_pager(1);
 	return(0);
 quit:

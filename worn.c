@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)worn.c	1.4	87/08/08
+/*	SCCS Id: @(#)worn.c	2.3	88/01/21
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* worn.c - version 1.0.2 */
 
 #include "hack.h"
 
@@ -13,6 +12,7 @@ struct worn {
 	{ W_ARMH, &uarmh },
 	{ W_ARMS, &uarms },
 	{ W_ARMG, &uarmg },
+	{ W_ARMU, &uarmu },
 	{ W_RINGL, &uleft },
 	{ W_RINGR, &uright },
 	{ W_WEP, &uwep },

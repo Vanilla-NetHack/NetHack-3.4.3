@@ -1,10 +1,11 @@
-/*	SCCS Id: @(#)do_name.c	2.1	87/11/09
+/*	SCCS Id: @(#)do_name.c	2.3	88/02/11
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 #include <stdio.h>
 #include "hack.h"
 extern char plname[];
 extern char *rndmonnam();
+extern void savech();
 
 getpos(cc,force,goal)
 coord	*cc;
@@ -255,6 +256,12 @@ extern char *shkname();
 			(void) strcpy(buf, shkname(mtmp));
 			break;
 		}
+#ifdef STOOGES
+		if(mtmp->isstooge) {
+			(void) strcpy(buf, mtmp->data->mname);
+			break;
+		}
+#endif
 		/* fall into next case */
 	default:
 		(void) sprintf(buf, "the %s%s",

@@ -1,8 +1,9 @@
-/*	SCCS Id: @(#)rnd.c	2.0	87/09/15
+/*	SCCS Id: @(#)rnd.c	2.3	87/12/12
  */
 #include	"config.h"
+/* rand() is either random() or lrand48() - see config.h. */
 #ifdef UNIX
-#define RND(x)	(random() % (x))
+#define RND(x)	(rand() % (x))
 #else
 /* Good luck: the bottom order bits are cyclic. */
 #define RND(x)	((rand()>>3) % (x))
@@ -43,13 +44,14 @@ register x;
 	return(tmp);
 }
 
-rnz(x)
-register x;
+rnz(i)
+int i;
 {
-        register tmp = 1000;
+	register long x = i;
+        register long tmp = 1000;
 	tmp += rn2(1000);
 	tmp *= rne(4);
 	if (rn2(2)) { x *= tmp; x /= 1000; }
 	else { x *= 1000; x /= tmp; }
-	return(x);
+	return((int)x);
 }

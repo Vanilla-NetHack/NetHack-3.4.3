@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)spell.c	2.1	87/10/07
+/*	SCCS Id: @(#)spell.c	2.3	87/12/12
  */
 
 #include "hack.h"
@@ -304,10 +304,15 @@ docast()
 
 			mtmp = makedog();
 			if(mtmp) {
-				/* make it into something else */
-				(void) newcham(mtmp, &mons[dlevel+14+rn2(CMNUM-14-dlevel)]);
-				if(confused)
-					mtmp->mtame = mtmp->mpeaceful = 0;
+			    /* make it into something else */
+			    (void) newcham(mtmp,
+#ifndef RPH
+				&mons[dlevel+14+rn2(CMNUM-14-dlevel)]);
+#else
+				(struct pemonst *)0);
+#endif
+			    if(confused)
+				mtmp->mtame = mtmp->mpeaceful = 0;
 			}
 		}
 		break;
@@ -376,44 +381,36 @@ losespells() {
 dovspell() {
 
 	register int max, i, side;
+	extern	 char morc;
 	char     buf[BUFSZ],
+		 any[BUFSZ],
 		 *spellname();
 
 	if (spl_book[0].sp_id == NO_SPELL)  {
 
 		pline("You don't know any spells right now.");
 		return(0);
-	} else  {
+	}
 
-	    for(max = 1; (max < MAXSPELL) && (spl_book[max].sp_id != NO_SPELL); max++);
-	    if (max >= MAXSPELL)  {
+	for(max = 1; (max < MAXSPELL) && (spl_book[max].sp_id != NO_SPELL); max++);
+	if (max >= MAXSPELL)  {
 
 		impossible("Too many spells memorized.");
 		return(0);
-	    }
 	}
-	set_pager(0);
-	side = (max + 1) / 2;
-	if(page_line("Currently known spells:") || page_line(""))  goto quit;
+	morc = 0;		/* just to be sure */
+	cornline(0, "Currently known spells:");
 
-	for(i = 1; i <= side; i++) {
+	for(i = 1; i <= max; i++) {
 
-		if((i < side) || !(max % 2))  {
+		(void) sprintf(buf, "%c - %s (%d)", 
+			spellet(i),spellname(i),spellev(i));
+		cornline(1, buf);
+		any[i-1] = spellet(i);
+  	}
+	any[i-1] = 0;
+	cornline(2, any);
 
-		    (void) sprintf(buf, "%c - (%d) %22s          %c - (%d) %22s",
-				   spellet(i), spellev(i), spellname(i),
-				   spellet(i + side), spellev(i + side), spellname(i + side));
-		} else {
-
-		    (void) sprintf(buf, "%c - (%d) %22s", spellet(i), spellev(i), spellname(i));
-		}
-		if(page_line(buf)) goto quit;
-	}
-
-	set_pager(1);
-	return(0);
-quit:
-	set_pager(2);
 	return(0);
 }
 

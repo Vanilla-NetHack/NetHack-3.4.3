@@ -1,10 +1,10 @@
-/*	SCCS Id: @(#)shk.c	2.1	87/08/23
+/*	SCCS Id: @(#)shk.c	2.3	88/01/24
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 #include "hack.h"
 #ifdef QUEST
 int shlevel = 0;
-struct monst *shopkeeper = 0;
+struct monst *mkmon_at(), *shopkeeper = 0;
 struct	obj	*billobjs = 0;
 obfree(obj,merge) register struct obj *obj, *merge; {
 	free((char *) obj);
@@ -223,8 +223,8 @@ register roomno = inroom(u.ux,u.uy);
 		if(!ESHK(shopkeeper)->following) {
 		    boolean box, pick;
 
-		    pline("Hello %s! Welcome%s to %s's %s!",
-			plname,
+		    pline("Hello %s%s! Welcome%s to %s's %s!",
+			(Badged) ? "Officer " : "", plname,
 			ESHK(shopkeeper)->visitct++ ? " again" : "",
 			shkname(shopkeeper),
 			shtypes[rt - SHOPBASE].name);
@@ -547,6 +547,7 @@ register struct bill_x *bp;
 addtobill(obj) register struct obj *obj; {
 register struct bill_x *bp;
 char	buf[40];
+extern char *typename();
 	if(!inshop() ||
 	(u.ux == ESHK(shopkeeper)->shk.x && u.uy == ESHK(shopkeeper)->shk.y) ||
 	(u.ux == ESHK(shopkeeper)->shd.x && u.uy == ESHK(shopkeeper)->shd.y) ||
@@ -572,7 +573,11 @@ char	buf[40];
 	strcpy(buf, "For you, ");
 	if (ANGRY(shopkeeper)) strcat(buf, "scum ");
 	else {
-	    switch(rnd(4) + u.udemigod) {
+	    switch(rnd(4)
+#ifdef HARD
+		   + u.udemigod
+#endif
+				) {
 		case 1:	strcat(buf, "good");
 			break;
 		case 2:	strcat(buf, "honored");
@@ -589,7 +594,7 @@ char	buf[40];
 	}
 	pline("%s; only %d %s %s.", buf, bp->price,
 			(bp->bquan > 1) ? "per" : "for this",
-			typename(obj->otyp));
+			typename((int)obj->otyp));
 
 	ESHK(shopkeeper)->billct++;
 	obj->unpaid = 1;
@@ -915,8 +920,9 @@ register struct monst *shkp;
 		}
 		if(ESHK(shkp)->following) {
 			if(strncmp(ESHK(shkp)->customer, plname, PL_NSIZ)){
-				pline("Hello %s! I was looking for %s.",
-					plname, ESHK(shkp)->customer);
+			pline("Hello %s%s! I was looking for %s.",
+				(Badged) ? "Officer " : "", 
+				plname, ESHK(shkp)->customer);
 				ESHK(shkp)->following = 0;
 				return(0);
 			}
@@ -925,11 +931,13 @@ register struct monst *shkp;
 				return(0);
 			}
 			if(moves > followmsg+4) {
-				pline("Hello %s! Didn't you forget to pay?",
-					plname);
+				pline("Hello %s%s! Didn't you forget to pay?",
+					(Badged) ? "Officer " : "", plname);
 				followmsg = moves;
+				if (Badged)
+				    pline ("You should be upholding the law!");
 #ifdef HARD
-				if (!rn2(5)) {
+				if (!rn2((Badged) ? 3 : 5)) {
 	    pline ("%s doesn't like customers who don't pay.", Monnam(shkp));
 				    NOTANGRY(shkp) = 0;
 				}
@@ -971,8 +979,8 @@ register struct monst *shkp;
 				u.uy == ESHK(shkp)->shd.y);
 		  if(uondoor) {
 		    if(ESHK(shkp)->billct)
-			pline("Hello %s! Will you please pay before leaving?",
-				plname);
+			pline("Hello %s%s! Will you please pay before leaving?",
+				(Badged) ? "Officer " : "", plname);
 		    badinv = (carrying(PICK_AXE) || carrying(ICE_BOX));
 		    if(satdoor && badinv)
 			return(0);

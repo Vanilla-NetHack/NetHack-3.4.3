@@ -1,7 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* makedefs.c - NetHack version 2.2 */
+/* makedefs.c - NetHack version 2.3 */
 
-static	char	SCCS_Id[] = "@(#)makedefs.c	2.2\t87/11/29";
+static	char	SCCS_Id[] = "@(#)makedefs.c	2.3\t88/02/18";
 
 #include	<stdio.h>
 #include	"config.h"
@@ -105,6 +105,9 @@ FILE	*freopen();
 	printf("#define\tPOLY_TRAP\t%d\n", ntrap++);
 # endif
 #endif
+#ifdef SAC
+	printf("#define\tLANDMINE\t%d\n", ntrap++);
+#endif /* SAC */
 	printf("\n#define\tTRAPNUM\t%d\n", ntrap);
 	fclose(stdin);
 	fclose(stdout);
@@ -236,6 +239,11 @@ FILE	*freopen();
 		printf("\"\tan amulet (or a web)\n");
 	    else
 #endif
+#ifdef  SINKS
+	    if (!strcmp(inline, "#	a corridor"))
+		printf("#\ta corridor (or a kitchen sink)\n");
+	    else
+#endif
 #ifdef	SPELLS
 	    if (!strcmp(inline, "+	a door"))
 		printf("+\ta door (or a spell book)\n");
@@ -256,7 +264,15 @@ FILE	*freopen();
 		puts(inline);
 	}
 #ifdef SAC
-	printf("3\ta soldier\n");
+	printf("3\ta soldier;\n");
+	printf("\tThe soldiers  of Yendor are  well-trained in the art of war,\n");
+	printf("\tmany  trained by  the wizard himself.  Some say the soldiers\n");
+	printf("\tare explorers  who were  unfortunate enough  to be captured,\n");
+	printf("\tand  put under the wizard's spell.  Those who have  survived\n");
+	printf("\tencounters  with  soldiers   say  they  travel  together  in\n");
+	printf("\tplatoons,  and are fierce fighters.  Because of the  load of\n");
+	printf("\ttheir  combat gear,  however,  one can usually run away from\n");
+	printf("\tthem, and doing so is considered a wise thing.\n");
 #endif
 #ifdef RPH
 	printf("8\tthe medusa;\n");
@@ -398,6 +414,7 @@ struct inherent {
 			"Poison_resistance", "abcghikqsuvxyADFQSVWXZ&",
 			"Fire_resistance", "gD&",
 			"Cold_resistance", "gFY",
+			"Shock_resistance", "g;",
 			"Teleportation", "LNt",
 			"Teleport_control", "t",
 			"", "" };

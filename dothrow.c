@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)dothrow.c	2.1	87/11/01
+/*	SCCS Id: @(#)dothrow.c	2.3	88/02/02
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* dothrow.c - version 1.0 */
 
 /* Contains code for 't' (throw) */
 
@@ -158,8 +157,7 @@ hitfloor(obj)
 	} else	if(obj->otyp == MIRROR) {
 	    	pline ("The mirror shatters.  That's seven years bad luck!");
 		obfree(obj, Null(obj));
-		u.uluck -= 2;
-		if ((int)u.uluck < LUCKMIN) u.uluck = LUCKMIN;
+		change_luck(-2);
 #endif	
 	} else	if(obj->otyp == EGG) {
 		pline("\"Splash!\"");
@@ -254,16 +252,14 @@ thitmonst(mon, obj)
 			if(obj->dknown &&
 			   objects[obj->otyp].oc_name_known)  {
 				if(objects[obj->otyp].g_val > 0)  {
-					u.uluck += 5;
+					change_luck(5);
 					strcat(buf,addluck);
 				}  else
 					strcat(buf,nogood);
 			}  else  {  /* value unknown to @ */
-				u.uluck++;
+				change_luck(1);
 				strcat(buf,addluck);
 			}
-			if(u.uluck > LUCKMAX)   /* dan@ut-ngp */
-				u.uluck = LUCKMAX;
 			pline(buf);
 			mpickobj(mon, obj);
 			rloc(mon);

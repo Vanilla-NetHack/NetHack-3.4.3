@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)monst.h	2.1	87/09/28
+/*	SCCS Id: @(#)monst.h	2.3	88/02/11
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 struct monst {
@@ -37,6 +37,12 @@ struct monst {
 #endif
 #ifdef WALKIES
 	Bitfield(mleashed,1);	/* monster is on a leash */
+#endif
+	Bitfield(dragon,3);	/* multiple dragon type */
+	Bitfield(isdjinni,1);	/* is djinni */
+	Bitfield(isgremlin,1);	/* is gremlin */
+#ifdef STOOGES
+	Bitfield(isstooge,1);	/* is stooge */
 #endif
 	long mtrapseen;		/* bitmap of traps we've been trapped in */
 	long mlstmv;		/* prevent two moves at once */

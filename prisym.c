@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)prisym.c	2.0	87/09/14
+/*	SCCS Id: @(#)prisym.c	2.3	88/03/29
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 #include <stdio.h>
@@ -233,6 +233,11 @@ register xchar x,y;
 #ifdef NEWCLASS
 	case THRONE:
 		tmp = THRONE_SYM;
+		break;
+#endif
+#ifdef SINKS
+	case SINK:
+		tmp = SINK_SYM;
 		break;
 #endif
 /*

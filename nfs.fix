@@ -1,0 +1,19 @@
+
+
+
+There is a bug in nethack 2.2 which shows up when the playground is
+on a networked filesystem visible to several machines. The symptom is
+a "Can't open alock. Perhaps someone removed it." error when attempting
+to save a game or go up a level. The problem lies in the veryold() routine
+in unix.c which looks to see if the process which created the lock file is
+still running, and if not removes it. Well, on a network the chances are
+that the process won't running on the current machine, but will be running
+on another. My solution was just to remove the check for the existing pid
+and replace it with a return 0. Perhaps better would be another #define
+for NETWORKED?
+--keenan ross		UUCP:     {bellcore,ima,ihnp4}!inmet!keenan
+ Intermetrics, Inc.	INTERNET: ima!inmet!keenan@CCA-UNIX.ARPA
+ 733 Concord Ave.
+ Cambridge, MA  02138	PHONE:    (617) 661-1840
+
+

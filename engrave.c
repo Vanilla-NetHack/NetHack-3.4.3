@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)engrave.c	2.0	87/09/14
+/*	SCCS Id: @(#)engrave.c	2.3	88/02/11
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 #include	"hack.h"
@@ -244,6 +244,15 @@ register struct obj *otmp;
 			type = DUST;
 		}  else  {
 			switch(otmp->otyp)  {
+			case WAN_LIGHTNING:
+				if(!objects[otmp->otyp].oc_name_known) {
+					pline("The %s is a wand of lightning!",
+						xname(otmp));
+					objects[otmp->otyp].oc_name_known = 1;
+					more_experienced(0,10);
+				}
+				type = BURN;
+				break;
 			case WAN_FIRE:
 				if(!objects[otmp->otyp].oc_name_known) {
 					pline("The %s is a wand of fire!",
@@ -390,13 +399,22 @@ register struct obj *otmp;
 	len = strlen(sp);
 	if(!len || *buf == '\033') {
 		/* changed by GAN 11/01/86 to not recharge wand */
-		if(type == BURN)
-			pline("A few sparks fly from the wand of fire.");
-		else
-			if(otmp->otyp == WAN_DIGGING)
-				pline("Gravel flies up from the floor.");
 		return(1);
 	}
+	if(otmp->otyp == WAN_FIRE) {
+		if (!Blind) pline("Flames fly from the wand.");
+		else pline("You feel the wand heat up.");
+	} else if(otmp->otyp == WAN_LIGHTNING) {
+		if (!Blind) {
+			pline("Sparks fly from the wand.");
+			pline("You are blinded by the flashing!");
+			Blinded += rnd(50);
+			seeoff(0);
+		} else pline("You hear crackling!");
+	} else if(otmp->otyp == WAN_DIGGING) {
+		if (!Blind) pline("Gravel flies up from the floor.");
+		else pline("You hear drilling!");
+  	}
 	        /* kludge by stewr 870708 */
 	for (sptmp = sp, tmp=0; !(tmp == len); sptmp++,tmp++) {
 	        if (((type == DUST) && !rn2(25))

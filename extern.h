@@ -1,8 +1,11 @@
-/*	SCCS Id: @(#)extern.h	2.1	87/10/19
+/*	SCCS Id: @(#)extern.h	2.3	87/12/12
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 #include "config.h"
 
+/*
+ *	I have been told, that in Sys V R3.1, this has to be commented out.
+ */
 #ifndef MSDOS
 extern char *sprintf();
 #endif
@@ -15,7 +18,7 @@ extern xchar dlevel;
 
 #ifdef SPELLS
 #include "spell.h"
-extern	struct spell spl_book[];
+extern	struct spell spl_book[];	/* sized in decl.c */
 #endif
 
 extern int occtime;
@@ -32,6 +35,9 @@ extern char *HI_MON, *HI_OBJ;	/* set up in termcap.c */
 
 #include "obj.h"
 extern struct obj *invent, *uwep, *uarm, *uarm2, *uarmh, *uarms, *uarmg, 
+#ifdef SHIRT
+	*uarmu, /* under-wear, so to speak */
+#endif
 	*uleft, *uright, *fcobj;
 extern struct obj *uchain;	/* defined iff PUNISHED */
 extern struct obj *uball;	/* defined if PUNISHED */

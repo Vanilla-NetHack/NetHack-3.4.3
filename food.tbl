@@ -1,0 +1,95 @@
+.TS
+tab (#),center,expand,box;
+l c c c c
+l | n n n | l.
+Name#Chance#Weight#Energy#Remarks
+_
+food ration #46#4#800
+tripe ration#16#2#200#50% chance of vomiting.
+pancake#3#1#200
+dead lizard#3#1#40#Eat to avoid turning to stone.
+fortune cookie#7#1#40
+carrot#2#1#50
+slice of pizza#5#1#250
+cream pie#3#1#100
+tins:#7#1#0
+- spinach#50#7#600#Adds strength
+- peaches#8#8#40
+- salmon#8#7#60#Slippery hands for 1-15 turns
+- apple juice#8#7#20
+- substance#8#7#500#Tastes awful, adds experience.
+- rotten meat#8#7#-50#Causes vomiting.
+- empty can#8#7#0
+orange#1#1#80
+apple#1#1#50
+pear#1#1#50
+melon#1#1#100
+banana#1#1#80
+candy bar#1#1#100
+egg#1#1#80
+clove of garlic#1#1#40#Wield against vampires.
+lump of royal jelly #0#1#200#Cures xans, strength +
+.TE
+.TS H
+tab (#),center,expand,box;
+l c c c 
+l | n n | l.
+Name#Weight#Energy#Remarks
+_
+.TH
+dead human#40#400#Permanent aggravate monster.
+dead giant ant#3#30#Poisonous.
+dead giant bat#3#30#Confusion.
+dead centaur#50#500
+dead dragon#150#1500#Fire resistance.
+dead floating eye#1#10#Telepathy, damage
+dead freezing sphere#1#10#Cold resistance.
+dead gnome#10#100
+dead hobgoblin#20#200
+dead stalker#40#400#See invisible.
+dead jackal#10#100
+dead kobold#10#100#Poisonous.
+dead leprechaun#40#400#Teleport ability, damage. 
+dead mimic#40#400#Mimic a treasure chest.
+dead nymph#40#400#Teleport ability, damage. 
+dead orc#20#200#Damage.
+dead purple worm#70#700#Damage.
+dead quantum mechanic#20#200#Teleport ability, damage.
+dead rust monster#50#500#Damage.
+dead snake#10#100#Poisonous.
+dead troll#40#400
+dead umber hulk#50#500#Damage.
+dead vampire#40#400Poisonous.
+dead wraith#1#10#Gain level.
+dead xorn#70#700
+dead yeti#70#700#Cold resistance.
+dead zombie#3#30
+dead acid blob#3#30#Poisonous.
+dead giant beetle#1#10#Poisonous.
+dead cockatrice#3#30#Instant death.
+dead dog#20#200#Aggravate monsters.
+dead ettin#3#30
+dead fog cloud#1#10
+dead gelatinous cube#10#100
+dead homunculus#20#200#Poisonous.
+dead imp#1#10
+dead jaguar#30#300#Gain level?
+dead killer bee#1#10#Poison resistance.
+dead leocrotta#50#500
+dead minotaur#70#700# 
+dead nurse#40#400#Heal, aggravate monsters.
+dead owlbear#70#700
+dead piercer#20#200
+dead quivering blob#10#100
+dead giant rat#3#30
+dead giant scorpion#10#100#Poisonous.
+dead tengu#30#300#Teleport ability.
+dead unicorn#30#300#Damage.
+dead violet fungus#10#100#Hallucinogenic.
+dead long worm#50#500
+dead xan#30#300#Damage.
+dead yellow light#1#10#Confusion, vision++
+dead zruty#60#600#Damage.
+dead giant#70#700#Strength++.
+dead daemon#80#800
+.TE

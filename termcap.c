@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)termcap.c	2.1	87/10/19
+/*	SCCS Id: @(#)termcap.c	2.3	87/12/12
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 #include <stdio.h>
@@ -11,12 +11,15 @@
 extern char *tgetstr(), *tgoto(), *getenv();
 extern long *alloc();
 
-#ifndef TERMINFO
+#ifndef SYSV
 # ifndef LINT
 extern			/* it is defined in libtermlib (libtermcap) */
 # endif
-	short ospeed;		/* terminal baudrate; used by tputs */
+	short ospeed;	/* terminal baudrate; used by tputs */
+#else
+short	ospeed = 0;	/* gets around "not defined" error message */
 #endif
+
 static char tbuf[512];
 static char *HO, *CL, *CE, *UP, *CM, *ND, *XD, *BC, *SO, *SE, *TI, *TE;
 static char *VS, *VE, *US, *UE;
@@ -25,46 +28,13 @@ static char PC = '\0';
 char *CD;		/* tested in pri.c: docorner() */
 int CO, LI;		/* used in pri.c and whatis.c */
 
-#ifdef MSDOS
+#if defined(MSDOS) && !defined(TERMLIB)
 static char tgotobuf[20];
 #define tgoto(fmt, x, y)	(sprintf(tgotobuf, fmt, y+1, x+1), tgotobuf)
 #endif /* MSDOS /**/
 
 startup()
 {
-#ifdef MSDOS
-	HO = "\033[H";
-	CL = "\033[2J";
-	CE = "\033[K";
-	UP = "\033[1A";
-	CM = "\033[%d;%dH";	/* used with function tgoto() */
-	ND = "\033[1C";
-	XD = "\033[1B";
-	BC = "\033[1D";
-# ifdef MSDOSCOLOR	/* creps@silver.bacs.indiana.edu */
-	TI = "\033[44;37m";
-	TE = "\033[0m";
-	VS = VE = "";
-	SO = "\033[31m";
-	SE = "\033[44;37m";
-# else
-	TI = TE = VS = VE = "";
-  	SO = "\033[7m";
-  	SE = "\033[0m";
-# endif
-	CD = "\033";
-	CO = COLNO;
-	LI = ROWNO;
-# if defined(DGK) || defined(SORTING)
-#  ifdef MSDOSCOLOR
-	HI = "\033[32m";
-	HE = "\033[44;37m";
-#  else
-	HI = "\033[4m";
-	HE = "\033[0m";
-#  endif
-# endif
-#else /* MSDOS /**/
 	register char *term;
 	register char *tptr;
 	char *tbufptr, *pc;
@@ -117,30 +87,29 @@ startup()
 	US = tgetstr("us", &tbufptr);
 	UE = tgetstr("ue", &tbufptr);
 	SG = tgetnum("sg");	/* -1: not fnd; else # of spaces left by so */
-	if(!SO || !SE || (SG > 0)) SO = SE = US = UE = 0;
+	if(!SO || !SE || (SG > 0)) SO = SE = US = UE = "";
 	TI = tgetstr("ti", &tbufptr);
 	TE = tgetstr("te", &tbufptr);
 	VS = VE = "";
-# ifdef SORTING
+#if defined(SORTING) || defined(MSDOSCOLOR)
 	/* Get rid of padding numbers for HI and HE.  Hope they
 	 * aren't really needed!!!  HI and HE are ouputted to the
 	 * pager as a string - so how can you send it NULLS???
 	 *  -jsb
 	 */
-	    HI = (char *) alloc(strlen(SO) + 1);
-	    HE = (char *) alloc(strlen(SE) + 1);
+	    HI = (char *) alloc((unsigned)(strlen(SO)+1));
+	    HE = (char *) alloc((unsigned)(strlen(SE)+1));
 	    i = 0;
 	    while(isdigit(SO[i])) i++;
 	    strcpy(HI, &SO[i]);
 	    i = 0;
 	    while(isdigit(SE[i])) i++;
 	    strcpy(HE, &SE[i]);
-# endif
+#endif
 	CD = tgetstr("cd", &tbufptr);
 	set_whole_screen();		/* uses LI and CD */
 	if(tbufptr-tbuf > sizeof(tbuf)) error("TERMCAP entry too big...\n");
 	free(tptr);
-#endif /* MSDOS /**/
 #ifdef MSDOSCOLOR
 	init_hilite();
 #endif
@@ -249,7 +218,7 @@ xputc(c) char c; {
 }
 
 xputs(s) char *s; {
-#ifdef MSDOS
+#if defined(MSDOS) && !defined(TERMLIB)
 	fputs(s, stdout);
 #else
 	tputs(s, 1, xputc);
@@ -259,10 +228,6 @@ xputs(s) char *s; {
 cl_end() {
 	if(CE)
 		xputs(CE);
-/*#ifdef MSDOSCOLOR
-/*		xputs(TI);
-/*#endif
-*/
 	else {	/* no-CE fix - free after Harold Rynes */
 		/* this looks terrible, especially on a slow terminal
 		   but is better than nothing */
@@ -278,9 +243,6 @@ cl_end() {
 
 clear_screen() {
 	xputs(CL);
-#ifdef MSDOSCOLOR
-	xputs(TI);
-#endif
 	home();
 }
 
@@ -335,7 +297,7 @@ delay_output() {
 		cmov(curx, cury);
 		(void) fflush(stdout);
 	}
-#else
+#else /* MSDOS /**/
 	if(!flags.nonull)
 #ifdef TERMINFO
 		tputs("$<50>", 1, xputs);
@@ -378,31 +340,59 @@ cl_eos()			/* free after Robert Viduya */
 }
 
 #ifdef MSDOSCOLOR
+/* Sets up highlighting, using ANSI escape sequences, for monsters and 
+ * objects (highlight code found in pri.c). 
+ * The termcap entry for HI (from SO) is scanned to find the background 
+ * color. If everything is o.k., monsters are displayed in the color 
+ * used to define HILITE_MONSTER and objects are displayed in the color 
+ * used to define HILITE_OBJECT. */
 
-#define ESCCHR		'\033'
-#define HILITE_ATTRIB	1	/* highlight */
+#define ESC		0x1b
+#define NONE		0
+#define HIGH_INTENSITY	1
+#define BLACK		0
+#define RED		1
+#define GREEN		2
+#define YELLOW		3
+#define BLUE		4
+#define MAGENTA		5
+#define CYAN		6
+#define WHITE		7
 
-#define HILITE_MONSTER	1	/* red */
-#define HILITE_OBJECT	2	/* green */
+#define HILITE_ATTRIB	NONE
+#define HILITE_MONSTER	RED
+#define HILITE_OBJECT	YELLOW
 
 init_hilite()
 {
-	register int hilen, def_background;
+	register int backg, len, mfore, ofore;
 
-	/* find default background color */
-	hilen = strlen(HI) - 1;
-	if (hilen < 5) def_background = 0;	/* black */
-	else {
-		if (!isdigit(HI[hilen-1])) def_background = 0;
-		else def_background = HI[hilen-1];
+	backg = BLACK;
+	mfore = ofore = WHITE;
+	/* find the background color, HI[len] == 'm' */
+	len = strlen(HI) - 1;
+	if (len > 3) 
+	if (isdigit(HI[len-1]) && 
+	    isdigit(HI[len-2]) && HI[len-2] != 3) {
+			backg = HI[len-1] - '0';
+			mfore = HILITE_MONSTER;
+			ofore = HILITE_OBJECT;
+	}
+	if (mfore == backg || ofore == backg) {
+		if (len < 7) mfore = ofore = WHITE;
+		else {
+			if (HI[2] == '3') mfore = ofore = HI[3] - '0';
+			else if (HI[4] == '3') mfore = ofore = HI[5] - '0';
+			else mfore = ofore = WHITE; /* give up! */
+		}
 	}
 
-	HI_MON = (char *) alloc(sizeof("E[0;33;44m"));
-	sprintf(HI_MON, "%c[%d;3%d;4%dm", ESCCHR, HILITE_ATTRIB, 
-	        HILITE_MONSTER, def_background);
-	HI_OBJ = (char *) alloc(sizeof("E[0;33;44m"));
-	sprintf(HI_OBJ, "%c[%d;3%d;4%dm", ESCCHR, HILITE_ATTRIB, 
-	        HILITE_OBJECT, def_background);
+	HI_MON = (char *) alloc(sizeof("E[0;33;44;54m"));
+	sprintf(HI_MON, "%c[%d;3%d;4%dm", ESC, HILITE_ATTRIB, 
+	        mfore, backg);
+	HI_OBJ = (char *) alloc(sizeof("E[0;33;44;54m"));
+	sprintf(HI_OBJ, "%c[%d;3%d;4%dm", ESC, HILITE_ATTRIB, 
+	        ofore, backg);
 }
 
-#endif /* MSDOSCOLOR */
+#endif

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)unixtty.c	2.1	87/11/09
+/*	SCCS Id: @(#)unixtty.c	2.3	88/03/31
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* tty.c - (Unix) version */
 
@@ -10,6 +10,8 @@
 #include	"extern.h"
 #include	"hack.h"
 #include	"func_tab.h"
+
+extern void savech();
 
 #define	ON	1
 #define OFF	0

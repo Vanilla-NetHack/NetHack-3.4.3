@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)objects.h	2.2	87/11/29
+/*	SCCS Id: @(#)objects.h	2.3	87/12/16
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 /* objects have letter " % ) ( 0 _ ` [ ! ? / = * + */
@@ -31,6 +31,8 @@ struct objclass objects[] = {
 	FOOD("slice of pizza",	5, 0, 1, 250),
 	FOOD("cream pie",	3, 0, 1, 100),
 	FOOD("tin",		7, 0, 1, 0),
+	FOOD("K-ration",	0, 1, 1, 400),
+	FOOD("C-ration",	0, 1, 1, 300),
 	FOOD("orange",		1, 0, 1, 80),
 	FOOD("apple",		1, 0, 1, 50),
 	FOOD("pear",		1, 0, 1, 50),
@@ -154,11 +156,11 @@ struct objclass objects[] = {
 	WEAPON("crossbow",	5, 3, 4, 6),
 
 #ifdef WALKIES
-	{ "whistle", "whistle", NULL, 0, 0, TOOL_SYM, 55, 0, 2, 0, 0, 0 },
-	{ "leash", NULL, NULL, 1, 0, TOOL_SYM, 20, 0, 20, 0, 0, 0 },
+	{ "whistle", "whistle", NULL, 0, 0, TOOL_SYM, 40, 0, 2, 0, 0, 0 },
+	{ "leash", NULL, NULL, 1, 0, TOOL_SYM, 20, 0, 6, 0, 0, 0 },
 #else
-	{ "whistle", "whistle", NULL, 0, 0, TOOL_SYM, 75, 0, 2, 0, 0, 0 },
-	{ "leash", NULL, NULL, 1, 0, TOOL_SYM, 0, 0, 20, 0, 0, 0 },
+	{ "whistle", "whistle", NULL, 0, 0, TOOL_SYM, 60, 0, 2, 0, 0, 0 },
+	{ "leash", NULL, NULL, 1, 0, TOOL_SYM, 0, 0, 6, 0, 0, 0 },
 #endif
 	{ "magic whistle", "whistle", NULL, 0, 0, TOOL_SYM, 9, 0, 2, 0, 0, 0 },
 #ifdef RPH
@@ -174,6 +176,9 @@ struct objclass objects[] = {
 	{ "magic marker", NULL, NULL, 1, 0, TOOL_SYM, 1, 0, 1, 0, 0, 0 },
 	{ "stethoscope", NULL, NULL, 1, 0, TOOL_SYM, 1, 0, 3, 0, 0, 0 },
 	{ "can opener", NULL, NULL, 1, 1, TOOL_SYM, 1, 0, 1, 0, 0, 0 },
+	{ "lamp", "lamp", NULL, 0, 0, TOOL_SYM, 12, 0, 10, 0, 0, 0 },
+	{ "magic lamp", "lamp", NULL, 0, 0, TOOL_SYM, 2, 0, 10, 0, 0, 0 },
+	{ "badge", "badge", NULL, 0, 0, TOOL_SYM, 1, 0, 2, 0, 0, 0 },
 
 	{ "heavy iron ball", NULL, NULL, 1, 0,
 		BALL_SYM, 100, 0, 20, 0, 0, 0 },
@@ -212,11 +217,20 @@ struct objclass objects[] = {
 	/* the armors below do not rust */
 	ARMOR("studded leather armor",	12, 3, 3, 7, 1),
 	ARMOR("elfin chain mail",	 1, 1, 2, 5, 3),
+#ifdef SHIRT
+	ARMOR("bronze plate mail",       5, 5, 9, 4, 0),
+#else
 	ARMOR("bronze plate mail",	 6, 5, 9, 4, 0),
+#endif
 	ARMOR("crystal plate mail",	 1, 5, 9, 3, 2),
 	ARMOR("leather armor",		15, 3, 2, 8, 0),
 	ARMOR("elven cloak",		 5, 0, 2, 9, 3),
 	ARMOR("shield",			 3, 0, 2, 9, 0),
+#ifdef SHIRT
+	ARMOR("Hawaiian shirt",          1, 0, 2,10, 0),
+#else
+	ARMOR("Hawaiian shirt",          0, 0, 2,10, 0),
+#endif
 	ARMOR("pair of gloves",		 1, 1, 2, 9, 0),
 
 #define POTION(name,color)	{ name, color, NULL, 0, 1,\
@@ -300,12 +314,12 @@ struct objclass objects[] = {
 	WAND("probing",		"oak",		0,	IMMEDIATE),
 #endif
 	WAND("digging",		"iron",		5,	RAY),
-	WAND("magic missile",	"aluminum",	10,	RAY),
+	WAND("magic missile",	"aluminum",	5,	RAY),
 	WAND("fire",		"steel",	5,	RAY),
 	WAND("sleep",		"curved",	5,	RAY),
 	WAND("cold",		"short",	5,	RAY),
 	WAND("death",		"long",		1,	RAY),
-	WAND(NULL,		"ebony",	0,	0),
+	WAND("lightning",	"ebony",	5,	RAY),
 	WAND(NULL,		"runed",	0,	0),
 
 #ifdef SPELLS
@@ -377,32 +391,32 @@ struct objclass objects[] = {
 	RING("teleport control", "iron",	0),
 	RING("polymorph",	"ivory",	0),
 	RING("polymorph control","blackened",	0),
-	RING(NULL,		"hematite",	0),
+	RING("shock resistance", "hematite",	0),
 	RING(NULL,		"brass",	0),
 
 /* gems ************************************************************/
 #define	GEM(name,color,prob,gval)	{ name, color, NULL, 0, 1,\
 		GEM_SYM, prob, 0, 1, 0, 0, gval }
-	GEM("dilithium crystal", "lavender", 1, 4500),
-	GEM("diamond", "blue", 1, 4000),
+	GEM("dilithium crystal", "white", 1, 4500),
+	GEM("diamond", "white", 1, 4000),
 	GEM("ruby", "red", 1, 3500),
 	GEM("sapphire", "blue", 1, 3000),
 	GEM("emerald", "green", 1, 2500),
 	GEM("turquoise", "green", 1, 2000),
-	GEM("aquamarine", "blue", 1, 1500),
-	GEM("tourmaline", "green", 1, 1000),
-	GEM("topaz", "yellow", 1, 900),
-	GEM("opal", "yellow", 1, 800),
-	GEM("garnet", "dark", 1, 700),
-	GEM("amethyst", "violet", 1, 650),
-	GEM("agate", "green", 2, 600),
-	GEM("onyx", "white", 2, 550),
-	GEM("jasper", "yellowish brown", 2, 500),
-	GEM("jade", "green", 2, 450),
-	GEM("worthless piece of blue glass", "blue", 20, 0),
-	GEM("worthless piece of red glass", "red", 20, 0),
-	GEM("worthless piece of yellow glass", "yellow", 20, 0),
-	GEM("worthless piece of green glass", "green", 20, 0),
+	GEM("aquamarine", "green", 1, 1500),
+	GEM("amber", "yellowish brown", 1, 1000),
+	GEM("topaz", "yellowish brown", 1, 900),
+	GEM("opal", "white", 1, 800),
+	GEM("garnet", "red", 1, 700),
+	GEM("amethyst", "violet", 1, 600),
+	GEM("jasper", "red", 2, 500),
+	GEM("fluorite", "violet", 2, 400),
+	GEM("jade", "green", 2, 300),
+	GEM("worthless piece of white glass", "white", 16, 100),
+	GEM("worthless piece of blue glass", "blue", 16, 0),
+	GEM("worthless piece of red glass", "red", 16, 0),
+	GEM("worthless piece of yellowish brown glass", "yellowish brown", 17, 0),
+	GEM("worthless piece of green glass", "green", 17, 0),
 	{ NULL, NULL, NULL, 0, 0, ILLOBJ_SYM, 0, 0, 0, 0, 0, 0 }
 };
 

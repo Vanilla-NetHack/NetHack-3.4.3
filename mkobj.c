@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mkobj.c	2.2	87/11/29
+/*	SCCS Id: @(#)mkobj.c	2.3	88/02/11
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 #include "hack.h"
@@ -129,6 +129,9 @@ register otyp;
 	case GEM_SYM:
 		otmp->quan = rn2(6) ? 1 : 2;
 	case TOOL_SYM:
+		if(otmp->otyp == LAMP) otmp->spe = rnd(10);
+		else if(otmp->otyp == MAGIC_LAMP) otmp->spe = 1;
+		else if(otmp->otyp == MAGIC_MARKER) otmp->spe = rnd(100);
 	case CHAIN_SYM:
 	case BALL_SYM:
 	case ROCK_SYM:

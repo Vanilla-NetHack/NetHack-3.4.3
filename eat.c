@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)eat.c	2.2	87/11/29
+/*	SCCS Id: @(#)eat.c	2.3	87/12/16
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 #include	"hack.h"
@@ -448,6 +448,9 @@ register tp = 0;
 	else if (otmp->otyp == DEAD_GIANT) let='9';
 	else let = CORPSE_I_TO_C(otmp->otyp);
 #endif
+#ifdef SAC
+	if(otmp->otyp == DEAD_SOLDIER) let='3';
+#endif /* SAC */
 	if(let != 'a' && moves > otmp->age + 50 + rn2(100)) {
 		tp++;
 		pline("Ulch -- that meat was tainted!");

@@ -1,11 +1,11 @@
-/*	SCCS Id: @(#)mkmaze.c	2.1	87/10/18
+/*	SCCS Id: @(#)mkmaze.c	2.3	88/03/31
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 #include "hack.h"
 #include "mkroom.h"		/* not really used */
-extern struct monst *makemon();
+extern struct monst *makemon(), *mkmon_at();
 extern struct permonst pm_wizard;
-extern struct obj *mkobj_at();
+extern struct obj *mkobj_at(), *mksobj_at();
 struct permonst hell_hound =
 	{ "hell hound", 'd', 12, 14, 2, 20, 3, 6, 0 };
 
