@@ -1,4 +1,4 @@
-/*    SCCS Id: @(#)amidos.c     3.2    2000/01/12
+/* NetHack 3.6	amidos.c	$NHDT-Date: 1432512796 2015/05/25 00:13:16 $  $NHDT-Branch: master $:$NHDT-Revision: 1.10 $ */
 /* Copyright (c) Olaf Seibert, Nijmegen, The Netherlands, 1988,1990.    */
 /* Copyright (c) Kenneth Lorber, Bethesda, Maryland, 1991,1992,1993,1996.  */
 /* NetHack may be freely redistributed.  See license for details.	*/
@@ -19,13 +19,13 @@
 
 #undef COUNT
 #if defined(__SASC_60) || defined(__GNUC__)
-# include <proto/exec.h>
-# include <proto/dos.h>
+#include <proto/exec.h>
+#include <proto/dos.h>
 #endif
 
 #ifdef AZTEC_50
-# include <functions.h>
-# undef strcmpi
+#include <functions.h>
+#undef strcmpi
 #endif
 
 /* Prototypes */
@@ -37,7 +37,7 @@ extern char Initialized;
 extern struct window_procs amii_procs;
 
 #ifndef __SASC_60
-int Enable_Abort = 0;   /* for stdio package */
+int Enable_Abort = 0; /* for stdio package */
 #endif
 
 /* Initial path, so we can find NetHack.cnf */
@@ -71,7 +71,7 @@ int
 abs(x)
 int x;
 {
-    return x < 0? -x: x;
+    return x < 0 ? -x : x;
 }
 #endif
 
@@ -80,31 +80,28 @@ int
 dosh()
 {
     int i;
-    char buf[ BUFSZ ];
+    char buf[BUFSZ];
     extern struct ExecBase *SysBase;
 
     /* Only under 2.0 and later ROMs do we have System() */
-    if( SysBase->LibNode.lib_Version >= 37 && !amibbs)
-    {
-	getlin("Enter CLI Command...", buf );
-	if (buf[0] != '\033')
-	    i = System( buf, NULL );
-    }
-    else
-    {
-	i = 0;
-	pline("No mysterious force prevented you from using multitasking.");
+    if (SysBase->LibNode.lib_Version >= 37 && !amibbs) {
+        getlin("Enter CLI Command...", buf);
+        if (buf[0] != '\033')
+            i = System(buf, NULL);
+    } else {
+        i = 0;
+        pline("No mysterious force prevented you from using multitasking.");
     }
     return i;
 }
 #endif /* SHELL */
 
 #ifdef MFLOPPY
-# include <ctype.h>
+#include <ctype.h>
 
-# define Sprintf (void) sprintf
+#define Sprintf (void) sprintf
 
-#define EXTENSION   72
+#define EXTENSION 72
 
 /*
  *  This routine uses an approximation of the free bytes on a disk.
@@ -119,7 +116,15 @@ long
 freediskspace(path)
 char *path;
 {
+#ifdef UNTESTED
+    /* these changes from Patric Mueller <bhaak@gmx.net> for AROS to
+     * handle larger disks.  Also needs limits.h and aros/oldprograms.h
+     * for AROS.  (keni)
+     */
+    unsigned long long freeBytes = 0;
+#else
     register long freeBytes = 0;
+#endif
     register struct InfoData *infoData; /* Remember... longword aligned */
     char fileName[32];
 
@@ -132,45 +137,50 @@ char *path;
      *  so must be on the current device, so "" is enough...
      */
     {
-    register char *colon;
+        register char *colon;
 
-    strncpy(fileName, path, sizeof(fileName) - 1);
-    fileName[31] = 0;
-    if (colon = index(fileName, ':'))
-	colon[1] = '\0';
-    else
-	fileName[0] = '\0';
+        strncpy(fileName, path, sizeof(fileName) - 1);
+        fileName[31] = 0;
+        if (colon = index(fileName, ':'))
+            colon[1] = '\0';
+        else
+            fileName[0] = '\0';
     }
     {
-    BPTR fileLock;
-    infoData = (struct InfoData *) alloc(sizeof(struct InfoData));
-    if (fileLock = Lock(fileName, SHARED_LOCK)) {
-	if (Info(fileLock, infoData)) {
-		/* We got a kind of DOS volume, since we can Lock it. */
-		/* Calculate number of blocks available for new file */
-		/* Kludge for the ever-full VOID: (oops RAM:) device */
-	    if (infoData->id_UnitNumber == -1 &&
-	      infoData->id_NumBlocks == infoData->id_NumBlocksUsed) {
-		freeBytes = AvailMem(0L) - 64 * 1024L;
-		    /* Just a stupid guess at the */
-		    /* Ram-Handler overhead per block: */
-		freeBytes -= freeBytes/16;
-	    } else {
-		/* Normal kind of DOS file system device/volume */
-		freeBytes = infoData->id_NumBlocks - infoData->id_NumBlocksUsed;
-		freeBytes -= (freeBytes + EXTENSION) / (EXTENSION + 1);
-		freeBytes *= infoData->id_BytesPerBlock;
-	    }
-	    if (freeBytes < 0)
-		freeBytes = 0;
-	}
-	UnLock(fileLock);
-    }
-    free(infoData);
-    return freeBytes;
+        BPTR fileLock;
+        infoData = (struct InfoData *) alloc(sizeof(struct InfoData));
+        if (fileLock = Lock(fileName, SHARED_LOCK)) {
+            if (Info(fileLock, infoData)) {
+                /* We got a kind of DOS volume, since we can Lock it. */
+                /* Calculate number of blocks available for new file */
+                /* Kludge for the ever-full VOID: (oops RAM:) device */
+                if (infoData->id_UnitNumber == -1
+                    && infoData->id_NumBlocks == infoData->id_NumBlocksUsed) {
+                    freeBytes = AvailMem(0L) - 64 * 1024L;
+                    /* Just a stupid guess at the */
+                    /* Ram-Handler overhead per block: */
+                    freeBytes -= freeBytes / 16;
+                } else {
+                    /* Normal kind of DOS file system device/volume */
+                    freeBytes =
+                        infoData->id_NumBlocks - infoData->id_NumBlocksUsed;
+                    freeBytes -= (freeBytes + EXTENSION) / (EXTENSION + 1);
+                    freeBytes *= infoData->id_BytesPerBlock;
+#ifdef UNTESTED
+                    if (freeBytes > LONG_MAX) {
+                        freeBytes = LONG_MAX;
+                    }
+#endif
+                }
+                if (freeBytes < 0)
+                    freeBytes = 0;
+            }
+            UnLock(fileLock);
+        }
+        free(infoData);
+        return freeBytes;
     }
 }
-
 
 long
 filesize(file)
@@ -180,12 +190,13 @@ char *file;
     register struct FileInfoBlock *fileInfoBlock;
     register long size = 0;
 
-    fileInfoBlock = (struct FileInfoBlock *)alloc(sizeof(struct FileInfoBlock));
+    fileInfoBlock =
+        (struct FileInfoBlock *) alloc(sizeof(struct FileInfoBlock));
     if (fileLock = Lock(file, SHARED_LOCK)) {
-	if (Examine(fileLock, fileInfoBlock)) {
-	    size = fileInfoBlock->fib_Size;
-	}
-	UnLock(fileLock);
+        if (Examine(fileLock, fileInfoBlock)) {
+            size = fileInfoBlock->fib_Size;
+        }
+        UnLock(fileLock);
     }
     free(fileInfoBlock);
     return size;
@@ -227,7 +238,7 @@ const char *path, *files;
 /* This size makes that most files can be copied with two Read()/Write()s */
 
 #if 0 /* Unused */
-#define COPYSIZE    4096
+#define COPYSIZE 4096
 
 char *CopyFile(from, to)
 const char *from, *to;
@@ -266,50 +277,51 @@ saveDiskPrompt(start)
 {
     char buf[BUFSIZ], *bp;
     BPTR fileLock;
-
-    if (flags.asksavedisk) {
-	    /* Don't prompt if you can find the save file */
-	if (fileLock = Lock(SAVEF, SHARED_LOCK)) {
-	    UnLock(fileLock);
+    if (sysflags.asksavedisk) {
+        /* Don't prompt if you can find the save file */
+        if (fileLock = Lock(SAVEF, SHARED_LOCK)) {
+            UnLock(fileLock);
 #if defined(TTY_GRAPHICS)
-	    if(windowprocs.win_init_nhwindows!=amii_procs.win_init_nhwindows)
-		clear_nhwindow( WIN_MAP );
+            if (windowprocs.win_init_nhwindows
+                != amii_procs.win_init_nhwindows)
+                clear_nhwindow(WIN_MAP);
 #endif
 #if defined(AMII_GRAPHICS)
-	    if(windowprocs.win_init_nhwindows==amii_procs.win_init_nhwindows)
-		clear_nhwindow( WIN_BASE );
+            if (windowprocs.win_init_nhwindows
+                == amii_procs.win_init_nhwindows)
+                clear_nhwindow(WIN_BASE);
 #endif
-	    return 1;
-	}
-	pline( "If save file is on a SAVE disk, put that disk in now." );
-	if( strlen( SAVEF ) > QBUFSZ - 25 - 22 )
-	    panic( "not enough buffer space for prompt" );
+            return 1;
+        }
+        pline("If save file is on a SAVE disk, put that disk in now.");
+        if (strlen(SAVEF) > QBUFSZ - 25 - 22)
+            panic("not enough buffer space for prompt");
 /* THIS IS A HACK */
 #if defined(TTY_GRAPHICS)
-	if(windowprocs.win_init_nhwindows!=amii_procs.win_init_nhwindows){
-	    getlin("File name ?",buf);
-	    clear_nhwindow( WIN_MAP );
-	}
+        if (windowprocs.win_init_nhwindows != amii_procs.win_init_nhwindows) {
+            getlin("File name ?", buf);
+            clear_nhwindow(WIN_MAP);
+        }
 #endif
 #if defined(AMII_GRAPHICS)
-	if(windowprocs.win_init_nhwindows==amii_procs.win_init_nhwindows){
-	    getlind("File name ?", buf, SAVEF);
-	    clear_nhwindow( WIN_BASE );
-	}
+        if (windowprocs.win_init_nhwindows == amii_procs.win_init_nhwindows) {
+            getlind("File name ?", buf, SAVEF);
+            clear_nhwindow(WIN_BASE);
+        }
 #endif
-	clear_nhwindow( WIN_MESSAGE);
-	if (!start && *buf == '\033')
-	    return 0;
+        clear_nhwindow(WIN_MESSAGE);
+        if (!start && *buf == '\033')
+            return 0;
 
-    /* Strip any whitespace. Also, if nothing was entered except
-     * whitespace, do not change the value of SAVEF.
-     */
-	for (bp = buf; *bp; bp++) {
-	    if (!isspace(*bp)) {
-	    strncpy(SAVEF, bp, PATHLEN);
-	    break;
-	    }
-	}
+        /* Strip any whitespace. Also, if nothing was entered except
+         * whitespace, do not change the value of SAVEF.
+         */
+        for (bp = buf; *bp; bp++) {
+            if (!isspace(*bp)) {
+                strncpy(SAVEF, bp, PATHLEN);
+                break;
+            }
+        }
     }
     return 1;
 }
@@ -321,8 +333,8 @@ record_exists()
     FILE *file;
 
     if (file = fopenp(RECORD, "r")) {
-	fclose(file);
-	return TRUE;
+        fclose(file);
+        return TRUE;
     }
     return FALSE;
 }
@@ -333,7 +345,9 @@ record_exists()
  * For Amiga: do nothing, but called from restore.c
  */
 void
-gameDiskPrompt(){}
+gameDiskPrompt()
+{
+}
 #endif
 
 /*
@@ -346,15 +360,15 @@ char *name;
 {
     char *ptr;
 
-    if (!*name)return;
+    if (!*name)
+        return;
 
     ptr = eos(name) - 1;
     if (*ptr != '/' && *ptr != ':') {
-	*++ptr = '/';
-	*++ptr = '\0';
+        *++ptr = '/';
+        *++ptr = '\0';
     }
 }
-
 
 void
 getreturn(str)
@@ -363,13 +377,13 @@ const char *str;
     int ch;
 
     raw_printf("Hit <RETURN> %s.", str);
-    while ((ch = nhgetch()) != '\n' && ch != '\r' )
-	continue;
+    while ((ch = nhgetch()) != '\n' && ch != '\r')
+        continue;
 }
 
 /* Follow the PATH, trying to fopen the file.
  */
-#define PATHSEP    ';'
+#define PATHSEP ';'
 
 FILE *
 fopenp(name, mode)
@@ -382,30 +396,34 @@ register const char *name, *mode;
 
     /* Try the default directory first.  Then look along PATH.
      */
-    if (strlen(name) >= BUFSIZ) return( NULL );
+    if (strlen(name) >= BUFSIZ)
+        return (NULL);
     strcpy(buf, name);
     if (theLock = Lock(buf, SHARED_LOCK)) {
-	UnLock(theLock);
-	if (fp = fopen(buf, mode))
-	    return fp;
+        UnLock(theLock);
+        if (fp = fopen(buf, mode))
+            return fp;
     }
     pp = PATH;
     while (pp && *pp) {
-	bp = buf;
-	while (*pp && *pp != PATHSEP){
-	    if( bp > buf + BUFSIZ - 1 ) return( NULL );
-	    lastch = *bp++ = *pp++;
-	}
-	if (lastch != ':' && lastch != '/' && bp != buf)
-	    *bp++ = '/';
-	if (bp + strlen(name) > buf + BUFSIZ - 1) return( NULL );
-	strcpy(bp, name);
-	if (theLock = Lock(buf, SHARED_LOCK)) {
-	    UnLock(theLock);
-	    if (fp = fopen(buf, mode)) return fp;
-	}
-	if (*pp)
-	    pp++;
+        bp = buf;
+        while (*pp && *pp != PATHSEP) {
+            if (bp > buf + BUFSIZ - 1)
+                return (NULL);
+            lastch = *bp++ = *pp++;
+        }
+        if (lastch != ':' && lastch != '/' && bp != buf)
+            *bp++ = '/';
+        if (bp + strlen(name) > buf + BUFSIZ - 1)
+            return (NULL);
+        strcpy(bp, name);
+        if (theLock = Lock(buf, SHARED_LOCK)) {
+            UnLock(theLock);
+            if (fp = fopen(buf, mode))
+                return fp;
+        }
+        if (*pp)
+            pp++;
     }
     return NULL;
 }
@@ -420,37 +438,36 @@ register const char *name, *mode;
  *  Assumes -1 is not a valid lock, since 0 is valid.
  */
 
-#define NO_LOCK     ((BPTR) -1)
+#define NO_LOCK ((BPTR) -1)
 
 static BPTR OrgDirLock = NO_LOCK;
 
-chdir(dir)
-char *dir;
+chdir(dir) char *dir;
 {
     extern char orgdir[];
 
     if (dir == orgdir) {
-	    /* We want to go back to where we came from. */
-	if (OrgDirLock != NO_LOCK) {
-	    UnLock(CurrentDir(OrgDirLock));
-	    OrgDirLock = NO_LOCK;
-	}
+        /* We want to go back to where we came from. */
+        if (OrgDirLock != NO_LOCK) {
+            UnLock(CurrentDir(OrgDirLock));
+            OrgDirLock = NO_LOCK;
+        }
     } else {
-	    /*
-	     * Go to some new place. If still at the original
-	     * directory, save the FileLock.
-	     */
-	BPTR newDir;
+        /*
+         * Go to some new place. If still at the original
+         * directory, save the FileLock.
+         */
+        BPTR newDir;
 
-	if (newDir = Lock( (char *)dir, SHARED_LOCK)) {
-	    if (OrgDirLock == NO_LOCK) {
-		OrgDirLock = CurrentDir(newDir);
-	    } else {
-		UnLock(CurrentDir(newDir));
-	    }
-	} else {
-	    return -1;  /* Failed */
-	}
+        if (newDir = Lock((char *) dir, SHARED_LOCK)) {
+            if (OrgDirLock == NO_LOCK) {
+                OrgDirLock = CurrentDir(newDir);
+            } else {
+                UnLock(CurrentDir(newDir));
+            }
+        } else {
+            return -1; /* Failed */
+        }
     }
     /* CurrentDir always succeeds if you have a lock */
     return 0;
@@ -469,22 +486,21 @@ nethack_exit(code)
 #endif
 
 #ifdef CHDIR
-    chdir(orgdir);      /* chdir, not chdirx */
+    chdir(orgdir); /* chdir, not chdirx */
 #endif
 
 #ifdef AMII_GRAPHICS
-    if(windowprocs.win_init_nhwindows==amii_procs.win_init_nhwindows)
-	CleanUp();
+    if (windowprocs.win_init_nhwindows == amii_procs.win_init_nhwindows)
+        CleanUp();
 #endif
     exit(code);
 }
 
-void
-regularize(s)    /* normalize file name - we don't like :'s or /'s */
+void regularize(s) /* normalize file name - we don't like :'s or /'s */
 register char *s;
 {
     register char *lp;
 
-    while((lp = index(s, ':')) || (lp = index(s, '/')))
-	*lp = '_';
+    while ((lp = index(s, ':')) || (lp = index(s, '/')))
+        *lp = '_';
 }

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)qt_clust.h	3.4	1999/11/19	*/
+/* NetHack 3.6	qt_clust.h	$NHDT-Date: 1432512779 2015/05/25 00:12:59 $  $NHDT-Branch: master $:$NHDT-Revision: 1.8 $ */
 /* Copyright (c) Warwick Allison, 1999. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -7,23 +7,28 @@
 
 #include <qrect.h>
 
-class Clusterizer {
-public:
-	Clusterizer(int maxclusters);
-	~Clusterizer();
+class Clusterizer
+{
+  public:
+    Clusterizer(int maxclusters);
+    ~Clusterizer();
 
-	void add(int x, int y); // 1x1 rectangle (point)
-	void add(int x, int y, int w, int h);
-	void add(const QRect& rect);
+    void add(int x, int y); // 1x1 rectangle (point)
+    void add(int x, int y, int w, int h);
+    void add(const QRect &rect);
 
-	void clear();
-	int clusters() { return count; }
-	const QRect& operator[](int i);
+    void clear();
+    int
+    clusters()
+    {
+        return count;
+    }
+    const QRect &operator[](int i);
 
-private:
-	QRect* cluster;
-	int count;
-	const int max;
+  private:
+    QRect *cluster;
+    int count;
+    const int max;
 };
 
 #endif

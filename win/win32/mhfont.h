@@ -1,4 +1,5 @@
-/* Copyright (C) 2001 by Alex Kompel <shurikk@pacbell.net> */
+/* NetHack 3.6	mhfont.h	$NHDT-Date: 1432512810 2015/05/25 00:13:30 $  $NHDT-Branch: master $:$NHDT-Revision: 1.12 $ */
+/* Copyright (C) 2001 by Alex Kompel 	 */
 /* NetHack may be freely redistributed.  See license for details. */
 
 /* font management functions */

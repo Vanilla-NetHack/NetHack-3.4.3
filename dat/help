@@ -1,4 +1,4 @@
-        Welcome to NetHack!                ( description of version 3.4 )
+        Welcome to NetHack!                ( description of version 3.6 )
 
         NetHack is a Dungeons and Dragons like game where you (the adventurer)
 descend into the depths of the dungeon in search of the Amulet of Yendor,
@@ -67,6 +67,12 @@ b j n   1 2 3           g<dir>:   run in direction <dir> until something
                 Meta number, or Alt number will invoke the YUHJKLBN commands.
                 Control <dir> may or may not work when number_pad is enabled,
                 depending on the platform's capabilities.
+                Digit '5' acts as 'G' prefix, unless number_pad is set to 2
+                in which case it acts as 'g' instead.
+                If number_pad is set to 3, the roles of 1,2,3 and 7,8,9 are
+                reversed; when set to 4, behaves same as 3 combined with 2.
+                If number_pad is set to -1, alphabetic movement commands are
+                used but 'y' and 'z' are swapped.
 
 Commands:
         NetHack knows the following commands:
@@ -77,12 +83,12 @@ Commands:
         <       Go up a staircase (if you are standing on it).
         >       Go down a staircase (if you are standing on it).
         .       Rest, do nothing for one turn.
-        _       Travel via a shortest-path algorithm to a point on the map 
-        a       Apply (use) a tool (pick-axe, key, lamp...)
+        _       Travel via a shortest-path algorithm to a point on the map.
+        a       Apply (use) a tool (pick-axe, key, lamp...).
         A       Remove all armor.
-        ^A      Redo the previous command
+        ^A      Redo the previous command.
         c       Close a door.
-        C       Call (name) an individual monster.
+        C       Call (name) monster, individual object, or type of object.
         d       Drop something.  d7a:  drop seven items of object a.
         D       Drop multiple items.  This command is implemented in two
                 different ways.  One way is:
@@ -141,11 +147,11 @@ Commands:
         w       Wield weapon.  w- means wield nothing, use bare hands.
         W       Wear armor.
         x       Swap wielded and secondary weapons.
-        X       Switch the game to explore (discovery) mode.
+        X       Toggle two-weapon combat.
         ^X      Show your attributes.
-        z       Zap a wand.
-        Z       Cast a spell.
-        ^Z      Suspend the game.
+        z       Zap a wand.  (Use y instead of z if number_pad is -1.)
+        Z       Cast a spell.  (Use Y instead of Z if number_pad is -1.)
+        ^Z      Suspend the game.  (^Y instead of ^Z if number_pad is -1.)
         :       Look at what is here.
         ;       Look at what is somewhere else.
         ,       Pick up some things.
@@ -160,6 +166,7 @@ Commands:
         $       Count your gold pieces.
         +       List the spells you know; also rearrange them if desired.
         \       Show what types of objects have been discovered.
+        `       Show discovered types for one class of objects.
         !       Escape to a shell, if supported in your version and OS.
         #       Introduces one of the "extended" commands.  To get a list of
                 the commands you can use with "#" type "#?".  The extended
@@ -178,8 +185,8 @@ Commands:
         j       Jump to another location.
         k       Kick (for doors, usually).
         l       Loot a box on the floor.
-        n       followed by number of times to repeat the next command
-        N       Name an object or type of object.
+        n       followed by number of times to repeat the next command.
+        N       Name a monster, an individual object, or a type of object.
         u       Untrap a trapped object or door.
 
         You can put a number before a command to repeat it that many times,

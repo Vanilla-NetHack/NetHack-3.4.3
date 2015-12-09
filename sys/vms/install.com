@@ -1,6 +1,12 @@
 $ ! vms/install.com -- set up nethack 'playground'
 $ !
+$ ! $NHDT-Date$  $NHDT-Branch$:$NHDT-Revision$
+$ !
 $ ! Use vmsbuild.com to create nethack.exe, makedefs, and lev_comp *first*.
+$ !
+$ ! Note: this command procedure is also used by the top level Makefile
+$ ! if you build and install with MMS or MMK.  In that situation, only the
+$ ! Makefile will need any editing.
 $ !
 $ ! Edit this file to define gamedir & gameuic, or else invoke it with two
 $ ! command line parameters, as in:
@@ -19,7 +25,8 @@ $	! note: all filespecs contain some punctuation,
 $	!	to avoid inadvertent logical name interaction
 $	play_files = "PERM.,RECORD.,LOGFILE.,PANICLOG."
 $	help_files = "HELP.,HH.,CMDHELP.,WIZHELP.,OPTHELP.,HISTORY.,LICENSE."
-$	data_files = "DATA.,RUMORS.,ORACLES.,OPTIONS.,QUEST.DAT"
+$	data_files = "DATA.,RUMORS.,ORACLES.,OPTIONS.,QUEST.DAT,TRIBUTE."
+$	sysconf_file = "[.sys.vms]sysconf"
 $	guidebook  = "[.doc]Guidebook.txt"
 $	invoc_proc = "[.sys.vms]nethack.com"
 $	trmcp_file = "[.sys.share]termcap"
@@ -41,7 +48,7 @@ $	dngn_input = "dungeon.pdf"
 $	dlb_files  = help_files + "," + data_files + "," -
 		   + spec_files + "," + qstl_files + "," + dngn_files
 $	data_libry = "nh-data.dlb"
-$	xtrn_files = "LICENSE.,HISTORY.,OPTIONS."
+$	xtrn_files = "LICENSE.,HISTORY.,OPTIONS.,SYMBOLS."
 $ makedefs := $sys$disk:[-.util]makedefs
 $ lev_comp := $sys$disk:[-.util]lev_comp
 $ dgn_comp := $sys$disk:[-.util]dgn_comp
@@ -222,6 +229,17 @@ $ if f$search("''gamedir'termcap").nes."" then  goto skip_termcap
 $	milestone "(termcap)"
 $ call copy_file 'trmcp_file' 'gamedir'termcap "r"
 $skip_termcap:
+$ if p3.nes."" then  exit
+$!
+$! provide template sysconf file (needed if nethack is built w/ SYSCF enabled)
+$make_sysconf:
+$ if f$search(sysconf_file).eqs."" then  goto skip_sysconf
+$ if f$search("''gamedir'sysconf_file").nes."" then  goto skip_sysconf
+$       milestone "(sysconf)"
+$ call copy_file 'sysconf_file' 'gamedir'sysconf "r"
+$!	owner should be able to manually edit sysconf; others shouldn't
+$ set file/Prot=(s:rwd,o:rwd,g:r,w:r) 'gamedir'sysconf
+$skip_sysconf:
 $ if p3.nes."" then  exit
 $!
 $! done

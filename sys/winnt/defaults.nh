@@ -6,12 +6,18 @@
 #
 # To change the configuration, comment out the unwanted lines, and
 # uncomment the configuration you want.
+#
+# $NHDT-Date$  $NHDT-Branch$:$NHDT-Revision$
 
 # *** OPTIONS ***
 #
 # Use the IBM character set rather than just plain ascii characters
 # for tty window-port.
-OPTIONS=IBMGraphics
+OPTIONS=symset:IBMGraphics_2,roguesymset:RogueEpyx
+
+# Here is a suggested symbol set from Michael Feir, 
+# for use by blind NetHack players
+#OPTIONS=symset:NHAccess,roguesymset:NHAccess
 
 # Keyboard handling
 # Different keyboard handlers can be loaded.
@@ -35,7 +41,11 @@ OPTIONS=IBMGraphics
 #OPTIONS=scores:10 top/2 around/own
 #OPTIONS=nolegacy,noverbose
 #OPTIONS=menustyle:traditional
+#OPTIONS=hilite_status:hitpoints/30%/bright-magenta/normal
+#OPTIONS=perm_invent
 
+# Turn off all status hilites.
+#OPTIONS=!statushilites
 #
 # General options.  You might also set "silent" so as not to attract
 # the boss's attention.
@@ -43,6 +53,7 @@ OPTIONS=IBMGraphics
 # number_pad option can have an optional value of 0 (off), 1 (on), 
 # or 2(on,legacy-mode) which causes 5='g', alt-5='G', alt-0='I'
 OPTIONS=time,noshowexp,number_pad:2,lit_corridor
+
 #
 # If you want to get rid of "use #quit to quit..." use:
 OPTIONS=suppress_alert:3.3.1
@@ -125,61 +136,23 @@ OPTIONS=hilite_pet,!toptenwin
 #OPTIONS=subkeyvalue:188/124
 
 #
-# *** CHARACTER GRAPHICS ***
+# Some versions of Windows allow you to adjust the win32 console port 
+# colors using R-G-B settings.
 #
-# See the on-line help or the Guidebook for which symbols are in which
-# positions.
-#
-# If you merely set the IBMgraphics option as above, NetHack will use IBM
-# extended ASCII for dungeon characters.  If you don't like the selections,
-# you can make up your own via these graphics options, but you should still
-# set IBMgraphics if you are using IBM graphics characters to get the correct
-# processing.
-#
-# ================================================
-# An example using the IBM graphics character set:
-#DUNGEON=  032 179 196 218 191 192 217 197 193 194 \
-#	   180 195 249 239 239 254 254 240 241 249 \
-#	   177 177 060 062 060 062 220 124 190 035 \
-#	   244 247 249 247 042 042 186 205 046 035 \
-#	   247
-#
-#TRAPS=    094 094 094 094 094 094 094 094 094 094 \
-#	   094 094 094 094 232 232 232 157 094 094 \
-#	   094 094
-#
-#EFFECTS=  179 196 092 047 042 033 041 040	   \
-#	   048 035 064 042			   \
-#	   047 045 092 058 058 092 045 047	   \
-#	   047 045 092 058 032 058 092 045 047
-#
-# ================================================
-# Some alternatives:
-#DUNGEON=  032 186 205 201 187 200 188 206 202 203 \
-#	   185 204 249 239 239 254 254 240 241 249 \
-#	   177 177 060 062 060 062 095 124 092 035 \
-#	   244 247 249 247 042 042 179 196 046 035 \
-#	   247
-#
-#TRAPS=    094 094 094 094 094 094 094 094 094 094 \
-#	   094 094 094 094 094 034 094 094 094 094 \
-#	   094 094
-
-# ================================================
-# Here is a recommendation sent in by Michael Feir
-# for use by blind NetHack players.
-#
-#DUNGEON=  032 124 045 124 124 124 124 045 045 045 \
-#          124 124 046 045 124 043 043 046 035 035 \
-#          060 062 060 062 095 092 035 126 126 126 \
-#          126 042 042 035 035 032 035 126
-#
-#TRAPS=    094 094 094 094 094 094 094 094 094 094 \
-#          094 094 094 094 094 094 094 094 094 094 \
-#          094 094
-#
-#EFFECTS=  124 095 092 047 042 033 041 040         \
-#          048 035 064 042                         \
-#          047 045 092 058 058 092 045 047         \
-#          047 045 092 058 032 058 092 045 047
+#OPTIONS=palette:black-0-0-0
+#OPTIONS=palette:red-210-0-0
+#OPTIONS=palette:green-80-200-0
+#OPTIONS=palette:brown-180-100-0
+#OPTIONS=palette:blue-0-0-200
+#OPTIONS=palette:magenta-128-0-128
+#OPTIONS=palette:cyan-50-180-180
+#OPTIONS=palette:gray-192-192-192
+#OPTIONS=palette:dark gray-100-100-100
+#OPTIONS=palette:orange-255-128-0
+#OPTIONS=palette:bright green-0-255-0
+#OPTIONS=palette:yellow-255-255-0
+#OPTIONS=palette:bright blue-100-100-240
+#OPTIONS=palette:bright magenta-255-0-255
+#OPTIONS=palette:bright cyan-0-255-255
+#OPTIONS=palette:white-255-255-255
 

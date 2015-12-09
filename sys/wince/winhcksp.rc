@@ -42,10 +42,11 @@ BEGIN
     BEGIN
         MENUITEM "Options",                     IDM_VIEW_OPTIONS
         MENUITEM "Keypad",                      IDM_VIEW_KEYPAD
-        MENUITEM SEPARATOR
+        MENUITEM "Cmd",                         IDM_DIRECT_COMMAND
+	MENUITEM SEPARATOR
         MENUITEM "ASCII",                       IDM_MAP_ASCII8X8
-        MENUITEM "Use Tiles",                   IDM_MAP_TILES
-        MENUITEM SEPARATOR
+        MENUITEM "Tiles",						IDM_MAP_TILES
+	MENUITEM SEPARATOR
         MENUITEM "Help",                        IDM_HELP_MENU
         MENUITEM "Save",                        IDM_SAVE
         MENUITEM "Quit",                        IDM_EXIT
@@ -57,7 +58,6 @@ BEGIN
     MENUITEM "Done",                        IDOK
     MENUITEM "Cancel",                      IDCANCEL
 END
-
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -244,6 +244,14 @@ BEGIN
     NOMENU,
 END
 
+IDC_SPHONE_TEXTDIALOGBAR SHMENUBAR DISCARDABLE 
+BEGIN
+    IDC_SPHONE_DIALOGBAR, 2,
+    I_IMAGENONE, IDOK, TBSTATE_ENABLED, TBSTYLE_AUTOSIZE, IDOK, 0, NOMENU,
+    I_IMAGENONE, IDC_TEXT_TOGGLE_WRAP, TBSTATE_ENABLED, TBSTYLE_AUTOSIZE, IDS_TEXT_WRAP, 0, 
+    NOMENU,
+END
+
 
 #ifndef _MAC
 /////////////////////////////////////////////////////////////////////////////
@@ -252,8 +260,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 3,4,2,0
- PRODUCTVERSION 3,4,2,0
+ FILEVERSION 3,5,0,0
+ PRODUCTVERSION 3,5,0,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x9L
@@ -268,17 +276,17 @@ BEGIN
     BEGIN
         BLOCK "040904b0"
         BEGIN
-            VALUE "Comments", "NetHack 3.4.3 for Smartphone 2002\0"
+            VALUE "Comments", "NetHack 3.6.0 for Smartphone 2002\0"
             VALUE "CompanyName", " \0"
             VALUE "FileDescription", "nethackm\0"
-            VALUE "FileVersion", "3, 4, 3, 0\0"
+            VALUE "FileVersion", "3, 5, 0, 0\0"
             VALUE "InternalName", "nethackm\0"
-            VALUE "LegalCopyright", "Copyright © 2003\0"
+            VALUE "LegalCopyright", "Copyright © 1985-2010\0"
             VALUE "LegalTrademarks", "\0"
             VALUE "OriginalFilename", "nethackm.exe\0"
-            VALUE "PrivateBuild", "031014\0"
+            VALUE "PrivateBuild", "090914\0"
             VALUE "ProductName", "NetHack For Smartphone\0"
-            VALUE "ProductVersion", "3, 4, 3, 0\0"
+            VALUE "ProductVersion", "3, 5, 0, 0\0"
             VALUE "SpecialBuild", "\0"
         END
     END
@@ -327,6 +335,8 @@ BEGIN
     IDS_CAP_ENTIREMAP       "Entire Map"
     IDS_CAP_NORMALMAP       "Normal Map"
     IDM_HELP_MENU           "Help Menu"
+	IDS_TEXT_WRAP           "Wrap"
+	IDS_TEXT_UNWRAP         "Unwrap"
 END
 
 #endif    // English (U.S.) resources

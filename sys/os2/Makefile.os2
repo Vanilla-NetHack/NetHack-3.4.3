@@ -1,5 +1,5 @@
-#	SCCS Id: @(#)Makefile.os2	3.4.3	1996/10/29
-#	OS/2 NetHack 3.4.3 Makefile for OS/2 versions 2.x
+# NetHack 3.6	Makefile.os2	$NHDT-Date: 1432512793 2015/05/25 00:13:13 $  $NHDT-Branch: master $:$NHDT-Revision: 1.19 $
+#	OS/2 NetHack 3.6 Makefile for OS/2 versions 1.x and 2.x
 #	Copyright (C) 1990, 1991, 1992, 1993, 1996 Timo Hakulinen
 #
 #	Several compilers exist for OS/2 but, currently only GCC emx is tested
@@ -7,8 +7,7 @@
 #
 #	Supported compilers: GCC emx 0.9g
 #
-#	DMAKE is required.  Credit for the makefile improvements goes to 
-#	Pekka Rousu.
+#	DMAKE is required.  Credit for the makefile improvements goes to Pekka Rousu.
 #
 #	Copy this file into $(SRC) directory, rename it to "makefile"
 #	(important, many targets rely on it), compile and link inside
@@ -176,7 +175,7 @@ WINSHARE= $(NHSRC)\win\share	# Shared system files
 
 OBJ	= \tmp\obj		# Object files
 TEMP	= \tmp\bin		# Temporary files during make process
-GAMEDIR = \games\nh343x11	# Game directory
+GAMEDIR = \games\nh350x11	# Game directory
 PLIBP	= c:\emx\lib		# Protected mode C libraries
 RLIBP	= c:\emx\lib		# Possible real mode C libraries
 
@@ -185,7 +184,7 @@ RLIBP	= c:\emx\lib		# Possible real mode C libraries
 #
 
 GAME	= nethack
-GAMEDES = "NetHack 3.4.3"
+GAMEDES = "NetHack 3.6.0"
 
 #
 #	The uppermost two lines for MSC, the middle two for GCC, and
@@ -666,6 +665,7 @@ VOBJ273 = $(OBJ)\write.o
 VOBJ274 = $(OBJ)\zap.o
 VOBJ281 = $(OBJ)\role.o
 VOBJ282 = $(OBJ)\steed.o
+VOBJ283 = $(OBJ)\sys.o
 
 VOBJ01 = $(VOBJ011) $(VOBJ012) $(VOBJ013) $(VOBJ014)
 VOBJ02 = $(VOBJ021) $(VOBJ022) $(VOBJ023) $(VOBJ024)
@@ -694,7 +694,7 @@ VOBJ24 = $(VOBJ241) $(VOBJ242) $(VOBJ243) $(VOBJ244)
 VOBJ25 = $(VOBJ251) $(VOBJ252) $(VOBJ253) $(VOBJ254)
 VOBJ26 = $(VOBJ261) $(VOBJ262) $(VOBJ263) $(VOBJ264)
 VOBJ27 = $(VOBJ271) $(VOBJ272) $(VOBJ273) $(VOBJ274)
-VOBJ28 = $(VOBJ281) $(VOBJ282)
+VOBJ28 = $(VOBJ281) $(VOBJ282) $(VOBJ283)
 VOBJ29 = $(WINOBJ) $(RANDOM)
 HHOBJ  = $(OBJ)\version.o
 
@@ -712,14 +712,15 @@ CONFIG_H   = $(INCL)\config.h $(INCL)\config1.h $(INCL)\tradstdc.h $(GLOBAL_H)
 TRAP_H	   = $(INCL)\trap.h
 PERMONST_H = $(INCL)\permonst.h $(INCL)\monattk.h $(INCL)\monflag.h
 YOU_H	   = $(INCL)\you.h $(INCL)\attrib.h $(PERMONST_H) $(INCL)\mondata.h \
-	     $(INCL)\monst.h $(INCL)\youprop.h $(INCL)\prop.h $(INCL)\pm.h
+	     $(INCL)\monst.h $(INCL)\mextra.h $(INCL)\youprop.h \
+	     $(INCL)\prop.h $(INCL)\pm.h
 DECL_H	   = $(INCL)\decl.h $(INCL)\spell.h $(INCL)\obj.h $(YOU_H) \
 	     $(INCL)\onames.h $(INCL)\color.h
-HACK_H	   = $(CONFIG_H) $(DECL_H) $(INCL)\monsym.h $(INCL)\mkroom.h \
+HACK_H	   = $(CONFIG_H) $(INCL)\context.h $(DECL_H) $(INCL)\monsym.h $(INCL)\mkroom.h \
 	     $(INCL)\objclass.h $(TRAP_H) $(INCL)\engrave.h $(INCL)\flag.h \
 	     $(INCL)\rm.h $(INCL)\dungeon.h $(INCL)\hack.h $(INCL)\display.h \
 	     $(INCL)\vision.h $(INCL)\wintty.h $(INCL)\wintype.h $(INCL)\align.h \
-	     $(INCL)\winprocs.h
+	     $(INCL)\winprocs.h $(INCL)\sys.h
 
 #
 #	The default target.
@@ -873,6 +874,7 @@ $(TEMP)\$(GAME).r : $(HOBJ) $(TEMP)\$(GAMEDEF)
 	$(ECHO) $(VOBJ274) >> $@
 	$(ECHO) $(VOBJ281) >> $@
 	$(ECHO) $(VOBJ282) >> $@
+	$(ECHO) $(VOBJ283) >> $@
 	$(ECHO) $(WINOBJ1) >> $@
 	$(ECHO) $(WINOBJ2) >> $@
 	$(ECHO) $(WINOBJ3) >> $@
@@ -1237,7 +1239,7 @@ $(OBJ)\termcap.o : $(WIN)\$(CB) $(HACK_H) $(INCL)\tcap.h
 	$(WINCC)
 $(OBJ)\topl.o    : $(WIN)\$(CB) $(HACK_H) $(INCL)\tcap.h
 	$(WINCC)
-$(OBJ)\wintty.o  : $(WIN)\$(CB) $(HACK_H) $(INCL)\tcap.h
+$(OBJ)\wintty.o  : $(WIN)\$(CB) $(HACK_H) $(INCL)\tcap.h $(INCL)\date.h
 	$(WINCC)
 
 #
@@ -1458,8 +1460,12 @@ $(GAMEDIR)\nethack.cnf :
 #
 #	Documentation.
 #
+#	LaTeX needs to be run twice.
+#	The second pass uses the $(GUIDEBOO).aux file made by the first.
+#
 
 $(TEMP)\$(GUIDEBOO).dvi : $(DOC)\$(GUIDEBOO).tex
+	$(LATEX) $(DOC)\$(GUIDEBOO).tex
 	$(LATEX) $(DOC)\$(GUIDEBOO).tex
 	$(CP) $(GUIDEBOO).dvi $(TEMP)
 	$(CP) $(GUIDEBOO).aux $(TEMP)
@@ -1505,7 +1511,7 @@ $(OBJ)\allmain.o  : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
 $(OBJ)\alloc.o    : $(SRC)\$(CB) $(CONFIG_H)
 	$(SRCCC)
-$(OBJ)\apply.o    : $(SRC)\$(CB) $(HACK_H) $(INCL)\edog.h
+$(OBJ)\apply.o    : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
 $(OBJ)\artifact.o : $(SRC)\$(CB) $(HACK_H) $(INCL)\artifact.h $(INCL)\artilist.h
 	$(SRCCC)
@@ -1537,11 +1543,11 @@ $(OBJ)\do_name.o  : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
 $(OBJ)\do_wear.o  : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
-$(OBJ)\dog.o      : $(SRC)\$(CB) $(HACK_H) $(INCL)\edog.h
+$(OBJ)\dog.o      : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
-$(OBJ)\dogmove.o  : $(SRC)\$(CB) $(HACK_H) $(INCL)\mfndpos.h $(INCL)\edog.h
+$(OBJ)\dogmove.o  : $(SRC)\$(CB) $(HACK_H) $(INCL)\mfndpos.h
 	$(SRCCC)
-$(OBJ)\dokick.o   : $(SRC)\$(CB) $(HACK_H) $(INCL)\eshk.h
+$(OBJ)\dokick.o   : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
 $(OBJ)\dothrow.o  : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
@@ -1551,7 +1557,7 @@ $(OBJ)\dungeon.o  : $(SRC)\$(CB) $(HACK_H) $(INCL)\dgn_file.h
 	$(SRCCC)
 $(OBJ)\eat.o      : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
-$(OBJ)\end.o      : $(SRC)\$(CB) $(HACK_H) $(INCL)\eshk.h
+$(OBJ)\end.o      : $(SRC)\$(CB) $(HACK_H) $(INCL)\lev.h
 	$(SRCCC)
 $(OBJ)\engrave.o  : $(SRC)\$(CB) $(HACK_H) $(INCL)\lev.h
 	$(SRCCC)
@@ -1577,17 +1583,17 @@ $(OBJ)\lock.o     : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
 $(OBJ)\mail.o     : $(SRC)\$(CB) $(HACK_H) $(INCL)\mail.h
 	$(SRCCC)
-$(OBJ)\makemon.o  : $(SRC)\$(CB) $(HACK_H) $(INCL)\epri.h $(INCL)\emin.h
+$(OBJ)\makemon.o  : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
 $(OBJ)\mapglyph.o : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
 $(OBJ)\mcastu.o   : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
-$(OBJ)\mhitm.o    : $(SRC)\$(CB) $(HACK_H) $(INCL)\artifact.h $(INCL)\edog.h
+$(OBJ)\mhitm.o    : $(SRC)\$(CB) $(HACK_H) $(INCL)\artifact.h
 	$(SRCCC)
-$(OBJ)\mhitu.o    : $(SRC)\$(CB) $(HACK_H) $(INCL)\artifact.h $(INCL)\edog.h
+$(OBJ)\mhitu.o    : $(SRC)\$(CB) $(HACK_H) $(INCL)\artifact.h
 	$(SRCCC)
-$(OBJ)\minion.o   : $(SRC)\$(CB) $(HACK_H) $(INCL)\emin.h $(INCL)\epri.h
+$(OBJ)\minion.o   : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
 $(OBJ)\mklev.o    : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
@@ -1599,19 +1605,19 @@ $(OBJ)\mkobj.o    : $(SRC)\$(CB) $(HACK_H) $(INCL)\artifact.h
 	$(SRCCC)
 $(OBJ)\mkroom.o   : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
-$(OBJ)\mon.o      : $(SRC)\$(CB) $(HACK_H) $(INCL)\mfndpos.h $(INCL)\edog.h
+$(OBJ)\mon.o      : $(SRC)\$(CB) $(HACK_H) $(INCL)\mfndpos.h
 	$(SRCCC)
-$(OBJ)\mondata.o  : $(SRC)\$(CB) $(HACK_H) $(INCL)\eshk.h $(INCL)\epri.h
+$(OBJ)\mondata.o  : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
 $(OBJ)\monmove.o  : $(SRC)\$(CB) $(HACK_H) $(INCL)\mfndpos.h $(INCL)\artifact.h
 	$(SRCCC)
-$(OBJ)\monst.o    : $(SRC)\$(CB) $(CONFIG_H) $(PERMONST_H) $(INCL)\monsym.h $(INCL)\eshk.h $(INCL)\vault.h $(INCL)\epri.h $(INCL)\color.h
+$(OBJ)\monst.o    : $(SRC)\$(CB) $(CONFIG_H) $(PERMONST_H) $(INCL)\monsym.h $(INCL)\color.h
 	$(SRCCC)
 $(OBJ)\mplayer.o  : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
 $(OBJ)\mthrowu.o  : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
-$(OBJ)\muse.o     : $(SRC)\$(CB) $(HACK_H) $(INCL)\edog.h
+$(OBJ)\muse.o     : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
 $(OBJ)\music.o    : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
@@ -1627,15 +1633,15 @@ $(OBJ)\pager.o    : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
 $(OBJ)\pickup.o   : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
-$(OBJ)\pline.o    : $(SRC)\$(CB) $(HACK_H) $(INCL)\epri.h
+$(OBJ)\pline.o    : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
 $(OBJ)\polyself.o : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
 $(OBJ)\potion.o   : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
-$(OBJ)\pray.o     : $(SRC)\$(CB) $(HACK_H) $(INCL)\epri.h
+$(OBJ)\pray.o     : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
-$(OBJ)\priest.o   : $(SRC)\$(CB) $(HACK_H) $(INCL)\mfndpos.h $(INCL)\eshk.h $(INCL)\epri.h $(INCL)\emin.h
+$(OBJ)\priest.o   : $(SRC)\$(CB) $(HACK_H) $(INCL)\mfndpos.h
 	$(SRCCC)
 $(OBJ)\quest.o    : $(SRC)\$(CB) $(HACK_H) $(INCL)\quest.h $(INCL)\qtext.h
 	$(SRCCC)
@@ -1659,13 +1665,13 @@ $(OBJ)\rumors.o   : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
 $(OBJ)\save.o     : $(SRC)\$(CB) $(HACK_H) $(INCL)\lev.h $(INCL)\quest.h
 	$(SRCCC)
-$(OBJ)\shk.o      : $(SRC)\$(CB) $(HACK_H) $(INCL)\eshk.h
+$(OBJ)\shk.o      : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
-$(OBJ)\shknam.o   : $(SRC)\$(CB) $(HACK_H) $(INCL)\eshk.h
+$(OBJ)\shknam.o   : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
 $(OBJ)\sit.o      : $(SRC)\$(CB) $(HACK_H) $(INCL)\artifact.h
 	$(SRCCC)
-$(OBJ)\sounds.o   : $(SRC)\$(CB) $(HACK_H) $(INCL)\edog.h $(INCL)\eshk.h
+$(OBJ)\sounds.o   : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
 $(OBJ)\sp_lev.o   : $(SRC)\$(CB) $(HACK_H) $(INCL)\sp_lev.h $(INCL)\rect.h
 	$(SRCCC)
@@ -1674,6 +1680,8 @@ $(OBJ)\spell.o    : $(SRC)\$(CB) $(HACK_H)
 $(OBJ)\steal.o    : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
 $(OBJ)\steed.o    : $(SRC)\$(CB) $(HACK_H)
+	$(SRCCC)
+$(OBJ)\sys.o    : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
 $(OBJ)\teleport.o : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
@@ -1689,7 +1697,7 @@ $(OBJ)\u_init.o   : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
 $(OBJ)\uhitm.o    : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
-$(OBJ)\vault.o    : $(SRC)\$(CB) $(HACK_H) $(INCL)\vault.h
+$(OBJ)\vault.o    : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
 $(OBJ)\version.o  : $(SRC)\$(CB) $(HACK_H) $(INCL)\date.h $(INCL)\$(PATCHLEV).h
 	$(SRCCC)

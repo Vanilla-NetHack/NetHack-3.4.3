@@ -1,0 +1,92 @@
+# NetHack 3.6 sysconf $NHDT-Date$ $NHDT-Branch$:$NHDT-Revision$
+#
+# Sample sysconf file.
+# The sysconf file is only used if NetHack is compiled with SYSCF defined.
+# It can be used to augment or override certain settings compiled into the
+# program.
+#
+# This file can also be used to set local system defaults for run-time
+# options, using the same syntax as an individual user's ./nethackrc file.
+
+# Which users can use debug mode (aka wizard mode; accessed via '-D' command
+# line flag or OPTIONS=playmode:debug in the runtime options config file).
+# A value of * allows anyone to enter debugging mode.
+WIZARDS=root games
+
+# Which users can use explore mode (aka discover mode; accessed via '-X'
+# command line flag or OPTIONS=playmode:explore in runtime options file or
+# via '#exploremode' command during normal play).  Same syntax as WIZARDS.
+EXPLORERS=*
+
+# Users allowed to use the '!' (shell escape) and '^Z' (suspend process)
+# commands to temporarily leave the game and enter a shell process.
+# (To resume play, use the shell command 'exit' (for most shells) to
+# return from '!' or the shell command 'fg' to return from '^Z'.
+# For the typical multi-user system where players have access to a shell
+# prompt when logged in and run the game from their own username, a value
+# of 'SHELLERS=*' is appropriate.  However, some inexperienced players
+# occasionally get stuck outside the game by accidentally typing '!' or
+# '^Z' during play and not knowing how to go back.)
+# Uses the same syntax as the WIZARDS and EXPLORERS options above.
+#SHELLERS=
+
+# Limit the number of simultaneous games (see also nethack.sh).
+MAXPLAYERS=10
+
+# If not null, added to string "To get local support, " in the support
+# information help.
+#SUPPORT=call Izchak at extension 42.
+
+# If not null, displayed at the end of a panic-save sequence.
+#RECOVER=Run the recover program.
+
+# Uncomment the next line to disable the SEDUCE option, causing succubi and
+# incubi to use nymphs' charm behavior rather than their own seduce behavior.
+#SEDUCE=0
+
+# Uncomment to disable savefile UID checking.
+#CHECK_SAVE_UID=0
+
+# Record (high score) file options.
+# CAUTION: changing these after people have started playing games can
+#  lead to lost high scores!
+# Maximum entries for one person.
+#PERSMAX=10
+# Maximum entries in the record file.
+#ENTRYMAX=100
+# Minimum points to get an entry.
+#POINTSMIN=1
+# Determine identity of "person" in the score file with name (0) or
+# numeric (1) user id.
+#PERS_IS_UID=1
+
+# Maximum number of score file entries to use for random statue names
+#MAX_STATUENAME_RANK=10
+
+# Show debugging information originating from these source files.
+# Use '*' for all, or list source files separated by spaces.
+# Only available if game has been compiled with DEBUG, and can be
+# overridden via DEBUGFILES environment variable.
+#DEBUGFILES=*
+
+# Try to get more info in case of a program bug or crash.  Only used
+# if the program is built with the PANICTRACE compile-time option enabled.
+# By default PANICTRACE is enabled if BETA is defined, otherwise disabled.
+# Using GDB can get more information and works on more systems but requires
+# 'gdb' be available; using LIBC only works if NetHack is linked with a
+# libc that supports the backtrace(3) API.  Both require certain compilation
+# options.  See src/end.c and sys/unix/hints/* for more information.
+GDBPATH=/usr/bin/gdb
+GREPPATH=/bin/grep
+# Values are priorities: 0 - do not use this method, 1 - low priority,
+# 2 - high priority.  Non-zero priority methods are tried in order.
+PANICTRACE_GDB=1
+PANICTRACE_LIBC=2
+
+# Ordinary run-time options can be set here to override the builtin-in
+# default values.  Unlike the SYSCF values above, individual users can
+# still choose their own option settings via NETHACKOPTIONS in their
+# environment or via ~/.nethackrc run-time configuration file.
+#OPTIONS=!autopickup,fruit:tomato,symset:DECgraphics
+
+#eof

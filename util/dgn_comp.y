@@ -1,5 +1,5 @@
 %{
-/*	SCCS Id: @(#)dgn_comp.c	3.4	1996/06/22	*/
+/* NetHack 3.6  dgn_comp.y	$NHDT-Date: 1432512785 2015/05/25 00:13:05 $  $NHDT-Branch: master $:$NHDT-Revision: 1.8 $ */
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /*	Copyright (c) 1990 by M. Stephenson				  */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -643,7 +643,7 @@ output_dgn()
 		    cb = 0, nb = 0;
 	static struct version_info version_data = {
 			VERSION_NUMBER, VERSION_FEATURES,
-			VERSION_SANITY1, VERSION_SANITY2
+			VERSION_SANITY1, VERSION_SANITY2, VERSION_SANITY3
 	};
 
 	if(++n_dgns <= 0) {

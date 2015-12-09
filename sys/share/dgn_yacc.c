@@ -1,14 +1,17 @@
 #ifndef lint
-static char yysccsid[] = "@(#)yaccpar	1.9 (Berkeley) 02/21/93";
+/* static char yysccsid[] = "@(#)yaccpar	1.9 (Berkeley) 02/21/93"; */
+/* static char nhsccsid[] = "@(#)yaccpar   1.9.0-nh (NetHack) 12/03/2015"; */
 #endif
 #define YYBYACC 1
 #define YYMAJOR 1
 #define YYMINOR 9
+#define YYSUBMINOR "0-nh"
+
 #define yyclearin (yychar=(-1))
 #define yyerrok (yyerrflag=0)
 #define YYRECOVERING (yyerrflag!=0)
 #define YYPREFIX "yy"
-/*	SCCS Id: @(#)dgn_comp.c	3.4	1996/06/22	*/
+/* NetHack 3.6  dgn_comp.y	$NHDT-Date: 1449233106 2015/12/04 12:45:06 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.11 $ */
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /*	Copyright (c) 1990 by M. Stephenson				  */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -544,7 +547,7 @@ output_dgn()
 		    cb = 0, nb = 0;
 	static struct version_info version_data = {
 			VERSION_NUMBER, VERSION_FEATURES,
-			VERSION_SANITY1, VERSION_SANITY2
+			VERSION_SANITY1, VERSION_SANITY2, VERSION_SANITY3
 	};
 
 	if(++n_dgns <= 0) {
@@ -646,14 +649,10 @@ yyloop:
         goto yyreduce;
     }
     if (yyerrflag) goto yyinrecovery;
-#ifdef lint
     goto yynewerror;
-#endif
 yynewerror:
     yyerror("syntax error");
-#ifdef lint
     goto yyerrlab;
-#endif
 yyerrlab:
     ++yynerrs;
 yyinrecovery:

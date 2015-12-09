@@ -13,7 +13,7 @@
 ^T      Teleport around level
 ^V      Teleport between levels (available in debug mode only)
 ^W      Wish (available in debug mode only)
-^X      Show your attributes (intrinsic ones included in debug or explore mode)
+^X      Show your attributes (shows more in debug or explore mode)
 ^Z      Suspend game (only if defined)
 a       Apply (use) a tool
 A       Remove all armor
@@ -21,7 +21,7 @@ b       Go southwest 1 space
 B       Go southwest until you are on top of something
 ^B      Go southwest until you are near something
 c       Close a door
-C       Call (name) a particular monster
+C       Call (name) a monster, an individual object, or a type of object
 d       Drop an item
 D       Drop specific item types
 e       Eat something
@@ -47,7 +47,7 @@ L       Go east until you are on top of something
 m       Followed by direction, move without picking anything up or fighting
 M       Followed by direction, move a distance without picking anything up
 n       Go southeast 1 space
-N       Go southeast until you are on something (if number_pad, name an object)
+N       Go southeast until you are on something (if number_pad is on, name)
 ^N      Go southeast until you are near something
 o       Open a door
 O       Show option settings, possibly change them
@@ -69,7 +69,7 @@ V       Show long version and game history
 w       Wield (put in use) a weapon
 W       Wear a piece of armor
 x       Swap wielded and secondary weapons
-X       Enter explore (discovery) mode (only if defined)
+X       Toggle two-weapon combat
 y       Go northwest 1 space
 Y       Go northwest until you are on top of something
 ^Y      Go northwest until you are near something
@@ -82,6 +82,7 @@ Z       Zap (cast) a spell
 &       Tell what a command does
 !       Do a shell escape (only if defined)
 \       Show what object types have been discovered
+`       Show discovered types for one class of objects
 _       Travel via a shortest-path algorithm to a point on the map 
 .       Rest one move while doing nothing
         Rest one move while doing nothing (if rest_on_space option is on)
@@ -101,7 +102,9 @@ $       Count your gold
 M-?     Display extended command help (if the platform allows this)
 M-2     Toggle two-weapon combat (unless number_pad is enabled)
 M-a     Adjust inventory letters
+M-A     Annotate: supply a name for the current dungeon level
 M-c     Talk to someone
+M-C     Conduct: list voluntary challenges you have maintained
 M-d     Dip an object into something
 M-e     Advance or check weapons skills
 M-f     Force a lock
@@ -109,13 +112,16 @@ M-i     Invoke an object's special powers
 M-j     Jump to another location
 M-l     Loot a box on the floor
 M-m     Use a monster's special ability
-M-n     Name an item or type of object
+M-n     Name a monster, an individual object, or a type of object
 M-o     Offer a sacrifice to the gods
+M-O     Overview: show a summary of the explored dungeon
 M-p     Pray to the gods for help
 M-q     Quit
 M-r     Rub a lamp
+M-R     Ride: mount or dismount a saddled steed
 M-s     Sit down
 M-t     Turn undead
+M-T     Tip: empty a container
 M-u     Untrap something (trap, door, or chest)
 M-v     Print compile time options for this version of NetHack
 M-w     Wipe off your face

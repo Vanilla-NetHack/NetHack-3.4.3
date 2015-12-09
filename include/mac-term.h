@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mac-term.h	3.4	2003/06/01	*/
+/* NetHack 3.6	mac-term.h	$NHDT-Date: 1432512775 2015/05/25 00:12:55 $  $NHDT-Branch: master $:$NHDT-Revision: 1.8 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 2003. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -24,11 +24,11 @@
 #undef MAC
 #define UNIX
 #define BSD
-#define __FreeBSD__ 	/* Darwin is based on FreeBSD */
+#define __FreeBSD__ /* Darwin is based on FreeBSD */
 #define GCC_WARN
 
 /* May already be defined by CodeWarrior as 0 or 1 */
 #ifdef TARGET_API_MAC_CARBON
-# undef TARGET_API_MAC_CARBON
+#undef TARGET_API_MAC_CARBON
 #endif
-#define TARGET_API_MAC_CARBON 0 	/* Not Carbon */
+#define TARGET_API_MAC_CARBON 0 /* Not Carbon */

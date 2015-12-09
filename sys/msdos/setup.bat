@@ -1,10 +1,10 @@
 @echo off
-REM    SCCS Id: @(#)setup.bat   2002/03/17
-REM    Copyright (c) NetHack PC Development Team 1990 - 2002
+REM    NetHack 3.6 setup.bat   $NHDT-Date: 1432512792 2015/05/25 00:13:12 $ $NHDT-Branch: master $:$NHDT-Revision: 1.9 $
+REM    Copyright (c) NetHack PC Development Team 1990 - 2012
 REM    NetHack may be freely redistributed.  See license for details.
 
 echo.
-echo   Copyright (c) NetHack PC Development Team 1990 - 2002
+echo   Copyright (c) NetHack PC Development Team 1990 - 2012
 echo   NetHack may be freely redistributed.  See license for details.
 echo.
 REM setup batch file for msdos, see Install.dos for details.

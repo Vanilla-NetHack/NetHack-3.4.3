@@ -1,41 +1,33 @@
 #!/bin/sh
-# Copy files to their correct locations.
+# NetHack 3.6  setup.sh	$NHDT-Date: 1432512789 2015/05/25 00:13:09 $  $NHDT-Branch: master $:$NHDT-Revision: 1.14 $
+# Copyright (c) Kenneth Lorber, Kensington, Maryland, 2007.
+# NetHack may be freely redistributed.  See license for details.
 #
-# If arguments are given, try symbolic link first.  This is not the default
-# so that most people will have the distribution versions stay around so
-# subsequent patches can be applied.  People who pay enough attention to
-# know there's a non-default behavior are assumed to pay enough attention
-# to keep distribution versions if they modify things.
+# Build and install makefiles.
+#
+# Argument is the hints file to use (or no argument for traditional setup).
+# e.g.:
+#  sh setup.sh
+# or
+#  sh setup.sh hints/macosx10.5 (from sys/unix)
+# or
+#  sh setup.sh sys/unix/hints/macosx10.5 (from top)
 
 # Were we started from the top level?  Cope.
-if [ -f sys/unix/Makefile.top ]; then cd sys/unix; fi
+prefix=.
+if [ -f sys/unix/Makefile.top ]; then cd sys/unix; prefix=../..; fi
 
-if [ $# -gt 0 ] ; then
-#	First, try to make a symbolic link.
-#
-	ln -s Makefile.top Makefile >/dev/null 2>&1
-	if [ $? -eq 0 ] ; then
+case "x$1" in
+x)      hints=/dev/null
+	hfile=/dev/null
+        ;;
+*)      hints=$prefix/$1
+	hfile=$1
+        ;;
+esac
 
-		echo "Lucky you!  Symbolic links."
-		rm -f Makefile
-
-		umask 0
-		ln -s sys/unix/Makefile.top ../../Makefile
-		ln -s ../sys/unix/Makefile.dat ../../dat/Makefile
-		ln -s ../sys/unix/Makefile.doc ../../doc/Makefile
-		ln -s ../sys/unix/Makefile.src ../../src/Makefile
-		ln -s ../sys/unix/Makefile.utl ../../util/Makefile
-		exit 0
-	fi
-fi
-
-#
-#	Otherwise...
-
-echo "Copying Makefiles."
-
-cp Makefile.top ../../Makefile
-cp Makefile.dat ../../dat/Makefile
-cp Makefile.doc ../../doc/Makefile
-cp Makefile.src ../../src/Makefile
-cp Makefile.utl ../../util/Makefile
+/bin/sh ./mkmkfile.sh Makefile.top TOP ../../Makefile $hints $hfile
+/bin/sh ./mkmkfile.sh Makefile.dat DAT ../../dat/Makefile $hints $hfile
+/bin/sh ./mkmkfile.sh Makefile.doc DOC ../../doc/Makefile $hints $hfile
+/bin/sh ./mkmkfile.sh Makefile.src SRC ../../src/Makefile $hints $hfile
+/bin/sh ./mkmkfile.sh Makefile.utl UTL ../../util/Makefile $hints $hfile

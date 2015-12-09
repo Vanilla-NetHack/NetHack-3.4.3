@@ -63,12 +63,18 @@ BEGIN
         MENUITEM "&9 - ASCII  (10x18)",         IDM_MAP_ASCII10X18
         MENUITEM SEPARATOR
         MENUITEM "&Fit To Screen ",             IDM_MAP_FIT_TO_SCREEN
+        MENUITEM SEPARATOR
+        MENUITEM "&Copy To Clipboard (ASCII)",  IDM_SETTING_SCREEN_TO_CLIPBOARD
+        MENUITEM "&Save to File (ASCII)",       IDM_SETTING_SCREEN_TO_FILE
     END
     POPUP "Windows &Settings"
     BEGIN
         MENUITEM "NetHack Mode",                IDM_NHMODE
         MENUITEM SEPARATOR
         MENUITEM "&Clear All Settings",         IDM_CLEARSETTINGS
+        MENUITEM SEPARATOR
+        MENUITEM "Auto &Arrange Windows",       IDM_SETTING_AUTOLAYOUT
+        MENUITEM "&Lock Windows",               IDM_SETTING_LOCKWINDOWS
     END
     POPUP "&Help"
     BEGIN
@@ -115,25 +121,25 @@ BEGIN
 END
 
 IDD_NHTEXT DIALOGEX 0, 0, 172, 178
-STYLE DS_SETFOREGROUND | WS_CHILD | WS_THICKFRAME
-EXSTYLE WS_EX_STATICEDGE
-FONT 8, "MS Sans Serif"
+STYLE WS_CHILD | WS_CLIPSIBLINGS | WS_THICKFRAME
+EXSTYLE WS_EX_CLIENTEDGE | WS_EX_CONTROLPARENT
+FONT 8, "MS Sans Serif", 0, 0
 BEGIN
-    DEFPUSHBUTTON   "OK",IDOK,54,163,50,14
-    EDITTEXT        IDC_TEXT_CONTROL,0,0,170,160,ES_MULTILINE | 
-                    ES_OEMCONVERT | ES_READONLY | WS_VSCROLL | WS_HSCROLL
+    EDITTEXT        IDC_TEXT_CONTROL,0,0,172,160,ES_MULTILINE | 
+                    ES_OEMCONVERT | ES_READONLY | WS_VSCROLL | WS_HSCROLL | NOT WS_TABSTOP
+    DEFPUSHBUTTON   "OK",IDOK,54,163,50,14,BS_FLAT | NOT WS_TABSTOP
 END
 
 IDD_MENU DIALOGEX 0, 0, 187, 153
 STYLE WS_CHILD | WS_CLIPSIBLINGS | WS_THICKFRAME
-EXSTYLE WS_EX_CLIENTEDGE | WS_EX_CONTROLPARENT | WS_EX_STATICEDGE
-FONT 8, "MS Sans Serif"
+EXSTYLE WS_EX_CLIENTEDGE | WS_EX_CONTROLPARENT
+FONT 8, "MS Sans Serif", 0, 0
 BEGIN
-    DEFPUSHBUTTON   "OK",IDOK,7,132,50,14,BS_FLAT
-    PUSHBUTTON      "Cancel",IDCANCEL,130,132,50,14,BS_FLAT
-    LISTBOX         IDC_MENU_LIST,10,10,170,55,LBS_SORT | WS_TABSTOP
+    LISTBOX         IDC_MENU_LIST,10,10,170,55,LBS_SORT
     EDITTEXT        IDC_MENU_TEXT,10,70,170,60,ES_MULTILINE | ES_OEMCONVERT | 
-                    ES_READONLY | WS_VSCROLL | WS_HSCROLL
+                    ES_READONLY | WS_VSCROLL | WS_HSCROLL | NOT WS_TABSTOP
+    DEFPUSHBUTTON   "OK",IDOK,7,132,50,14,BS_FLAT | NOT WS_TABSTOP
+    PUSHBUTTON      "Cancel",IDCANCEL,130,132,50,14,BS_FLAT | NOT WS_TABSTOP
 END
 
 IDD_GETLIN DIALOG DISCARDABLE  0, 0, 131, 29
@@ -192,7 +198,7 @@ END
 IDD_NHRIP DIALOGEX 0, 0, 281, 209
 STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Here lies..."
-FONT 8, "MS Sans Serif"
+FONT 8, "MS Sans Serif", 0, 0
 BEGIN
     DEFPUSHBUTTON   "OK",IDOK,82,188,50,14
 END
@@ -249,6 +255,7 @@ IDB_TILES               BITMAP  DISCARDABLE     "tiles.bmp"
 IDB_MENU_SEL            BITMAP  DISCARDABLE     "mnsel.bmp"
 IDB_MENU_UNSEL          BITMAP  DISCARDABLE     "mnunsel.bmp"
 IDB_PETMARK             BITMAP  DISCARDABLE     "petmark.bmp"
+IDB_PILEMARK            BITMAP  DISCARDABLE     "pilemark.bmp"
 IDB_MENU_SEL_COUNT      BITMAP  DISCARDABLE     "mnselcnt.bmp"
 IDB_RIP                 BITMAP  DISCARDABLE     "rip.bmp"
 IDB_SPLASH              BITMAP  DISCARDABLE     "splash.bmp"
@@ -319,8 +326,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 3,4,3,0
- PRODUCTVERSION 3,4,3,0
+ FILEVERSION 3,5,0,0
+ PRODUCTVERSION 3,5,0,0
  FILEFLAGSMASK 0x1fL
 #ifdef _DEBUG
  FILEFLAGS 0x9L
@@ -336,13 +343,13 @@ BEGIN
         BLOCK "040904b0"
         BEGIN
             VALUE "FileDescription", "NetHack for Windows - Graphical Interface\0"
-            VALUE "FileVersion", "3.4.3\0"
+            VALUE "FileVersion", "3.5.0\0"
             VALUE "InternalName", "NetHackW\0"
-            VALUE "LegalCopyright", "Copyright (C) 1985 - 2003.  By Stichting Mathematisch Centrum and M. Stephenson.  See license for details.\0"
+            VALUE "LegalCopyright", "Copyright (C) 1985 - 2006.  By Stichting Mathematisch Centrum and M. Stephenson.  See license for details.\0"
             VALUE "OriginalFilename", "NetHackW.exe\0"
-            VALUE "PrivateBuild", "031014\0"
+            VALUE "PrivateBuild", "140606\0"
             VALUE "ProductName", "NetHack\0"
-            VALUE "ProductVersion", "3.4.3\0"
+            VALUE "ProductVersion", "3.5.0\0"
         END
     END
     BLOCK "VarFileInfo"

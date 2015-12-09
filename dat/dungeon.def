@@ -1,4 +1,4 @@
-#	SCCS Id: @(#)dungeon.def	3.4	1996/03/10
+# NetHack 3.6	dungeon.def	$NHDT-Date: 1432512783 2015/05/25 00:13:03 $  $NHDT-Branch: master $:$NHDT-Revision: 1.13 $
 #	Copyright (c) 1990-95 by M. Stephenson
 # NetHack may be freely redistributed.  See license for details.
 #
@@ -17,14 +17,15 @@
 DUNGEON:	"The Dungeons of Doom" "D" (25, 5)
 ALIGNMENT:	unaligned
 BRANCH:		"The Gnomish Mines" @ (2, 3)
-%REINCARNATION LEVEL:		"rogue" "R" @ (15, 4)
+LEVEL:		"rogue" "R" @ (15, 4)
+LEVELDESC:	roguelike
 LEVEL:		"oracle" "O" @ (5, 5)
 LEVALIGN:	neutral
 CHAINBRANCH:	"Sokoban" "oracle" + (1, 0) up
-RNDLEVEL:	"bigrm" "B" @ (10, 3) 40 5
+RNDLEVEL:	"bigrm" "B" @ (10, 3) 40 10
 CHAINBRANCH:	"The Quest" "oracle" + (6, 2) portal
 BRANCH:		"Fort Ludios" @ (18, 4) portal
-RNDLEVEL:	"medusa" "none" @ (-5, 4) 2
+RNDLEVEL:	"medusa" "none" @ (-5, 4) 4
 LEVALIGN:	chaotic
 LEVEL:		"castle" "none" @ (-1, 0)
 CHAINBRANCH:	"Gehennom" "castle" + (0, 0) no_down
@@ -78,7 +79,7 @@ RNDLEVEL:	"minend" "E" @ (-1, 0) 3
 #	The Questdungeon
 #
 #	This is a proto-dungeon.  The level file names will be prepended with
-#	the first letter of the character name during initialization.
+#	three letter role abbreviation during initialization, replacing "x".
 #	A special "x-fill" level must be defined in the levels description
 #	file.  It will be used for all levels not defined explicitly below.
 #

@@ -1,5 +1,5 @@
 #	NetHack Makefile (VMS) - data files: special levels and other data.
-#	SCCS Id: @(#)Makefile.dat	3.4	2002/03/02
+#	NetHack 3.6	Makefile.dat	$NHDT-Date: 1432512789 2015/05/25 00:13:09 $	$NHDT-Branch: master $:$NHDT-Revision: 1.8 $
 
 #  Copy this file to [.dat]Makefile.; no editing needed.
 

@@ -1,10 +1,11 @@
-         Copyright (c) NetHack Development Team 1990-2002
+         Copyright (c) NetHack Development Team 1990-2015
          NetHack may be freely redistributed.  See license for details.
          ==============================================================
-                 Instructions for compiling and installing
-             NetHack 3.4 on a Windows 9x, NT, 2000, or XP system
+                  Instructions for compiling and installing
+                       NetHack 3.6 on a Windows system
+         (Windows 7/8.x/10 or later only. XP may work but is untested)
          ==============================================================
-                 Last revision: $Date: 2003/10/14 01:31:25 $
+          Last revision: $NHDT-Date: 1447979773 2015/11/20 00:36:13 $
 
 Credit for the porting of NetHack to the Win32 Console Subsystem goes to 
 the NT Porting Team started by Michael Allison.
@@ -15,29 +16,21 @@ contributed the port.
 
 The PC Windows porting team consisting of Michael Allison, David Cohrs, 
 Alex Kompel, Dion Nicolaas, Yitzhak Sapir, and Janet Walz maintained the 
-tty and graphical win32 versions of NetHack 3.4.3.
+tty and graphical win32 versions of NetHack 3.6.0.
 
-You can build either the TTY version of NetHack or the Windows Graphical 
-version.  In either case you can use one of the following build
-environments:
+You can build a TTY version of NetHack and a Windows Graphical 
+version.  You can use one of the following build environments:
 
-  o A copy of Microsoft Visual C V6.0 SP3 or later.  Things may work with 
-    an earlier version of the compiler, but the current code has not
-    been tested with an earlier version.
-		
-	OR
-
-  o A copy of Borland C 5.5.1 command line tools.  Borland has made a
-    version of its command line tools available for download after
-    registration at:
-        http://www.borland.com/bcppbuilder/freecompiler/
-
+  o A copy of Microsoft Visual Studio 2013 Express
+    The current NetHack code has not been tested with earlier versions 
+    of the compiler.
+    
     OR
 
-  o A copy of MinGW 2.0. MinGW is a collection of header files and import
-    libraries with which native Windows32 programs can be made; the
-    MinGW 2.0 distribution contains the GNU Compiler Collection.
-    You can download MinGW at
+  o A copy of MinGW. MinGW is a collection of header 
+    files and import libraries with which native Windows32 programs 
+    can be built; the MinGW distribution contains the GNU Compiler 
+    Collection. You can download MinGW at
         http://www.mingw.org/
     Earlier versions of MinGW will not allow you to build the Windows
     Graphical version.
@@ -48,10 +41,12 @@ that allow you to build the Windows Graphical version from Microsoft
 Visual C's IDE (Integrated Development Environment.)
 
 
-FIRST STEP
+/-----------------------------------\
+| FIRST STEP - MOVING THINGS AROUND |
+\-----------------------------------/
 
 The first step in building either version of NetHack is to execute
-sys\winnt\nhsetup.bat.  
+sys\winnt\nhsetup.bat to move some files to their required locations.  
 
 From the command prompt:
 	cd sys\winnt
@@ -69,43 +64,52 @@ moved there.
 
 If you wish to build from the command line, proceed to "BUILDING FROM
 THE COMMAND LINE."
+
 If you wish to build using Visual C's IDE, proceed now to "BUILDING
 USING VISUAL C'S IDE."
 
+/--------------------------------\
+| BUILDING FROM THE COMMAND LINE |
+\--------------------------------/
 
-BUILDING FROM THE COMMAND LINE
-
-You can built two different versions of NetHack for Win32 from the
-command line:
+Two different versions of NetHack will be built for Windows from the
+command line using the Makefile approach:
     A tty port utilizing the Win32 Console I/O subsystem, Console
         NetHack;
     A Win32 native port built on the Windows API, Graphical NetHack or
         NetHackW.
 
 The executable for Console NetHack will be named NetHack.exe. The
-executable for Graphical NetHack will be named NetHackW.exe. You can opt
-to build both; they will be able to use the same datafiles, save files
-and bones files.
+executable for Graphical NetHack will be named NetHackW.exe. The 
+Makefile configuration will build both; NetHackW.exe and NetHack.exe
+will be able to use the same datafiles, save files and bones files.
+
+Since the last official release of NetHack, compilers and computer 
+architectures have evolved and you can now choose whether to build
+a 32-bit x86 version, or a 64-bit x64 version.  The default Makefile
+is set up for a 32-bit x86 version, but that's only because it will 
+run on the most number of existing Windows environments.
+
+NetHack's save files and bones files in the 3.6.0 release have not 
+evolved enough to allow them to interchange between the 32-bit version 
+and the 64-bit version (or between different platforms). Hopefully
+that will change in an upcoming release.
 
 I. Dispelling the Myths:
 
-    Compiling NetHack for Win32 is not as easy as it sounds, nor as hard
+    Compiling NetHack for Windows is not as easy as it sounds, nor as hard
     as it looks, however it will behoove you to read this entire section 
     through before beginning the task.
 
     We have provided a Makefile for each of the following compilers:
 
-        o Microsoft Visual C++ V6.0 SP3 or greater
-        o Borland C 5.5.1
+        o Microsoft Visual Studio 2013 Express Visual C++ Compiler
         o MinGW 2.0 (with GCC 3.2)
 
-    The Microsoft Visual C Makefile was created for use with MS NMAKE 
-    which is provided with the Microsoft compiler. The supplied Makefile
-    may work with earlier versions of the Microsoft 32-bit compiler, but 
-    that has not been tested. 
-
-    The Borland C Makefile was created for use with Borland MAKE which
-    is provided with the Borland compiler.
+    The Microsoft Visual Studio 2013 Express Makefile was created for use 
+    with MS NMAKE which is provided with the Microsoft compiler. 
+    The supplied Makefile may work with earlier versions of the Microsoft
+    compiler, but that has not been tested. 
 
     The GCC Makefile was created for use with GNU Make version 3.79.1,
     which comes with the MinGW package.
@@ -115,21 +119,84 @@ I. Dispelling the Myths:
     they are required should you desire to make any changes to the level
     and dungeon compilers.
 
-II. To compile your copy of NetHack on a Windows NT/2000/XP machine:
+II. To compile your copy of NetHack on a Windows machine:
 
 Setting Up
 
-1.  It almost goes without saying that you should make sure that your
+1.  It almost goes without saying that you should make sure that your 
     tools are set up and running correctly.  That includes ensuring that
     all the necessary environment variables for the compiler environment
-    are set correctly.  (Examples: For the Microsoft compiler by
-    executing vcvars32.bat, which is probably in the bin directory of 
-    your compilers directory tree. For the Borland Makefile, you can 
-    simply invoke the Make utility from the Makefile's directory (For 
-    the standard Borland compiler installation you can just use the
-    explicit path "c:\borland\bcc55\bin\make /f Makefile.bcc".  For the
-    GCC Makefile, add <mingw>\bin to your path, where <mingw> is your
-    MinGW root directory.)
+    are set correctly. 
+
+    Visual Studio 2013 Express
+
+    The installation should have placed a command prompt option on the 
+    Start menus that is properly configured for building: 
+                 From
+                     Start | All Programs | Microsoft Visual Studio 2013 Express
+                 Select
+                     Visual Studio Command Prompt 2013
+ 
+    Anyway, once you are at a command prompt (cmd.exe) regardless of how you
+    got there, you can use one of the following sets of commands to prepare 
+    your environment for building:
+
+    For a 32-bit x86 build (like the official binary):
+        cd "\Program Files (x86)\Microsoft Visual Studio 12.0\VC"
+        vcvarsall x86
+
+    For a 64-bit x64 build:
+        cd "\Program Files (x86)\Microsoft Visual Studio 12.0\VC"
+        vcvarsall x86_amd64
+
+      -----------------------------------------------------------
+      vcvarsall.bat | Compiler   | Build-computer | Build output
+      argument      |            | architecture   | architecture
+      --------------+------------+----------------+--------------
+      X86           | x86 32-bit | x86, x64       | x86
+                    | native     |                |
+      --------------+------------+----------------+--------------
+      x86_amd64     | x64 on x86 | x86, x64       | x64
+                    | cross      |                |
+      --------------+------------+----------------+--------------
+      amd64         | x64 64-bit | x64            | x64
+                    | native     |                |
+      --------------+------------+----------------+--------------
+      amd64_x86     | x86 on     | x64            | x86
+                    | x64 cross  |                |
+      -----------------------------------------------------------
+
+    Change your current directory to the src subfolder of the nethack 
+    source tree.
+        cd src
+
+    At this time, if you are determined to build an x64 version
+    with the Microsoft Visual Studio 2013 compiler,
+    one extra NetHack-specific step is needed. Edit the Makefile in the src 
+    directory and change this in the section marked as 1.:
+           #
+           # 64 bit
+           #TARGET_CPU=x64
+           #
+           # 32 bit
+           TARGET_CPU=x86
+    to this:
+           #
+           # 64 bit
+           TARGET_CPU=x64
+           #
+           # 32 bit
+           #TARGET_CPU=x86
+    
+
+    GCC 
+
+    For the GCC Makefile, add <mingw>\bin to your path, where <mingw> 
+    is your MinGW root directory.).
+
+    Change your current directory to src subfolder of the nethack 
+    source tree.
+        cd src
 
 2.  Make sure all the NetHack files are in the appropriate directory
     structure.  You should have a main directory with subdirectories
@@ -192,16 +259,8 @@ Setting Up
     You may include all or as few of the special game features as you
     wish (they are located last in the file).
 
-4.  Edit your Makefile. 
-
-    For building Console NetHack, ensure that GRAPHICAL is set to "N",
-    or commented out. For building Graphical NetHack, set GRAPHICAL to
-    "Y".
-
-    Optional step:
-        If you elected not to use the high-quality BSD random number
-        routines by commenting out RANDOM in ntconf.h, comment out (or
-        set equal to nothing) the RANDOM macro in your Makefile.
+4.  Edit your Makefile if you wish, but it is not required unless
+    you are altering the build options.
 
     If you are recompiling after patching your sources, or if you got
     your files from somewhere other than the official distribution,
@@ -211,16 +270,19 @@ Setting Up
 
 Compiling
 
-5.  Now that everything is set up, change your current directory to src.
+5.  Now that everything is set up...
 
-    For Microsoft compiler: 
-        nmake install
+    For Visual Studio 2013 Express, as mentioned above, you should now be
+    at the command prompt to carry out the build and your current 
+    directory should be the src subdirectory in the NetHack source tree.
 
-    For Borland compiler:
-        make /f Makefile.bcc install
+    In the src subdirectory, issue this command:
+	        nmake install
 
     For GCC:
-        mingw32-make -f Makefile.gcc install
+	Change your current directory to the NetHack src directory.
+	Issue this command:
+        	mingw32-make -f Makefile.gcc install
 
     If you get any errors along the way then something has not been set
     up correctly. The time it takes to compile depends on your
@@ -241,9 +303,6 @@ Notes:
     For Microsoft compiler: 
         nmake
 
-    For Borland compiler:
-        make /f Makefile.bcc
-
     For GCC:
         mingw32-make -f Makefile.gcc
 
@@ -256,26 +315,27 @@ Notes:
     have to delete dgn_flex.c, dgn_yacc.c, lev_flex.c, and lev_yacc.c
     from the util directory to ensure that they are remade.
 
-2.  The executable produced by the TTY build is a 32-bit, flat-address
-    space, non-overlayed .exe file, which should run on any true Win32
-    environment with console I/O support. 
-
-    The executable built by the graphical built is a 32-bit,
-    flat-address space, non-overlayed .exe file, which should run on any
-    true Win32 graphical environment.
+2.  Depending on the build and compiler and tools used above, the 
+    executable produced by the TTY build is either:
+      - a 32-bit (x86), flat-address space, non-overlayed .exe file, 
+        which should run on any recent Win32 environment.
+    or
+      - a 64-bit (x64) .exe file, 
+        which should run on any 64-bit Windows O/S.
 
     To run NetHack, proceed to RUNNING NETHACK.
 
+/-------------------------------------------------\
+| BUILDING USING VISUAL STUDIO 2013 EXPRESS IDE   |
+\-------------------------------------------------/
 
-BUILDING USING VISUAL C'S IDE
-
-Only the Win32 native port built on the Windows API, or Graphical
-NetHack, can be built using the Visual C IDE.
+Only the native port built on the Windows API, or Graphical
+NetHack, can be built using the Visual Studo 2013 Express IDE.
 
 I. Dispelling the Myths:
 
     Compiling NetHack using the Visual C IDE is straightforward, as long
-    as you have your compiler and tools correctly installed.  
+    as you have your compiler and tools correctly installed.
 
     It is again assumed that you already changed your directory to
     sys\winnt and executed:
@@ -283,15 +343,18 @@ I. Dispelling the Myths:
     as described at the top of this document. If you didn't, you must go
     back and do so before proceeding.
 
-II. To compile your copy of NetHack for Windows on a Windows NT/2000/XP
-    machine using the Visual C IDE:
+II. To compile your copy of NetHack for Windows on a Windows machine 
+    using the Visual Studio 2013 Express IDE:
 
 Setting Up
 
 1.  It almost goes without saying that you should make sure that your
-    tools are set up and running correctly. (For the Microsoft Visual C
-    IDE it should correctly fire up when you choose it in your Start |
-    Programs menus.)
+    tools are set up and running correctly. (For the Microsoft Visual
+    Studio 2013 ExpressIDE it should correctly fire up when you choose 
+    it:
+        Start | All Programs | Microsoft Visual Studio 2013 Express
+    and select 
+        Visual C++ 2013 Express
 
 2.  Make sure all the NetHack files are in the appropriate directory
     structure.  You should have a main directory with subdirectories
@@ -340,61 +403,80 @@ Setting Up
 3.  Ready your tool.
     Note: It's possible to build a graphical version using the Makefile,
     as explained above. However, the IDE build has full game
-    functionality and is the officially released build.
+    functionality.
 
-    Start the Visual C IDE. In the Visual C IDE menus, choose:
-        File | Open Workspace
+    Start the Visual Studio 2013 Express IDE:
+        Start | All Programs | Microsoft Visual Studio 2013 Express
+    and select 
+        Visual C++ 2013 Express
+
+    In the Visual C++ 2013 Express IDE menus, choose:
+        File | Open Project/Solution
+     
 
 4.  Set up for the build.
 
-    In the Visual C "Open Workspace" dialog box, navigate to the top of
+    In the Visual C dialog box, navigate to the top of
     your NetHack source directory.
 
-    In there, highlight "nethack.dsw" and click on Open.
-    Once the workspace has been opened, you should see the following
-    list in the Visual C selection window:
-      + dgncomp files
-      + dgnstuff files
-      + dlb_main files
-      + levcomp files
-      + levstuff files
-      + makedefs files
-      + nethackw files
-      + recover files
-      + tile2bmp files
-      + tilemap files
-      + uudecode files
+    In there, highlight "nethack.sln" for Visual C++ 2013 Express Edition 
+    and click on Open.
 
-    On the Visual C menus, choose:
-        Project | Set Active Project | NetHackW
+    Once the workspace or solution has been opened, you should see 
+    the following list in the Visual C selection left pane:
+      + dgncomp
+      + dgnstuff
+      + dlb_main
+      + levcomp
+      + levstuff
+      + makedefs
+      + nethackw
+      + recover
+      + tile2bmp
+      + tilemap
+      + uudecode
 
-    On the Visual C menus again, choose either:
-        Build | Set Active Configuration | NetHackW - Win32 Release
+    On the Visual C++ 2013 Express IDE menus, NetHackW should be the startup
+    project in bold, but if it isn't make it so by right-clicking and
+    choosing "set as Startup Project."
+
+    In Visual C 2013 Express IDE menus right-click on 
+    "Solution NetHack (14 Projects)" and select "Configuration Manager."
+
+    Set the "Active Solution Configuration" to either 
+        Debug
     or
-        Build | Set Active Configuration | NetHackW - Win32 Debug
+        Release
+    and click the "Close" button.
 
-    The first will create the Release build of NetHackW which does not
-    contain all the debugging information and is smaller, and runs
-    quicker.  The second will create the Debug build of NetHackW and
-    will spend a lot of time writing debug information to the disk as
-    the game is played. Unless you are debugging or enhancing NetHack
-    for Windows, choose the Release build.
+
+    The Release build of NetHackW which does not contain all the 
+    debugging information and is smaller, and runs slightly quicker.  
+    The Debug build of NetHackW will spend time writing debug information 
+    to the disk as the game is played. Unless you are debugging or 
+    enhancing NetHack for Windows, you probably will want to choose the 
+    Release build.
 
 Building
     
 5.  Start your build.
 
-    On the Visual C menus once again, choose:
-        Build | Build NetHackW.exe
-    This starts the build.  It is likely that the IDE message window 
+    On the Visual C++ Express IDE menus once again, choose:
+        Debug | Build Solution
+    or press <F7> to accomplish the same thing.
+
+    That starts the build.  It is likely that the IDE message window 
     where you are doing the compiling will be occupied for a while.
 
 6.  If all has gone well to this point, you should now have a NetHack
     executable called NetHackW.exe in the "binary" directory, along with
     all the support files that it needs.
  
+ 
 
-RUNNING NETHACK
+/-----------------\
+| RUNNING NETHACK |
+\-----------------/
 
 I. Checking the installation:
     Make sure all of the support files -- Guidebook.txt, license,
@@ -426,10 +508,10 @@ II. Executing the game
     If you will be running it by launching it from a shortcut, just use
     the following information when setting up the shortcut.
 
-        Description      :  NetHack 3.4.3 Console version
+        Description      :  NetHack 3.6.0 Console version
         Command Line     :  C:\NETHACK\BINARY\NETHACK.EXE
 
-        Description      :  NetHack 3.4.3 Graphical Interface
+        Description      :  NetHack 3.6.0 Graphical Interface
          Command Line     :  C:\NETHACK\BINARY\NETHACKW.EXE
 
    (changing the directory to the appropriate one of course)

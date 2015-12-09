@@ -1,4 +1,4 @@
-@REM  SCCS Id: @(#)nhsetup.bat	$Date: 2003/08/22 13:23:33 $
+@REM  NetHack 3.6 cesetup.bat	$NHDT-Date: 1432512801 2015/05/25 00:13:21 $ $NHDT-Branch: master $:$NHDT-Revision: 1.15 $ */
 @REM  Copyright (c) Alex Kompel, 2002
 @REM  NetHack may be freely redistributed.  See license for details. 
 @REM  Win32 nhsetup batch file, see Install.ce for details
@@ -15,9 +15,9 @@ copy ..\..\win\win32\mnsel.uu    ..\..\wince\mnsel.uu
 copy ..\..\win\win32\mnselcnt.uu ..\..\wince\mnselcnt.uu
 copy ..\..\win\win32\mnunsel.uu  ..\..\wince\mnunsel.uu
 copy ..\..\win\win32\petmark.uu  ..\..\wince\petmark.uu
-copy ..\..\sys\winnt\nhico.uu    ..\..\wince\nhico.uu
 copy ..\..\sys\wince\menubar.uu    ..\..\wince\menubar.uu
 copy ..\..\sys\wince\keypad.uu    ..\..\wince\keypad.uu
+copy ..\..\sys\wince\nhico.uu    ..\..\wince\nhico.uu
 REM
 REM  Get these files from sys\wince
 REM

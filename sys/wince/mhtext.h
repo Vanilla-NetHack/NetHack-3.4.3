@@ -1,4 +1,5 @@
-/* Copyright (C) 2001 by Alex Kompel <shurikk@pacbell.net> */
+/* NetHack 3.6	mhtext.h	$NHDT-Date: 1432512799 2015/05/25 00:13:19 $  $NHDT-Branch: master $:$NHDT-Revision: 1.9 $ */
+/* Copyright (C) 2001 by Alex Kompel 	 */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #ifndef MSWINTextWindow_h
@@ -8,7 +9,7 @@
 #include "config.h"
 #include "global.h"
 
-HWND mswin_init_text_window ();
-void mswin_display_text_window (HWND hwnd);
+HWND mswin_init_text_window();
+void mswin_display_text_window(HWND hwnd);
 
 #endif /* MSWINTextWindow_h */

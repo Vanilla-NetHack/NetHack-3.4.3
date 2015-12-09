@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)tileedit.cpp	3.4	1999/11/19	*/
+/* NetHack 3.6	tileedit.cpp	$NHDT-Date$  $NHDT-Branch$:$NHDT-Revision$ */
 /* Copyright (c) Warwick Allison, 1999. */
 /* NetHack may be freely redistributed.  See license for details. */
 /*

@@ -1,6 +1,6 @@
-#	SCCS Id: @(#)Makefile.MSC	      3.4     2002/09/10
-#	Copyright (c) NetHack PC Development Team 1997 - 2002.
-#	PC NetHack 3.3x Makefile for MSC V1.52c (16 bit compiler)
+# NetHack 3.6	Makefile.MSC	$NHDT-Date: 1432512792 2015/05/25 00:13:12 $  $NHDT-Branch: master $:$NHDT-Revision: 1.21 $
+#	Copyright (c) NetHack PC Development Team 1997 - 2012.
+#	PC NetHack 3.4x Makefile for MSC V1.52c (16 bit compiler)
 #
 #	For questions or comments: nethack-bugs@nethack.org
 #
@@ -67,12 +67,16 @@ LEXYYC = lexyy.c
 # Note that this code did not get a thorough testing prior to 3.4.x
 #NEWALT=/DNEW_ALT
 
+#
+# Uncomment this line if your shell doesn't support FOR bat syntax (DOSBOX).
+NO_FOR=Y
+
 #############################################################################
 #
 # nothing below this line should have to be changed
 #
 
-LNKOPT = SCHEMA3.DEF
+LNKOPT = SCHEMA35.DEF
 
 #
 # Controls whether MOVE tracing is enabled in the executable
@@ -220,9 +224,9 @@ VOBJ19 = trap.o     u_init.o   uhitm.o    vault.o    vision.o
 VOBJ20 = vis_tab.o  weapon.o   were.o	  wield.o    windows.o
 VOBJ21 = wintty.o   wizard.o   worm.o	  worn.o     write.o
 VOBJ22 = zap.o	    light.o    dlb.o      dig.o      teleport.o
-VOBJ23 = random.o   region.o
+VOBJ23 = random.o   region.o   sys.o
 
-SOBJ   = msdos.o    sound.o    sys.o	  tty.o	     unix.o    video.o \
+SOBJ   = msdos.o    sound.o    pcsys.o	  tty.o	     unix.o    video.o \
 	vidtxt.o    pckeys.o
 
 VVOBJ  = version.o
@@ -241,16 +245,12 @@ ALLOBJ = $(VOBJ) $(SOBJ) $(TILOBJ) $(VVOBJ)
 
 DGN_FILE_H = $(INCL)\align.h	$(INCL)\dgn_file.h
 DUNGEON_H  = $(INCL)\align.h	$(INCL)\dungeon.h
-EMIN_H	   = $(DUNGEON_H)	$(INCL)\emin.h
-EPRI_H	   = $(DUNGEON_H)	$(INCL)\align.h	    $(INCL)\epri.h
-ESHK_H	   = $(DUNGEON_H)	$(INCL)\eshk.h
 MONDATA_H  = $(INCL)\align.h	$(INCL)\mondata.h
-MONST_H	   = $(INCL)\align.h	$(INCL)\monst.h
+MONST_H	   = $(INCL)\mextra.h   $(INCL)\align.h	$(INCL)\monst.h
 PERMONST_H = $(INCL)\monattk.h	$(INCL)\monflag.h   $(INCL)\align.h   \
 	    $(INCL)\permonst.h
 RM_H	   = $(INCL)\align.h	$(INCL)\rm.h
 SP_LEV_H   = $(INCL)\align.h	$(INCL)\sp_lev.h
-VAULT_H	   = $(DUNGEON_H)	$(INCL)\vault.h
 YOUPROP_H  = $(PERMONST_H)	$(MONDATA_H)	    $(INCL)\prop.h    \
 	    $(INCL)\pm.h       $(INCL)\youprop.h
 YOU_H	   = $(MONST_H)		$(YOUPROP_H)	    $(INCL)\align.h   \
@@ -264,11 +264,11 @@ DECL_H	   = $(YOU_H)		$(INCL)\spell.h	    $(INCL)\color.h   \
 	     $(INCL)\obj.h	$(INCL)\onames.h    $(INCL)\pm.h      \
 	      $(INCL)\decl.h
 GLOBAL_H   = $(PCCONF_H)	$(INCL)\coord.h	    $(INCL)\global.h
-HACK_H	   = $(CONFIG_H)	$(DUNGEON_H)	    $(DECL_H)	      \
+HACK_H	   = $(CONFIG_H)	$(INCL)\context.h   $(DUNGEON_H) $(DECL_H) \
 	       $(DISPLAY_H)	  $(INCL)\monsym.h    $(INCL)\mkroom.h	\
 	      $(INCL)\objclass.h $(INCL)\trap.h	     $(INCL)\flag.h    \
 	      $(RM_H)		 $(INCL)\vision.h    $(INCL)\wintype.h \
-	      $(INCL)\engrave.h	 $(INCL)\rect.h	  \
+	      $(INCL)\engrave.h	 $(INCL)\rect.h	     $(INCL)\sys.h \
 	       $(INCL)\trampoli.h $(INCL)\hack.h
 DLB_H      = $(INCL)\dlb.h
 TILE_H	   = $(WSHR)\tile.h $(MSYS)\pctiles.h
@@ -400,6 +400,7 @@ $(O)install.tag: 	$(DAT)\data	$(DAT)\rumors	 $(DAT)\dungeon \
 	copy $(DAT)\*.lev         $(GAMEDIR)
 	if exist $(GAMEDIR)\makefile del $(GAMEDIR)\makefile
 ! ENDIF
+	if exist $(DAT)\symbols copy $(DAT)\symbols $(GAMEDIR)
 	copy $(SSHR)\termcap	  $(GAMEDIR)
 	copy *.tib                $(GAMEDIR)
 	copy $(SSHR)\NetHack.cnf  $(GAMEDIR)\defaults.nh
@@ -459,19 +460,19 @@ envchk:
 !	ENDIF
 !	IF ("$(CL)"=="")
 	   @echo CL Environment variable is defined as follows:
-	   SET CL=/AL $(MC) /Oo /Gy /Gs /Gt14 /Zp1 /W0 /I$(INCL) /I$(MSYS) /I$(WSHR) /nologo /c
+	   SET CL=/AL $(MC) /Oo /Gy /Gs /Gt10 /Gf /Zp1 /W2 /I$(INCL) /I$(MSYS) /I$(WSHR) /nologo /c
 !	ELSE
 	   @echo Warning CL Environment variable is defined:
 	   @echo CL=$(CL)
 	   @echo Overriding that definition as follows:
-	   SET CL=/AL $(MC) /Oo /Gy /Gs /Gt14 /Zp1 /W0 /I$(INCL) /I$(MSYS) /I$(WSHR) /nologo /c
+	   SET CL=/AL $(MC) /Oo /Gy /Gs /Gt10 /Gf /Zp1 /W2 /I$(INCL) /I$(MSYS) /I$(WSHR) /nologo /c
 !	ENDIF
 
 #  The main target.
 
 $(GAMEFILE) :  $(LNKOPT) $(ALLOBJ)
 	@echo Linking....
-	$(LINK) $(LFLAGS) /SE:1000 /DYNAMIC:2135 /NOE /ST:6000 @<<$(GAME).lnk
+	$(LINK) $(LFLAGS) /SE:1000 /DYNAMIC:2650 /NOE /ST:6000 @<<$(GAME).lnk
 		$(ALLOBJ:^	=+^
 		)
 		$(GAMEFILE)
@@ -879,8 +880,7 @@ viewtib.o: $(MSYS)\viewtib.c
 alloc.o: $(CONFIG_H)	 alloc.c
 drawing.o: $(CONFIG_H) drawing.c $(MSYS)\pcvideo.h
 decl.o: $(CONFIG_H) decl.c
-monst.o: $(CONFIG_H)	     $(PERMONST_H)	$(ESHK_H)	   \
-	$(EPRI_H)	      $(VAULT_H)	 $(INCL)\monsym.h   \
+monst.o: $(CONFIG_H)	     $(PERMONST_H)	$(INCL)\monsym.h   \
 	$(INCL)\color.h	 monst.c
 
 objects.o: $(CONFIG_H)	      $(INCL)\obj.h	 $(INCL)\objclass.h \
@@ -938,7 +938,123 @@ nhdat:	$(U)dlb_main.exe $(DAT)\data $(DAT)\oracles $(DAT)\options \
 	@echo dungeon >>dlb.lst
 	@echo license >>dlb.lst
 	@echo msdoshlp.txt >>dlb.lst
+! IF ("$(NO_FOR)"=="Y")
+	echo AIR.LEV       >>dlb.lst
+	echo ARC-FILA.LEV  >>dlb.lst
+	echo ARC-FILB.LEV  >>dlb.lst
+	echo ARC-GOAL.LEV  >>dlb.lst
+	echo ARC-LOCA.LEV  >>dlb.lst
+	echo ARC-STRT.LEV  >>dlb.lst
+	echo ASMODEUS.LEV  >>dlb.lst
+	echo ASTRAL.LEV    >>dlb.lst
+	echo BAALZ.LEV     >>dlb.lst
+	echo BAR-FILA.LEV  >>dlb.lst
+	echo BAR-FILB.LEV  >>dlb.lst
+	echo BAR-GOAL.LEV  >>dlb.lst
+	echo BAR-LOCA.LEV  >>dlb.lst
+	echo BAR-STRT.LEV  >>dlb.lst
+	echo BIGRM-1.LEV   >>dlb.lst
+	echo BIGRM-2.LEV   >>dlb.lst
+	echo BIGRM-3.LEV   >>dlb.lst
+	echo BIGRM-4.LEV   >>dlb.lst
+	echo BIGRM-5.LEV   >>dlb.lst
+	echo CASTLE.LEV    >>dlb.lst
+	echo CAV-FILA.LEV  >>dlb.lst
+	echo CAV-FILB.LEV  >>dlb.lst
+	echo CAV-GOAL.LEV  >>dlb.lst
+	echo CAV-LOCA.LEV  >>dlb.lst
+	echo CAV-STRT.LEV  >>dlb.lst
+	echo EARTH.LEV     >>dlb.lst
+	echo FAKEWIZ1.LEV  >>dlb.lst
+	echo FAKEWIZ2.LEV  >>dlb.lst
+	echo FIRE.LEV      >>dlb.lst
+	echo HEA-FILA.LEV  >>dlb.lst
+	echo HEA-FILB.LEV  >>dlb.lst
+	echo HEA-GOAL.LEV  >>dlb.lst
+	echo HEA-LOCA.LEV  >>dlb.lst
+	echo HEA-STRT.LEV  >>dlb.lst
+	echo JUIBLEX.LEV   >>dlb.lst
+	echo KNI-FILA.LEV  >>dlb.lst
+	echo KNI-FILB.LEV  >>dlb.lst
+	echo KNI-GOAL.LEV  >>dlb.lst
+	echo KNI-LOCA.LEV  >>dlb.lst
+	echo KNI-STRT.LEV  >>dlb.lst
+	echo KNOX.LEV      >>dlb.lst
+	echo MEDUSA-1.LEV  >>dlb.lst
+	echo MEDUSA-2.LEV  >>dlb.lst
+	echo MINEFILL.LEV  >>dlb.lst
+	echo MINEND-1.LEV  >>dlb.lst
+	echo MINEND-2.LEV  >>dlb.lst
+	echo MINEND-3.LEV  >>dlb.lst
+	echo MINETN-1.LEV  >>dlb.lst
+	echo MINETN-2.LEV  >>dlb.lst
+	echo MINETN-3.LEV  >>dlb.lst
+	echo MINETN-4.LEV  >>dlb.lst
+	echo MINETN-5.LEV  >>dlb.lst
+	echo MINETN-6.LEV  >>dlb.lst
+	echo MINETN-7.LEV  >>dlb.lst
+	echo MON-FILA.LEV  >>dlb.lst
+	echo MON-FILB.LEV  >>dlb.lst
+	echo MON-GOAL.LEV  >>dlb.lst
+	echo MON-LOCA.LEV  >>dlb.lst
+	echo MON-STRT.LEV  >>dlb.lst
+	echo ORACLE.LEV    >>dlb.lst
+	echo ORCUS.LEV     >>dlb.lst
+	echo PRI-FILA.LEV  >>dlb.lst
+	echo PRI-FILB.LEV  >>dlb.lst
+	echo PRI-GOAL.LEV  >>dlb.lst
+	echo PRI-LOCA.LEV  >>dlb.lst
+	echo PRI-STRT.LEV  >>dlb.lst
+	echo RAN-FILA.LEV  >>dlb.lst
+	echo RAN-FILB.LEV  >>dlb.lst
+	echo RAN-GOAL.LEV  >>dlb.lst
+	echo RAN-LOCA.LEV  >>dlb.lst
+	echo RAN-STRT.LEV  >>dlb.lst
+	echo ROG-FILA.LEV  >>dlb.lst
+	echo ROG-FILB.LEV  >>dlb.lst
+	echo ROG-GOAL.LEV  >>dlb.lst
+	echo ROG-LOCA.LEV  >>dlb.lst
+	echo ROG-STRT.LEV  >>dlb.lst
+	echo SAM-FILA.LEV  >>dlb.lst
+	echo SAM-FILB.LEV  >>dlb.lst
+	echo SAM-GOAL.LEV  >>dlb.lst
+	echo SAM-LOCA.LEV  >>dlb.lst
+	echo SAM-STRT.LEV  >>dlb.lst
+	echo SANCTUM.LEV   >>dlb.lst
+	echo SOKO1-1.LEV   >>dlb.lst
+	echo SOKO1-2.LEV   >>dlb.lst
+	echo SOKO2-1.LEV   >>dlb.lst
+	echo SOKO2-2.LEV   >>dlb.lst
+	echo SOKO3-1.LEV   >>dlb.lst
+	echo SOKO3-2.LEV   >>dlb.lst
+	echo SOKO4-1.LEV   >>dlb.lst
+	echo SOKO4-2.LEV   >>dlb.lst
+	echo TOU-FILA.LEV  >>dlb.lst
+	echo TOU-FILB.LEV  >>dlb.lst
+	echo TOU-GOAL.LEV  >>dlb.lst
+	echo TOU-LOCA.LEV  >>dlb.lst
+	echo TOU-STRT.LEV  >>dlb.lst
+	echo TOWER1.LEV    >>dlb.lst
+	echo TOWER2.LEV    >>dlb.lst
+	echo TOWER3.LEV    >>dlb.lst
+	echo VAL-FILA.LEV  >>dlb.lst
+	echo VAL-FILB.LEV  >>dlb.lst
+	echo VAL-GOAL.LEV  >>dlb.lst
+	echo VAL-LOCA.LEV  >>dlb.lst
+	echo VAL-STRT.LEV  >>dlb.lst
+	echo VALLEY.LEV    >>dlb.lst
+	echo WATER.LEV     >>dlb.lst
+	echo WIZ-FILA.LEV  >>dlb.lst
+	echo WIZ-FILB.LEV  >>dlb.lst
+	echo WIZ-GOAL.LEV  >>dlb.lst
+	echo WIZ-LOCA.LEV  >>dlb.lst
+	echo WIZ-STRT.LEV  >>dlb.lst
+	echo WIZARD1.LEV   >>dlb.lst
+	echo WIZARD2.LEV   >>dlb.lst
+	echo WIZARD3.LEV   >>dlb.lst
+! ELSE
 	@for %%N in (*.lev) do echo %%N >>dlb.lst
+! ENDIF
 	$(U)dlb_main cvIf dlb.lst $(SRC)\nhdat
 	@cd $(SRC)
 
@@ -954,7 +1070,7 @@ dlb_main.o: $(U)dlb_main.c $(INCL)\config.h $(DLB_H)
 main.o: $(SSHR)\pcmain.c $(HACK_H) $(INCL)\dlb.h \
 		#$(INCL)\win32api.h
 	@$(CC) $(CFLAGS) $(SPECOPTS) /Fo$@ $(SSHR)\pcmain.c
-sys.o: $(SSHR)\pcsys.c $(HACK_H)
+pcsys.o: $(SSHR)\pcsys.c $(HACK_H)
 	@$(CC) $(CFLAGS) $(SPECOPTS) /Fo$@ $(SSHR)\pcsys.c
 tty.o: $(SSHR)\pctty.c $(HACK_H)
 	@$(CC) $(CFLAGS) $(SPECOPTS) /Fo$@ $(SSHR)\pctty.c
@@ -991,13 +1107,13 @@ termcap.o: $(WIN)\termcap.c $(HACK_H) $(INCL)\tcap.h
 topl.o: $(WIN)\topl.c $(HACK_H) $(INCL)\tcap.h
 	@$(CC) $(CFLAGS) $(SPECOPTS) /Fo$@ $(WIN)\topl.c
 wintty.o: $(WIN)\wintty.c $(HACK_H) $(INCL)\dlb.h \
-		$(INCL)\patchlev.h $(INCL)\tcap.h
+		$(INCL)\date.h $(INCL)\patchlev.h $(INCL)\tcap.h
 	@$(CC) $(CFLAGS) $(SPECOPTS) /Fo$@ $(WIN)\wintty.c
 
 # src dependencies
 allmain.o: allmain.c $(HACK_H)
 alloc.o: alloc.c $(CONFIG_H)
-apply.o: apply.c $(HACK_H) $(INCL)\edog.h
+apply.o: apply.c $(HACK_H)
 artifact.o: artifact.c $(HACK_H) $(INCL)\artifact.h $(INCL)\artilist.h
 attrib.o: attrib.c $(HACK_H) $(INCL)\artifact.h
 ball.o: ball.c $(HACK_H)
@@ -1007,20 +1123,20 @@ cmd.o: cmd.c $(HACK_H) $(INCL)\func_tab.h
 dbridge.o: dbridge.c $(HACK_H)
 decl.o: decl.c $(HACK_H)
 detect.o: detect.c $(HACK_H) $(INCL)\artifact.h
-dig.o: dig.c $(HACK_H) $(INCL)\edog.h
+dig.o: dig.c $(HACK_H)
 display.o: display.c $(HACK_H)
 dlb.o: dlb.c $(CONFIG_H) $(INCL)\dlb.h
 do.o: do.c $(HACK_H) $(INCL)\lev.h
 do_name.o: do_name.c $(HACK_H)
 do_wear.o: do_wear.c $(HACK_H)
-dog.o: dog.c $(HACK_H) $(INCL)\edog.h
-dogmove.o: dogmove.c $(HACK_H) $(INCL)\mfndpos.h $(INCL)\edog.h
-dokick.o: dokick.c $(HACK_H) $(INCL)\eshk.h
+dog.o: dog.c $(HACK_H)
+dogmove.o: dogmove.c $(HACK_H) $(INCL)\mfndpos.h
+dokick.o: dokick.c $(HACK_H)
 dothrow.o: dothrow.c $(HACK_H)
 drawing.o: drawing.c $(HACK_H) $(INCL)\tcap.h
 dungeon.o: dungeon.c $(HACK_H) $(INCL)\dgn_file.h $(INCL)\dlb.h
 eat.o: eat.c $(HACK_H)
-end.o: end.c $(HACK_H) $(INCL)\eshk.h $(INCL)\dlb.h
+end.o: end.c $(HACK_H) $(INCL)\lev.h $(INCL)\dlb.h
 engrave.o: engrave.c $(HACK_H) $(INCL)\lev.h
 exper.o: exper.c $(HACK_H)
 explode.o: explode.c $(HACK_H)
@@ -1033,28 +1149,26 @@ invent.o: invent.c $(HACK_H) $(INCL)\artifact.h
 light.o: light.c $(HACK_H) $(INCL)\lev.h
 lock.o: lock.c $(HACK_H)
 mail.o: mail.c $(HACK_H) $(INCL)\mail.h
-makemon.o: makemon.c $(HACK_H) $(INCL)\epri.h $(INCL)\emin.h \
-		$(INCL)\edog.h
+makemon.o: makemon.c $(HACK_H)
 mapglyph.o: mapglyph.c $(HACK_H)
 mcastu.o: mcastu.c $(HACK_H)
-mhitm.o: mhitm.c $(HACK_H) $(INCL)\artifact.h $(INCL)\edog.h
-mhitu.o: mhitu.c $(HACK_H) $(INCL)\artifact.h $(INCL)\edog.h
-minion.o: minion.c $(HACK_H) $(INCL)\emin.h $(INCL)\epri.h
+mhitm.o: mhitm.c $(HACK_H) $(INCL)\artifact.h
+mhitu.o: mhitu.c $(HACK_H) $(INCL)\artifact.h
+minion.o: minion.c $(HACK_H)
 mklev.o: mklev.c $(HACK_H)
 mkmap.o: mkmap.c $(HACK_H) $(INCL)\sp_lev.h
 mkmaze.o: mkmaze.c $(HACK_H) $(INCL)\sp_lev.h $(INCL)\lev.h
 mkobj.o: mkobj.c $(HACK_H) $(INCL)\artifact.h
 mkroom.o: mkroom.c $(HACK_H)
-mon.o: mon.c $(HACK_H) $(INCL)\mfndpos.h $(INCL)\edog.h
-mondata.o: mondata.c $(HACK_H) $(INCL)\eshk.h $(INCL)\epri.h
+mon.o: mon.c $(HACK_H) $(INCL)\mfndpos.h
+mondata.o: mondata.c $(HACK_H)
 monmove.o: monmove.c $(HACK_H) $(INCL)\mfndpos.h $(INCL)\artifact.h
 monst.o: monst.c $(CONFIG_H) $(INCL)\permonst.h $(INCL)\align.h \
 		$(INCL)\monattk.h $(INCL)\monflag.h $(INCL)\monsym.h \
-		$(INCL)\dungeon.h $(INCL)\eshk.h $(INCL)\vault.h \
-		$(INCL)\epri.h $(INCL)\color.h
+		$(INCL)\dungeon.h $(INCL)\color.h
 mplayer.o: mplayer.c $(HACK_H)
 mthrowu.o: mthrowu.c $(HACK_H)
-muse.o: muse.c $(HACK_H) $(INCL)\edog.h
+muse.o: muse.c $(HACK_H)
 music.o: music.c $(HACK_H) #interp.c
 o_init.o: o_init.c $(HACK_H) $(INCL)\lev.h
 objects.o: objects.c $(CONFIG_H) $(INCL)\obj.h $(INCL)\objclass.h \
@@ -1065,12 +1179,11 @@ options.o: options.c $(CONFIG_H) $(INCL)\objclass.h $(INCL)\flag.h \
 pager.o: pager.c $(HACK_H) $(INCL)\dlb.h
 	@$(CC) $(CFLAGS) $(SPECOPTS) /f- /Od /Fo$@ pager.c
 pickup.o: pickup.c $(HACK_H)
-pline.o: pline.c $(HACK_H) $(INCL)\epri.h
+pline.o: pline.c $(HACK_H)
 polyself.o: polyself.c $(HACK_H)
 potion.o: potion.c $(HACK_H)
-pray.o: pray.c $(HACK_H) $(INCL)\epri.h
-priest.o: priest.c $(HACK_H) $(INCL)\mfndpos.h $(INCL)\eshk.h \
-		$(INCL)\epri.h $(INCL)\emin.h
+pray.o: pray.c $(HACK_H)
+priest.o: priest.c $(HACK_H) $(INCL)\mfndpos.h
 quest.o: quest.c $(HACK_H) $(INCL)\qtext.h
 questpgr.o: questpgr.c $(HACK_H) $(INCL)\dlb.h $(INCL)\qtext.h
 read.o: read.c $(HACK_H)
@@ -1082,14 +1195,15 @@ rnd.o: rnd.c $(HACK_H)
 role.o: role.c $(HACK_H)
 rumors.o: rumors.c $(HACK_H) $(INCL)\lev.h $(INCL)\dlb.h
 save.o: save.c $(HACK_H) $(INCL)\lev.h
-shk.o: shk.c $(HACK_H) $(INCL)\eshk.h
-shknam.o: shknam.c $(HACK_H) $(INCL)\eshk.h
+shk.o: shk.c $(HACK_H)
+shknam.o: shknam.c $(HACK_H)
 sit.o: sit.c $(HACK_H) $(INCL)\artifact.h
-sounds.o: sounds.c $(HACK_H) $(INCL)\edog.h
+sounds.o: sounds.c $(HACK_H)
 sp_lev.o: sp_lev.c $(HACK_H) $(INCL)\dlb.h $(INCL)\sp_lev.h
 spell.o: spell.c $(HACK_H)
 steal.o: steal.c $(HACK_H)
 steed.o: steed.c $(HACK_H)
+sys.o: sys.c $(HACK_H)
 teleport.o: teleport.c $(HACK_H)
 timeout.o: timeout.c $(HACK_H) $(INCL)\lev.h
 topten.o: topten.c $(HACK_H) $(INCL)\dlb.h $(INCL)\patchlev.h
@@ -1097,7 +1211,7 @@ track.o: track.c $(HACK_H)
 trap.o: trap.c $(HACK_H)
 u_init.o: u_init.c $(HACK_H)
 uhitm.o: uhitm.c $(HACK_H)
-vault.o: vault.c $(HACK_H) $(INCL)\vault.h
+vault.o: vault.c $(HACK_H)
 version.o: version.c $(HACK_H) $(INCL)\date.h $(INCL)\patchlev.h
 vision.o: vision.c $(HACK_H) $(INCL)\vis_tab.h
 weapon.o: weapon.c $(HACK_H)

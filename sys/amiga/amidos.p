@@ -1,4 +1,4 @@
-/*    SCCS Id: @(#)amidos.p 	3.1    93/01/08
+/* NetHack 3.6	amidos.p	$NHDT-Date: 1432512796 2015/05/25 00:13:16 $  $NHDT-Branch: master $:$NHDT-Revision: 1.7 $ */
 /* Copyright (c) Kenneth Lorber, Bethesda, Maryland, 1992, 1993. */
 /* NetHack may be freely redistributed.  See license for details. */
 

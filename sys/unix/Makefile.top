@@ -1,5 +1,8 @@
 #	NetHack Makefile.
-#	SCCS Id: @(#)Makefile.top	3.4	1995/01/05
+# NetHack 3.6  Makefile.top	$NHDT-Date: 1447844578 2015/11/18 11:02:58 $  $NHDT-Branch: master $:$NHDT-Revision: 1.32 $
+
+# Root of source tree:
+NHSROOT=.
 
 # newer makes predefine $(MAKE) to 'make' and do smarter processing of
 # recursive make calls if $(MAKE) is used
@@ -14,43 +17,45 @@
 # MAKE = make
 
 # make NetHack
-PREFIX	 = /usr
+#PREFIX	 = /usr
 GAME     = nethack
 # GAME     = nethack.prg
-GAMEUID  = games
-GAMEGRP  = bin
+#GAMEUID  = games
+#GAMEGRP  = bin
 
 # Permissions - some places use setgid instead of setuid, for instance
 # See also the option "SECURE" in include/config.h
-GAMEPERM = 04755
+#GAMEPERM = 04755
 FILEPERM = 0644
+# VARFILEPERM = 0644
 EXEPERM  = 0755
 DIRPERM  = 0755
+# VARDIRPERM = 0755
 
-# GAMEDIR also appears in config.h as "HACKDIR".
-# VARDIR may also appear in unixconf.h as "VAR_PLAYGROUND" else GAMEDIR
+# VARDIR may also appear in unixconf.h as "VAR_PLAYGROUND" else HACKDIR
 #
-# note that 'make install' believes in creating a nice tidy GAMEDIR for
+# note that 'make install' believes in creating a nice tidy HACKDIR for
 # installation, free of debris from previous NetHack versions --
-# therefore there should not be anything in GAMEDIR that you want to keep
+# therefore there should not be anything in HACKDIR that you want to keep
 # (if there is, you'll have to do the installation by hand or modify the
 # instructions)
-GAMEDIR  = $(PREFIX)/games/lib/$(GAME)dir
-VARDIR  = $(GAMEDIR)
-SHELLDIR = $(PREFIX)/games
+#HACKDIR  = $(PREFIX)/games/lib/$(GAME)dir
+#VARDIR  = $(HACKDIR)
+# Where nethack.sh in installed.  If this is not defined, the wrapper is not used.
+#SHELLDIR = $(PREFIX)/games
 
 # per discussion in Install.X11 and Install.Qt
-VARDATND = 
-# VARDATND = x11tiles NetHack.ad pet_mark.xbm
-# VARDATND = x11tiles NetHack.ad pet_mark.xbm rip.xpm
+#VARDATND = 
+# VARDATND = x11tiles NetHack.ad pet_mark.xbm pilemark.xpm
+# VARDATND = x11tiles NetHack.ad pet_mark.xbm pilemark.xpm rip.xpm
 # for Atari/Gem
 # VARDATND = nh16.img title.img GEM_RSC.RSC rip.img
 # for BeOS
 # VARDATND = beostiles
 # for Gnome
-# VARDATND = x11tiles pet_mark.xbm rip.xpm mapbg.xpm
+# VARDATND = x11tiles pet_mark.xbm pilemark.xpm rip.xpm mapbg.xpm
 
-VARDATD = data oracles options quest.dat rumors
+VARDATD = bogusmon data engrave epitaph oracles options quest.dat rumors
 VARDAT = $(VARDATD) $(VARDATND)
 
 # Some versions of make use the SHELL environment variable as the shell
@@ -64,8 +69,8 @@ VARDAT = $(VARDATD) $(VARDATND)
 # other permission-related reasons.  If that happens, you may want to set the
 # command to "true", which is a no-op. Note that disabling chown or chgrp
 # will only work if setuid (or setgid) behavior is not desired or required.
-CHOWN = chown
-CHGRP = chgrp
+#CHOWN = chown
+#CHGRP = chgrp
 
 #
 # end of configuration
@@ -73,7 +78,7 @@ CHGRP = chgrp
 
 DATHELP = help hh cmdhelp history opthelp wizhelp
 
-SPEC_LEVS = asmodeus.lev baalz.lev bigrm-?.lev castle.lev fakewiz?.lev \
+SPEC_LEVS = asmodeus.lev baalz.lev bigrm-*.lev castle.lev fakewiz?.lev \
 	juiblex.lev knox.lev medusa-?.lev minend-?.lev minefill.lev \
 	minetn-?.lev oracle.lev orcus.lev sanctum.lev soko?-?.lev \
 	tower?.lev valley.lev wizard?.lev \
@@ -81,13 +86,14 @@ SPEC_LEVS = asmodeus.lev baalz.lev bigrm-?.lev castle.lev fakewiz?.lev \
 QUEST_LEVS = ???-goal.lev ???-fil?.lev ???-loca.lev ???-strt.lev
 
 DATNODLB = $(VARDATND) license
-DATDLB = $(DATHELP) dungeon $(SPEC_LEVS) $(QUEST_LEVS) $(VARDATD)
+DATDLB = $(DATHELP) dungeon tribute $(SPEC_LEVS) $(QUEST_LEVS) $(VARDATD)
 DAT = $(DATNODLB) $(DATDLB)
 
 $(GAME):
 	( cd src ; $(MAKE) )
 
 all:	$(GAME) recover Guidebook $(VARDAT) dungeon spec_levs check-dlb
+	true; $(MOREALL)
 	@echo "Done."
 
 # Note: many of the dependencies below are here to allow parallel make
@@ -101,6 +107,15 @@ manpages:
 
 data: $(GAME)
 	( cd dat ; $(MAKE) data )
+
+engrave: $(GAME)
+	( cd dat ; $(MAKE) engrave )
+
+bogusmon: $(GAME)
+	( cd dat ; $(MAKE) bogusmon )
+
+epitaph: $(GAME)
+	( cd dat ; $(MAKE) epitaph )
 
 rumors: $(GAME)
 	( cd dat ; $(MAKE) rumors )
@@ -140,6 +155,9 @@ NetHack.ad: $(GAME)
 
 pet_mark.xbm:
 	( cd dat ; $(MAKE) pet_mark.xbm )
+
+pilemark.xbm:
+	( cd dat ; $(MAKE) pilemark.xbm )
 
 rip.xpm:
 	( cd dat ; $(MAKE) rip.xpm )
@@ -183,44 +201,51 @@ dofiles:
 		-e '}' 					\
 	  	-e '$$s/.*/nodlb/p' < dat/options` ;	\
 	$(MAKE) dofiles-$${target-nodlb}
-	cp src/$(GAME) $(GAMEDIR)
-	cp util/recover $(GAMEDIR)
-	-rm -f $(SHELLDIR)/$(GAME)
-	sed -e 's;/usr/games/lib/nethackdir;$(GAMEDIR);' \
+	(cd dat ; cp symbols $(INSTDIR) )
+	cp src/$(GAME) $(INSTDIR)
+	cp util/recover $(INSTDIR)
+	-if test -n '$(SHELLDIR)'; then rm -f $(SHELLDIR)/$(GAME); fi
+	if test -n '$(SHELLDIR)'; then \
+		sed -e 's;/usr/games/lib/nethackdir;$(HACKDIR);' \
 		-e 's;HACKDIR/nethack;HACKDIR/$(GAME);' \
 		< sys/unix/nethack.sh \
-		> $(SHELLDIR)/$(GAME)
+		> $(SHELLDIR)/$(GAME) ; fi
 # set up their permissions
-	-( cd $(GAMEDIR) ; $(CHOWN) $(GAMEUID) $(GAME) recover ; \
+	-( cd $(INSTDIR) ; $(CHOWN) $(GAMEUID) $(GAME) recover ; \
 			$(CHGRP) $(GAMEGRP) $(GAME) recover )
-	chmod $(GAMEPERM) $(GAMEDIR)/$(GAME)
-	chmod $(EXEPERM) $(GAMEDIR)/recover
-	-$(CHOWN) $(GAMEUID) $(SHELLDIR)/$(GAME)
-	$(CHGRP) $(GAMEGRP) $(SHELLDIR)/$(GAME)
-	chmod $(EXEPERM) $(SHELLDIR)/$(GAME)
+	chmod $(GAMEPERM) $(INSTDIR)/$(GAME)
+	chmod $(EXEPERM) $(INSTDIR)/recover
+	-if test -n '$(SHELLDIR)'; then \
+		$(CHOWN) $(GAMEUID) $(SHELLDIR)/$(GAME); fi
+	if test -n '$(SHELLDIR)'; then \
+		$(CHGRP) $(GAMEGRP) $(SHELLDIR)/$(GAME); \
+		chmod $(EXEPERM) $(SHELLDIR)/$(GAME); fi
+	-( cd $(INSTDIR) ; $(CHOWN) $(GAMEUID) symbols ; \
+			$(CHGRP) $(GAMEGRP) symbols ; \
+			chmod $(FILEPERM) symbols )
 
 dofiles-dlb: check-dlb
-	( cd dat ; cp nhdat $(DATNODLB) $(GAMEDIR) )
+	( cd dat ; cp nhdat $(DATNODLB) $(INSTDIR) )
 # set up their permissions
-	-( cd $(GAMEDIR) ; $(CHOWN) $(GAMEUID) nhdat $(DATNODLB) ; \
+	-( cd $(INSTDIR) ; $(CHOWN) $(GAMEUID) nhdat $(DATNODLB) ; \
 			$(CHGRP) $(GAMEGRP) nhdat $(DATNODLB) ; \
 			chmod $(FILEPERM) nhdat $(DATNODLB) )
 
 dofiles-nodlb:
 # copy over the game files
-	( cd dat ; cp $(DAT) $(GAMEDIR) )
+	( cd dat ; cp $(DAT) $(INSTDIR) )
 # set up their permissions
-	-( cd $(GAMEDIR) ; $(CHOWN) $(GAMEUID) $(DAT) ; \
+	-( cd $(INSTDIR) ; $(CHOWN) $(GAMEUID) $(DAT) ; \
 			$(CHGRP) $(GAMEGRP) $(DAT) ; \
 			chmod $(FILEPERM) $(DAT) )
 
 update: $(GAME) recover $(VARDAT) dungeon spec_levs
 #	(don't yank the old version out from under people who're playing it)
-	-mv $(GAMEDIR)/$(GAME) $(GAMEDIR)/$(GAME).old
+	-mv $(INSTDIR)/$(GAME) $(INSTDIR)/$(GAME).old
 #	quest.dat is also kept open and has the same problems over NFS
 #	(quest.dat may be inside nhdat if dlb is in use)
-	-mv $(GAMEDIR)/quest.dat $(GAMEDIR)/quest.dat.old
-	-mv $(GAMEDIR)/nhdat $(GAMEDIR)/nhdat.old
+	-mv $(INSTDIR)/quest.dat $(INSTDIR)/quest.dat.old
+	-mv $(INSTDIR)/nhdat $(INSTDIR)/nhdat.old
 # set up new versions of the game files
 	( $(MAKE) dofiles )
 # touch time-sensitive files
@@ -230,23 +255,31 @@ update: $(GAME) recover $(VARDAT) dungeon spec_levs
 # and a reminder
 	@echo You may also want to install the man pages via the doc Makefile.
 
-install: $(GAME) recover $(VARDAT) dungeon spec_levs
+rootcheck:
+	@true; $(ROOTCHECK)
+
+install: rootcheck $(GAME) recover $(VARDAT) dungeon spec_levs
+	true; $(PREINSTALL)
 # set up the directories
 # not all mkdirs have -p; those that don't will create a -p directory
-	-mkdir -p $(SHELLDIR)
-	-rm -rf $(GAMEDIR) $(VARDIR)
-	-mkdir -p $(GAMEDIR) $(VARDIR) $(VARDIR)/save
-	-rmdir ./-p
-	-$(CHOWN) $(GAMEUID) $(GAMEDIR) $(VARDIR) $(VARDIR)/save
-	$(CHGRP) $(GAMEGRP) $(GAMEDIR) $(VARDIR) $(VARDIR)/save
-	chmod $(DIRPERM) $(GAMEDIR) $(VARDIR) $(VARDIR)/save
+	-if test -n '$(SHELLDIR)'; then \
+		mkdir -p $(SHELLDIR); fi
+	rm -rf $(INSTDIR) $(VARDIR)
+	-mkdir -p $(INSTDIR) $(VARDIR) $(VARDIR)/save
+	if test -d ./-p; then rmdir ./-p; fi
+	-$(CHOWN) $(GAMEUID) $(INSTDIR) $(VARDIR) $(VARDIR)/save
+	$(CHGRP) $(GAMEGRP) $(INSTDIR) $(VARDIR) $(VARDIR)/save
+# order counts here:
+	chmod $(DIRPERM) $(INSTDIR)
+	chmod $(VARDIRPERM) $(VARDIR) $(VARDIR)/save
 # set up the game files
 	( $(MAKE) dofiles )
 # set up some additional files
-	touch $(VARDIR)/perm $(VARDIR)/record $(VARDIR)/logfile
-	-( cd $(VARDIR) ; $(CHOWN) $(GAMEUID) perm record logfile ; \
-			$(CHGRP) $(GAMEGRP) perm record logfile ; \
-			chmod $(FILEPERM) perm record logfile )
+	touch $(VARDIR)/perm $(VARDIR)/record $(VARDIR)/logfile $(VARDIR)/xlogfile
+	-( cd $(VARDIR) ; $(CHOWN) $(GAMEUID) perm record logfile xlogfile ; \
+			$(CHGRP) $(GAMEGRP) perm record logfile xlogfile ; \
+			chmod $(VARFILEPERM) perm record logfile xlogfile )
+	true; $(POSTINSTALL)
 # and a reminder
 	@echo You may also want to reinstall the man pages via the doc Makefile.
 
@@ -256,6 +289,7 @@ install: $(GAME) recover $(VARDAT) dungeon spec_levs
 clean:
 	( cd src ; $(MAKE) clean )
 	( cd util ; $(MAKE) clean )
+	( cd doc ; $(MAKE) clean )
 
 # 'make spotless' returns the source tree to near-distribution condition.
 # it removes .o files, executables, and compiled data files

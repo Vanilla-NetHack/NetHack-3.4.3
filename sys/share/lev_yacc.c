@@ -1,14 +1,17 @@
 #ifndef lint
-static char yysccsid[] = "@(#)yaccpar	1.9 (Berkeley) 02/21/93";
+/* static char yysccsid[] = "@(#)yaccpar	1.9 (Berkeley) 02/21/93"; */
+/* static char nhsccsid[] = "@(#)yaccpar   1.9.0-nh (NetHack) 12/03/2015"; */
 #endif
 #define YYBYACC 1
 #define YYMAJOR 1
 #define YYMINOR 9
+#define YYSUBMINOR "0-nh"
+
 #define yyclearin (yychar=(-1))
 #define yyerrok (yyerrflag=0)
 #define YYRECOVERING (yyerrflag!=0)
 #define YYPREFIX "yy"
-/*	SCCS Id: @(#)lev_yacc.c	3.4	2000/01/17	*/
+/* NetHack 3.6  lev_comp.y	$NHDT-Date: 1449233826 2015/12/04 12:57:06 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.19 $ */
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -30,10 +33,10 @@ static char yysccsid[] = "@(#)yaccpar	1.9 (Berkeley) 02/21/93";
  #pragma alloca		/* keep leading space! */
 #endif
 
+#define SPEC_LEV    /* for USE_OLDARGS (sp_lev.h) */
 #include "hack.h"
 #include "sp_lev.h"
 
-#define MAX_REGISTERS	10
 #define ERR		(-1)
 /* many types of things are put in chars for transference to NetHack.
  * since some systems will use signed chars, limit everybody to the
@@ -41,11 +44,16 @@ static char yysccsid[] = "@(#)yaccpar	1.9 (Berkeley) 02/21/93";
  */
 #define MAX_OF_TYPE	128
 
+#define MAX_NESTED_IFS	20
+#define MAX_SWITCH_CASES 20
+
 #define New(type)		\
 	(type *) memset((genericptr_t)alloc(sizeof(type)), 0, sizeof(type))
 #define NewTab(type, size)	(type **) alloc(sizeof(type *) * size)
 #define Free(ptr)		free((genericptr_t)ptr)
 
+extern void VDECL(lc_error, (const char *, ...));
+extern void VDECL(lc_warning, (const char *, ...));
 extern void FDECL(yyerror, (const char *));
 extern void FDECL(yywarning, (const char *));
 extern int NDECL(yylex);
@@ -59,600 +67,1967 @@ extern int FDECL(get_object_id, (char *,CHAR_P));
 extern boolean FDECL(check_monster_char, (CHAR_P));
 extern boolean FDECL(check_object_char, (CHAR_P));
 extern char FDECL(what_map_char, (CHAR_P));
-extern void FDECL(scan_map, (char *));
-extern void NDECL(wallify_map);
-extern boolean NDECL(check_subrooms);
-extern void FDECL(check_coord, (int,int,const char *));
-extern void NDECL(store_part);
-extern void NDECL(store_room);
-extern boolean FDECL(write_level_file, (char *,splev *,specialmaze *));
-extern void FDECL(free_rooms, (splev *));
+extern void FDECL(scan_map, (char *, sp_lev *));
+extern void FDECL(add_opcode, (sp_lev *, int, genericptr_t));
+extern genericptr_t FDECL(get_last_opcode_data1, (sp_lev *, int));
+extern genericptr_t FDECL(get_last_opcode_data2, (sp_lev *, int,int));
+extern boolean FDECL(check_subrooms, (sp_lev *));
+extern boolean FDECL(write_level_file, (char *,sp_lev *));
+extern struct opvar *FDECL(set_opvar_int, (struct opvar *, long));
+extern void VDECL(add_opvars, (sp_lev *, const char *, ...));
+extern void FDECL(start_level_def, (sp_lev * *, char *));
 
-static struct reg {
-	int x1, y1;
-	int x2, y2;
-}		current_region;
+extern struct lc_funcdefs *FDECL(funcdef_new,(long,char *));
+extern void FDECL(funcdef_free_all,(struct lc_funcdefs *));
+extern struct lc_funcdefs *FDECL(funcdef_defined,(struct lc_funcdefs *,char *, int));
+extern char *FDECL(funcdef_paramtypes, (struct lc_funcdefs *));
+extern char *FDECL(decode_parm_str, (char *));
 
-static struct coord {
-	int x;
-	int y;
-}		current_coord, current_align;
+extern struct lc_vardefs *FDECL(vardef_new,(long,char *));
+extern void FDECL(vardef_free_all,(struct lc_vardefs *));
+extern struct lc_vardefs *FDECL(vardef_defined,(struct lc_vardefs *,char *, int));
 
-static struct size {
-	int height;
-	int width;
-}		current_size;
+extern void NDECL(break_stmt_start);
+extern void FDECL(break_stmt_end, (sp_lev *));
+extern void FDECL(break_stmt_new, (sp_lev *, long));
 
-char tmpmessage[256];
-digpos *tmppass[32];
-char *tmpmap[ROWNO];
+extern void FDECL(splev_add_from, (sp_lev *, sp_lev *));
 
-digpos *tmpdig[MAX_OF_TYPE];
-region *tmpreg[MAX_OF_TYPE];
-lev_region *tmplreg[MAX_OF_TYPE];
-door *tmpdoor[MAX_OF_TYPE];
-drawbridge *tmpdb[MAX_OF_TYPE];
-walk *tmpwalk[MAX_OF_TYPE];
+extern void FDECL(check_vardef_type, (struct lc_vardefs *, char *, long));
+extern void FDECL(vardef_used, (struct lc_vardefs *, char *));
+extern struct lc_vardefs *FDECL(add_vardef_type, (struct lc_vardefs *, char *, long));
 
-room_door *tmprdoor[MAX_OF_TYPE];
-trap *tmptrap[MAX_OF_TYPE];
-monster *tmpmonst[MAX_OF_TYPE];
-object *tmpobj[MAX_OF_TYPE];
-altar *tmpaltar[MAX_OF_TYPE];
-lad *tmplad[MAX_OF_TYPE];
-stair *tmpstair[MAX_OF_TYPE];
-gold *tmpgold[MAX_OF_TYPE];
-engraving *tmpengraving[MAX_OF_TYPE];
-fountain *tmpfountain[MAX_OF_TYPE];
-sink *tmpsink[MAX_OF_TYPE];
-pool *tmppool[MAX_OF_TYPE];
+extern int FDECL(reverse_jmp_opcode, (int));
 
-mazepart *tmppart[10];
-room *tmproom[MAXNROFROOMS*2];
-corridor *tmpcor[MAX_OF_TYPE];
+struct coord {
+	long x;
+	long y;
+};
 
-static specialmaze maze;
-static splev special_lev;
-static lev_init init_lev;
+struct forloopdef {
+    char *varname;
+    long jmp_point;
+};
+static struct forloopdef forloop_list[MAX_NESTED_IFS];
+static short n_forloops = 0;
 
-static char olist[MAX_REGISTERS], mlist[MAX_REGISTERS];
-static struct coord plist[MAX_REGISTERS];
 
-int n_olist = 0, n_mlist = 0, n_plist = 0;
+sp_lev *splev = NULL;
 
-unsigned int nlreg = 0, nreg = 0, ndoor = 0, ntrap = 0, nmons = 0, nobj = 0;
-unsigned int ndb = 0, nwalk = 0, npart = 0, ndig = 0, nlad = 0, nstair = 0;
-unsigned int naltar = 0, ncorridor = 0, nrooms = 0, ngold = 0, nengraving = 0;
-unsigned int nfountain = 0, npool = 0, nsink = 0, npass = 0;
+static struct opvar *if_list[MAX_NESTED_IFS];
 
-static int lev_flags = 0;
+static short n_if_list = 0;
 
 unsigned int max_x_map, max_y_map;
+int obj_containment = 0;
 
-static xchar in_room;
+int in_container_obj = 0;
+
+/* integer value is possibly an inconstant value (eg. dice notation or a variable) */
+int is_inconstant_number = 0;
+
+int in_switch_statement = 0;
+static struct opvar *switch_check_jump = NULL;
+static struct opvar *switch_default_case = NULL;
+static struct opvar *switch_case_list[MAX_SWITCH_CASES];
+static long switch_case_value[MAX_SWITCH_CASES];
+int n_switch_case_list = 0;
+
+int allow_break_statements = 0;
+struct lc_breakdef *break_list = NULL;
+
+extern struct lc_vardefs *variable_definitions;
+
+
+struct lc_vardefs *function_tmp_var_defs = NULL;
+extern struct lc_funcdefs *function_definitions;
+struct lc_funcdefs *curr_function = NULL;
+struct lc_funcdefs_parm * curr_function_param = NULL;
+int in_function_definition = 0;
+sp_lev *function_splev_backup = NULL;
 
 extern int fatal_error;
-extern int want_warnings;
+extern int got_errors;
+extern int line_number;
 extern const char *fname;
+
+extern char curr_token[512];
 
 typedef union
 {
-	int	i;
+	long	i;
 	char*	map;
 	struct {
-		xchar room;
-		xchar wall;
-		xchar door;
+		long room;
+		long wall;
+		long door;
 	} corpos;
+    struct {
+	long area;
+	long x1;
+	long y1;
+	long x2;
+	long y2;
+    } lregn;
+    struct {
+	long x;
+	long y;
+    } crd;
+    struct {
+	long ter;
+	long lit;
+    } terr;
+    struct {
+	long height;
+	long width;
+    } sze;
+    struct {
+	long die;
+	long num;
+    } dice;
+    struct {
+	long cfunc;
+	char *varstr;
+    } meth;
 } YYSTYPE;
 #define CHAR 257
 #define INTEGER 258
 #define BOOLEAN 259
 #define PERCENT 260
-#define MESSAGE_ID 261
-#define MAZE_ID 262
-#define LEVEL_ID 263
-#define LEV_INIT_ID 264
-#define GEOMETRY_ID 265
-#define NOMAP_ID 266
-#define OBJECT_ID 267
-#define COBJECT_ID 268
-#define MONSTER_ID 269
-#define TRAP_ID 270
-#define DOOR_ID 271
-#define DRAWBRIDGE_ID 272
-#define MAZEWALK_ID 273
-#define WALLIFY_ID 274
-#define REGION_ID 275
-#define FILLING 276
-#define RANDOM_OBJECTS_ID 277
-#define RANDOM_MONSTERS_ID 278
-#define RANDOM_PLACES_ID 279
-#define ALTAR_ID 280
-#define LADDER_ID 281
-#define STAIR_ID 282
-#define NON_DIGGABLE_ID 283
-#define NON_PASSWALL_ID 284
-#define ROOM_ID 285
-#define PORTAL_ID 286
-#define TELEPRT_ID 287
-#define BRANCH_ID 288
-#define LEV 289
-#define CHANCE_ID 290
-#define CORRIDOR_ID 291
-#define GOLD_ID 292
-#define ENGRAVING_ID 293
-#define FOUNTAIN_ID 294
-#define POOL_ID 295
-#define SINK_ID 296
-#define NONE 297
-#define RAND_CORRIDOR_ID 298
-#define DOOR_STATE 299
-#define LIGHT_STATE 300
-#define CURSE_TYPE 301
-#define ENGRAVING_TYPE 302
-#define DIRECTION 303
-#define RANDOM_TYPE 304
-#define O_REGISTER 305
-#define M_REGISTER 306
-#define P_REGISTER 307
-#define A_REGISTER 308
-#define ALIGNMENT 309
-#define LEFT_OR_RIGHT 310
-#define CENTER 311
-#define TOP_OR_BOT 312
-#define ALTAR_TYPE 313
-#define UP_OR_DOWN 314
-#define SUBROOM_ID 315
-#define NAME_ID 316
-#define FLAGS_ID 317
-#define FLAG_TYPE 318
-#define MON_ATTITUDE 319
-#define MON_ALERTNESS 320
-#define MON_APPEARANCE 321
-#define CONTAINED 322
-#define STRING 323
-#define MAP_ID 324
+#define SPERCENT 261
+#define MINUS_INTEGER 262
+#define PLUS_INTEGER 263
+#define MAZE_GRID_ID 264
+#define SOLID_FILL_ID 265
+#define MINES_ID 266
+#define ROGUELEV_ID 267
+#define MESSAGE_ID 268
+#define MAZE_ID 269
+#define LEVEL_ID 270
+#define LEV_INIT_ID 271
+#define GEOMETRY_ID 272
+#define NOMAP_ID 273
+#define OBJECT_ID 274
+#define COBJECT_ID 275
+#define MONSTER_ID 276
+#define TRAP_ID 277
+#define DOOR_ID 278
+#define DRAWBRIDGE_ID 279
+#define object_ID 280
+#define monster_ID 281
+#define terrain_ID 282
+#define MAZEWALK_ID 283
+#define WALLIFY_ID 284
+#define REGION_ID 285
+#define FILLING 286
+#define IRREGULAR 287
+#define JOINED 288
+#define ALTAR_ID 289
+#define LADDER_ID 290
+#define STAIR_ID 291
+#define NON_DIGGABLE_ID 292
+#define NON_PASSWALL_ID 293
+#define ROOM_ID 294
+#define PORTAL_ID 295
+#define TELEPRT_ID 296
+#define BRANCH_ID 297
+#define LEV 298
+#define MINERALIZE_ID 299
+#define CORRIDOR_ID 300
+#define GOLD_ID 301
+#define ENGRAVING_ID 302
+#define FOUNTAIN_ID 303
+#define POOL_ID 304
+#define SINK_ID 305
+#define NONE 306
+#define RAND_CORRIDOR_ID 307
+#define DOOR_STATE 308
+#define LIGHT_STATE 309
+#define CURSE_TYPE 310
+#define ENGRAVING_TYPE 311
+#define DIRECTION 312
+#define RANDOM_TYPE 313
+#define RANDOM_TYPE_BRACKET 314
+#define A_REGISTER 315
+#define ALIGNMENT 316
+#define LEFT_OR_RIGHT 317
+#define CENTER 318
+#define TOP_OR_BOT 319
+#define ALTAR_TYPE 320
+#define UP_OR_DOWN 321
+#define SUBROOM_ID 322
+#define NAME_ID 323
+#define FLAGS_ID 324
+#define FLAG_TYPE 325
+#define MON_ATTITUDE 326
+#define MON_ALERTNESS 327
+#define MON_APPEARANCE 328
+#define ROOMDOOR_ID 329
+#define IF_ID 330
+#define ELSE_ID 331
+#define TERRAIN_ID 332
+#define HORIZ_OR_VERT 333
+#define REPLACE_TERRAIN_ID 334
+#define EXIT_ID 335
+#define SHUFFLE_ID 336
+#define QUANTITY_ID 337
+#define BURIED_ID 338
+#define LOOP_ID 339
+#define FOR_ID 340
+#define TO_ID 341
+#define SWITCH_ID 342
+#define CASE_ID 343
+#define BREAK_ID 344
+#define DEFAULT_ID 345
+#define ERODED_ID 346
+#define TRAPPED_STATE 347
+#define RECHARGED_ID 348
+#define INVIS_ID 349
+#define GREASED_ID 350
+#define FEMALE_ID 351
+#define CANCELLED_ID 352
+#define REVIVED_ID 353
+#define AVENGE_ID 354
+#define FLEEING_ID 355
+#define BLINDED_ID 356
+#define PARALYZED_ID 357
+#define STUNNED_ID 358
+#define CONFUSED_ID 359
+#define SEENTRAPS_ID 360
+#define ALL_ID 361
+#define MONTYPE_ID 362
+#define GRAVE_ID 363
+#define ERODEPROOF_ID 364
+#define FUNCTION_ID 365
+#define MSG_OUTPUT_TYPE 366
+#define COMPARE_TYPE 367
+#define UNKNOWN_TYPE 368
+#define rect_ID 369
+#define fillrect_ID 370
+#define line_ID 371
+#define randline_ID 372
+#define grow_ID 373
+#define selection_ID 374
+#define flood_ID 375
+#define rndcoord_ID 376
+#define circle_ID 377
+#define ellipse_ID 378
+#define filter_ID 379
+#define complement_ID 380
+#define gradient_ID 381
+#define GRADIENT_TYPE 382
+#define LIMITED 383
+#define HUMIDITY_TYPE 384
+#define STRING 385
+#define MAP_ID 386
+#define NQSTRING 387
+#define VARSTRING 388
+#define CFUNC 389
+#define CFUNC_INT 390
+#define CFUNC_STR 391
+#define CFUNC_COORD 392
+#define CFUNC_REGION 393
+#define VARSTRING_INT 394
+#define VARSTRING_INT_ARRAY 395
+#define VARSTRING_STRING 396
+#define VARSTRING_STRING_ARRAY 397
+#define VARSTRING_VAR 398
+#define VARSTRING_VAR_ARRAY 399
+#define VARSTRING_COORD 400
+#define VARSTRING_COORD_ARRAY 401
+#define VARSTRING_REGION 402
+#define VARSTRING_REGION_ARRAY 403
+#define VARSTRING_MAPCHAR 404
+#define VARSTRING_MAPCHAR_ARRAY 405
+#define VARSTRING_MONST 406
+#define VARSTRING_MONST_ARRAY 407
+#define VARSTRING_OBJ 408
+#define VARSTRING_OBJ_ARRAY 409
+#define VARSTRING_SEL 410
+#define VARSTRING_SEL_ARRAY 411
+#define METHOD_INT 412
+#define METHOD_INT_ARRAY 413
+#define METHOD_STRING 414
+#define METHOD_STRING_ARRAY 415
+#define METHOD_VAR 416
+#define METHOD_VAR_ARRAY 417
+#define METHOD_COORD 418
+#define METHOD_COORD_ARRAY 419
+#define METHOD_REGION 420
+#define METHOD_REGION_ARRAY 421
+#define METHOD_MAPCHAR 422
+#define METHOD_MAPCHAR_ARRAY 423
+#define METHOD_MONST 424
+#define METHOD_MONST_ARRAY 425
+#define METHOD_OBJ 426
+#define METHOD_OBJ_ARRAY 427
+#define METHOD_SEL 428
+#define METHOD_SEL_ARRAY 429
+#define DICE 430
 #define YYERRCODE 256
 short yylhs[] = {                                        -1,
-    0,    0,   36,   36,   37,   37,   38,   39,   32,   23,
-   23,   14,   14,   19,   19,   20,   20,   40,   40,   45,
-   42,   42,   46,   46,   43,   43,   49,   49,   44,   44,
-   51,   52,   52,   53,   53,   35,   50,   50,   56,   54,
-   10,   10,   59,   59,   57,   57,   60,   60,   58,   58,
-   55,   55,   61,   61,   61,   61,   61,   61,   61,   61,
-   61,   61,   61,   61,   61,   62,   63,   64,   15,   15,
-   13,   13,   12,   12,   31,   11,   11,   41,   41,   75,
-   76,   76,   79,    1,    1,    2,    2,   77,   77,   80,
-   80,   80,   47,   47,   48,   48,   81,   83,   81,   78,
-   78,   84,   84,   84,   84,   84,   84,   84,   84,   84,
+    0,    0,   73,   73,   74,   57,   57,   56,   56,   76,
+   76,   76,   76,   55,   55,   54,   54,   46,   46,   14,
+   14,   75,   75,   26,   26,   22,   22,   23,   78,   78,
+   78,   78,   78,   78,   78,   78,   78,   78,   78,   78,
+   78,   78,   78,   78,   78,   78,   78,   78,   78,   78,
+   78,   78,   78,   78,   78,   78,   78,   78,   78,   78,
+   78,   78,   78,   78,   78,   78,   78,   78,   78,   78,
+   78,   78,   59,   59,   59,   59,   59,   59,   59,   59,
+   59,   58,   58,   58,   58,   58,   58,   58,   58,   58,
+   60,   60,   60,   61,   61,   85,   84,   84,   84,   84,
    84,   84,   84,   84,   84,   84,   84,   84,   84,   84,
-   84,   99,   65,   98,   98,  100,  100,  100,  100,  100,
-   66,   66,  102,  101,  103,  103,  104,  104,  104,  104,
-  105,  105,  106,  107,  107,  108,  108,  108,   85,   67,
-   86,   92,   93,   94,   74,  109,   88,  110,   89,  111,
-  113,   90,  114,   91,  112,  112,   22,   22,   69,   70,
-   71,   95,   96,   87,   68,   72,   73,   25,   25,   25,
-   28,   28,   28,   33,   33,   34,   34,    3,    3,    4,
-    4,   21,   21,   21,   97,   97,   97,    5,    5,    6,
-    6,    7,    7,    7,    8,    8,  117,   29,   26,    9,
-   82,   24,   27,   30,   16,   16,   17,   17,   18,   18,
-  116,  115,
+   84,   38,   38,   44,   44,   43,   43,   42,   42,   41,
+   41,   39,   39,   40,   40,  129,  130,  100,  101,   98,
+   45,   45,   31,   31,   31,  131,  133,   93,  134,  134,
+  136,  135,  137,  135,   99,  138,  138,  139,  140,   94,
+  141,   95,  142,   97,  144,   96,  143,  145,  143,   79,
+  110,  110,  110,   83,   83,   65,  146,  147,  113,  148,
+  112,   10,   10,   68,   68,   69,   69,   70,   70,   71,
+   71,   87,   87,   15,   15,   13,   13,   16,   16,   11,
+   11,  103,  103,  103,    1,    1,    2,    2,  105,  150,
+  105,  149,   20,   20,   21,   21,   21,   21,   21,   21,
+   21,   21,   21,   21,   21,   21,   21,   21,   21,   21,
+   35,   35,   35,  106,  152,  106,  151,   18,   18,   19,
+   19,   19,   19,   19,   19,   19,   19,   19,   19,   19,
+   19,   19,   19,   19,  120,   88,  104,  104,  121,  121,
+  102,  117,  118,  109,  119,   82,   17,   17,   91,  114,
+  108,   72,   72,  116,  115,   86,  107,  154,  111,   24,
+   24,   80,   81,   81,   81,   92,   89,   90,   90,    3,
+    3,    4,    4,   29,   29,   28,   28,   27,   27,   27,
+    5,    5,    6,    6,    7,    7,    7,   12,   12,   12,
+    8,    8,    9,  155,  155,  155,  132,   77,   77,   77,
+   77,   32,   32,   32,   30,   30,  127,  127,  127,   33,
+  124,  124,  124,   34,   34,  125,  125,  125,   36,   36,
+   36,   36,  126,  126,  126,   37,   37,   37,   37,  123,
+  123,  122,  122,  122,  122,  122,  122,  122,  122,  122,
+  122,  122,   50,   50,  157,  158,  158,  128,  128,   64,
+   64,   63,   63,   62,   62,   49,   49,   49,   49,   49,
+   49,   49,   49,   49,   49,   49,   49,   49,   49,   49,
+   49,   49,   49,   49,   48,   48,  156,   47,   47,   47,
+  153,  153,  153,  153,   51,   51,   52,   52,   53,   53,
+   25,   25,   67,   67,   66,
 };
 short yylen[] = {                                         2,
-    0,    1,    1,    2,    1,    1,    5,    7,    3,    0,
-   13,    1,    1,    0,    3,    3,    1,    0,    2,    3,
-    0,    2,    3,    3,    0,    1,    1,    2,    1,    1,
-    1,    0,    2,    5,    5,    7,    2,    2,   12,   12,
-    0,    2,    5,    1,    5,    1,    5,    1,    5,    1,
-    0,    2,    1,    1,    1,    1,    1,    1,    1,    1,
-    1,    1,    1,    1,    1,    3,    3,    9,    1,    1,
-    1,    1,    1,    1,    5,    1,    1,    1,    2,    3,
-    1,    2,    5,    1,    1,    1,    1,    0,    2,    3,
-    3,    3,    1,    3,    1,    3,    1,    0,    4,    0,
-    2,    1,    1,    1,    1,    1,    1,    1,    1,    1,
+    0,    1,    1,    2,    3,    3,    5,    1,    1,    5,
+    5,    3,   16,    0,    2,    0,    2,    0,    2,    1,
+    1,    0,    3,    3,    1,    0,    2,    3,    1,    1,
     1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
-    1,    0,   10,    0,    2,    2,    2,    2,    2,    3,
-    2,    2,    0,    9,    1,    1,    0,    7,    5,    5,
-    1,    1,    1,    1,    1,    0,    2,    2,    5,    6,
-    7,    5,    1,    5,    5,    0,    8,    0,    8,    0,
-    0,    8,    0,    6,    0,    2,    1,   10,    3,    3,
-    3,    3,    3,    8,    7,    5,    7,    1,    1,    1,
     1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
-    1,    0,    2,    4,    1,    1,    1,    1,    1,    1,
-    1,    1,    1,    1,    1,    1,    4,    4,    4,    4,
-    1,    1,    1,    1,    1,    1,    0,    1,    1,    1,
-    5,    9,
+    1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
+    1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
+    1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
+    1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
+    1,    1,    1,    1,    1,    3,    3,    5,    3,    5,
+    5,    5,    3,    3,    5,    5,    5,    7,    7,    7,
+    5,    1,    3,    1,    3,    1,    3,    1,    3,    1,
+    3,    1,    3,    1,    3,    0,    0,    8,    4,    1,
+    0,    1,    1,    5,    3,    0,    0,    9,    0,    2,
+    0,    5,    0,    4,    1,    2,    1,    6,    0,    3,
+    0,    6,    0,    4,    0,    4,    1,    0,    4,    3,
+    1,    3,    3,    5,    5,    7,    4,    0,   10,    0,
+   12,    0,    2,    5,    1,    5,    1,    5,    1,    5,
+    1,    9,    5,    1,    1,    1,    1,    1,    3,    1,
+    1,    1,    7,    5,    1,    1,    1,    1,    3,    0,
+    5,    4,    0,    3,    1,    1,    1,    1,    2,    1,
+    1,    1,    1,    1,    3,    3,    3,    1,    1,    3,
+    1,    1,    3,    3,    0,    5,    2,    0,    3,    1,
+    3,    1,    3,    3,    1,    1,    3,    1,    1,    1,
+    3,    1,    1,    1,    5,    7,    5,    8,    1,    3,
+    5,    5,    7,    7,    6,    5,    0,    2,    3,    3,
+    3,    1,    5,    9,    5,    3,    3,    0,   10,    0,
+    1,    7,    5,    5,    3,    5,    7,    9,    1,    1,
+    1,    1,    1,    0,    2,    1,    3,    1,    1,    1,
+    1,    1,    1,    1,    1,    1,    1,    1,    1,    3,
+    1,    1,    4,    1,    1,    4,    1,    1,    4,    1,
+    4,    5,    1,    3,    1,    3,    1,    1,    4,    9,
+    1,    1,    4,    1,    5,    1,    1,    4,    1,    1,
+    5,    1,    1,    1,    4,    1,    1,    5,    1,    1,
+    3,    1,    1,    3,    1,    4,    3,    3,    3,    3,
+    3,    3,    1,    1,    3,    1,    3,    0,    1,    1,
+    1,    1,    3,    0,    1,    1,    2,    2,    4,    6,
+    4,    6,    6,    6,    6,    2,    6,    8,    8,   10,
+   14,    2,    1,    3,    1,    3,    1,    1,    1,    1,
+    1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
+    1,    1,    1,   10,    9,
 };
 short yydefred[] = {                                      0,
-    0,    0,    0,    0,    0,    2,    0,    5,    6,    0,
-    0,    0,    0,    0,    4,  214,    0,    9,    0,    0,
-    0,    0,    0,    0,   15,    0,    0,    0,    0,   21,
-   76,   77,   75,    0,    0,    0,    0,   81,    7,    0,
-   88,    0,   19,    0,   16,    0,   20,    0,   79,    0,
-   82,    0,    0,    0,    0,    0,   22,   26,    0,   51,
-   51,    0,   84,   85,    0,    0,    0,    0,    0,   89,
-    0,    0,    0,    0,   31,    8,   29,    0,   28,    0,
-    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,  153,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,    0,    0,  102,  103,  105,  112,
-  113,  118,  119,  117,  101,  104,  106,  107,  108,  109,
-  110,  111,  114,  115,  116,  120,  121,  213,    0,   23,
-  212,    0,   24,  191,    0,  190,    0,    0,   33,    0,
-    0,    0,    0,    0,    0,   52,   53,   54,   55,   56,
-   57,   58,   59,   60,   61,   62,   63,   64,   65,    0,
-   87,   86,   83,   90,   92,    0,   91,    0,  211,  218,
-    0,  131,  132,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    2,    0,    0,    0,    0,    0,
+    4,    0,    6,    0,  133,    0,    0,    0,  192,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,    0,    0,    0,  198,  199,    0,
-  197,    0,    0,  195,  196,    0,    0,    0,    0,    0,
-    0,    0,  156,    0,  167,  172,  173,  158,  160,  163,
-  215,  216,    0,    0,  169,   94,   96,  200,  201,    0,
-    0,    0,    0,   69,   70,    0,   67,  171,  170,   66,
-    0,    0,    0,  182,    0,  181,    0,  183,  179,    0,
-  178,    0,  180,  189,    0,  188,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+  130,    0,    0,    0,  136,  145,    0,    0,    0,    0,
+   93,   82,   73,   83,   74,   84,   75,   85,   76,   86,
+   77,   87,   78,   88,   79,   89,   80,   90,   81,    5,
+    0,   92,   91,    0,   30,    0,   29,   31,   32,   33,
+   34,   35,   36,   37,   38,   39,   40,   41,   42,   43,
+   44,   45,   46,   47,   48,   49,   50,   51,   52,   53,
+   54,   55,   56,   57,   58,   59,   60,   61,   62,   63,
+   64,   65,   66,   67,   68,   69,   70,   71,   72,  149,
+    0,    0,   23,    0,    0,    0,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-   99,    0,    0,    0,    0,    0,  149,    0,    0,  152,
-    0,    0,  204,    0,  202,    0,  203,  154,    0,    0,
-    0,  155,    0,    0,    0,  176,  219,  220,    0,   44,
-    0,    0,   46,    0,    0,    0,   35,   34,    0,    0,
-  221,    0,  187,  186,  133,    0,  185,  184,    0,  150,
-  207,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-  161,  164,    0,    0,    0,    0,    0,    0,    0,    0,
-  208,    0,  209,    0,  151,    0,    0,    0,  206,  205,
-  175,    0,    0,    0,    0,  177,    0,   48,    0,    0,
-    0,   50,    0,    0,    0,   71,   72,    0,   12,   13,
-   11,    0,  122,    0,    0,  174,  210,    0,  157,  159,
-    0,  162,    0,    0,    0,    0,    0,    0,   73,   74,
-    0,    0,  136,  135,    0,  124,    0,    0,    0,  166,
-   43,    0,    0,   45,    0,    0,   36,   68,    0,  134,
-    0,    0,    0,    0,    0,    0,   40,    0,   39,  142,
-  141,  143,    0,    0,    0,  125,  222,  194,    0,   47,
-   42,   49,    0,    0,  127,  128,    0,  129,  126,  168,
-  145,  144,    0,    0,    0,  130,    0,    0,  139,  140,
-    0,  147,  148,  138,
+    0,    0,    0,    0,  155,    0,    0,    0,    0,   94,
+   95,    0,    0,    0,    0,  342,    0,  345,    0,  387,
+    0,  343,    0,  153,    0,   27,    0,    9,    8,    7,
+    0,  304,  305,    0,    0,  340,    0,    0,    0,   12,
+  313,    0,  195,  196,    0,    0,  310,    0,    0,  308,
+    0,  337,  339,    0,  336,  334,    0,  333,  228,  224,
+  225,  330,  332,    0,  329,  327,    0,  326,    0,    0,
+  281,  280,    0,  291,  292,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+  383,  250,    0,  366,    0,  318,    0,  317,    0,    0,
+    0,    0,    0,  403,    0,    0,  266,  267,  283,  282,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,  259,  261,  260,  390,  388,  389,  163,  162,
+    0,  184,  185,    0,    0,    0,    0,   96,    0,    0,
+    0,    0,  126,    0,    0,    0,    0,  135,    0,    0,
+    0,    0,    0,    0,    0,  362,    0,    0,    0,  396,
+  398,  395,  397,  399,  400,    0,    0,    0,    0,    0,
+    0,  103,    0,    0,  104,    0,  150,   24,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,  367,  368,    0,    0,    0,  376,    0,
+    0,    0,  382,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,  132,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+  156,    0,    0,  151,    0,    0,    0,    0,  344,  352,
+    0,    0,    0,    0,  349,  350,  351,  129,    0,  154,
+    0,    0,  120,  118,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,  341,   11,  262,    0,   10,
+    0,    0,  314,    0,    0,    0,  198,  197,    0,  173,
+  194,    0,    0,    0,  226,    0,    0,  203,  201,  245,
+  183,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+  324,    0,    0,  322,    0,  321,    0,    0,    0,  384,
+  386,    0,    0,  293,  294,    0,  297,    0,  295,    0,
+  296,  251,    0,    0,    0,  252,    0,  175,    0,    0,
+    0,    0,    0,  256,    0,    0,  165,  164,  276,  401,
+  402,    0,  177,    0,    0,    0,    0,    0,  265,    0,
+    0,  147,    0,    0,  137,  274,    0,    0,    0,  356,
+    0,  346,  134,  363,   98,    0,    0,  105,    0,  111,
+    0,  106,    0,  107,    0,  102,    0,  101,    0,  100,
+   28,  306,    0,    0,  316,  309,    0,  311,    0,    0,
+  335,  393,  391,  392,  239,  236,  230,    0,    0,  235,
+    0,  240,    0,  242,  243,    0,  238,  229,  244,  232,
+  394,    0,  328,    0,    0,    0,  369,    0,    0,    0,
+  371,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+  319,    0,    0,    0,    0,    0,    0,  167,    0,    0,
+    0,    0,    0,  255,    0,    0,    0,    0,    0,    0,
+    0,    0,  152,  146,    0,    0,    0,  127,    0,    0,
+    0,    0,  121,  119,  112,    0,  114,    0,  116,    0,
+    0,    0,  312,  193,  338,    0,    0,    0,    0,    0,
+  331,    0,  246,    0,    0,  189,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,  302,  301,
+  272,    0,    0,  253,    0,  179,    0,    0,  254,  258,
+    0,    0,    0,    0,  181,    0,    0,  187,    0,  186,
+  159,    0,    0,  353,  354,  355,    0,  357,    0,  110,
+    0,  109,    0,  108,    0,    0,    0,  234,  237,  241,
+  231,    0,  298,  206,  207,    0,  211,  210,  212,  213,
+  214,    0,    0,    0,  218,  219,    0,  299,  208,  204,
+    0,    0,  248,    0,  372,    0,  377,    0,  373,    0,
+  323,  374,  375,    0,    0,    0,  268,  303,    0,    0,
+    0,    0,    0,    0,  190,  191,    0,    0,    0,  168,
+    0,    0,    0,    0,    0,    0,  128,  113,  115,  117,
+  263,    0,    0,    0,    0,    0,    0,    0,   19,    0,
+    0,  325,    0,    0,  288,  289,  290,    0,  285,    0,
+    0,    0,  174,    0,    0,  278,  166,  176,    0,    0,
+  182,  264,    0,  143,  138,  140,    0,  300,  215,  216,
+  217,  222,    0,  220,  378,    0,  379,    0,    0,    0,
+  271,  269,    0,    0,    0,  170,    0,  169,  141,    0,
+    0,    0,    0,    0,    0,  320,  287,    0,  405,  178,
+    0,  180,    0,  144,    0,  223,  380,   15,    0,  404,
+  171,  142,    0,    0,    0,    0,   20,   21,    0,    0,
+    0,   13,   17,  381,
 };
 short yydgoto[] = {                                       3,
-   65,  163,  265,  135,  210,  240,  306,  371,  307,  437,
-   33,  411,  388,  391,  246,  233,  171,  319,   13,   25,
-  396,  223,   21,  132,  262,  263,  129,  257,  258,  136,
-    4,    5,  339,  335,  243,    6,    7,    8,    9,   28,
-   39,   44,   56,   76,   29,   57,  130,  133,   58,   59,
-   77,   78,  139,   60,   80,   61,  325,  384,  322,  380,
-  146,  147,  148,  149,  150,  151,  152,  153,  154,  155,
-  156,  157,  158,  159,   40,   41,   50,   69,   42,   70,
-  167,  168,  204,  115,  116,  117,  118,  119,  120,  121,
-  122,  123,  124,  125,  126,  127,  224,  431,  416,  446,
-  172,  362,  415,  430,  443,  444,  464,  469,  277,  279,
-  280,  402,  375,  281,  225,  214,  215,
+  209,  449,  233,  271,  236,  486,  490,  671,  491,  351,
+  757,  729,  689,  859,  294,  467,  614,  354,  578,  584,
+  730,   80,  337,  822,  512,  133,  788,  789,  747,  345,
+   81,  210,  258,  476,  814,  228,  218,  636,  425,  426,
+  427,  428,  640,  638,  387,  733,  290,  375,  253,  696,
+  329,  330,  331,  861,  835,  190,    4,   82,   83,   84,
+  172,  314,  315,  316,  280,  264,  265,  500,  515,  678,
+  687,  440,    5,    6,   10,   85,  254,   86,   87,   88,
+   89,   90,   91,   92,   93,   94,   95,   96,   97,   98,
+   99,  100,  101,  102,  103,  104,  105,  106,  107,  108,
+  109,  110,  111,  112,  113,  114,  115,  116,  117,  118,
+  119,  120,  121,  122,  123,  124,  125,  126,  127,  128,
+  129,  277,  318,  478,  229,  219,  259,  529,  408,  697,
+  173,  278,  626,  765,  766,  843,  830,  524,  130,  187,
+  521,  319,  401,  295,  517,  272,  800,  841,  230,  359,
+  220,  355,  580,  790,  196,  182,  530,  531,
 };
-short yysindex[] = {                                   -166,
-  -18,    4,    0, -233, -233,    0, -166,    0,    0, -222,
- -222,   32, -134, -134,    0,    0,   88,    0, -173,   76,
- -114, -114, -230,  105,    0,  -99,  115, -124, -114,    0,
-    0,    0,    0, -173,  127, -143,  128,    0,    0, -124,
-    0, -132,    0, -236,    0,  -67,    0, -155,    0, -156,
-    0,  137,  138,  140,  142,  -94,    0,    0, -263,    0,
-    0,  161,    0,    0,  162,  149,  150,  151, -105,    0,
-  -47,  -46, -276, -276,    0,    0,    0,  -79,    0, -142,
- -142,  -45, -151,  -47,  -46,  173,  -44,  -44,  -44,  -44,
-  160,  163,  165,    0,  166,  167,  168,  170,  171,  172,
-  174,  175,  176,  177,  178,  179,    0,    0,    0,    0,
+short yysindex[] = {                                     68,
+   17,   31,    0, -217,    0,   68, -257, -226,  112, 5680,
+    0,  136,    0, -136,    0,  170,  185,  201,    0,  225,
+  229,  238,  244,  248,  251,  255,  266,  272,  275,  283,
+  304,  309,  346,  366,  378,  380,  382,  383,  396,  397,
+  398,  400,  401,  404,  405,  413,  415,  -46,  417,  420,
+    0,  426,  108,  489,    0,    0,  428,  101,  -35,  449,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,    0,    0,    0,    0,  187,    0,
-    0,  194,    0,    0,  195,    0,  197,  184,    0,  185,
-  186,  188,  189,  190,  191,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,    0,    0,    0,    0,    0,  206,
-    0,    0,    0,    0,    0,  -43,    0,    0,    0,    0,
-  193,    0,    0,  196,  198, -239,   45,   45,  180,   45,
-   45,   58,  180,  180,  -37,  -37,  -37, -232,   45,   45,
-  -47,  -46, -218, -218,  205, -238,   45,  -41,   45,   45,
- -222,   -6,  211,  213, -234, -237, -268,    0,    0,  214,
-    0,  169,  215,    0,    0,  217,  -39,  218,  219,  220,
-  225,   12,    0,  296,    0,    0,    0,    0,    0,    0,
-    0,    0,  300,  306,    0,    0,    0,    0,    0,  317,
-  319,  112,  329,    0,    0,  341,    0,    0,    0,    0,
-  342,  129,  173,    0,  315,    0,  366,    0,    0,  320,
-    0,  368,    0,    0,  374,    0,   45,  200,  120,  124,
-  385, -218, -201,  116,  202,  389,  390,  118,  399,  401,
-  405,   45, -254,  -38,   -9,  407,  -36, -239, -218,  411,
-    0,  207, -267,  238, -260,   45,    0,  360,  410,    0,
-  239,  412,    0,  386,    0,  415,    0,    0,  454,  242,
-  -37,    0,  -37,  -37,  -37,    0,    0,    0,  457,    0,
-  246,  492,    0,  279,  495,  237,    0,    0,  497,  498,
-    0,  456,    0,    0,    0,  458,    0,    0,  506,    0,
-    0, -239,  509, -276,  298, -259,  299,   72,  510,  517,
-    0,    0, -222,  518,   -1,  519,   28,  520, -119, -227,
-    0,  522,    0,   45,    0,  316,  531,  483,    0,    0,
-    0,  533,  264, -222,  537,    0,  321,    0, -155,  539,
-  328,    0,  330,  543, -229,    0,    0,  545,    0,    0,
-    0,   38,    0,  546,  318,    0,    0,  333,    0,    0,
-  281,    0,  552,  555,   28,  559,  557, -222,    0,    0,
-  561, -229,    0,    0,  560,    0,  338,  563,  566,    0,
-    0, -151,  571,    0,  345,  571,    0,    0, -243,    0,
-  575,  579,  362,  367,  585,  371,    0,  586,    0,    0,
-    0,    0,  590,  591, -209,    0,    0,    0,  597,    0,
-    0,    0, -240, -228,    0,    0, -222,    0,    0,    0,
-    0,    0,  595,  599,  599,    0, -228, -264,    0,    0,
-  599,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+  432,    0,    0,  430,    0, 5680,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+ -190,  450,    0, -234,   62,  -13,   41,   41,   40, -252,
+ -121,  109,  109, 1644,  -34,  109,  109,   92,  -34,  -34,
+ -249,  -20,  -20,  -20,  -35,  458,  -35,  109, 1644, 1644,
+ 1644, -160, -249, -174,    0, 1644,  -34,  288,  -35,    0,
+    0,  439,  414,  109,  467,    0,  -22,    0,  421,    0,
+   -9,    0,  -14,    0,  163,    0,  385,    0,    0,    0,
+ -136,    0,    0,  423,  465,    0,  471,  473,  475,    0,
+    0,  137,    0,    0,  490,  271,    0,  441,  496,    0,
+  503,    0,    0,  276,    0,    0,  452,    0,    0,    0,
+    0,    0,    0,  292,    0,    0,  470,    0,  512,    0,
+    0,    0,  518,    0,    0,  523,  524,  526,  -34,  -34,
+  109,  109,  540,  109,  542,  544,  545, 1644,  548, 5537,
+    0,    0,  533,    0,  331,    0,  500,    0,  555,  558,
+  559,  564,  347,    0,  571,  582,    0,    0,    0,    0,
+  367,  584,  379,  592,  594,  595,  141,  596,  402,  597,
+  588,  611,    0,    0,    0,    0,    0,    0,    0,    0,
+  617,    0,    0,  628,  385,  638,  640,    0,  593,  -35,
+  -35,  644,    0,  649,  159,  -35,  -35,    0,  -35,  -35,
+  -35,  -35,  -35,  651,  650,    0,  141,  465, 5680,    0,
+    0,    0,    0,    0,    0,  642,   -1,    4,  643,  647,
+  653,    0,  141,  465,    0, 5680,    0,    0,  -35, -234,
+  445,   14,  455,  654,  614, 1644,  678,  -35,   38,  476,
+  338,  682,  -35,  688,  385,  690,  -35,  109,  385,  109,
+ 1644,  424,  431,    0,    0,  694,  696, 1298,    0,  109,
+  109, 5435,    0,  360,  704, 1644,  702,  -35, -165,  -83,
+  429,  491,  703,  -20,  433,    0,  707,  -24,  708,  -20,
+  -20,  -20,  -35,  709,   10,  109,  -91,  -19, -121,    0,
+    0,    9,    9,    0,   45,  655, -254,  560,    0,    0,
+   75,  148,   79,   79,    0,    0,    0,    0,  -14,    0,
+ 1644,  711,    0,    0,   16,   25,   27,   29,  141,  465,
+   22,  -10,  -28,  631,  427,    0,    0,    0,  501,    0,
+  715,  137,    0,  719,  505,  459,    0,    0,  503,    0,
+    0,  381,  499,    2,    0,  403,  508,    0,    0,    0,
+    0,  721,  723,  109,  109,  662,  743,  748,  746,  749,
+    0,  750, 5448,    0,  701,    0,  751,  752,  753,    0,
+    0,  554,  536,    0,    0,  754,    0,  726,    0,  774,
+    0,    0,  775,  579,  785,    0, -165,    0,  581,  796,
+  583,  798,  800,    0,  802,  535,    0,    0,    0,    0,
+    0,  804,    0,  591,  806,  807,  521,  598,    0,  810,
+  385,    0,  811,  -35,    0,    0,  465,  801,  815,    0,
+  814,    0,    0,    0,    0,  604,  -35,    0, -234,    0,
+  -21,    0,  824,    0,   57,    0,   98,    0,   23,    0,
+    0,    0,  825,  621,    0,    0,  827,    0,  493,  839,
+    0,    0,    0,    0,    0,    0,    0,  823,  826,    0,
+  828,    0,  830,    0,    0,  832,    0,    0,    0,    0,
+    0,  841,    0,  848, -121,  641,    0,  857,  590, 1644,
+    0,  -35,  -35, 1644,  859,  -35, 1644, 1644,  864,  861,
+    0, -249,  648, -148,  652,  135,  586,    0,  867,   -5,
+  868,  528,  587,    0,  -35,  870, -234,  871,    6,   72,
+  385,    9,    0,    0,  141,  793,    1,    0,  560,  166,
+  141,  465,    0,    0,    0,   32,    0,   33,    0,   35,
+ -165,  873,    0,    0,    0, -234,  -35,  -35,  -35,   40,
+    0, 5526,    0,  876,  -35,    0,  880,  174,  686,  881,
+ -165,  569,  882,  883,  -35,  685,  900,  852,    0,    0,
+    0,  902,  691,    0,  693,    0,  110,  908,    0,    0,
+  928, -184,  465,  716,    0,  717,  900,    0,  929,    0,
+    0,  932,   90,    0,    0,    0,  385,    0,   57,    0,
+   98,    0,   23,    0,  936,  722,  465,    0,    0,    0,
+    0,   56,    0,    0,    0, -234,    0,    0,    0,    0,
+    0,  920,  921,  924,    0,    0,  925,    0,    0,    0,
+  465,  727,    0,  141,    0,  699,    0,  -35,    0,  945,
+    0,    0,    0,  481,  943,   59,    0,    0,  744,  957,
+  965,  963,    6,  -35,    0,    0,  967,  977,  982,    0,
+ -184,  767,  -50,  971,  905,   90,    0,    0,    0,    0,
+    0,  987,  724,  465,  -35,  -35,  -35, -261,    0,  991,
+  576,    0,  -35,  777,    0,    0,    0,  989,    0,  385,
+  992,  780,    0,   38,  900,    0,    0,    0,  781,  385,
+    0,    0,  983,    0,    0,    0,  784,    0,    0,    0,
+    0,    0,  916,    0,    0,  758,    0,   93, 1004,   59,
+    0,    0,  788, 1006, 1007,    0, 1010,    0,    0, 5680,
+ 1009, -261, 1016,  675, 1020,    0,    0, 1025,    0,    0,
+  385,    0, 5680,    0, -165,    0,    0,    0, 1023,    0,
+    0,    0, 1024,  109, -149, 1026,    0,    0,  876,  109,
+ 1028,    0,    0,    0,
 };
-short yyrindex[] = {                                    641,
-    0,    0,    0, -172,  307,    0,  645,    0,    0,    0,
-    0,    0, -146,  355,    0,    0,    0,    0,    0,    0,
-  -72,  351,    0,  282,    0,    0,    0,    0,  346,    0,
-    0,    0,    0,    0,    0,    0,    0,    0,    0,  104,
-    0,    0,    0,  157,    0,    0,    0,    0,    0,  491,
-    0,    0,    0,    0,    0,   57,    0,    0,  159,    0,
-    0,    0,    0,    0,    0,    0,    0,    0,   91,    0,
-    0,    0,    0,    0,    0,    0,    0,  106,    0,  267,
-  388,    0,    0,    0,    0,    0,  589,  589,  589,  589,
+short yyrindex[] = {                                   1071,
+    0,    0,    0, 5225,    0, 1072,    0,    0,    0,   53,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0, 2985,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0, 3174,    0,    0,
+    0,    0,    0,    0, 3331,    0,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,    0,    0,    0,    0,  201,    0,
-    0,  240,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,    0,    0,    0,  446,    0,    0,
+    0,    0,    0,    0,    0,  182,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0, 5382,    0,    0,    0,    0,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0, 1032,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0, 3520,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+  689,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0, 1947,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0, 1098,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+  136,    0,    0,    0,    0,    0,  720,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0, 3677,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0, 1033,    0,  241,  247,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0, 3866, 4023,    0,  951,    0,    0,    0,    0,
+    0,    0,    0,  984,    0,    0,    0,    0,    0,    0,
+    0,    0,    0, 2136,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0, 2293,
+    0,    0,    0,    0,    0,    0,    0, 1037,    0,    0,
+    0,    0,  374,  531,    0,    0,    0,    0,    0,    0,
+    0,  553,    0,    0,    0,    0,    0,    0,   42,   49,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,  689,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0, 4212,    0,    0, 1035,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0, 4369,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0, 4558,    0,    0,    0,
+ 1039,    0,    0,    0,    0,    0,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0, 2482,    0,    0,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,  958,    0,    0,    0,    0,    0,
+   50,   52,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0, 4715,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0, 2639,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0, 4904,    0,    0,    0,  959,    0,    0,    0,
+    0,    0,  961,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0, 1255,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+ 1444,    0,    0,  909,    0,    0,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,    0,    0,  535,    0,    0,    0,
-    0,    0,    0,    0,  572,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,  961,    0,    0,    0,    0,
+    0,    0,    0, 1601,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0, 2828,    0, 5061,
+    0,    0,    0,    0,  959,    0,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0, 1790,    0,    0,    0,    0,  128,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,  -69,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,    6,    0,    0,  606,    0,    0,
-    0,    0,  146,    0,    0,  146,    0,    0,    0,    0,
-   43,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,  109,  109,    0,    0,    0,    0,    0,
-  109,    0,    0,    0,
+    0,    0,  -69,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0, 1043,    0,    0, 4715,    0,
+    0,    0,    0,    0,
 };
 short yygindex[] = {                                      0,
-  269,  230,    0,  -60, -269, -184,  209,    0,    0,  229,
-    0,  244,    0,    0,    0,    0,  113,    0,  652,  624,
-    0, -178,  646,  453,    0,    0,  459,    0,    0,  -10,
-    0,    0,    0,    0,  375,  656,    0,    0,    0,   24,
-  625,    0,    0,    0,    0,    0,  -73,  -68,  608,    0,
-    0,    0,    0,    0,  607,    0,    0,  266,    0,    0,
-    0,    0,    0,    0,  600,  603,  605,  609,  611,    0,
-    0,  612,  613,  614,    0,    0,    0,    0,    0,    0,
-  422,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,    0,    0, -165,    0,    0,    0,
-  588,    0,    0,    0,    0,  224, -416, -384,    0,    0,
-    0,    0,    0,    0,  -40,  -81,    0,
-};
-#define YYTABLESIZE 900
-short yytable[] = {                                      17,
-   18,  321,  217,  242,  169,  137,  228,  229,  230,  241,
-  164,  213,  216,  137,  219,  220,  165,  461,  329,  131,
-  244,   54,  128,  234,  235,  231,   31,  134,  409,  461,
-  324,  389,  472,  248,  249,  264,  333,  465,  379,   10,
-   52,   53,  123,  337,  369,   30,   16,  317,   54,  318,
-  471,   55,   43,  370,   16,   16,   32,  440,  473,  208,
-  441,   11,   16,  462,  209,  245,  259,  383,  260,  254,
-  255,  232,  365,   32,  410,  462,  390,  166,   55,  442,
-  470,  238,  442,   12,  166,  239,  474,  302,   14,   19,
-   80,   14,   14,   14,  303,    1,    2,  222,  304,  305,
-   16,  297,  303,   78,  330,   30,  304,  305,  146,  455,
-  456,  457,  331,   16,   10,  366,  316,  236,   10,   10,
-   66,   67,   68,  237,   87,   88,   89,   90,  140,   20,
-  340,   23,  349,   26,  350,  351,  352,   96,  218,  141,
-   37,   38,  226,  227,   24,   41,   27,  142,   34,  104,
-  105,  106,  143,  144,   63,   64,   25,   35,   27,  161,
-  162,   87,   88,   89,   90,   91,   92,   93,   94,   95,
-   46,  169,   36,  145,   96,   97,   98,   99,  100,   47,
-  101,  102,  103,  386,  387,   48,  104,  105,  106,   62,
-  250,   51,   18,   18,   71,   72,  266,   73,  393,   74,
-   93,  174,  175,   75,   82,   83,   84,   85,   86,  128,
-  131,  138,  166,  160,  203,  170,  247,  176,  271,  217,
-  177,  327,  178,  179,  180,  181,  414,  182,  183,  184,
-  191,  185,  186,  187,  188,  189,  190,  192,  193,   95,
-  194,  195,  196,  197,  242,  198,  199,  200,  201,  202,
-  205,  221,  251,  206,  252,  207,  253,  267,  269,  268,
-  270,  272,  273,  274,  275,  320,   37,  137,  137,  276,
-  137,  137,  137,  137,  137,  137,  137,  137,  137,  137,
-  137,   17,  334,  367,  338,  137,  137,  137,  137,  137,
-  137,  137,  137,  137,  323,  137,  137,  137,  137,  137,
-  137,  137,  378,  137,  123,  123,   14,  123,  123,  123,
-  123,  123,  123,  123,  123,  123,  123,  123,   32,   32,
-  137,  137,  123,  123,  123,  123,  123,  123,  123,  123,
-  123,  382,  123,  123,  123,  123,  123,  123,  123,  278,
-  123,  211,  376,  282,  212,   18,  221,   32,  211,  283,
-   18,  212,   80,   80,   10,   80,   80,  123,  123,  413,
-  284,  211,  285,  400,  212,   78,   78,   30,   30,  286,
-  146,  146,  287,  146,  146,  146,  146,  146,  146,  146,
-  146,  146,  146,  146,  288,  289,  290,   38,  146,  146,
-  146,  146,  146,  146,  146,  146,  146,  426,  146,  146,
-  146,  146,  146,  146,  146,  292,  146,   41,   41,  293,
-  294,  295,   41,   41,   41,   41,   41,  296,   25,   25,
-   27,   27,  299,  146,  146,   41,  300,   41,  301,  308,
-   41,  312,  310,  311,  459,   41,   41,   41,   41,   41,
-   41,   41,  313,   41,  314,   97,  466,   25,  315,   27,
-  326,  331,  341,  342,   25,  344,   27,  298,  346,  309,
-   41,   41,   93,   93,  332,   93,   93,   93,   93,   93,
-   93,   93,   93,   93,   93,   93,  345,   93,   93,   93,
-   93,   93,   93,   93,   93,   93,   93,   93,   93,   98,
-  100,   93,   93,   93,   93,  336,  343,  347,   93,  348,
-  353,   95,   95,  354,   95,   95,   95,   95,   95,   95,
-   95,   95,   95,   95,   95,   93,   95,   95,   95,   95,
-   95,   95,   95,   95,   95,   95,   95,   95,   37,   37,
-   95,   95,   95,   95,  192,  355,  356,   95,  357,  358,
-  359,  360,   17,   17,   17,   17,   17,   17,  361,  364,
-  363,   37,  366,  373,   95,  368,  372,   37,   17,   17,
-  374,  377,  381,  385,   37,  392,   17,   14,   14,   14,
-   14,  165,   17,  394,  395,  397,  398,  399,  403,   17,
-  401,   37,  405,   14,   14,  406,  408,  407,  412,  417,
-  419,   14,  421,  418,  420,  432,   17,   14,  422,  424,
-  425,  427,  438,  429,   14,  193,  433,   18,   18,  434,
-   18,   18,   18,   18,  436,   10,   10,   10,  445,  447,
-  448,   14,   18,   18,  449,  450,  452,   18,   18,  451,
-   18,   10,   10,  453,  454,   18,   18,  460,  467,   10,
-    1,   18,  468,   18,    3,   10,  217,  404,   18,   38,
-   38,  435,   10,  458,  439,  428,   14,   45,  261,   22,
-   18,  328,   15,  256,   49,   18,   79,   81,  107,   10,
-  423,  108,   38,  109,  291,  173,  463,  110,   38,  111,
-  112,  113,  114,    0,    0,   38,    0,    0,    0,    0,
+  410,  294,    0,  487, -329, -480,    0,    0,  438,  645,
+  330,    0,    0,    0,    0, -474,    0,    0,    0,    0,
+    0,  -86, -287,    0,    0,  901,    0,  273, -629,  657,
+ 1047, -296, -297, -509,  264, -504, -494,    0,    0,    0,
+    0,    0,    0,    0,    0,  242, -384, -137,  849,    0,
+    0,    0,    0,    0,    0,    0,    0, 1046,  934, -371,
+    0,    0,    0,  684,  710,    0,  -48,    0,    0,    0,
+  351,    0, 1100,    0,    0,    0, -133,  790,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,   38,    0,    0,    0,    0,   97,   97,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,  -58, -130, -355, -375,  679,  -84,    0,    0,    0,
+    0, -167,    0,  345,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,  949,    0,    0,    0,    0,
+  975,    0,    0,    0,  792,  680,  504,    0,
+};
+#define YYTABLESIZE 6091
+short yytable[] = {                                     186,
+  181,  299,  211,  195,  177,  255,  252,  400,  237,  238,
+  507,  518,  260,  261,  266,  499,  608,  177,  206,  273,
+  514,  283,  284,  285,  282,  177,  206,  313,  296,  224,
+  424,  423,  311,  309,  677,  310,  528,  312,  177,  639,
+  302,  206,  637,  327,   59,  686,  519,  520,  518,  279,
+  635,  332,   26,  439,  334,   26,  548,  760,  526,  537,
+  231,  214,  518,  269,  267,  268,  188,  455,  539,  516,
+  541,  459,  543,  755,    7,  699,  701,  550,  703,  224,
+  214,  313,  297,  308,  292,  122,  311,  309,    8,  310,
+  523,  312,  124,  123,  549,  125,  214,  286,  281,  812,
+  335,  287,  288,  274,  275,  276,    9,  366,  367,  857,
+  369,  313,  547,  773,  656,  313,  311,  309,  305,  310,
+  311,  312,  189,  813,  317,  312,  333,   12,  756,  313,
+  192,  263,  232,  406,  311,  270,  834,  224,  293,  312,
+  538,  193,  194,  484,  545,  690,  603,  485,  206,  540,
+  192,  542,  289,  544,  364,  365,  700,  702,   13,  704,
+  705,  193,  194,  858,  669,  826,  122,  532,   14,   14,
+  348,  670,  348,  124,  123,  643,  125,  313,  673,  131,
+  740,   26,  311,  309,  313,  310,  234,  312,  132,  311,
+  309,  235,  310,  770,  312,  313,  769,  430,  169,  410,
+  311,  309,  327,  310,  768,  312,  643,  286,  444,  666,
+  313,  287,  288,   15,  737,  311,  309,  736,  310,  510,
+  312,  511,  176,  461,  458,  505,  460,  134,  471,  487,
+  468,  488,  489,  623,  477,  176,  469,  470,  481,  304,
+  533,  405,  135,  176,  633,  634,  222,  411,  412,  434,
+  413,  414,  415,  416,  417,  653,  422,  528,  136,  562,
+  304,  176,  509,  563,  564,  471,  692,  286,  305,  429,
+  438,  287,  288,   26,  711,   26,  527,  262,  212,  471,
+  435,  360,  137,  535,  360,  328,  138,  361,  498,  446,
+  361,  201,  202,  513,  453,  139,  222,  212,  457,  201,
+  202,  140,  223,  203,  204,  141,   26,  676,  142,  565,
+  566,  567,  143,  212,  201,  202,  201,  202,  685,  483,
+  579,   26,   26,  144,  568,  197,  198,  199,  200,  145,
+  587,  588,  146,  691,  213,  495,    1,    2,  569,  570,
+  147,  502,  503,  504,  785,  786,  787,  571,  572,  573,
+  574,  575,  223,  213,  222,  447,  448,  307,  178,  179,
+  317,  148,  205,  576,  853,  577,  149,  256,  257,  213,
+  192,  178,  179,  347,  225,  474,  475,  205,  803,  178,
+  179,  193,  194,  466,  688,  522,  207,  208,  192,  262,
+  694,  695,  178,  179,  180,  226,  227,  178,  179,  193,
+  194,  207,  208,  150,  201,  202,  215,  180,  632,  767,
+  223,  347,  474,  475,  347,  180,  347,  347,  347,  347,
+  176,  201,  202,  151,  225,  215,  203,  204,  180,  216,
+  217,  180,  763,  180,  764,  152,  320,  153,  321,  154,
+  155,  215,  322,  323,  324,  226,  227,  681,  216,  217,
+   26,   26,  657,  156,  157,  158,  660,  159,  160,  663,
+  664,  161,  162,  313,  347,  625,  347,  205,  311,  309,
+  163,  310,  164,  312,  166,  201,  202,  167,  631,  708,
+  709,  710,  225,  168,  205,  174,  683,  175,  183,  184,
+  185,  207,  208,  191,  325,  313,  347,  279,  347,  300,
+  311,  309,  821,  310,  301,  312,  303,  336,  207,  208,
+  340,  306,  828,  339,  341,  707,  342,  313,  343,  552,
+  344,  731,  311,  309,   26,  783,   26,  312,  347,  346,
+  348,  348,  352,  658,  659,  313,  326,  662,  205,  349,
+  311,  309,  353,  310,  313,  312,  350,  192,  356,  311,
+  309,  558,  310,  851,  312,  358,  178,  179,  193,  194,
+  357,  360,  207,  208,  256,  257,  361,  362,  348,  363,
+  376,  348,  313,  348,  348,  348,  348,  311,  309,  368,
+  310,  370,  312,  371,  372,  774,  796,  374,  377,  342,
+  378,  561,  180,  342,  342,  342,  734,  342,  379,  342,
+  583,  380,  381,  382,  383,  313,  744,  809,  810,  811,
+  311,  309,  313,  310,  384,  312,  817,  311,  309,  816,
+  310,  348,  312,  348,  313,  385,  386,  388,  601,  311,
+  309,  396,  310,  347,  312,  390,  389,  391,  392,  393,
+  395,  347,  347,  347,  347,  347,  347,  347,  347,  347,
+  347,  347,  347,  348,  397,  348,  347,  347,  347,  394,
+  398,  741,  347,  347,  347,  347,  347,  347,  347,  347,
+  347,  399,  347,  347,  347,  347,  347,  347,  347,  781,
+  347,  402,   63,  403,   65,  404,   67,  407,   69,  409,
+   71,  418,   73,  419,   75,  347,   77,  442,   79,  421,
+  431,  437,  347,  347,  432,  347,  443,  347,  347,  347,
+  433,  441,  347,  347,  347,  347,  347,  347,  347,  307,
+  856,  445,  313,  451,  818,  452,  863,  311,  309,  738,
+  310,  454,  312,  456,  450,  462,  347,  464,  347,  465,
+  347,  479,  463,  844,  480,  482,  494,  525,  493,  492,
+  497,  501,  506,  496,  536,  551,  852,  553,  554,  556,
+  347,  347,  557,  307,  585,  560,  586,  347,  347,  347,
+  347,  347,  347,  347,  347,  347,  347,  347,  347,  347,
+  347,  347,  347,  347,  347,  589,  590,  582,  591,  592,
+  348,  596,  593,  594,  597,  598,  599,  602,  348,  348,
+  348,  348,  348,  348,  348,  348,  348,  348,  348,  348,
+  307,  600,  307,  348,  348,  348,  603,  604,  605,  348,
+  348,  348,  348,  348,  348,  348,  348,  348,  607,  348,
+  348,  348,  348,  348,  348,  348,  606,  348,  609,  610,
+  611,  612,  307,  613,  307,  615,  616,  617,  618,  619,
+  620,  621,  348,  622,  595,  628,  624,  629,  627,  348,
+  348,  630,  348,  255,  348,  348,  348,  643,  641,  348,
+  348,  348,  348,  348,  348,  348,  170,  642,  644,  645,
+  646,  651,   62,  647,   64,  648,   66,  649,   68,  650,
+   70,  652,   72,  348,   74,  348,   76,  348,   78,  654,
+  655,  466,  661,  665,  666,  668,  674,  680,  370,  672,
+  675,  673,  679,  682,  684,  693,  706,  348,  348,  732,
+  735,  739,  742,  743,  348,  348,  348,  348,  348,  348,
+  348,  348,  348,  348,  348,  348,  348,  348,  348,  348,
+  348,  348,  745,  746,  748,  749,  370,   61,  750,  370,
+  751,  753,  370,   62,   63,   64,   65,   66,   67,   68,
+   69,   70,   71,   72,   73,   74,   75,   76,   77,   78,
+   79,  754,  761,  758,  759,  762,  771,  775,  776,  307,
+  772,  777,  778,  779,  780,  782,  784,  307,  307,  307,
+  307,  307,  307,  307,  307,  307,  307,  307,  307,  370,
+  792,  791,  307,  307,  307,  793,  794,  797,  307,  307,
+  307,  307,  307,  307,  307,  307,  307,  798,  307,  307,
+  307,  307,  307,  307,  307,  799,  307,  802,  804,  805,
+  807,  815,  820,  370,  819,  823,  808,  824,  827,  832,
+  829,  307,  831,  833,  836,  838,  839,  840,  307,  307,
+  842,  307,  845,  307,  307,  307,  847,  848,  307,  307,
+  849,  307,  307,  307,  307,  850,  854,  855,  864,  860,
+    1,    3,  364,  365,  172,   26,  315,  358,  188,  359,
+  148,  284,  307,   16,  307,  139,  752,  825,  667,  728,
+  801,  338,  837,  559,  165,  846,  373,  385,  555,  171,
+  862,  298,  534,  795,  508,   11,  307,  307,  420,  546,
+  806,  291,  221,  307,  307,  307,  307,  307,  307,  307,
+  307,  307,  307,  307,  307,  307,  307,  307,  307,  307,
+  307,  436,  698,  581,    0,    0,    0,    0,  385,    0,
+    0,  385,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,  370,    0,
+    0,    0,    0,    0,    0,    0,  370,  370,  370,  370,
+  370,  370,  370,  370,  370,  370,  370,  370,  385,    0,
+    0,  370,  370,  370,    0,    0,    0,  370,  370,  370,
+  370,  370,  370,  370,  370,  370,    0,  370,  370,  370,
+  370,  370,  370,  370,    0,  370,    0,    0,    0,    0,
+    0,    0,  385,    0,    0,    0,    0,    0,    0,    0,
+  370,    0,    0,    0,    0,    0,    0,  370,  370,    0,
+  370,    0,  370,  370,  370,    0,    0,  370,  370,    0,
+  370,  370,  370,  370,  233,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,  370,    0,  370,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,  370,  370,    0,  233,    0,
+    0,    0,  370,  370,  370,  370,  370,  370,  370,  370,
+  370,  370,  370,  370,  370,  370,  370,  370,  370,  370,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,  250,    0,    0,
+    0,    0,    0,    0,    0,  233,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,  385,    0,    0,
+    0,    0,    0,    0,    0,  385,  385,  385,  385,  385,
+  385,  385,  385,  385,  385,  385,  385,  233,    0,  233,
+  385,  385,  385,    0,    0,    0,  385,  385,  385,  385,
+  385,  385,  385,  385,  385,    0,  385,  385,  385,  385,
+  385,  385,  385,    0,  385,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,  385,
+    0,    0,    0,    0,    0,    0,  385,  385,    0,  385,
+    0,  385,  385,  385,    0,    0,  385,  385,    0,  385,
+  385,  385,  385,  205,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+  385,    0,  385,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,  385,  385,    0,  205,    0,    0,
+    0,  385,  385,  385,  385,  385,  385,  385,  385,  385,
+  385,  385,  385,  385,  385,  385,  385,  385,  385,    0,
+    0,    0,    0,    0,  233,    0,    0,    0,    0,    0,
+    0,    0,  233,  233,  233,  233,  233,  233,  233,  233,
+  233,  233,  233,  233,  205,    0,    0,  233,  233,  233,
+    0,    0,    0,  233,  233,  233,  233,  233,  233,  233,
+  233,  233,    0,  233,  233,  233,  233,  233,  233,  233,
+    0,  233,    0,    0,    0,    0,  205,    0,  205,    0,
+    0,    0,    0,    0,    0,    0,  233,    0,    0,    0,
+    0,    0,    0,  233,  233,    0,  233,    0,  233,  233,
+  233,    0,    0,  233,  233,    0,  233,  233,  233,  233,
+  209,    0,    0,    0,    0,    0,    0,    0,    0,  466,
+  201,  202,    0,    0,    0,    0,    0,  233,    0,  233,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,  233,  233,    0,  209,    0,    0,    0,  233,  233,
+  233,  233,  233,  233,  233,  233,  233,  233,  233,  233,
+  233,  233,  233,  233,  233,  233,  239,  240,  241,  242,
+  243,    0,  244,  205,  245,  246,  247,  248,  249,    0,
+    0,    0,    0,  250,    0,    0,    0,    0,    0,    0,
+    0,  209,    0,    0,    0,    0,    0,  207,  208,    0,
+    0,    0,    0,  205,    0,    0,    0,  251,    0,    0,
+    0,  205,  205,  205,  205,  205,  205,  205,  205,  205,
+  205,  205,  205,  209,    0,  209,  205,  205,  205,    0,
+    0,    0,  205,  205,  205,  205,  205,  205,  205,  205,
+  205,    0,  205,  205,  205,  205,  205,  205,  205,    0,
+  205,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,  205,    0,    0,    0,    0,
+    0,    0,  205,  205,    0,  205,    0,  205,  205,  205,
+    0,    0,  205,  205,    0,  205,  205,  205,  205,  221,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,  205,    0,  205,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+  205,  205,    0,  221,    0,    0,    0,  205,  205,  205,
+  205,  205,  205,  205,  205,  205,  205,  205,  205,  205,
+  205,  205,  205,  205,  205,    0,    0,    0,    0,    0,
+  209,    0,    0,    0,    0,    0,    0,    0,  209,  209,
+  209,  209,  209,  209,  209,  209,  209,  209,  209,  209,
+  221,    0,    0,  209,  209,  209,    0,    0,    0,  209,
+  209,  209,  209,  209,  209,  209,  209,  209,    0,  209,
+  209,  209,  209,  209,  209,  209,    0,  209,    0,    0,
+    0,    0,  221,    0,  221,    0,    0,    0,    0,    0,
+    0,    0,  209,    0,    0,    0,    0,    0,    0,  209,
+  209,    0,  209,    0,  209,  209,  209,    0,    0,  209,
+  209,    0,  209,  209,  209,  209,  199,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,  201,  202,    0,    0,
+    0,    0,    0,  209,    0,  209,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,  209,  209,    0,
+    0,    0,    0,    0,  209,  209,  209,  209,  209,  209,
+  209,  209,  209,  209,  209,  209,  209,  209,  209,  209,
+  209,  209,  239,  240,  241,  242,  243,    0,  244,  205,
+  245,  246,  247,  248,  249,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,  199,    0,    0,
+    0,    0,    0,  207,  208,    0,    0,    0,    0,  221,
+    0,    0,    0,  251,    0,    0,    0,  221,  221,  221,
+  221,  221,  221,  221,  221,  221,  221,  221,  221,  200,
+    0,  199,  221,  221,  221,    0,    0,    0,  221,  221,
+  221,  221,  221,  221,  221,  221,  221,    0,  221,  221,
+  221,  221,  221,  221,  221,    0,  221,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,  221,    0,    0,    0,    0,    0,    0,  221,  221,
+    0,  221,    0,  221,  221,  221,    0,    0,  221,  221,
+    0,  221,  221,  221,  221,  227,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,  221,    0,  221,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,  221,  221,    0,    0,
+    0,    0,    0,  221,  221,  221,  221,  221,  221,  221,
+  221,  221,  221,  221,  221,  221,  221,  221,  221,  221,
+  221,    0,    0,    0,    0,    0,  199,    0,    0,    0,
+    0,    0,    0,    0,  199,  199,  199,  199,  199,  199,
+  199,  199,  199,  199,  199,  199,  227,    0,    0,  199,
+  199,  199,    0,    0,    0,  199,  199,  199,  199,  199,
+  199,  199,  199,  199,    0,  199,  199,  199,  199,  199,
+  199,  199,    0,  199,    0,    0,    0,    0,  227,    0,
+  227,    0,    0,    0,    0,    0,    0,    0,  199,    0,
+    0,    0,    0,    0,    0,  199,  199,    0,  199,    0,
+  199,  199,  199,    0,    0,  199,  199,    0,  199,  199,
+  199,  199,  157,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,  199,
+    0,  199,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,  199,  199,    0,    0,    0,    0,    0,
+  199,  199,  199,  199,  199,  199,  199,  199,  199,  199,
+  199,  199,  199,  199,  199,  199,  199,  199,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,  157,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,  227,    0,    0,    0,    0,
+    0,    0,    0,  227,  227,  227,  227,  227,  227,  227,
+  227,  227,  227,  227,  227,    0,    0,  157,  227,  227,
+  227,    0,    0,    0,  227,  227,  227,  227,  227,  227,
+  227,  227,  227,    0,  227,  227,  227,  227,  227,  227,
+  227,    0,  227,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,  227,    0,    0,
+    0,    0,    0,    0,  227,  227,    0,  227,    0,  227,
+  227,  227,    0,    0,  227,  227,    0,  227,  227,  227,
+  227,  202,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,  227,    0,
+  227,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,  227,  227,    0,    0,    0,    0,    0,  227,
+  227,  227,  227,  227,  227,  227,  227,  227,  227,  227,
+  227,  227,  227,  227,  227,  227,  227,    0,    0,    0,
+    0,    0,  157,    0,    0,    0,    0,    0,    0,    0,
+  157,  157,  157,  157,  157,  157,  157,  157,  157,  157,
+  157,  157,  202,    0,    0,  157,  157,  157,    0,    0,
+    0,  157,  157,  157,  157,  157,  157,  157,  157,  157,
+    0,  157,  157,  157,  157,  157,  157,  157,    0,  157,
+    0,    0,    0,    0,  202,    0,  202,    0,    0,    0,
+    0,    0,    0,    0,  157,    0,    0,    0,    0,    0,
+    0,  157,  157,  158,  157,    0,  157,  157,  157,    0,
+    0,  157,  157,    0,  157,  157,  157,  157,  284,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,  157,    0,  157,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,  157,
+  157,    0,    0,    0,    0,    0,  157,  157,  157,  157,
+  157,  157,  157,  157,  157,  157,  157,  157,  157,  157,
+  157,  157,  157,  157,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,  284,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,  202,    0,    0,    0,    0,    0,    0,    0,  202,
+  202,  202,  202,  202,  202,  202,  202,  202,  202,  202,
+  202,  284,    0,  284,  202,  202,  202,    0,    0,    0,
+  202,  202,  202,  202,  202,  202,  202,  202,  202,    0,
+  202,  202,  202,  202,  202,  202,  202,    0,  202,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,  202,    0,    0,    0,    0,    0,    0,
+  202,  202,    0,  202,    0,  202,  202,  202,    0,    0,
+  202,  202,    0,  202,  202,  202,  202,  286,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,  202,    0,  202,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,  202,  202,
+    0,    0,    0,    0,    0,  202,  202,  202,  202,  202,
+  202,  202,  202,  202,  202,  202,  202,  202,  202,  202,
+  202,  202,  202,    0,    0,    0,    0,    0,  284,    0,
+    0,    0,    0,    0,    0,    0,  284,  284,  284,  284,
+  284,  284,  284,  284,  284,  284,  284,  284,  286,    0,
+    0,  284,  284,  284,    0,    0,    0,  284,  284,  284,
+  284,  284,  284,  284,  284,  284,    0,  284,  284,  284,
+  284,  284,  284,  284,    0,  284,    0,    0,    0,    0,
+  286,    0,  286,    0,    0,    0,    0,    0,    0,    0,
+  284,    0,    0,    0,    0,    0,    0,  284,  284,    0,
+  284,    0,  284,  284,  284,    0,    0,  284,  284,    0,
+  284,  284,  284,  284,  249,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,  284,    0,  284,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,  284,  284,    0,    0,    0,
+    0,    0,  284,  284,  284,  284,  284,  284,  284,  284,
+  284,  284,  284,  284,  284,  284,  284,  284,  284,  284,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,  249,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,  286,    0,    0,
+    0,    0,    0,    0,    0,  286,  286,  286,  286,  286,
+  286,  286,  286,  286,  286,  286,  286,    0,    0,  249,
+  286,  286,  286,    0,    0,    0,  286,  286,  286,  286,
+  286,  286,  286,  286,  286,    0,  286,  286,  286,  286,
+  286,  286,  286,    0,  286,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,  286,
+    0,    0,    0,    0,    0,    0,  286,  286,    0,  286,
+    0,  286,  286,  286,    0,    0,  286,  286,    0,  286,
+  286,  286,  286,  279,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+  286,    0,  286,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,  286,  286,    0,    0,    0,    0,
+    0,  286,  286,  286,  286,  286,  286,  286,  286,  286,
+  286,  286,  286,  286,  286,  286,  286,  286,  286,    0,
+    0,    0,    0,    0,  249,    0,    0,    0,    0,    0,
+    0,    0,  249,  249,  249,  249,  249,  249,  249,  249,
+  249,  249,  249,  249,  279,    0,    0,  249,  249,  249,
+    0,    0,    0,  249,  249,  249,  249,  249,  249,  249,
+  249,  249,    0,  249,  249,  249,  249,  249,  249,  249,
+    0,  249,    0,    0,    0,    0,    0,    0,  279,    0,
+    0,    0,    0,    0,    0,    0,  249,    0,    0,    0,
+    0,    0,    0,  249,  249,    0,  249,    0,  249,  249,
+  249,    0,    0,  249,  249,    0,  249,  249,  249,  249,
+  161,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,  249,    0,  249,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,  249,  249,    0,    0,    0,    0,    0,  249,  249,
+  249,  249,  249,  249,  249,  249,  249,  249,  249,  249,
+  249,  249,  249,  249,  249,  249,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,  161,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,  279,    0,    0,    0,    0,    0,    0,
+    0,  279,  279,  279,  279,  279,  279,  279,  279,  279,
+  279,  279,  279,    0,    0,  161,  279,  279,  279,    0,
+    0,    0,  279,  279,  279,  279,  279,  279,  279,  279,
+  279,    0,  279,  279,  279,  279,  279,  279,  279,    0,
+  279,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,  279,    0,    0,    0,    0,
+    0,    0,  279,  279,    0,  279,    0,  279,  279,  279,
+    0,    0,  279,  279,    0,  279,  279,  279,  279,  160,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,  279,    0,  279,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+  279,  279,    0,    0,    0,    0,    0,  279,  279,  279,
+  279,  279,  279,  279,  279,  279,  279,  279,  279,  279,
+  279,  279,  279,  279,  279,    0,    0,    0,    0,    0,
+  161,    0,    0,    0,    0,    0,    0,    0,  161,  161,
+  161,  161,  161,  161,  161,  161,  161,  161,  161,  161,
+  160,    0,    0,  161,  161,  161,    0,    0,    0,  161,
+  161,  161,  161,  161,  161,  161,  161,  161,    0,  161,
+  161,  161,  161,  161,  161,  161,    0,  161,    0,    0,
+    0,    0,    0,    0,  160,    0,    0,    0,    0,    0,
+    0,    0,  161,    0,    0,    0,    0,    0,    0,  161,
+  161,    0,  161,    0,  161,  161,  161,    0,    0,  161,
+  161,    0,  161,  161,  161,  161,  275,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,  161,    0,  161,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,  161,  161,    0,
+    0,    0,    0,    0,  161,  161,  161,  161,  161,  161,
+  161,  161,  161,  161,  161,  161,  161,  161,  161,  161,
+  161,  161,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,  275,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,  160,
+    0,    0,    0,    0,    0,    0,    0,  160,  160,  160,
+  160,  160,  160,  160,  160,  160,  160,  160,  160,    0,
+    0,  275,  160,  160,  160,    0,    0,    0,  160,  160,
+  160,  160,  160,  160,  160,  160,  160,    0,  160,  160,
+  160,  160,  160,  160,  160,    0,  160,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,  160,    0,    0,    0,    0,    0,    0,  160,  160,
+    0,  160,    0,  160,  160,  160,    0,    0,  160,  160,
+    0,  160,  160,  160,  160,   97,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,  160,    0,  160,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,  160,  160,    0,    0,
+    0,    0,    0,  160,  160,  160,  160,  160,  160,  160,
+  160,  160,  160,  160,  160,  160,  160,  160,  160,  160,
+  160,    0,    0,    0,    0,    0,  275,    0,    0,    0,
+    0,    0,    0,    0,  275,  275,  275,  275,  275,  275,
+  275,  275,  275,  275,  275,  275,   97,    0,    0,  275,
+  275,  275,    0,    0,    0,  275,  275,  275,  275,  275,
+  275,  275,  275,  275,    0,  275,  275,  275,  275,  275,
+  275,  275,    0,  275,    0,    0,    0,    0,    0,    0,
+   97,    0,    0,    0,    0,    0,    0,    0,  275,    0,
+    0,    0,    0,    0,    0,  275,  275,    0,  275,    0,
+  275,  275,  275,    0,    0,  275,  275,    0,  275,  275,
+  275,  275,   99,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,  275,
+    0,  275,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,  275,  275,    0,    0,    0,    0,    0,
+  275,  275,  275,  275,  275,  275,  275,  275,  275,  275,
+  275,  275,  275,  275,  275,  275,  275,  275,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,   99,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,   97,    0,    0,    0,    0,
+    0,    0,    0,   97,   97,   97,   97,   97,   97,   97,
+   97,   97,   97,   97,   97,    0,    0,   99,   97,   97,
+   97,    0,    0,    0,   97,   97,   97,   97,   97,   97,
+   97,   97,   97,    0,   97,   97,   97,   97,   97,   97,
+   97,    0,   97,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,   97,    0,    0,
+    0,    0,    0,    0,   97,   97,    0,   97,    0,   97,
+   97,   97,    0,    0,   97,   97,    0,   97,   97,   97,
+   97,  247,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,   97,    0,
+   97,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,   97,   97,    0,    0,    0,    0,    0,   97,
    97,   97,   97,   97,   97,   97,   97,   97,   97,   97,
-   97,    0,   97,   97,   97,   97,   97,   97,   97,   97,
-    0,   97,   97,   97,    0,    0,    0,   97,   97,   97,
+   97,   97,   97,   97,   97,   97,   97,    0,    0,    0,
+    0,    0,   99,    0,    0,    0,    0,    0,    0,    0,
+   99,   99,   99,   99,   99,   99,   99,   99,   99,   99,
+   99,   99,  247,    0,    0,   99,   99,   99,    0,    0,
+    0,   99,   99,   99,   99,   99,   99,   99,   99,   99,
+    0,   99,   99,   99,   99,   99,   99,   99,    0,   99,
+    0,    0,    0,    0,    0,    0,  247,    0,    0,    0,
+    0,    0,    0,    0,   99,    0,    0,    0,    0,    0,
+    0,   99,   99,    0,   99,    0,   99,   99,   99,    0,
+    0,   99,   99,    0,   99,   99,   99,   99,  257,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,  100,  100,    0,  100,  100,  100,  100,  100,
-  100,  100,  100,  100,  100,  100,    0,    0,    0,    0,
-  100,  100,  100,  100,  100,    0,  100,  100,  100,    0,
-    0,    0,  100,  100,  100,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,    0,    0,  192,  192,    0,  192,
-  192,  192,  192,  192,  192,  192,  192,  192,  192,  192,
-    0,    0,    0,    0,  192,  192,  192,  192,  192,    0,
-  192,  192,  192,    0,    0,    0,  192,  192,  192,    0,
-    0,    0,    0,  165,  165,    0,  165,  165,  165,  165,
-  165,  165,  165,  165,  165,  165,  165,    0,    0,    0,
-    0,  165,  165,  165,  165,  165,    0,  165,  165,  165,
-    0,    0,    0,  165,  165,  165,    0,  193,  193,    0,
-  193,  193,  193,  193,  193,  193,  193,  193,  193,  193,
-  193,    0,    0,    0,    0,  193,  193,  193,  193,  193,
-    0,  193,  193,  193,    0,    0,    0,  193,  193,  193,
+    0,    0,    0,    0,    0,   99,    0,   99,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,   99,
+   99,    0,    0,    0,    0,    0,   99,   99,   99,   99,
+   99,   99,   99,   99,   99,   99,   99,   99,   99,   99,
+   99,   99,   99,   99,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,  257,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,  247,    0,    0,    0,    0,    0,    0,    0,  247,
+  247,  247,  247,  247,  247,  247,  247,  247,  247,  247,
+  247,    0,    0,  257,  247,  247,  247,    0,    0,    0,
+  247,  247,  247,  247,  247,  247,  247,  247,  247,    0,
+  247,  247,  247,  247,  247,  247,  247,    0,  247,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,  247,    0,    0,    0,    0,    0,    0,
+  247,  247,    0,  247,    0,  247,  247,  247,    0,    0,
+  247,  247,    0,  247,  247,  247,  247,  273,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,  247,    0,  247,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,  247,  247,
+    0,    0,    0,    0,    0,  247,  247,  247,  247,  247,
+  247,  247,  247,  247,  247,  247,  247,  247,  247,  247,
+  247,  247,  247,    0,    0,    0,    0,    0,  257,    0,
+    0,    0,    0,    0,    0,    0,  257,  257,  257,  257,
+  257,  257,  257,  257,  257,  257,  257,  257,  273,    0,
+    0,  257,  257,  257,    0,    0,    0,  257,  257,  257,
+  257,  257,  257,  257,  257,  257,    0,  257,  257,  257,
+  257,  257,  257,  257,    0,  257,    0,    0,    0,    0,
+    0,    0,  273,    0,    0,    0,    0,    0,    0,    0,
+  257,    0,    0,    0,    0,    0,    0,  257,  257,    0,
+  257,    0,  257,  257,  257,    0,    0,  257,  257,    0,
+  257,  257,  257,  257,   18,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,  257,    0,  257,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,  257,  257,    0,    0,    0,
+    0,    0,  257,  257,  257,  257,  257,  257,  257,  257,
+  257,  257,  257,  257,  257,  257,  257,  257,  257,  257,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,   18,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,  273,    0,    0,
+    0,    0,    0,    0,    0,  273,  273,  273,  273,  273,
+  273,  273,  273,  273,  273,  273,  273,    0,    0,   18,
+  273,  273,  273,    0,    0,    0,  273,  273,  273,  273,
+  273,  273,  273,  273,  273,    0,  273,  273,  273,  273,
+  273,  273,  273,    0,  273,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,  273,
+    0,    0,    0,    0,    0,    0,  273,  273,    0,  273,
+    0,  273,  273,  273,    0,    0,  273,  273,    0,  273,
+  273,  273,  273,  277,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+  273,    0,  273,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,  273,  273,    0,    0,    0,    0,
+    0,  273,  273,  273,  273,  273,  273,  273,  273,  273,
+  273,  273,  273,  273,  273,  273,  273,  273,  273,    0,
+    0,    0,    0,    0,   18,    0,    0,    0,    0,    0,
+    0,    0,   18,   18,   18,   18,   18,   18,   18,   18,
+   18,   18,   18,   18,  277,    0,    0,   18,   18,   18,
+    0,    0,    0,   18,   18,   18,   18,   18,   18,   18,
+   18,   18,    0,   18,   18,   18,   18,   18,   18,   18,
+    0,   18,    0,    0,    0,    0,    0,    0,  277,    0,
+    0,    0,    0,    0,    0,    0,   18,    0,    0,    0,
+    0,    0,    0,   18,   18,    0,   18,    0,   18,   18,
+   18,    0,    0,   18,   18,    0,   18,   18,   18,   18,
+  270,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,   18,    0,   18,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,   18,   18,    0,    0,    0,    0,    0,   18,   18,
+   18,   18,   18,   18,   18,   18,   18,   18,   18,   18,
+   18,   18,   18,   18,   18,   18,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,  270,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,  277,    0,    0,    0,    0,    0,    0,
+    0,  277,  277,  277,  277,  277,  277,  277,  277,  277,
+  277,  277,  277,    0,    0,  270,  277,  277,  277,    0,
+    0,    0,  277,  277,  277,  277,  277,  277,  277,  277,
+  277,    0,  277,  277,  277,  277,  277,  277,  277,    0,
+  277,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,   22,  277,    0,    0,    0,    0,
+    0,    0,  277,  277,    0,  277,    0,  277,  277,  277,
+    0,    0,  277,  277,    0,  277,  277,  277,  277,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,  277,    0,  277,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+  277,  277,    0,    0,    0,    0,    0,  277,  277,  277,
+  277,  277,  277,  277,  277,  277,  277,  277,  277,  277,
+  277,  277,  277,  277,  277,   22,    0,    0,    0,    0,
+  270,    0,    0,    0,    0,    0,    0,    0,  270,  270,
+  270,  270,  270,  270,  270,  270,  270,  270,  270,  270,
+    0,    0,    0,  270,  270,  270,    0,    0,    0,  270,
+  270,  270,  270,  270,  270,  270,  270,  270,    0,  270,
+  270,  270,  270,  270,  270,  270,    0,  270,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,   25,  270,    0,    0,    0,    0,    0,    0,  270,
+  270,    0,  270,    0,  270,  270,  270,    0,    0,  270,
+  270,    0,  270,  270,  270,  270,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,  270,    0,  270,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,  270,  270,    0,
+    0,    0,    0,    0,  270,  270,  270,  270,  270,  270,
+  270,  270,  270,  270,  270,  270,  270,  270,  270,  270,
+  270,  270,   25,    0,  473,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,   22,    0,    0,  250,    0,    0,
+    0,    0,   22,   22,   22,   22,   22,   22,   22,   22,
+   22,   22,   22,   22,    0,    0,    0,   22,   22,   22,
+    0,    0,    0,   22,   22,   22,   22,   22,   22,   22,
+   22,   22,    0,   22,   22,   22,   22,   22,   22,   22,
+    0,   22,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,   22,    0,    0,    0,
+    0,    0,    0,   22,   22,    0,   22,    0,   22,   22,
+   22,    0,    0,   22,   22,    0,   22,    0,   22,    0,
+    0,    0,    0,    0,    0,    0,  250,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,   22,    0,   22,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,   22,   22,    0,    0,    0,    0,    0,   22,   22,
+   22,   22,   22,   22,   22,   22,   22,   22,   22,   22,
+   22,   22,   22,   22,   22,   22,    0,    0,    0,    0,
+    0,   25,    0,    0,    0,    0,    0,    0,    0,   25,
+   25,   25,   25,   25,   25,   25,   25,   25,   25,   25,
+   25,    0,    0,    0,   25,   25,   25,    0,    0,    0,
+   25,   25,   25,   25,   25,   25,   25,   25,   25,    0,
+   25,   25,   25,   25,   25,   25,   25,    0,   25,    0,
+    0,  471,    0,    0,    0,  472,    0,    0,    0,    0,
+    0,    0,    0,   25,  595,  347,    0,    0,    0,    0,
+   25,   25,    0,   25,    0,   25,   25,   25,    0,    0,
+   25,   25,    0,   25,    0,   25,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,   25,    0,   25,  201,  202,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+  201,  202,    0,    0,    0,    0,    0,    0,   25,   25,
+   59,    0,    0,    0,    0,   25,   25,   25,   25,   25,
+   25,   25,   25,   25,   25,   25,   25,   25,   25,   25,
+   25,   25,   25,    0,  347,    0,    0,    0,    0,    0,
+    0,    0,    0,  239,  240,  241,  242,  243,    0,  244,
+  205,  245,  246,  247,  248,  249,  239,  240,  241,  242,
+  243,    0,  244,  205,  245,  246,  247,  248,  249,    0,
+    0,    0,    0,    0,  207,  208,    0,    0,  474,  475,
+  712,  713,    0,    0,  251,    0,    0,  207,  208,  201,
+  202,  714,  715,  716,    0,    0,    0,  251,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,  717,    0,  718,  719,  720,  721,
+  722,  723,  724,  725,  726,  727,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,  239,  240,  241,  242,  243,
+  192,  244,  205,  245,  246,  247,  248,  249,    0,    0,
+    0,  193,  194,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,  207,  208,    0,   15,
+    0,    0,    0,    0,    0,    0,  251,   16,    0,    0,
+   17,   18,   19,   20,   21,   22,   23,   24,   25,    0,
+    0,    0,   26,   27,   28,    0,    0,    0,   29,   30,
+   31,   32,   33,   34,   35,   36,   37,    0,   38,   39,
+   40,   41,   42,   43,   44,    0,   45,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,   46,    0,    0,    0,    0,    0,    0,   47,   48,
+    0,   49,    0,   50,   51,   52,    0,    0,   53,   54,
+    0,   55,    0,   56,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,   57,    0,   58,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,   60,   61,    0,    0,
+    0,    0,    0,   62,   63,   64,   65,   66,   67,   68,
+   69,   70,   71,   72,   73,   74,   75,   76,   77,   78,
+   79,
 };
-short yycheck[] = {                                      10,
-   11,   40,   40,   40,   86,    0,  185,  186,  187,  194,
-   84,  177,  178,   74,  180,  181,   85,  258,  288,  257,
-  259,  285,  257,  189,  190,  258,  257,  304,  258,  258,
-   40,  259,  297,  199,  200,  304,  304,  454,   40,   58,
-  277,  278,    0,  304,  304,   22,  323,  302,  285,  304,
-  467,  315,   29,  313,  323,  323,    0,  301,  323,  299,
-  304,   58,  323,  304,  304,  304,  304,   40,  306,  304,
-  305,  304,  342,  304,  304,  304,  304,   40,  315,  323,
-  465,  300,  323,  317,   40,  304,  471,  272,  261,   58,
-    0,  264,  265,  266,  304,  262,  263,   40,  308,  309,
-  323,  267,  304,    0,  289,    0,  308,  309,    0,  319,
-  320,  321,   41,  323,  261,   44,  282,  191,  265,  266,
-  277,  278,  279,  192,  267,  268,  269,  270,  271,  264,
-  296,   44,  311,   58,  313,  314,  315,  280,  179,  282,
-  265,  266,  183,  184,  318,    0,  261,  290,   44,  292,
-  293,  294,  295,  296,  310,  311,    0,  257,    0,  311,
-  312,  267,  268,  269,  270,  271,  272,  273,  274,  275,
-   44,  253,   58,  316,  280,  281,  282,  283,  284,  323,
-  286,  287,  288,  303,  304,   58,  292,  293,  294,  257,
-  201,  324,  265,  266,   58,   58,  207,   58,  364,   58,
-    0,   89,   90,  298,   44,   44,   58,   58,   58,  257,
-  257,  291,   40,  259,  258,  260,  258,   58,  258,   40,
-   58,  258,   58,   58,   58,   58,  392,   58,   58,   58,
-   44,   58,   58,   58,   58,   58,   58,   44,   44,    0,
-   44,   58,   58,   58,   40,   58,   58,   58,   58,   44,
-   58,  289,  259,   58,   44,   58,   44,   44,   44,   91,
-   44,   44,   44,   44,   40,  304,    0,  262,  263,  258,
-  265,  266,  267,  268,  269,  270,  271,  272,  273,  274,
-  275,    0,  293,  344,  295,  280,  281,  282,  283,  284,
-  285,  286,  287,  288,  304,  290,  291,  292,  293,  294,
-  295,  296,  304,  298,  262,  263,    0,  265,  266,  267,
-  268,  269,  270,  271,  272,  273,  274,  275,  262,  263,
-  315,  316,  280,  281,  282,  283,  284,  285,  286,  287,
-  288,  304,  290,  291,  292,  293,  294,  295,  296,   44,
-  298,  304,  353,   44,  307,    0,  289,  291,  304,   44,
-    0,  307,  262,  263,    0,  265,  266,  315,  316,  322,
-   44,  304,   44,  374,  307,  262,  263,  262,  263,  258,
-  262,  263,   44,  265,  266,  267,  268,  269,  270,  271,
-  272,  273,  274,  275,   44,   44,  258,    0,  280,  281,
-  282,  283,  284,  285,  286,  287,  288,  408,  290,  291,
-  292,  293,  294,  295,  296,   91,  298,  262,  263,   44,
-   91,   44,  267,  268,  269,  270,  271,   44,  262,  263,
-  262,  263,  303,  315,  316,  280,  303,  282,   44,  314,
-  285,  314,   44,   44,  445,  290,  291,  292,  293,  294,
-  295,  296,   44,  298,   44,    0,  457,  291,   44,  291,
-   44,   41,   93,   44,  298,   44,  298,  258,   44,  258,
-  315,  316,  262,  263,  258,  265,  266,  267,  268,  269,
-  270,  271,  272,  273,  274,  275,   91,  277,  278,  279,
-  280,  281,  282,  283,  284,  285,  286,  287,  288,   44,
-    0,  291,  292,  293,  294,  258,  258,   44,  298,  258,
-   44,  262,  263,  258,  265,  266,  267,  268,  269,  270,
-  271,  272,  273,  274,  275,  315,  277,  278,  279,  280,
-  281,  282,  283,  284,  285,  286,  287,  288,  262,  263,
-  291,  292,  293,  294,    0,   44,  258,  298,   44,  303,
-   44,   44,  261,  262,  263,  264,  265,  266,   93,   44,
-   93,  285,   44,   44,  315,  258,  258,  291,  277,  278,
-   44,   44,   44,   44,  298,   44,  285,  261,  262,  263,
-  264,    0,  291,  258,   44,   93,   44,  314,  258,  298,
-   44,  315,   44,  277,  278,  258,   44,  258,   44,   44,
-  258,  285,   41,  276,  314,  258,  315,  291,   44,   41,
-   44,   41,  258,   44,  298,    0,   44,  262,  263,   44,
-  265,  266,  262,  263,   44,  261,  262,  263,   44,   41,
-  259,  315,  277,  278,  258,   41,   41,  277,  278,  259,
-  285,  277,  278,   44,   44,  285,  291,   41,   44,  285,
-    0,  291,   44,  298,    0,  291,   58,  379,  298,  262,
-  263,  422,  298,  445,  426,  412,    5,   34,  206,   14,
-  315,  287,    7,  205,   40,  315,   59,   61,   69,  315,
-  405,   69,  285,   69,  253,   88,  453,   69,  291,   69,
-   69,   69,   69,   -1,   -1,  298,   -1,   -1,   -1,   -1,
+short yycheck[] = {                                      86,
+   59,  169,  136,  134,   40,   40,  144,  295,  142,  143,
+  395,   40,  146,  147,  148,   40,  497,   40,   40,   40,
+   40,  159,  160,  161,  158,   40,   40,   37,  166,   40,
+  328,  328,   42,   43,   40,   45,  408,   47,   40,  549,
+  174,   40,  547,   40,   91,   40,  402,  403,   40,   40,
+  545,  185,    0,   40,  185,  125,  432,  687,  313,   44,
+  313,   40,   40,  313,  149,  150,  257,  355,   44,  399,
+   44,  359,   44,  258,   58,   44,   44,  433,   44,   40,
+   40,   37,  167,   93,  259,   44,   42,   43,   58,   45,
+   46,   47,   44,   44,  123,   44,   40,  258,  157,  361,
+  185,  262,  263,  152,  153,  154,  324,  241,  242,  259,
+  244,   37,  123,   58,  589,   37,   42,   43,  177,   45,
+   42,   47,  313,  385,  183,   47,  185,  385,  313,   37,
+  385,   40,  385,  301,   42,  385,   44,   40,  313,   47,
+  125,  396,  397,  309,  123,  620,   91,  313,   40,  125,
+  385,  125,  313,  125,  239,  240,  125,  125,  385,  125,
+  641,  396,  397,  313,  313,  795,  125,   93,   41,   58,
+   43,  320,   45,  125,  125,   41,  125,   37,   44,   44,
+  661,    0,   42,   43,   37,   45,  308,   47,  325,   42,
+   43,  313,   45,  703,   47,   37,  701,  328,   91,   41,
+   42,   43,   40,   45,  699,   47,   41,  258,  346,   44,
+   37,  262,  263,  260,   41,   42,   43,   44,   45,  311,
+   47,  313,  258,  361,  358,  393,  360,   58,  257,  313,
+  368,  315,  316,  521,  372,  258,  370,  371,  376,  262,
+   93,  300,   58,  258,  541,  543,  257,  306,  307,  336,
+  309,  310,  311,  312,  313,  585,  258,  629,   58,  258,
+  262,  258,  396,  262,  263,  257,  622,  258,  327,  328,
+  257,  262,  263,  343,  650,  345,  407,  298,  257,  257,
+  339,   41,   58,  421,   44,  123,   58,   41,  313,  348,
+   44,  313,  314,  313,  353,   58,  257,  257,  357,  313,
+  314,   58,  313,  317,  318,   58,  125,  313,   58,  308,
+  309,  310,   58,  257,  313,  314,  313,  314,  313,  378,
+  454,  269,  270,   58,  323,  264,  265,  266,  267,   58,
+  464,  465,   58,  621,  313,  384,  269,  270,  337,  338,
+   58,  390,  391,  392,  286,  287,  288,  346,  347,  348,
+  349,  350,  313,  313,  257,  318,  319,  367,  394,  395,
+  419,   58,  376,  362,  845,  364,   58,  402,  403,  313,
+  385,  394,  395,    0,  385,  404,  405,  376,  763,  394,
+  395,  396,  397,  312,  313,  341,  400,  401,  385,  298,
+  390,  391,  394,  395,  430,  406,  407,  394,  395,  396,
+  397,  400,  401,   58,  313,  314,  385,  430,  539,  697,
+  313,   38,  404,  405,   41,  430,   43,   44,   45,   46,
+  258,  313,  314,   58,  385,  385,  317,  318,  430,  408,
+  409,  430,  343,  430,  345,   58,  274,   58,  276,   58,
+   58,  385,  280,  281,  282,  406,  407,  615,  408,  409,
+  269,  270,  590,   58,   58,   58,  594,   58,   58,  597,
+  598,   58,   58,   37,   91,  524,   93,  376,   42,   43,
+   58,   45,   58,   47,   58,  313,  314,   58,  537,  647,
+  648,  649,  385,   58,  376,   58,  617,  387,   40,   58,
+   61,  400,  401,   44,  332,   37,  123,   40,  125,   61,
+   42,   43,  790,   45,   91,   47,   40,  123,  400,  401,
+   46,   91,  800,   91,   44,  646,   44,   37,   44,   93,
+  384,  652,   42,   43,  343,   45,  345,   47,  258,   40,
+    0,   91,  257,  592,  593,   37,  374,  596,  376,   44,
+   42,   43,   91,   45,   37,   47,   44,  385,  257,   42,
+   43,   93,   45,  841,   47,   44,  394,  395,  396,  397,
+   91,   44,  400,  401,  402,  403,   44,   44,   38,   44,
+   38,   41,   37,   43,   44,   45,   46,   42,   43,   40,
+   45,   40,   47,   40,   40,  716,  754,   40,  258,   37,
+   91,   93,  430,   41,   42,   43,  655,   45,   44,   47,
+   93,   44,   44,   40,  258,   37,  665,  775,  776,  777,
+   42,   43,   37,   45,   44,   47,   41,   42,   43,   44,
+   45,   91,   47,   93,   37,   44,  260,   44,   93,   42,
+   43,   44,   45,  260,   47,   44,  258,   44,   44,   44,
+   44,  268,  269,  270,  271,  272,  273,  274,  275,  276,
+  277,  278,  279,  123,   44,  125,  283,  284,  285,  258,
+   44,   93,  289,  290,  291,  292,  293,  294,  295,  296,
+  297,   44,  299,  300,  301,  302,  303,  304,  305,  738,
+  307,   44,  395,   44,  397,   93,  399,   44,  401,   41,
+  403,   41,  405,   44,  407,  322,  409,   44,  411,   58,
+   58,  257,  329,  330,   58,  332,   93,  334,  335,  336,
+   58,  257,  339,  340,  341,  342,  343,  344,  345,    0,
+  854,   44,   37,  386,  783,   44,  860,   42,   43,   44,
+   45,   44,   47,   44,  259,  312,  363,   44,  365,   44,
+  367,  382,  312,  830,   41,   44,   44,   93,  258,  321,
+   44,   44,   44,  321,   44,  125,  843,  257,   44,   41,
+  387,  388,  258,   44,   44,  385,   44,  394,  395,  396,
+  397,  398,  399,  400,  401,  402,  403,  404,  405,  406,
+  407,  408,  409,  410,  411,  124,   44,  385,   41,   44,
+  260,   91,   44,   44,   44,   44,   44,   44,  268,  269,
+  270,  271,  272,  273,  274,  275,  276,  277,  278,  279,
+   91,  258,   93,  283,  284,  285,   91,   44,   44,  289,
+  290,  291,  292,  293,  294,  295,  296,  297,   44,  299,
+  300,  301,  302,  303,  304,  305,  258,  307,  258,   44,
+  258,   44,  123,   44,  125,   44,  312,   44,  258,   44,
+   44,  331,  322,   44,  257,   41,   46,   44,   58,  329,
+  330,  258,  332,   40,  334,  335,  336,   41,   44,  339,
+  340,  341,  342,  343,  344,  345,  388,  257,  386,   41,
+   58,   41,  394,   58,  396,   58,  398,   58,  400,   58,
+  402,   44,  404,  363,  406,  365,  408,  367,  410,  259,
+   44,  312,   44,   40,   44,  258,  321,  321,    0,  258,
+   44,   44,  385,   44,   44,  123,   44,  387,  388,   44,
+   41,   41,   41,   41,  394,  395,  396,  397,  398,  399,
+  400,  401,  402,  403,  404,  405,  406,  407,  408,  409,
+  410,  411,  258,   44,   93,   44,   38,  388,  258,   41,
+  258,   44,   44,  394,  395,  396,  397,  398,  399,  400,
+  401,  402,  403,  404,  405,  406,  407,  408,  409,  410,
+  411,   44,   44,  258,  258,   44,   41,   58,   58,  260,
+  259,   58,   58,  257,  286,   41,   44,  268,  269,  270,
+  271,  272,  273,  274,  275,  276,  277,  278,  279,   91,
+   44,  258,  283,  284,  285,   41,   44,   41,  289,  290,
+  291,  292,  293,  294,  295,  296,  297,   41,  299,  300,
+  301,  302,  303,  304,  305,   44,  307,  261,   58,  125,
+   44,   41,   44,  125,  258,   44,  313,  258,  258,  124,
+   58,  322,  259,  286,   41,  258,   41,   41,  329,  330,
+   41,  332,   44,  334,  335,  336,   41,  383,  339,  340,
+   41,  342,  343,  344,  345,   41,   44,   44,   41,   44,
+    0,    0,   41,   41,  386,  125,   93,   41,   44,   41,
+  123,  123,  363,   41,  365,  125,  677,  794,  602,  652,
+  761,  191,  820,  449,   48,  832,  248,    0,  442,   54,
+  859,  168,  419,  753,  395,    6,  387,  388,  319,  431,
+  766,  163,  138,  394,  395,  396,  397,  398,  399,  400,
+  401,  402,  403,  404,  405,  406,  407,  408,  409,  410,
+  411,  340,  629,  454,   -1,   -1,   -1,   -1,   41,   -1,
+   -1,   44,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
    -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
-   -1,   -1,  315,   -1,   -1,   -1,   -1,  262,  263,   -1,
-  265,  266,  267,  268,  269,  270,  271,  272,  273,  274,
-  275,   -1,  277,  278,  279,  280,  281,  282,  283,  284,
-   -1,  286,  287,  288,   -1,   -1,   -1,  292,  293,  294,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,  260,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,  268,  269,  270,  271,
+  272,  273,  274,  275,  276,  277,  278,  279,   91,   -1,
+   -1,  283,  284,  285,   -1,   -1,   -1,  289,  290,  291,
+  292,  293,  294,  295,  296,  297,   -1,  299,  300,  301,
+  302,  303,  304,  305,   -1,  307,   -1,   -1,   -1,   -1,
+   -1,   -1,  125,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+  322,   -1,   -1,   -1,   -1,   -1,   -1,  329,  330,   -1,
+  332,   -1,  334,  335,  336,   -1,   -1,  339,  340,   -1,
+  342,  343,  344,  345,    0,   -1,   -1,   -1,   -1,   -1,
    -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
-   -1,   -1,  262,  263,   -1,  265,  266,  267,  268,  269,
-  270,  271,  272,  273,  274,  275,   -1,   -1,   -1,   -1,
-  280,  281,  282,  283,  284,   -1,  286,  287,  288,   -1,
-   -1,   -1,  292,  293,  294,   -1,   -1,   -1,   -1,   -1,
-   -1,   -1,   -1,   -1,   -1,   -1,  262,  263,   -1,  265,
-  266,  267,  268,  269,  270,  271,  272,  273,  274,  275,
-   -1,   -1,   -1,   -1,  280,  281,  282,  283,  284,   -1,
-  286,  287,  288,   -1,   -1,   -1,  292,  293,  294,   -1,
-   -1,   -1,   -1,  262,  263,   -1,  265,  266,  267,  268,
-  269,  270,  271,  272,  273,  274,  275,   -1,   -1,   -1,
-   -1,  280,  281,  282,  283,  284,   -1,  286,  287,  288,
-   -1,   -1,   -1,  292,  293,  294,   -1,  262,  263,   -1,
-  265,  266,  267,  268,  269,  270,  271,  272,  273,  274,
-  275,   -1,   -1,   -1,   -1,  280,  281,  282,  283,  284,
-   -1,  286,  287,  288,   -1,   -1,   -1,  292,  293,  294,
+   -1,  363,   -1,  365,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,  387,  388,   -1,   44,   -1,
+   -1,   -1,  394,  395,  396,  397,  398,  399,  400,  401,
+  402,  403,  404,  405,  406,  407,  408,  409,  410,  411,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   40,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   91,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,  260,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,  268,  269,  270,  271,  272,
+  273,  274,  275,  276,  277,  278,  279,  123,   -1,  125,
+  283,  284,  285,   -1,   -1,   -1,  289,  290,  291,  292,
+  293,  294,  295,  296,  297,   -1,  299,  300,  301,  302,
+  303,  304,  305,   -1,  307,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,  322,
+   -1,   -1,   -1,   -1,   -1,   -1,  329,  330,   -1,  332,
+   -1,  334,  335,  336,   -1,   -1,  339,  340,   -1,  342,
+  343,  344,  345,    0,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+  363,   -1,  365,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,  387,  388,   -1,   44,   -1,   -1,
+   -1,  394,  395,  396,  397,  398,  399,  400,  401,  402,
+  403,  404,  405,  406,  407,  408,  409,  410,  411,   -1,
+   -1,   -1,   -1,   -1,  260,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,  268,  269,  270,  271,  272,  273,  274,  275,
+  276,  277,  278,  279,   91,   -1,   -1,  283,  284,  285,
+   -1,   -1,   -1,  289,  290,  291,  292,  293,  294,  295,
+  296,  297,   -1,  299,  300,  301,  302,  303,  304,  305,
+   -1,  307,   -1,   -1,   -1,   -1,  123,   -1,  125,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,  322,   -1,   -1,   -1,
+   -1,   -1,   -1,  329,  330,   -1,  332,   -1,  334,  335,
+  336,   -1,   -1,  339,  340,   -1,  342,  343,  344,  345,
+    0,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,  312,
+  313,  314,   -1,   -1,   -1,   -1,   -1,  363,   -1,  365,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,  387,  388,   -1,   44,   -1,   -1,   -1,  394,  395,
+  396,  397,  398,  399,  400,  401,  402,  403,  404,  405,
+  406,  407,  408,  409,  410,  411,  369,  370,  371,  372,
+  373,   -1,  375,  376,  377,  378,  379,  380,  381,   -1,
+   -1,   -1,   -1,   40,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   91,   -1,   -1,   -1,   -1,   -1,  400,  401,   -1,
+   -1,   -1,   -1,  260,   -1,   -1,   -1,  410,   -1,   -1,
+   -1,  268,  269,  270,  271,  272,  273,  274,  275,  276,
+  277,  278,  279,  123,   -1,  125,  283,  284,  285,   -1,
+   -1,   -1,  289,  290,  291,  292,  293,  294,  295,  296,
+  297,   -1,  299,  300,  301,  302,  303,  304,  305,   -1,
+  307,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,  322,   -1,   -1,   -1,   -1,
+   -1,   -1,  329,  330,   -1,  332,   -1,  334,  335,  336,
+   -1,   -1,  339,  340,   -1,  342,  343,  344,  345,    0,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,  363,   -1,  365,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+  387,  388,   -1,   44,   -1,   -1,   -1,  394,  395,  396,
+  397,  398,  399,  400,  401,  402,  403,  404,  405,  406,
+  407,  408,  409,  410,  411,   -1,   -1,   -1,   -1,   -1,
+  260,   -1,   -1,   -1,   -1,   -1,   -1,   -1,  268,  269,
+  270,  271,  272,  273,  274,  275,  276,  277,  278,  279,
+   91,   -1,   -1,  283,  284,  285,   -1,   -1,   -1,  289,
+  290,  291,  292,  293,  294,  295,  296,  297,   -1,  299,
+  300,  301,  302,  303,  304,  305,   -1,  307,   -1,   -1,
+   -1,   -1,  123,   -1,  125,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,  322,   -1,   -1,   -1,   -1,   -1,   -1,  329,
+  330,   -1,  332,   -1,  334,  335,  336,   -1,   -1,  339,
+  340,   -1,  342,  343,  344,  345,    0,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,  313,  314,   -1,   -1,
+   -1,   -1,   -1,  363,   -1,  365,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,  387,  388,   -1,
+   -1,   -1,   -1,   -1,  394,  395,  396,  397,  398,  399,
+  400,  401,  402,  403,  404,  405,  406,  407,  408,  409,
+  410,  411,  369,  370,  371,  372,  373,   -1,  375,  376,
+  377,  378,  379,  380,  381,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   91,   -1,   -1,
+   -1,   -1,   -1,  400,  401,   -1,   -1,   -1,   -1,  260,
+   -1,   -1,   -1,  410,   -1,   -1,   -1,  268,  269,  270,
+  271,  272,  273,  274,  275,  276,  277,  278,  279,  123,
+   -1,  125,  283,  284,  285,   -1,   -1,   -1,  289,  290,
+  291,  292,  293,  294,  295,  296,  297,   -1,  299,  300,
+  301,  302,  303,  304,  305,   -1,  307,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,  322,   -1,   -1,   -1,   -1,   -1,   -1,  329,  330,
+   -1,  332,   -1,  334,  335,  336,   -1,   -1,  339,  340,
+   -1,  342,  343,  344,  345,    0,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,  363,   -1,  365,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,  387,  388,   -1,   -1,
+   -1,   -1,   -1,  394,  395,  396,  397,  398,  399,  400,
+  401,  402,  403,  404,  405,  406,  407,  408,  409,  410,
+  411,   -1,   -1,   -1,   -1,   -1,  260,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,  268,  269,  270,  271,  272,  273,
+  274,  275,  276,  277,  278,  279,   91,   -1,   -1,  283,
+  284,  285,   -1,   -1,   -1,  289,  290,  291,  292,  293,
+  294,  295,  296,  297,   -1,  299,  300,  301,  302,  303,
+  304,  305,   -1,  307,   -1,   -1,   -1,   -1,  123,   -1,
+  125,   -1,   -1,   -1,   -1,   -1,   -1,   -1,  322,   -1,
+   -1,   -1,   -1,   -1,   -1,  329,  330,   -1,  332,   -1,
+  334,  335,  336,   -1,   -1,  339,  340,   -1,  342,  343,
+  344,  345,    0,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,  363,
+   -1,  365,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,  387,  388,   -1,   -1,   -1,   -1,   -1,
+  394,  395,  396,  397,  398,  399,  400,  401,  402,  403,
+  404,  405,  406,  407,  408,  409,  410,  411,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   91,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,  260,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,  268,  269,  270,  271,  272,  273,  274,
+  275,  276,  277,  278,  279,   -1,   -1,  125,  283,  284,
+  285,   -1,   -1,   -1,  289,  290,  291,  292,  293,  294,
+  295,  296,  297,   -1,  299,  300,  301,  302,  303,  304,
+  305,   -1,  307,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,  322,   -1,   -1,
+   -1,   -1,   -1,   -1,  329,  330,   -1,  332,   -1,  334,
+  335,  336,   -1,   -1,  339,  340,   -1,  342,  343,  344,
+  345,    0,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,  363,   -1,
+  365,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,  387,  388,   -1,   -1,   -1,   -1,   -1,  394,
+  395,  396,  397,  398,  399,  400,  401,  402,  403,  404,
+  405,  406,  407,  408,  409,  410,  411,   -1,   -1,   -1,
+   -1,   -1,  260,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+  268,  269,  270,  271,  272,  273,  274,  275,  276,  277,
+  278,  279,   91,   -1,   -1,  283,  284,  285,   -1,   -1,
+   -1,  289,  290,  291,  292,  293,  294,  295,  296,  297,
+   -1,  299,  300,  301,  302,  303,  304,  305,   -1,  307,
+   -1,   -1,   -1,   -1,  123,   -1,  125,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,  322,   -1,   -1,   -1,   -1,   -1,
+   -1,  329,  330,  331,  332,   -1,  334,  335,  336,   -1,
+   -1,  339,  340,   -1,  342,  343,  344,  345,    0,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,  363,   -1,  365,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,  387,
+  388,   -1,   -1,   -1,   -1,   -1,  394,  395,  396,  397,
+  398,  399,  400,  401,  402,  403,  404,  405,  406,  407,
+  408,  409,  410,  411,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   91,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,  260,   -1,   -1,   -1,   -1,   -1,   -1,   -1,  268,
+  269,  270,  271,  272,  273,  274,  275,  276,  277,  278,
+  279,  123,   -1,  125,  283,  284,  285,   -1,   -1,   -1,
+  289,  290,  291,  292,  293,  294,  295,  296,  297,   -1,
+  299,  300,  301,  302,  303,  304,  305,   -1,  307,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,  322,   -1,   -1,   -1,   -1,   -1,   -1,
+  329,  330,   -1,  332,   -1,  334,  335,  336,   -1,   -1,
+  339,  340,   -1,  342,  343,  344,  345,    0,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,  363,   -1,  365,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,  387,  388,
+   -1,   -1,   -1,   -1,   -1,  394,  395,  396,  397,  398,
+  399,  400,  401,  402,  403,  404,  405,  406,  407,  408,
+  409,  410,  411,   -1,   -1,   -1,   -1,   -1,  260,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,  268,  269,  270,  271,
+  272,  273,  274,  275,  276,  277,  278,  279,   91,   -1,
+   -1,  283,  284,  285,   -1,   -1,   -1,  289,  290,  291,
+  292,  293,  294,  295,  296,  297,   -1,  299,  300,  301,
+  302,  303,  304,  305,   -1,  307,   -1,   -1,   -1,   -1,
+  123,   -1,  125,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+  322,   -1,   -1,   -1,   -1,   -1,   -1,  329,  330,   -1,
+  332,   -1,  334,  335,  336,   -1,   -1,  339,  340,   -1,
+  342,  343,  344,  345,    0,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,  363,   -1,  365,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,  387,  388,   -1,   -1,   -1,
+   -1,   -1,  394,  395,  396,  397,  398,  399,  400,  401,
+  402,  403,  404,  405,  406,  407,  408,  409,  410,  411,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   91,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,  260,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,  268,  269,  270,  271,  272,
+  273,  274,  275,  276,  277,  278,  279,   -1,   -1,  125,
+  283,  284,  285,   -1,   -1,   -1,  289,  290,  291,  292,
+  293,  294,  295,  296,  297,   -1,  299,  300,  301,  302,
+  303,  304,  305,   -1,  307,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,  322,
+   -1,   -1,   -1,   -1,   -1,   -1,  329,  330,   -1,  332,
+   -1,  334,  335,  336,   -1,   -1,  339,  340,   -1,  342,
+  343,  344,  345,    0,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+  363,   -1,  365,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,  387,  388,   -1,   -1,   -1,   -1,
+   -1,  394,  395,  396,  397,  398,  399,  400,  401,  402,
+  403,  404,  405,  406,  407,  408,  409,  410,  411,   -1,
+   -1,   -1,   -1,   -1,  260,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,  268,  269,  270,  271,  272,  273,  274,  275,
+  276,  277,  278,  279,   91,   -1,   -1,  283,  284,  285,
+   -1,   -1,   -1,  289,  290,  291,  292,  293,  294,  295,
+  296,  297,   -1,  299,  300,  301,  302,  303,  304,  305,
+   -1,  307,   -1,   -1,   -1,   -1,   -1,   -1,  125,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,  322,   -1,   -1,   -1,
+   -1,   -1,   -1,  329,  330,   -1,  332,   -1,  334,  335,
+  336,   -1,   -1,  339,  340,   -1,  342,  343,  344,  345,
+    0,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,  363,   -1,  365,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,  387,  388,   -1,   -1,   -1,   -1,   -1,  394,  395,
+  396,  397,  398,  399,  400,  401,  402,  403,  404,  405,
+  406,  407,  408,  409,  410,  411,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   91,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,  260,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,  268,  269,  270,  271,  272,  273,  274,  275,  276,
+  277,  278,  279,   -1,   -1,  125,  283,  284,  285,   -1,
+   -1,   -1,  289,  290,  291,  292,  293,  294,  295,  296,
+  297,   -1,  299,  300,  301,  302,  303,  304,  305,   -1,
+  307,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,  322,   -1,   -1,   -1,   -1,
+   -1,   -1,  329,  330,   -1,  332,   -1,  334,  335,  336,
+   -1,   -1,  339,  340,   -1,  342,  343,  344,  345,    0,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,  363,   -1,  365,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+  387,  388,   -1,   -1,   -1,   -1,   -1,  394,  395,  396,
+  397,  398,  399,  400,  401,  402,  403,  404,  405,  406,
+  407,  408,  409,  410,  411,   -1,   -1,   -1,   -1,   -1,
+  260,   -1,   -1,   -1,   -1,   -1,   -1,   -1,  268,  269,
+  270,  271,  272,  273,  274,  275,  276,  277,  278,  279,
+   91,   -1,   -1,  283,  284,  285,   -1,   -1,   -1,  289,
+  290,  291,  292,  293,  294,  295,  296,  297,   -1,  299,
+  300,  301,  302,  303,  304,  305,   -1,  307,   -1,   -1,
+   -1,   -1,   -1,   -1,  125,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,  322,   -1,   -1,   -1,   -1,   -1,   -1,  329,
+  330,   -1,  332,   -1,  334,  335,  336,   -1,   -1,  339,
+  340,   -1,  342,  343,  344,  345,    0,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,  363,   -1,  365,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,  387,  388,   -1,
+   -1,   -1,   -1,   -1,  394,  395,  396,  397,  398,  399,
+  400,  401,  402,  403,  404,  405,  406,  407,  408,  409,
+  410,  411,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   91,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,  260,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,  268,  269,  270,
+  271,  272,  273,  274,  275,  276,  277,  278,  279,   -1,
+   -1,  125,  283,  284,  285,   -1,   -1,   -1,  289,  290,
+  291,  292,  293,  294,  295,  296,  297,   -1,  299,  300,
+  301,  302,  303,  304,  305,   -1,  307,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,  322,   -1,   -1,   -1,   -1,   -1,   -1,  329,  330,
+   -1,  332,   -1,  334,  335,  336,   -1,   -1,  339,  340,
+   -1,  342,  343,  344,  345,    0,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,  363,   -1,  365,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,  387,  388,   -1,   -1,
+   -1,   -1,   -1,  394,  395,  396,  397,  398,  399,  400,
+  401,  402,  403,  404,  405,  406,  407,  408,  409,  410,
+  411,   -1,   -1,   -1,   -1,   -1,  260,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,  268,  269,  270,  271,  272,  273,
+  274,  275,  276,  277,  278,  279,   91,   -1,   -1,  283,
+  284,  285,   -1,   -1,   -1,  289,  290,  291,  292,  293,
+  294,  295,  296,  297,   -1,  299,  300,  301,  302,  303,
+  304,  305,   -1,  307,   -1,   -1,   -1,   -1,   -1,   -1,
+  125,   -1,   -1,   -1,   -1,   -1,   -1,   -1,  322,   -1,
+   -1,   -1,   -1,   -1,   -1,  329,  330,   -1,  332,   -1,
+  334,  335,  336,   -1,   -1,  339,  340,   -1,  342,  343,
+  344,  345,    0,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,  363,
+   -1,  365,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,  387,  388,   -1,   -1,   -1,   -1,   -1,
+  394,  395,  396,  397,  398,  399,  400,  401,  402,  403,
+  404,  405,  406,  407,  408,  409,  410,  411,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   91,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,  260,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,  268,  269,  270,  271,  272,  273,  274,
+  275,  276,  277,  278,  279,   -1,   -1,  125,  283,  284,
+  285,   -1,   -1,   -1,  289,  290,  291,  292,  293,  294,
+  295,  296,  297,   -1,  299,  300,  301,  302,  303,  304,
+  305,   -1,  307,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,  322,   -1,   -1,
+   -1,   -1,   -1,   -1,  329,  330,   -1,  332,   -1,  334,
+  335,  336,   -1,   -1,  339,  340,   -1,  342,  343,  344,
+  345,    0,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,  363,   -1,
+  365,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,  387,  388,   -1,   -1,   -1,   -1,   -1,  394,
+  395,  396,  397,  398,  399,  400,  401,  402,  403,  404,
+  405,  406,  407,  408,  409,  410,  411,   -1,   -1,   -1,
+   -1,   -1,  260,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+  268,  269,  270,  271,  272,  273,  274,  275,  276,  277,
+  278,  279,   91,   -1,   -1,  283,  284,  285,   -1,   -1,
+   -1,  289,  290,  291,  292,  293,  294,  295,  296,  297,
+   -1,  299,  300,  301,  302,  303,  304,  305,   -1,  307,
+   -1,   -1,   -1,   -1,   -1,   -1,  125,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,  322,   -1,   -1,   -1,   -1,   -1,
+   -1,  329,  330,   -1,  332,   -1,  334,  335,  336,   -1,
+   -1,  339,  340,   -1,  342,  343,  344,  345,    0,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,  363,   -1,  365,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,  387,
+  388,   -1,   -1,   -1,   -1,   -1,  394,  395,  396,  397,
+  398,  399,  400,  401,  402,  403,  404,  405,  406,  407,
+  408,  409,  410,  411,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   91,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,  260,   -1,   -1,   -1,   -1,   -1,   -1,   -1,  268,
+  269,  270,  271,  272,  273,  274,  275,  276,  277,  278,
+  279,   -1,   -1,  125,  283,  284,  285,   -1,   -1,   -1,
+  289,  290,  291,  292,  293,  294,  295,  296,  297,   -1,
+  299,  300,  301,  302,  303,  304,  305,   -1,  307,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,  322,   -1,   -1,   -1,   -1,   -1,   -1,
+  329,  330,   -1,  332,   -1,  334,  335,  336,   -1,   -1,
+  339,  340,   -1,  342,  343,  344,  345,    0,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,  363,   -1,  365,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,  387,  388,
+   -1,   -1,   -1,   -1,   -1,  394,  395,  396,  397,  398,
+  399,  400,  401,  402,  403,  404,  405,  406,  407,  408,
+  409,  410,  411,   -1,   -1,   -1,   -1,   -1,  260,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,  268,  269,  270,  271,
+  272,  273,  274,  275,  276,  277,  278,  279,   91,   -1,
+   -1,  283,  284,  285,   -1,   -1,   -1,  289,  290,  291,
+  292,  293,  294,  295,  296,  297,   -1,  299,  300,  301,
+  302,  303,  304,  305,   -1,  307,   -1,   -1,   -1,   -1,
+   -1,   -1,  125,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+  322,   -1,   -1,   -1,   -1,   -1,   -1,  329,  330,   -1,
+  332,   -1,  334,  335,  336,   -1,   -1,  339,  340,   -1,
+  342,  343,  344,  345,    0,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,  363,   -1,  365,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,  387,  388,   -1,   -1,   -1,
+   -1,   -1,  394,  395,  396,  397,  398,  399,  400,  401,
+  402,  403,  404,  405,  406,  407,  408,  409,  410,  411,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   91,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,  260,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,  268,  269,  270,  271,  272,
+  273,  274,  275,  276,  277,  278,  279,   -1,   -1,  125,
+  283,  284,  285,   -1,   -1,   -1,  289,  290,  291,  292,
+  293,  294,  295,  296,  297,   -1,  299,  300,  301,  302,
+  303,  304,  305,   -1,  307,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,  322,
+   -1,   -1,   -1,   -1,   -1,   -1,  329,  330,   -1,  332,
+   -1,  334,  335,  336,   -1,   -1,  339,  340,   -1,  342,
+  343,  344,  345,    0,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+  363,   -1,  365,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,  387,  388,   -1,   -1,   -1,   -1,
+   -1,  394,  395,  396,  397,  398,  399,  400,  401,  402,
+  403,  404,  405,  406,  407,  408,  409,  410,  411,   -1,
+   -1,   -1,   -1,   -1,  260,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,  268,  269,  270,  271,  272,  273,  274,  275,
+  276,  277,  278,  279,   91,   -1,   -1,  283,  284,  285,
+   -1,   -1,   -1,  289,  290,  291,  292,  293,  294,  295,
+  296,  297,   -1,  299,  300,  301,  302,  303,  304,  305,
+   -1,  307,   -1,   -1,   -1,   -1,   -1,   -1,  125,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,  322,   -1,   -1,   -1,
+   -1,   -1,   -1,  329,  330,   -1,  332,   -1,  334,  335,
+  336,   -1,   -1,  339,  340,   -1,  342,  343,  344,  345,
+    0,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,  363,   -1,  365,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,  387,  388,   -1,   -1,   -1,   -1,   -1,  394,  395,
+  396,  397,  398,  399,  400,  401,  402,  403,  404,  405,
+  406,  407,  408,  409,  410,  411,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   91,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,  260,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,  268,  269,  270,  271,  272,  273,  274,  275,  276,
+  277,  278,  279,   -1,   -1,  125,  283,  284,  285,   -1,
+   -1,   -1,  289,  290,  291,  292,  293,  294,  295,  296,
+  297,   -1,  299,  300,  301,  302,  303,  304,  305,   -1,
+  307,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,    0,  322,   -1,   -1,   -1,   -1,
+   -1,   -1,  329,  330,   -1,  332,   -1,  334,  335,  336,
+   -1,   -1,  339,  340,   -1,  342,  343,  344,  345,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,  363,   -1,  365,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+  387,  388,   -1,   -1,   -1,   -1,   -1,  394,  395,  396,
+  397,  398,  399,  400,  401,  402,  403,  404,  405,  406,
+  407,  408,  409,  410,  411,   91,   -1,   -1,   -1,   -1,
+  260,   -1,   -1,   -1,   -1,   -1,   -1,   -1,  268,  269,
+  270,  271,  272,  273,  274,  275,  276,  277,  278,  279,
+   -1,   -1,   -1,  283,  284,  285,   -1,   -1,   -1,  289,
+  290,  291,  292,  293,  294,  295,  296,  297,   -1,  299,
+  300,  301,  302,  303,  304,  305,   -1,  307,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,    0,  322,   -1,   -1,   -1,   -1,   -1,   -1,  329,
+  330,   -1,  332,   -1,  334,  335,  336,   -1,   -1,  339,
+  340,   -1,  342,  343,  344,  345,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,  363,   -1,  365,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,  387,  388,   -1,
+   -1,   -1,   -1,   -1,  394,  395,  396,  397,  398,  399,
+  400,  401,  402,  403,  404,  405,  406,  407,  408,  409,
+  410,  411,   91,   -1,   40,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,  260,   -1,   -1,   40,   -1,   -1,
+   -1,   -1,  268,  269,  270,  271,  272,  273,  274,  275,
+  276,  277,  278,  279,   -1,   -1,   -1,  283,  284,  285,
+   -1,   -1,   -1,  289,  290,  291,  292,  293,  294,  295,
+  296,  297,   -1,  299,  300,  301,  302,  303,  304,  305,
+   -1,  307,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,  322,   -1,   -1,   -1,
+   -1,   -1,   -1,  329,  330,   -1,  332,   -1,  334,  335,
+  336,   -1,   -1,  339,  340,   -1,  342,   -1,  344,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   40,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,  363,   -1,  365,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,  387,  388,   -1,   -1,   -1,   -1,   -1,  394,  395,
+  396,  397,  398,  399,  400,  401,  402,  403,  404,  405,
+  406,  407,  408,  409,  410,  411,   -1,   -1,   -1,   -1,
+   -1,  260,   -1,   -1,   -1,   -1,   -1,   -1,   -1,  268,
+  269,  270,  271,  272,  273,  274,  275,  276,  277,  278,
+  279,   -1,   -1,   -1,  283,  284,  285,   -1,   -1,   -1,
+  289,  290,  291,  292,  293,  294,  295,  296,  297,   -1,
+  299,  300,  301,  302,  303,  304,  305,   -1,  307,   -1,
+   -1,  257,   -1,   -1,   -1,  261,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,  322,  257,  258,   -1,   -1,   -1,   -1,
+  329,  330,   -1,  332,   -1,  334,  335,  336,   -1,   -1,
+  339,  340,   -1,  342,   -1,  344,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,  363,   -1,  365,  313,  314,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+  313,  314,   -1,   -1,   -1,   -1,   -1,   -1,  387,  388,
+   91,   -1,   -1,   -1,   -1,  394,  395,  396,  397,  398,
+  399,  400,  401,  402,  403,  404,  405,  406,  407,  408,
+  409,  410,  411,   -1,  258,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,  369,  370,  371,  372,  373,   -1,  375,
+  376,  377,  378,  379,  380,  381,  369,  370,  371,  372,
+  373,   -1,  375,  376,  377,  378,  379,  380,  381,   -1,
+   -1,   -1,   -1,   -1,  400,  401,   -1,   -1,  404,  405,
+  315,  316,   -1,   -1,  410,   -1,   -1,  400,  401,  313,
+  314,  326,  327,  328,   -1,   -1,   -1,  410,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,  349,   -1,  351,  352,  353,  354,
+  355,  356,  357,  358,  359,  360,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,  369,  370,  371,  372,  373,
+  385,  375,  376,  377,  378,  379,  380,  381,   -1,   -1,
+   -1,  396,  397,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,  400,  401,   -1,  260,
+   -1,   -1,   -1,   -1,   -1,   -1,  410,  268,   -1,   -1,
+  271,  272,  273,  274,  275,  276,  277,  278,  279,   -1,
+   -1,   -1,  283,  284,  285,   -1,   -1,   -1,  289,  290,
+  291,  292,  293,  294,  295,  296,  297,   -1,  299,  300,
+  301,  302,  303,  304,  305,   -1,  307,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,  322,   -1,   -1,   -1,   -1,   -1,   -1,  329,  330,
+   -1,  332,   -1,  334,  335,  336,   -1,   -1,  339,  340,
+   -1,  342,   -1,  344,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,  363,   -1,  365,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,  387,  388,   -1,   -1,
+   -1,   -1,   -1,  394,  395,  396,  397,  398,  399,  400,
+  401,  402,  403,  404,  405,  406,  407,  408,  409,  410,
+  411,
 };
 #define YYFINAL 3
 #ifndef YYDEBUG
 #define YYDEBUG 0
 #endif
-#define YYMAXTOKEN 324
+#define YYMAXTOKEN 430
 #if YYDEBUG
 char *yyname[] = {
 "end-of-file",0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-0,0,0,0,0,0,"'('","')'",0,0,"','",0,0,0,0,0,0,0,0,0,0,0,0,0,"':'",0,0,0,0,0,0,0,
-0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,"'['",0,"']'",0,0,0,0,0,0,0,0,
+0,0,0,"'%'","'&'",0,"'('","')'","'*'","'+'","','","'-'","'.'","'/'",0,0,0,0,0,0,
+0,0,0,0,"':'",0,0,"'='",0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,"'['",0,"']'",0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,"'{'",
+"'|'","'}'",0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,"CHAR",
-"INTEGER","BOOLEAN","PERCENT","MESSAGE_ID","MAZE_ID","LEVEL_ID","LEV_INIT_ID",
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,"CHAR","INTEGER","BOOLEAN","PERCENT",
+"SPERCENT","MINUS_INTEGER","PLUS_INTEGER","MAZE_GRID_ID","SOLID_FILL_ID",
+"MINES_ID","ROGUELEV_ID","MESSAGE_ID","MAZE_ID","LEVEL_ID","LEV_INIT_ID",
 "GEOMETRY_ID","NOMAP_ID","OBJECT_ID","COBJECT_ID","MONSTER_ID","TRAP_ID",
-"DOOR_ID","DRAWBRIDGE_ID","MAZEWALK_ID","WALLIFY_ID","REGION_ID","FILLING",
-"RANDOM_OBJECTS_ID","RANDOM_MONSTERS_ID","RANDOM_PLACES_ID","ALTAR_ID",
-"LADDER_ID","STAIR_ID","NON_DIGGABLE_ID","NON_PASSWALL_ID","ROOM_ID",
-"PORTAL_ID","TELEPRT_ID","BRANCH_ID","LEV","CHANCE_ID","CORRIDOR_ID","GOLD_ID",
+"DOOR_ID","DRAWBRIDGE_ID","object_ID","monster_ID","terrain_ID","MAZEWALK_ID",
+"WALLIFY_ID","REGION_ID","FILLING","IRREGULAR","JOINED","ALTAR_ID","LADDER_ID",
+"STAIR_ID","NON_DIGGABLE_ID","NON_PASSWALL_ID","ROOM_ID","PORTAL_ID",
+"TELEPRT_ID","BRANCH_ID","LEV","MINERALIZE_ID","CORRIDOR_ID","GOLD_ID",
 "ENGRAVING_ID","FOUNTAIN_ID","POOL_ID","SINK_ID","NONE","RAND_CORRIDOR_ID",
 "DOOR_STATE","LIGHT_STATE","CURSE_TYPE","ENGRAVING_TYPE","DIRECTION",
-"RANDOM_TYPE","O_REGISTER","M_REGISTER","P_REGISTER","A_REGISTER","ALIGNMENT",
-"LEFT_OR_RIGHT","CENTER","TOP_OR_BOT","ALTAR_TYPE","UP_OR_DOWN","SUBROOM_ID",
-"NAME_ID","FLAGS_ID","FLAG_TYPE","MON_ATTITUDE","MON_ALERTNESS",
-"MON_APPEARANCE","CONTAINED","STRING","MAP_ID",
+"RANDOM_TYPE","RANDOM_TYPE_BRACKET","A_REGISTER","ALIGNMENT","LEFT_OR_RIGHT",
+"CENTER","TOP_OR_BOT","ALTAR_TYPE","UP_OR_DOWN","SUBROOM_ID","NAME_ID",
+"FLAGS_ID","FLAG_TYPE","MON_ATTITUDE","MON_ALERTNESS","MON_APPEARANCE",
+"ROOMDOOR_ID","IF_ID","ELSE_ID","TERRAIN_ID","HORIZ_OR_VERT",
+"REPLACE_TERRAIN_ID","EXIT_ID","SHUFFLE_ID","QUANTITY_ID","BURIED_ID","LOOP_ID",
+"FOR_ID","TO_ID","SWITCH_ID","CASE_ID","BREAK_ID","DEFAULT_ID","ERODED_ID",
+"TRAPPED_STATE","RECHARGED_ID","INVIS_ID","GREASED_ID","FEMALE_ID",
+"CANCELLED_ID","REVIVED_ID","AVENGE_ID","FLEEING_ID","BLINDED_ID",
+"PARALYZED_ID","STUNNED_ID","CONFUSED_ID","SEENTRAPS_ID","ALL_ID","MONTYPE_ID",
+"GRAVE_ID","ERODEPROOF_ID","FUNCTION_ID","MSG_OUTPUT_TYPE","COMPARE_TYPE",
+"UNKNOWN_TYPE","rect_ID","fillrect_ID","line_ID","randline_ID","grow_ID",
+"selection_ID","flood_ID","rndcoord_ID","circle_ID","ellipse_ID","filter_ID",
+"complement_ID","gradient_ID","GRADIENT_TYPE","LIMITED","HUMIDITY_TYPE",
+"STRING","MAP_ID","NQSTRING","VARSTRING","CFUNC","CFUNC_INT","CFUNC_STR",
+"CFUNC_COORD","CFUNC_REGION","VARSTRING_INT","VARSTRING_INT_ARRAY",
+"VARSTRING_STRING","VARSTRING_STRING_ARRAY","VARSTRING_VAR",
+"VARSTRING_VAR_ARRAY","VARSTRING_COORD","VARSTRING_COORD_ARRAY",
+"VARSTRING_REGION","VARSTRING_REGION_ARRAY","VARSTRING_MAPCHAR",
+"VARSTRING_MAPCHAR_ARRAY","VARSTRING_MONST","VARSTRING_MONST_ARRAY",
+"VARSTRING_OBJ","VARSTRING_OBJ_ARRAY","VARSTRING_SEL","VARSTRING_SEL_ARRAY",
+"METHOD_INT","METHOD_INT_ARRAY","METHOD_STRING","METHOD_STRING_ARRAY",
+"METHOD_VAR","METHOD_VAR_ARRAY","METHOD_COORD","METHOD_COORD_ARRAY",
+"METHOD_REGION","METHOD_REGION_ARRAY","METHOD_MAPCHAR","METHOD_MAPCHAR_ARRAY",
+"METHOD_MONST","METHOD_MONST_ARRAY","METHOD_OBJ","METHOD_OBJ_ARRAY",
+"METHOD_SEL","METHOD_SEL_ARRAY","DICE",
 };
 char *yyrule[] = {
 "$accept : file",
@@ -660,42 +2035,173 @@ char *yyrule[] = {
 "file : levels",
 "levels : level",
 "levels : level levels",
-"level : maze_level",
-"level : room_level",
-"maze_level : maze_def flags lev_init messages regions",
-"room_level : level_def flags lev_init messages rreg_init rooms corridors_def",
-"level_def : LEVEL_ID ':' string",
-"lev_init :",
-"lev_init : LEV_INIT_ID ':' CHAR ',' CHAR ',' BOOLEAN ',' BOOLEAN ',' light_state ',' walled",
+"level : level_def flags levstatements",
+"level_def : LEVEL_ID ':' STRING",
+"level_def : MAZE_ID ':' STRING ',' mazefiller",
+"mazefiller : RANDOM_TYPE",
+"mazefiller : CHAR",
+"lev_init : LEV_INIT_ID ':' SOLID_FILL_ID ',' terrain_type",
+"lev_init : LEV_INIT_ID ':' MAZE_GRID_ID ',' CHAR",
+"lev_init : LEV_INIT_ID ':' ROGUELEV_ID",
+"lev_init : LEV_INIT_ID ':' MINES_ID ',' CHAR ',' CHAR ',' BOOLEAN ',' BOOLEAN ',' light_state ',' walled opt_fillchar",
+"opt_limited :",
+"opt_limited : ',' LIMITED",
+"opt_coord_or_var :",
+"opt_coord_or_var : ',' coord_or_var",
+"opt_fillchar :",
+"opt_fillchar : ',' CHAR",
 "walled : BOOLEAN",
 "walled : RANDOM_TYPE",
 "flags :",
 "flags : FLAGS_ID ':' flag_list",
 "flag_list : FLAG_TYPE ',' flag_list",
 "flag_list : FLAG_TYPE",
-"messages :",
-"messages : message messages",
-"message : MESSAGE_ID ':' STRING",
-"rreg_init :",
-"rreg_init : rreg_init init_rreg",
-"init_rreg : RANDOM_OBJECTS_ID ':' object_list",
-"init_rreg : RANDOM_MONSTERS_ID ':' monster_list",
-"rooms :",
-"rooms : roomlist",
-"roomlist : aroom",
-"roomlist : aroom roomlist",
-"corridors_def : random_corridors",
-"corridors_def : corridors",
+"levstatements :",
+"levstatements : levstatement levstatements",
+"stmt_block : '{' levstatements '}'",
+"levstatement : message",
+"levstatement : lev_init",
+"levstatement : altar_detail",
+"levstatement : grave_detail",
+"levstatement : branch_region",
+"levstatement : corridor",
+"levstatement : variable_define",
+"levstatement : shuffle_detail",
+"levstatement : diggable_detail",
+"levstatement : door_detail",
+"levstatement : drawbridge_detail",
+"levstatement : engraving_detail",
+"levstatement : mineralize",
+"levstatement : fountain_detail",
+"levstatement : gold_detail",
+"levstatement : switchstatement",
+"levstatement : forstatement",
+"levstatement : loopstatement",
+"levstatement : ifstatement",
+"levstatement : chancestatement",
+"levstatement : exitstatement",
+"levstatement : breakstatement",
+"levstatement : function_define",
+"levstatement : function_call",
+"levstatement : ladder_detail",
+"levstatement : map_definition",
+"levstatement : mazewalk_detail",
+"levstatement : monster_detail",
+"levstatement : object_detail",
+"levstatement : passwall_detail",
+"levstatement : pool_detail",
+"levstatement : portal_region",
+"levstatement : random_corridors",
+"levstatement : region_detail",
+"levstatement : room_def",
+"levstatement : subroom_def",
+"levstatement : sink_detail",
+"levstatement : terrain_detail",
+"levstatement : replace_terrain_detail",
+"levstatement : stair_detail",
+"levstatement : stair_region",
+"levstatement : teleprt_region",
+"levstatement : trap_detail",
+"levstatement : wallify_detail",
+"any_var_array : VARSTRING_INT_ARRAY",
+"any_var_array : VARSTRING_STRING_ARRAY",
+"any_var_array : VARSTRING_VAR_ARRAY",
+"any_var_array : VARSTRING_COORD_ARRAY",
+"any_var_array : VARSTRING_REGION_ARRAY",
+"any_var_array : VARSTRING_MAPCHAR_ARRAY",
+"any_var_array : VARSTRING_MONST_ARRAY",
+"any_var_array : VARSTRING_OBJ_ARRAY",
+"any_var_array : VARSTRING_SEL_ARRAY",
+"any_var : VARSTRING_INT",
+"any_var : VARSTRING_STRING",
+"any_var : VARSTRING_VAR",
+"any_var : VARSTRING_COORD",
+"any_var : VARSTRING_REGION",
+"any_var : VARSTRING_MAPCHAR",
+"any_var : VARSTRING_MONST",
+"any_var : VARSTRING_OBJ",
+"any_var : VARSTRING_SEL",
+"any_var_or_arr : any_var_array",
+"any_var_or_arr : any_var",
+"any_var_or_arr : VARSTRING",
+"any_var_or_unk : VARSTRING",
+"any_var_or_unk : any_var",
+"shuffle_detail : SHUFFLE_ID ':' any_var_array",
+"variable_define : any_var_or_arr '=' math_expr_var",
+"variable_define : any_var_or_arr '=' selection_ID ':' ter_selection",
+"variable_define : any_var_or_arr '=' string_expr",
+"variable_define : any_var_or_arr '=' terrainid ':' mapchar_or_var",
+"variable_define : any_var_or_arr '=' monsterid ':' monster_or_var",
+"variable_define : any_var_or_arr '=' objectid ':' object_or_var",
+"variable_define : any_var_or_arr '=' coord_or_var",
+"variable_define : any_var_or_arr '=' region_or_var",
+"variable_define : any_var_or_arr '=' '{' integer_list '}'",
+"variable_define : any_var_or_arr '=' '{' encodecoord_list '}'",
+"variable_define : any_var_or_arr '=' '{' encoderegion_list '}'",
+"variable_define : any_var_or_arr '=' terrainid ':' '{' mapchar_list '}'",
+"variable_define : any_var_or_arr '=' monsterid ':' '{' encodemonster_list '}'",
+"variable_define : any_var_or_arr '=' objectid ':' '{' encodeobj_list '}'",
+"variable_define : any_var_or_arr '=' '{' string_list '}'",
+"encodeobj_list : encodeobj",
+"encodeobj_list : encodeobj_list ',' encodeobj",
+"encodemonster_list : encodemonster",
+"encodemonster_list : encodemonster_list ',' encodemonster",
+"mapchar_list : mapchar",
+"mapchar_list : mapchar_list ',' mapchar",
+"encoderegion_list : encoderegion",
+"encoderegion_list : encoderegion_list ',' encoderegion",
+"encodecoord_list : encodecoord",
+"encodecoord_list : encodecoord_list ',' encodecoord",
+"integer_list : math_expr_var",
+"integer_list : integer_list ',' math_expr_var",
+"string_list : string_expr",
+"string_list : string_list ',' string_expr",
+"$$1 :",
+"$$2 :",
+"function_define : FUNCTION_ID NQSTRING '(' $$1 func_params_list ')' $$2 stmt_block",
+"function_call : NQSTRING '(' func_call_params_list ')'",
+"exitstatement : EXIT_ID",
+"opt_percent :",
+"opt_percent : PERCENT",
+"comparestmt : PERCENT",
+"comparestmt : '[' math_expr_var COMPARE_TYPE math_expr_var ']'",
+"comparestmt : '[' math_expr_var ']'",
+"$$3 :",
+"$$4 :",
+"switchstatement : SWITCH_ID $$3 '[' integer_or_var ']' $$4 '{' switchcases '}'",
+"switchcases :",
+"switchcases : switchcase switchcases",
+"$$5 :",
+"switchcase : CASE_ID all_integers ':' $$5 levstatements",
+"$$6 :",
+"switchcase : DEFAULT_ID ':' $$6 levstatements",
+"breakstatement : BREAK_ID",
+"for_to_span : '.' '.'",
+"for_to_span : TO_ID",
+"forstmt_start : FOR_ID any_var_or_unk '=' math_expr_var for_to_span math_expr_var",
+"$$7 :",
+"forstatement : forstmt_start $$7 stmt_block",
+"$$8 :",
+"loopstatement : LOOP_ID '[' integer_or_var ']' $$8 stmt_block",
+"$$9 :",
+"chancestatement : comparestmt ':' $$9 levstatement",
+"$$10 :",
+"ifstatement : IF_ID comparestmt $$10 if_ending",
+"if_ending : stmt_block",
+"$$11 :",
+"if_ending : stmt_block $$11 ELSE_ID stmt_block",
+"message : MESSAGE_ID ':' string_expr",
 "random_corridors : RAND_CORRIDOR_ID",
-"corridors :",
-"corridors : corridors corridor",
+"random_corridors : RAND_CORRIDOR_ID ':' all_integers",
+"random_corridors : RAND_CORRIDOR_ID ':' RANDOM_TYPE",
 "corridor : CORRIDOR_ID ':' corr_spec ',' corr_spec",
-"corridor : CORRIDOR_ID ':' corr_spec ',' INTEGER",
+"corridor : CORRIDOR_ID ':' corr_spec ',' all_integers",
 "corr_spec : '(' INTEGER ',' DIRECTION ',' door_pos ')'",
-"aroom : room_def room_details",
-"aroom : subroom_def room_details",
-"subroom_def : SUBROOM_ID ':' room_type ',' light_state ',' subroom_pos ',' room_size ',' string roomfill",
-"room_def : ROOM_ID ':' room_type ',' light_state ',' room_pos ',' room_align ',' room_size roomfill",
+"room_begin : room_type opt_percent ',' light_state",
+"$$12 :",
+"subroom_def : SUBROOM_ID ':' room_begin ',' subroom_pos ',' room_size optroomregionflags $$12 stmt_block",
+"$$13 :",
+"room_def : ROOM_ID ':' room_begin ',' room_pos ',' room_align ',' room_size optroomregionflags $$13 stmt_block",
 "roomfill :",
 "roomfill : ',' BOOLEAN",
 "room_pos : '(' INTEGER ',' INTEGER ')'",
@@ -706,153 +2212,115 @@ char *yyrule[] = {
 "room_align : RANDOM_TYPE",
 "room_size : '(' INTEGER ',' INTEGER ')'",
 "room_size : RANDOM_TYPE",
-"room_details :",
-"room_details : room_details room_detail",
-"room_detail : room_name",
-"room_detail : room_chance",
-"room_detail : room_door",
-"room_detail : monster_detail",
-"room_detail : object_detail",
-"room_detail : trap_detail",
-"room_detail : altar_detail",
-"room_detail : fountain_detail",
-"room_detail : sink_detail",
-"room_detail : pool_detail",
-"room_detail : gold_detail",
-"room_detail : engraving_detail",
-"room_detail : stair_detail",
-"room_name : NAME_ID ':' string",
-"room_chance : CHANCE_ID ':' INTEGER",
-"room_door : DOOR_ID ':' secret ',' door_state ',' door_wall ',' door_pos",
+"door_detail : ROOMDOOR_ID ':' secret ',' door_state ',' door_wall ',' door_pos",
+"door_detail : DOOR_ID ':' door_state ',' ter_selection",
 "secret : BOOLEAN",
 "secret : RANDOM_TYPE",
-"door_wall : DIRECTION",
+"door_wall : dir_list",
 "door_wall : RANDOM_TYPE",
+"dir_list : DIRECTION",
+"dir_list : DIRECTION '|' dir_list",
 "door_pos : INTEGER",
 "door_pos : RANDOM_TYPE",
-"maze_def : MAZE_ID ':' string ',' filling",
-"filling : CHAR",
-"filling : RANDOM_TYPE",
-"regions : aregion",
-"regions : aregion regions",
-"aregion : map_definition reg_init map_details",
 "map_definition : NOMAP_ID",
-"map_definition : map_geometry MAP_ID",
-"map_geometry : GEOMETRY_ID ':' h_justif ',' v_justif",
+"map_definition : GEOMETRY_ID ':' h_justif ',' v_justif roomfill MAP_ID",
+"map_definition : GEOMETRY_ID ':' coord_or_var roomfill MAP_ID",
 "h_justif : LEFT_OR_RIGHT",
 "h_justif : CENTER",
 "v_justif : TOP_OR_BOT",
 "v_justif : CENTER",
-"reg_init :",
-"reg_init : reg_init init_reg",
-"init_reg : RANDOM_OBJECTS_ID ':' object_list",
-"init_reg : RANDOM_PLACES_ID ':' place_list",
-"init_reg : RANDOM_MONSTERS_ID ':' monster_list",
-"object_list : object",
-"object_list : object ',' object_list",
-"monster_list : monster",
-"monster_list : monster ',' monster_list",
-"place_list : place",
-"$$1 :",
-"place_list : place $$1 ',' place_list",
-"map_details :",
-"map_details : map_details map_detail",
-"map_detail : monster_detail",
-"map_detail : object_detail",
-"map_detail : door_detail",
-"map_detail : trap_detail",
-"map_detail : drawbridge_detail",
-"map_detail : region_detail",
-"map_detail : stair_region",
-"map_detail : portal_region",
-"map_detail : teleprt_region",
-"map_detail : branch_region",
-"map_detail : altar_detail",
-"map_detail : fountain_detail",
-"map_detail : mazewalk_detail",
-"map_detail : wallify_detail",
-"map_detail : ladder_detail",
-"map_detail : stair_detail",
-"map_detail : gold_detail",
-"map_detail : engraving_detail",
-"map_detail : diggable_detail",
-"map_detail : passwall_detail",
-"$$2 :",
-"monster_detail : MONSTER_ID chance ':' monster_c ',' m_name ',' coordinate $$2 monster_infos",
+"monster_detail : MONSTER_ID ':' monster_desc",
+"$$14 :",
+"monster_detail : MONSTER_ID ':' monster_desc $$14 stmt_block",
+"monster_desc : monster_or_var ',' coord_or_var monster_infos",
 "monster_infos :",
-"monster_infos : monster_infos monster_info",
-"monster_info : ',' string",
-"monster_info : ',' MON_ATTITUDE",
-"monster_info : ',' MON_ALERTNESS",
-"monster_info : ',' alignment",
-"monster_info : ',' MON_APPEARANCE string",
-"object_detail : OBJECT_ID object_desc",
-"object_detail : COBJECT_ID object_desc",
-"$$3 :",
-"object_desc : chance ':' object_c ',' o_name $$3 ',' object_where object_infos",
-"object_where : coordinate",
-"object_where : CONTAINED",
+"monster_infos : monster_infos ',' monster_info",
+"monster_info : string_expr",
+"monster_info : MON_ATTITUDE",
+"monster_info : MON_ALERTNESS",
+"monster_info : alignment_prfx",
+"monster_info : MON_APPEARANCE string_expr",
+"monster_info : FEMALE_ID",
+"monster_info : INVIS_ID",
+"monster_info : CANCELLED_ID",
+"monster_info : REVIVED_ID",
+"monster_info : AVENGE_ID",
+"monster_info : FLEEING_ID ':' integer_or_var",
+"monster_info : BLINDED_ID ':' integer_or_var",
+"monster_info : PARALYZED_ID ':' integer_or_var",
+"monster_info : STUNNED_ID",
+"monster_info : CONFUSED_ID",
+"monster_info : SEENTRAPS_ID ':' seen_trap_mask",
+"seen_trap_mask : STRING",
+"seen_trap_mask : ALL_ID",
+"seen_trap_mask : STRING '|' seen_trap_mask",
+"object_detail : OBJECT_ID ':' object_desc",
+"$$15 :",
+"object_detail : COBJECT_ID ':' object_desc $$15 stmt_block",
+"object_desc : object_or_var object_infos",
 "object_infos :",
-"object_infos : ',' curse_state ',' monster_id ',' enchantment optional_name",
-"object_infos : ',' curse_state ',' enchantment optional_name",
-"object_infos : ',' monster_id ',' enchantment optional_name",
-"curse_state : RANDOM_TYPE",
-"curse_state : CURSE_TYPE",
-"monster_id : STRING",
-"enchantment : RANDOM_TYPE",
-"enchantment : INTEGER",
-"optional_name :",
-"optional_name : ',' NONE",
-"optional_name : ',' STRING",
-"door_detail : DOOR_ID ':' door_state ',' coordinate",
-"trap_detail : TRAP_ID chance ':' trap_name ',' coordinate",
-"drawbridge_detail : DRAWBRIDGE_ID ':' coordinate ',' DIRECTION ',' door_state",
-"mazewalk_detail : MAZEWALK_ID ':' coordinate ',' DIRECTION",
+"object_infos : object_infos ',' object_info",
+"object_info : CURSE_TYPE",
+"object_info : MONTYPE_ID ':' monster_or_var",
+"object_info : all_ints_push",
+"object_info : NAME_ID ':' string_expr",
+"object_info : QUANTITY_ID ':' integer_or_var",
+"object_info : BURIED_ID",
+"object_info : LIGHT_STATE",
+"object_info : ERODED_ID ':' integer_or_var",
+"object_info : ERODEPROOF_ID",
+"object_info : DOOR_STATE",
+"object_info : TRAPPED_STATE",
+"object_info : RECHARGED_ID ':' integer_or_var",
+"object_info : INVIS_ID",
+"object_info : GREASED_ID",
+"object_info : coord_or_var",
+"trap_detail : TRAP_ID ':' trap_name ',' coord_or_var",
+"drawbridge_detail : DRAWBRIDGE_ID ':' coord_or_var ',' DIRECTION ',' door_state",
+"mazewalk_detail : MAZEWALK_ID ':' coord_or_var ',' DIRECTION",
+"mazewalk_detail : MAZEWALK_ID ':' coord_or_var ',' DIRECTION ',' BOOLEAN opt_fillchar",
 "wallify_detail : WALLIFY_ID",
-"ladder_detail : LADDER_ID ':' coordinate ',' UP_OR_DOWN",
-"stair_detail : STAIR_ID ':' coordinate ',' UP_OR_DOWN",
-"$$4 :",
-"stair_region : STAIR_ID ':' lev_region $$4 ',' lev_region ',' UP_OR_DOWN",
-"$$5 :",
-"portal_region : PORTAL_ID ':' lev_region $$5 ',' lev_region ',' string",
-"$$6 :",
-"$$7 :",
-"teleprt_region : TELEPRT_ID ':' lev_region $$6 ',' lev_region $$7 teleprt_detail",
-"$$8 :",
-"branch_region : BRANCH_ID ':' lev_region $$8 ',' lev_region",
+"wallify_detail : WALLIFY_ID ':' ter_selection",
+"ladder_detail : LADDER_ID ':' coord_or_var ',' UP_OR_DOWN",
+"stair_detail : STAIR_ID ':' coord_or_var ',' UP_OR_DOWN",
+"stair_region : STAIR_ID ':' lev_region ',' lev_region ',' UP_OR_DOWN",
+"portal_region : PORTAL_ID ':' lev_region ',' lev_region ',' STRING",
+"teleprt_region : TELEPRT_ID ':' lev_region ',' lev_region teleprt_detail",
+"branch_region : BRANCH_ID ':' lev_region ',' lev_region",
 "teleprt_detail :",
 "teleprt_detail : ',' UP_OR_DOWN",
-"lev_region : region",
-"lev_region : LEV '(' INTEGER ',' INTEGER ',' INTEGER ',' INTEGER ')'",
-"fountain_detail : FOUNTAIN_ID ':' coordinate",
-"sink_detail : SINK_ID ':' coordinate",
-"pool_detail : POOL_ID ':' coordinate",
-"diggable_detail : NON_DIGGABLE_ID ':' region",
-"passwall_detail : NON_PASSWALL_ID ':' region",
-"region_detail : REGION_ID ':' region ',' light_state ',' room_type prefilled",
-"altar_detail : ALTAR_ID ':' coordinate ',' alignment ',' altar_type",
-"gold_detail : GOLD_ID ':' amount ',' coordinate",
-"engraving_detail : ENGRAVING_ID ':' coordinate ',' engraving_type ',' string",
-"monster_c : monster",
-"monster_c : RANDOM_TYPE",
-"monster_c : m_register",
-"object_c : object",
-"object_c : RANDOM_TYPE",
-"object_c : o_register",
-"m_name : string",
-"m_name : RANDOM_TYPE",
-"o_name : string",
-"o_name : RANDOM_TYPE",
-"trap_name : string",
+"fountain_detail : FOUNTAIN_ID ':' ter_selection",
+"sink_detail : SINK_ID ':' ter_selection",
+"pool_detail : POOL_ID ':' ter_selection",
+"terrain_type : CHAR",
+"terrain_type : '(' CHAR ',' light_state ')'",
+"replace_terrain_detail : REPLACE_TERRAIN_ID ':' region_or_var ',' mapchar_or_var ',' mapchar_or_var ',' SPERCENT",
+"terrain_detail : TERRAIN_ID ':' ter_selection ',' mapchar_or_var",
+"diggable_detail : NON_DIGGABLE_ID ':' region_or_var",
+"passwall_detail : NON_PASSWALL_ID ':' region_or_var",
+"$$16 :",
+"region_detail : REGION_ID ':' region_or_var ',' light_state ',' room_type optroomregionflags $$16 region_detail_end",
+"region_detail_end :",
+"region_detail_end : stmt_block",
+"altar_detail : ALTAR_ID ':' coord_or_var ',' alignment ',' altar_type",
+"grave_detail : GRAVE_ID ':' coord_or_var ',' string_expr",
+"grave_detail : GRAVE_ID ':' coord_or_var ',' RANDOM_TYPE",
+"grave_detail : GRAVE_ID ':' coord_or_var",
+"gold_detail : GOLD_ID ':' math_expr_var ',' coord_or_var",
+"engraving_detail : ENGRAVING_ID ':' coord_or_var ',' engraving_type ',' string_expr",
+"mineralize : MINERALIZE_ID ':' integer_or_var ',' integer_or_var ',' integer_or_var ',' integer_or_var",
+"mineralize : MINERALIZE_ID",
+"trap_name : STRING",
 "trap_name : RANDOM_TYPE",
-"room_type : string",
+"room_type : STRING",
 "room_type : RANDOM_TYPE",
-"prefilled :",
-"prefilled : ',' FILLING",
-"prefilled : ',' FILLING ',' BOOLEAN",
-"coordinate : coord",
-"coordinate : p_register",
-"coordinate : RANDOM_TYPE",
+"optroomregionflags :",
+"optroomregionflags : ',' roomregionflags",
+"roomregionflags : roomregionflag",
+"roomregionflags : roomregionflag ',' roomregionflags",
+"roomregionflag : FILLING",
+"roomregionflag : IRREGULAR",
+"roomregionflag : JOINED",
 "door_state : DOOR_STATE",
 "door_state : RANDOM_TYPE",
 "light_state : LIGHT_STATE",
@@ -860,23 +2328,113 @@ char *yyrule[] = {
 "alignment : ALIGNMENT",
 "alignment : a_register",
 "alignment : RANDOM_TYPE",
+"alignment_prfx : ALIGNMENT",
+"alignment_prfx : a_register",
+"alignment_prfx : A_REGISTER ':' RANDOM_TYPE",
 "altar_type : ALTAR_TYPE",
 "altar_type : RANDOM_TYPE",
-"p_register : P_REGISTER '[' INTEGER ']'",
-"o_register : O_REGISTER '[' INTEGER ']'",
-"m_register : M_REGISTER '[' INTEGER ']'",
 "a_register : A_REGISTER '[' INTEGER ']'",
-"place : coord",
-"monster : CHAR",
-"object : CHAR",
-"string : STRING",
-"amount : INTEGER",
-"amount : RANDOM_TYPE",
-"chance :",
-"chance : PERCENT",
+"string_or_var : STRING",
+"string_or_var : VARSTRING_STRING",
+"string_or_var : VARSTRING_STRING_ARRAY '[' math_expr_var ']'",
+"integer_or_var : math_expr_var",
+"coord_or_var : encodecoord",
+"coord_or_var : rndcoord_ID '(' ter_selection ')'",
+"coord_or_var : VARSTRING_COORD",
+"coord_or_var : VARSTRING_COORD_ARRAY '[' math_expr_var ']'",
+"encodecoord : '(' INTEGER ',' INTEGER ')'",
+"encodecoord : RANDOM_TYPE",
+"encodecoord : RANDOM_TYPE_BRACKET humidity_flags ']'",
+"humidity_flags : HUMIDITY_TYPE",
+"humidity_flags : HUMIDITY_TYPE ',' humidity_flags",
+"region_or_var : encoderegion",
+"region_or_var : VARSTRING_REGION",
+"region_or_var : VARSTRING_REGION_ARRAY '[' math_expr_var ']'",
+"encoderegion : '(' INTEGER ',' INTEGER ',' INTEGER ',' INTEGER ')'",
+"mapchar_or_var : mapchar",
+"mapchar_or_var : VARSTRING_MAPCHAR",
+"mapchar_or_var : VARSTRING_MAPCHAR_ARRAY '[' math_expr_var ']'",
+"mapchar : CHAR",
+"mapchar : '(' CHAR ',' light_state ')'",
+"monster_or_var : encodemonster",
+"monster_or_var : VARSTRING_MONST",
+"monster_or_var : VARSTRING_MONST_ARRAY '[' math_expr_var ']'",
+"encodemonster : STRING",
+"encodemonster : CHAR",
+"encodemonster : '(' CHAR ',' STRING ')'",
+"encodemonster : RANDOM_TYPE",
+"object_or_var : encodeobj",
+"object_or_var : VARSTRING_OBJ",
+"object_or_var : VARSTRING_OBJ_ARRAY '[' math_expr_var ']'",
+"encodeobj : STRING",
+"encodeobj : CHAR",
+"encodeobj : '(' CHAR ',' STRING ')'",
+"encodeobj : RANDOM_TYPE",
+"string_expr : string_or_var",
+"string_expr : string_expr '.' string_or_var",
+"math_expr_var : INTEGER",
+"math_expr_var : dice",
+"math_expr_var : '(' MINUS_INTEGER ')'",
+"math_expr_var : VARSTRING_INT",
+"math_expr_var : VARSTRING_INT_ARRAY '[' math_expr_var ']'",
+"math_expr_var : math_expr_var '+' math_expr_var",
+"math_expr_var : math_expr_var '-' math_expr_var",
+"math_expr_var : math_expr_var '*' math_expr_var",
+"math_expr_var : math_expr_var '/' math_expr_var",
+"math_expr_var : math_expr_var '%' math_expr_var",
+"math_expr_var : '(' math_expr_var ')'",
+"func_param_type : CFUNC_INT",
+"func_param_type : CFUNC_STR",
+"func_param_part : any_var_or_arr ':' func_param_type",
+"func_param_list : func_param_part",
+"func_param_list : func_param_list ',' func_param_part",
+"func_params_list :",
+"func_params_list : func_param_list",
+"func_call_param_part : math_expr_var",
+"func_call_param_part : string_expr",
+"func_call_param_list : func_call_param_part",
+"func_call_param_list : func_call_param_list ',' func_call_param_part",
+"func_call_params_list :",
+"func_call_params_list : func_call_param_list",
+"ter_selection_x : coord_or_var",
+"ter_selection_x : rect_ID region_or_var",
+"ter_selection_x : fillrect_ID region_or_var",
+"ter_selection_x : line_ID coord_or_var ',' coord_or_var",
+"ter_selection_x : randline_ID coord_or_var ',' coord_or_var ',' math_expr_var",
+"ter_selection_x : grow_ID '(' ter_selection ')'",
+"ter_selection_x : grow_ID '(' dir_list ',' ter_selection ')'",
+"ter_selection_x : filter_ID '(' SPERCENT ',' ter_selection ')'",
+"ter_selection_x : filter_ID '(' ter_selection ',' ter_selection ')'",
+"ter_selection_x : filter_ID '(' mapchar_or_var ',' ter_selection ')'",
+"ter_selection_x : flood_ID coord_or_var",
+"ter_selection_x : circle_ID '(' coord_or_var ',' math_expr_var ')'",
+"ter_selection_x : circle_ID '(' coord_or_var ',' math_expr_var ',' FILLING ')'",
+"ter_selection_x : ellipse_ID '(' coord_or_var ',' math_expr_var ',' math_expr_var ')'",
+"ter_selection_x : ellipse_ID '(' coord_or_var ',' math_expr_var ',' math_expr_var ',' FILLING ')'",
+"ter_selection_x : gradient_ID '(' GRADIENT_TYPE ',' '(' math_expr_var '-' math_expr_var opt_limited ')' ',' coord_or_var opt_coord_or_var ')'",
+"ter_selection_x : complement_ID ter_selection_x",
+"ter_selection_x : VARSTRING_SEL",
+"ter_selection_x : '(' ter_selection ')'",
+"ter_selection : ter_selection_x",
+"ter_selection : ter_selection_x '&' ter_selection",
+"dice : DICE",
+"all_integers : MINUS_INTEGER",
+"all_integers : PLUS_INTEGER",
+"all_integers : INTEGER",
+"all_ints_push : MINUS_INTEGER",
+"all_ints_push : PLUS_INTEGER",
+"all_ints_push : INTEGER",
+"all_ints_push : dice",
+"objectid : object_ID",
+"objectid : OBJECT_ID",
+"monsterid : monster_ID",
+"monsterid : MONSTER_ID",
+"terrainid : terrain_ID",
+"terrainid : TERRAIN_ID",
 "engraving_type : ENGRAVING_TYPE",
 "engraving_type : RANDOM_TYPE",
-"coord : '(' INTEGER ',' INTEGER ')'",
+"lev_region : region",
+"lev_region : LEV '(' INTEGER ',' INTEGER ',' INTEGER ',' INTEGER ')'",
 "region : '(' INTEGER ',' INTEGER ',' INTEGER ',' INTEGER ')'",
 };
 #endif
@@ -973,14 +2531,10 @@ yyloop:
         goto yyreduce;
     }
     if (yyerrflag) goto yyinrecovery;
-#ifdef lint
     goto yynewerror;
-#endif
 yynewerror:
     yyerror("syntax error");
-#ifdef lint
     goto yyerrlab;
-#endif
 yyerrlab:
     ++yynerrs;
 yyinrecovery:
@@ -1044,1320 +2598,2249 @@ yyreduce:
     yyval = yyvsp[1-yym];
     switch (yyn)
     {
-case 7:
+case 5:
 {
-			unsigned i;
-
 			if (fatal_error > 0) {
 				(void) fprintf(stderr,
-				"%s : %d errors detected. No output created!\n",
-					fname, fatal_error);
-			} else {
-				maze.flags = yyvsp[-3].i;
-				(void) memcpy((genericptr_t)&(maze.init_lev),
-						(genericptr_t)&(init_lev),
-						sizeof(lev_init));
-				maze.numpart = npart;
-				maze.parts = NewTab(mazepart, npart);
-				for(i=0;i<npart;i++)
-				    maze.parts[i] = tmppart[i];
-				if (!write_level_file(yyvsp[-4].map, (splev *)0, &maze)) {
-					yyerror("Can't write output file!!");
-					exit(EXIT_FAILURE);
+				"%s: %d errors detected for level \"%s\". No output created!\n",
+					       fname, fatal_error, yyvsp[-2].map);
+				fatal_error = 0;
+				got_errors++;
+			} else if (!got_errors) {
+				if (!write_level_file(yyvsp[-2].map, splev)) {
+				    lc_error("Can't write output file for '%s'!", yyvsp[-2].map);
+				    exit(EXIT_FAILURE);
 				}
-				npart = 0;
 			}
-			Free(yyvsp[-4].map);
+			Free(yyvsp[-2].map);
+			Free(splev);
+			splev = NULL;
+			vardef_free_all(variable_definitions);
+			variable_definitions = NULL;
+		  }
+break;
+case 6:
+{
+		      start_level_def(&splev, yyvsp[0].map);
+		      yyval.map = yyvsp[0].map;
+		  }
+break;
+case 7:
+{
+		      start_level_def(&splev, yyvsp[-2].map);
+		      if (yyvsp[0].i == -1) {
+			  add_opvars(splev, "iiiiiiiio",
+				     VA_PASS9(LVLINIT_MAZEGRID,HWALL,0,0,
+					      0,0,0,0, SPO_INITLEVEL));
+		      } else {
+			  long bg = what_map_char((char) yyvsp[0].i);
+			  add_opvars(splev, "iiiiiiiio",
+				     VA_PASS9(LVLINIT_SOLIDFILL, bg, 0,0,
+					      0,0,0,0, SPO_INITLEVEL));
+		      }
+		      add_opvars(splev, "io",
+				 VA_PASS2(MAZELEVEL, SPO_LEVEL_FLAGS));
+		      max_x_map = COLNO-1;
+		      max_y_map = ROWNO;
+		      yyval.map = yyvsp[-2].map;
 		  }
 break;
 case 8:
 {
-			unsigned i;
-
-			if (fatal_error > 0) {
-			    (void) fprintf(stderr,
-			      "%s : %d errors detected. No output created!\n",
-					fname, fatal_error);
-			} else {
-				special_lev.flags = (long) yyvsp[-5].i;
-				(void) memcpy(
-					(genericptr_t)&(special_lev.init_lev),
-					(genericptr_t)&(init_lev),
-					sizeof(lev_init));
-				special_lev.nroom = nrooms;
-				special_lev.rooms = NewTab(room, nrooms);
-				for(i=0; i<nrooms; i++)
-				    special_lev.rooms[i] = tmproom[i];
-				special_lev.ncorr = ncorridor;
-				special_lev.corrs = NewTab(corridor, ncorridor);
-				for(i=0; i<ncorridor; i++)
-				    special_lev.corrs[i] = tmpcor[i];
-				if (check_subrooms()) {
-				    if (!write_level_file(yyvsp[-6].map, &special_lev,
-							  (specialmaze *)0)) {
-					yyerror("Can't write output file!!");
-					exit(EXIT_FAILURE);
-				    }
-				}
-				free_rooms(&special_lev);
-				nrooms = 0;
-				ncorridor = 0;
-			}
-			Free(yyvsp[-6].map);
+		      yyval.i = -1;
 		  }
 break;
 case 9:
 {
-			if (index(yyvsp[0].map, '.'))
-			    yyerror("Invalid dot ('.') in level name.");
-			if ((int) strlen(yyvsp[0].map) > 8)
-			    yyerror("Level names limited to 8 characters.");
-			yyval.map = yyvsp[0].map;
-			special_lev.nrmonst = special_lev.nrobjects = 0;
-			n_mlist = n_olist = 0;
+		      yyval.i = what_map_char((char) yyvsp[0].i);
 		  }
 break;
 case 10:
 {
-			/* in case we're processing multiple files,
-			   explicitly clear any stale settings */
-			(void) memset((genericptr_t) &init_lev, 0,
-					sizeof init_lev);
-			init_lev.init_present = FALSE;
-			yyval.i = 0;
+		      long filling = yyvsp[0].terr.ter;
+		      if (filling == INVALID_TYPE || filling >= MAX_TYPE)
+			  lc_error("INIT_MAP: Invalid fill char type.");
+		      add_opvars(splev, "iiiiiiiio",
+				 LVLINIT_SOLIDFILL,filling,0,(long)yyvsp[0].terr.lit, 0,0,0,0, SPO_INITLEVEL);
+		      max_x_map = COLNO-1;
+		      max_y_map = ROWNO;
 		  }
 break;
 case 11:
 {
-			init_lev.init_present = TRUE;
-			init_lev.fg = what_map_char((char) yyvsp[-10].i);
-			if (init_lev.fg == INVALID_TYPE)
-			    yyerror("Invalid foreground type.");
-			init_lev.bg = what_map_char((char) yyvsp[-8].i);
-			if (init_lev.bg == INVALID_TYPE)
-			    yyerror("Invalid background type.");
-			init_lev.smoothed = yyvsp[-6].i;
-			init_lev.joined = yyvsp[-4].i;
-			if (init_lev.joined &&
-			    init_lev.fg != CORR && init_lev.fg != ROOM)
-			    yyerror("Invalid foreground type for joined map.");
-			init_lev.lit = yyvsp[-2].i;
-			init_lev.walled = yyvsp[0].i;
-			yyval.i = 1;
+		      long filling = what_map_char((char) yyvsp[0].i);
+		      if (filling == INVALID_TYPE || filling >= MAX_TYPE)
+			  lc_error("INIT_MAP: Invalid fill char type.");
+		      add_opvars(splev, "iiiiiiiio",
+				 VA_PASS9(LVLINIT_MAZEGRID,filling,0,0,
+					  0,0,0,0, SPO_INITLEVEL));
+		      max_x_map = COLNO-1;
+		      max_y_map = ROWNO;
+		  }
+break;
+case 12:
+{
+		      add_opvars(splev, "iiiiiiiio",
+				 VA_PASS9(LVLINIT_ROGUE,0,0,0,
+					  0,0,0,0, SPO_INITLEVEL));
+		  }
+break;
+case 13:
+{
+		      long fg = what_map_char((char) yyvsp[-11].i);
+		      long bg = what_map_char((char) yyvsp[-9].i);
+		      long smoothed = yyvsp[-7].i;
+		      long joined = yyvsp[-5].i;
+		      long lit = yyvsp[-3].i;
+		      long walled = yyvsp[-1].i;
+		      long filling = yyvsp[0].i;
+		      if (fg == INVALID_TYPE || fg >= MAX_TYPE)
+			  lc_error("INIT_MAP: Invalid foreground type.");
+		      if (bg == INVALID_TYPE || bg >= MAX_TYPE)
+			  lc_error("INIT_MAP: Invalid background type.");
+		      if (joined && fg != CORR && fg != ROOM)
+			  lc_error("INIT_MAP: Invalid foreground type for joined map.");
+
+		      if (filling == INVALID_TYPE)
+			  lc_error("INIT_MAP: Invalid fill char type.");
+
+		      add_opvars(splev, "iiiiiiiio",
+				 VA_PASS9(LVLINIT_MINES,filling,walled,lit,
+					  joined,smoothed,bg,fg,
+					  SPO_INITLEVEL));
+			max_x_map = COLNO-1;
+			max_y_map = ROWNO;
 		  }
 break;
 case 14:
 {
-			yyval.i = 0;
+		      yyval.i = 0;
 		  }
 break;
 case 15:
 {
-			yyval.i = lev_flags;
-			lev_flags = 0;	/* clear for next user */
+		      yyval.i = yyvsp[0].i;
 		  }
 break;
 case 16:
 {
-			lev_flags |= yyvsp[-2].i;
+		      add_opvars(splev, "o", VA_PASS1(SPO_COPY));
+		      yyval.i = 0;
 		  }
 break;
 case 17:
 {
-			lev_flags |= yyvsp[0].i;
+		      yyval.i = 1;
 		  }
 break;
-case 20:
+case 18:
 {
-			int i, j;
-
-			i = (int) strlen(yyvsp[0].map) + 1;
-			j = (int) strlen(tmpmessage);
-			if (i + j > 255) {
-			   yyerror("Message string too long (>256 characters)");
-			} else {
-			    if (j) tmpmessage[j++] = '\n';
-			    (void) strncpy(tmpmessage+j, yyvsp[0].map, i - 1);
-			    tmpmessage[j + i - 1] = 0;
-			}
-			Free(yyvsp[0].map);
+		      yyval.i = -1;
+		  }
+break;
+case 19:
+{
+		      yyval.i = what_map_char((char) yyvsp[0].i);
+		  }
+break;
+case 22:
+{
+		      add_opvars(splev, "io", VA_PASS2(0, SPO_LEVEL_FLAGS));
 		  }
 break;
 case 23:
 {
-			if(special_lev.nrobjects) {
-			    yyerror("Object registers already initialized!");
-			} else {
-			    special_lev.nrobjects = n_olist;
-			    special_lev.robjects = (char *) alloc(n_olist);
-			    (void) memcpy((genericptr_t)special_lev.robjects,
-					  (genericptr_t)olist, n_olist);
-			}
+		      add_opvars(splev, "io", VA_PASS2(yyvsp[0].i, SPO_LEVEL_FLAGS));
 		  }
 break;
 case 24:
 {
-			if(special_lev.nrmonst) {
-			    yyerror("Monster registers already initialized!");
-			} else {
-			    special_lev.nrmonst = n_mlist;
-			    special_lev.rmonst = (char *) alloc(n_mlist);
-			    (void) memcpy((genericptr_t)special_lev.rmonst,
-					  (genericptr_t)mlist, n_mlist);
-			  }
+		      yyval.i = (yyvsp[-2].i | yyvsp[0].i);
 		  }
 break;
 case 25:
 {
-			tmproom[nrooms] = New(room);
-			tmproom[nrooms]->name = (char *) 0;
-			tmproom[nrooms]->parent = (char *) 0;
-			tmproom[nrooms]->rtype = 0;
-			tmproom[nrooms]->rlit = 0;
-			tmproom[nrooms]->xalign = ERR;
-			tmproom[nrooms]->yalign = ERR;
-			tmproom[nrooms]->x = 0;
-			tmproom[nrooms]->y = 0;
-			tmproom[nrooms]->w = 2;
-			tmproom[nrooms]->h = 2;
-			in_room = 1;
+		      yyval.i = yyvsp[0].i;
 		  }
 break;
-case 31:
+case 26:
 {
-			tmpcor[0] = New(corridor);
-			tmpcor[0]->src.room = -1;
-			ncorridor = 1;
+		      yyval.i = 0;
 		  }
 break;
-case 34:
+case 27:
 {
-			tmpcor[ncorridor] = New(corridor);
-			tmpcor[ncorridor]->src.room = yyvsp[-2].corpos.room;
-			tmpcor[ncorridor]->src.wall = yyvsp[-2].corpos.wall;
-			tmpcor[ncorridor]->src.door = yyvsp[-2].corpos.door;
-			tmpcor[ncorridor]->dest.room = yyvsp[0].corpos.room;
-			tmpcor[ncorridor]->dest.wall = yyvsp[0].corpos.wall;
-			tmpcor[ncorridor]->dest.door = yyvsp[0].corpos.door;
-			ncorridor++;
-			if (ncorridor >= MAX_OF_TYPE) {
-				yyerror("Too many corridors in level!");
-				ncorridor--;
-			}
+		      yyval.i = 1 + yyvsp[0].i;
 		  }
 break;
-case 35:
+case 28:
 {
-			tmpcor[ncorridor] = New(corridor);
-			tmpcor[ncorridor]->src.room = yyvsp[-2].corpos.room;
-			tmpcor[ncorridor]->src.wall = yyvsp[-2].corpos.wall;
-			tmpcor[ncorridor]->src.door = yyvsp[-2].corpos.door;
-			tmpcor[ncorridor]->dest.room = -1;
-			tmpcor[ncorridor]->dest.wall = yyvsp[0].i;
-			ncorridor++;
-			if (ncorridor >= MAX_OF_TYPE) {
-				yyerror("Too many corridors in level!");
-				ncorridor--;
-			}
+		      yyval.i = yyvsp[-1].i;
 		  }
 break;
-case 36:
+case 96:
 {
-			if ((unsigned) yyvsp[-5].i >= nrooms)
-			    yyerror("Wrong room number!");
+		      struct lc_vardefs *vd;
+		      if ((vd = vardef_defined(variable_definitions, yyvsp[0].map, 1))) {
+			  if (!(vd->var_type & SPOVAR_ARRAY))
+			      lc_error("Trying to shuffle non-array variable '%s'", yyvsp[0].map);
+		      } else lc_error("Trying to shuffle undefined variable '%s'", yyvsp[0].map);
+		      add_opvars(splev, "so", VA_PASS2(yyvsp[0].map, SPO_SHUFFLE_ARRAY));
+		      Free(yyvsp[0].map);
+		  }
+break;
+case 97:
+{
+		      variable_definitions = add_vardef_type(variable_definitions, yyvsp[-2].map, SPOVAR_INT);
+		      add_opvars(splev, "iso", VA_PASS3(0, yyvsp[-2].map, SPO_VAR_INIT));
+		      Free(yyvsp[-2].map);
+		  }
+break;
+case 98:
+{
+		      variable_definitions = add_vardef_type(variable_definitions, yyvsp[-4].map, SPOVAR_SEL);
+		      add_opvars(splev, "iso", VA_PASS3(0, yyvsp[-4].map, SPO_VAR_INIT));
+		      Free(yyvsp[-4].map);
+		  }
+break;
+case 99:
+{
+		      variable_definitions = add_vardef_type(variable_definitions, yyvsp[-2].map, SPOVAR_STRING);
+		      add_opvars(splev, "iso", VA_PASS3(0, yyvsp[-2].map, SPO_VAR_INIT));
+		      Free(yyvsp[-2].map);
+		  }
+break;
+case 100:
+{
+		      variable_definitions = add_vardef_type(variable_definitions, yyvsp[-4].map, SPOVAR_MAPCHAR);
+		      add_opvars(splev, "iso", VA_PASS3(0, yyvsp[-4].map, SPO_VAR_INIT));
+		      Free(yyvsp[-4].map);
+		  }
+break;
+case 101:
+{
+		      variable_definitions = add_vardef_type(variable_definitions, yyvsp[-4].map, SPOVAR_MONST);
+		      add_opvars(splev, "iso", VA_PASS3(0, yyvsp[-4].map, SPO_VAR_INIT));
+		      Free(yyvsp[-4].map);
+		  }
+break;
+case 102:
+{
+		      variable_definitions = add_vardef_type(variable_definitions, yyvsp[-4].map, SPOVAR_OBJ);
+		      add_opvars(splev, "iso", VA_PASS3(0, yyvsp[-4].map, SPO_VAR_INIT));
+		      Free(yyvsp[-4].map);
+		  }
+break;
+case 103:
+{
+		      variable_definitions = add_vardef_type(variable_definitions, yyvsp[-2].map, SPOVAR_COORD);
+		      add_opvars(splev, "iso", VA_PASS3(0, yyvsp[-2].map, SPO_VAR_INIT));
+		      Free(yyvsp[-2].map);
+		  }
+break;
+case 104:
+{
+		      variable_definitions = add_vardef_type(variable_definitions, yyvsp[-2].map, SPOVAR_REGION);
+		      add_opvars(splev, "iso", VA_PASS3(0, yyvsp[-2].map, SPO_VAR_INIT));
+		      Free(yyvsp[-2].map);
+		  }
+break;
+case 105:
+{
+		      long n_items = yyvsp[-1].i;
+		      variable_definitions = add_vardef_type(variable_definitions, yyvsp[-4].map, SPOVAR_INT|SPOVAR_ARRAY);
+		      add_opvars(splev, "iso",
+				 VA_PASS3(n_items, yyvsp[-4].map, SPO_VAR_INIT));
+		      Free(yyvsp[-4].map);
+		  }
+break;
+case 106:
+{
+		      long n_items = yyvsp[-1].i;
+		      variable_definitions = add_vardef_type(variable_definitions, yyvsp[-4].map, SPOVAR_COORD|SPOVAR_ARRAY);
+		      add_opvars(splev, "iso",
+				 VA_PASS3(n_items, yyvsp[-4].map, SPO_VAR_INIT));
+		      Free(yyvsp[-4].map);
+		  }
+break;
+case 107:
+{
+		      long n_items = yyvsp[-1].i;
+		      variable_definitions = add_vardef_type(variable_definitions, yyvsp[-4].map, SPOVAR_REGION|SPOVAR_ARRAY);
+		      add_opvars(splev, "iso",
+				 VA_PASS3(n_items, yyvsp[-4].map, SPO_VAR_INIT));
+		      Free(yyvsp[-4].map);
+		  }
+break;
+case 108:
+{
+		      long n_items = yyvsp[-1].i;
+		      variable_definitions = add_vardef_type(variable_definitions, yyvsp[-6].map, SPOVAR_MAPCHAR|SPOVAR_ARRAY);
+		      add_opvars(splev, "iso",
+				 VA_PASS3(n_items, yyvsp[-6].map, SPO_VAR_INIT));
+		      Free(yyvsp[-6].map);
+		  }
+break;
+case 109:
+{
+		      long n_items = yyvsp[-1].i;
+		      variable_definitions = add_vardef_type(variable_definitions, yyvsp[-6].map, SPOVAR_MONST|SPOVAR_ARRAY);
+		      add_opvars(splev, "iso",
+				 VA_PASS3(n_items, yyvsp[-6].map, SPO_VAR_INIT));
+		      Free(yyvsp[-6].map);
+		  }
+break;
+case 110:
+{
+		      long n_items = yyvsp[-1].i;
+		      variable_definitions = add_vardef_type(variable_definitions, yyvsp[-6].map, SPOVAR_OBJ|SPOVAR_ARRAY);
+		      add_opvars(splev, "iso",
+				 VA_PASS3(n_items, yyvsp[-6].map, SPO_VAR_INIT));
+		      Free(yyvsp[-6].map);
+		  }
+break;
+case 111:
+{
+		      long n_items = yyvsp[-1].i;
+		      variable_definitions = add_vardef_type(variable_definitions, yyvsp[-4].map, SPOVAR_STRING|SPOVAR_ARRAY);
+		      add_opvars(splev, "iso",
+				 VA_PASS3(n_items, yyvsp[-4].map, SPO_VAR_INIT));
+		      Free(yyvsp[-4].map);
+		  }
+break;
+case 112:
+{
+		      add_opvars(splev, "O", VA_PASS1(yyvsp[0].i));
+		      yyval.i = 1;
+		  }
+break;
+case 113:
+{
+		      add_opvars(splev, "O", VA_PASS1(yyvsp[0].i));
+		      yyval.i = 1 + yyvsp[-2].i;
+		  }
+break;
+case 114:
+{
+		      add_opvars(splev, "M", VA_PASS1(yyvsp[0].i));
+		      yyval.i = 1;
+		  }
+break;
+case 115:
+{
+		      add_opvars(splev, "M", VA_PASS1(yyvsp[0].i));
+		      yyval.i = 1 + yyvsp[-2].i;
+		  }
+break;
+case 116:
+{
+		      add_opvars(splev, "m", VA_PASS1(yyvsp[0].i));
+		      yyval.i = 1;
+		  }
+break;
+case 117:
+{
+		      add_opvars(splev, "m", VA_PASS1(yyvsp[0].i));
+		      yyval.i = 1 + yyvsp[-2].i;
+		  }
+break;
+case 118:
+{
+		      yyval.i = 1;
+		  }
+break;
+case 119:
+{
+		      yyval.i = 1 + yyvsp[-2].i;
+		  }
+break;
+case 120:
+{
+		      add_opvars(splev, "c", VA_PASS1(yyvsp[0].i));
+		      yyval.i = 1;
+		  }
+break;
+case 121:
+{
+		      add_opvars(splev, "c", VA_PASS1(yyvsp[0].i));
+		      yyval.i = 1 + yyvsp[-2].i;
+		  }
+break;
+case 122:
+{
+		      yyval.i = 1;
+		  }
+break;
+case 123:
+{
+		      yyval.i = 1 + yyvsp[-2].i;
+		  }
+break;
+case 124:
+{
+		      yyval.i = 1;
+		  }
+break;
+case 125:
+{
+		      yyval.i = 1 + yyvsp[-2].i;
+		  }
+break;
+case 126:
+{
+		      struct lc_funcdefs *funcdef;
+
+		      if (in_function_definition)
+			  lc_error("Recursively defined functions not allowed (function %s).", yyvsp[-1].map);
+
+		      in_function_definition++;
+
+		      if (funcdef_defined(function_definitions, yyvsp[-1].map, 1))
+			  lc_error("Function '%s' already defined once.", yyvsp[-1].map);
+
+		      funcdef = funcdef_new(-1, yyvsp[-1].map);
+		      funcdef->next = function_definitions;
+		      function_definitions = funcdef;
+		      function_splev_backup = splev;
+		      splev = &(funcdef->code);
+		      Free(yyvsp[-1].map);
+		      curr_function = funcdef;
+		      function_tmp_var_defs = variable_definitions;
+		      variable_definitions = NULL;
+		  }
+break;
+case 127:
+{
+		      /* nothing */
+		  }
+break;
+case 128:
+{
+		      add_opvars(splev, "io", VA_PASS2(0, SPO_RETURN));
+		      splev = function_splev_backup;
+		      in_function_definition--;
+		      curr_function = NULL;
+		      vardef_free_all(variable_definitions);
+		      variable_definitions = function_tmp_var_defs;
+		  }
+break;
+case 129:
+{
+		      struct lc_funcdefs *tmpfunc;
+		      tmpfunc = funcdef_defined(function_definitions, yyvsp[-3].map, 1);
+		      if (tmpfunc) {
+			  long l;
+			  long nparams = strlen( yyvsp[-1].map );
+			  char *fparamstr = funcdef_paramtypes(tmpfunc);
+			  if (strcmp(yyvsp[-1].map, fparamstr)) {
+			      char *tmps = strdup(decode_parm_str(fparamstr));
+			      lc_error("Function '%s' requires params '%s', got '%s' instead.", yyvsp[-3].map, tmps, decode_parm_str(yyvsp[-1].map));
+			      Free(tmps);
+			  }
+			  Free(fparamstr);
+			  Free(yyvsp[-1].map);
+			  if (!(tmpfunc->n_called)) {
+			      /* we haven't called the function yet, so insert it in the code */
+			      struct opvar *jmp = New(struct opvar);
+			      set_opvar_int(jmp, splev->n_opcodes+1);
+			      add_opcode(splev, SPO_PUSH, jmp);
+			      add_opcode(splev, SPO_JMP, NULL); /* we must jump past it first, then CALL it, due to RETURN. */
+
+			      tmpfunc->addr = splev->n_opcodes;
+
+			      { /* init function parameter variables */
+				  struct lc_funcdefs_parm *tfp = tmpfunc->params;
+				  while (tfp) {
+				      add_opvars(splev, "iso",
+						 VA_PASS3(0, tfp->name,
+							  SPO_VAR_INIT));
+				      tfp = tfp->next;
+				  }
+			      }
+
+			      splev_add_from(splev, &(tmpfunc->code));
+			      set_opvar_int(jmp, splev->n_opcodes - jmp->vardata.l);
+			  }
+			  l = tmpfunc->addr - splev->n_opcodes - 2;
+			  add_opvars(splev, "iio",
+				     VA_PASS3(nparams, l, SPO_CALL));
+			  tmpfunc->n_called++;
+		      } else {
+			  lc_error("Function '%s' not defined.", yyvsp[-3].map);
+		      }
+		      Free(yyvsp[-3].map);
+		  }
+break;
+case 130:
+{
+		      add_opcode(splev, SPO_EXIT, NULL);
+		  }
+break;
+case 131:
+{
+		      yyval.i = 100;
+		  }
+break;
+case 132:
+{
+		      yyval.i = yyvsp[0].i;
+		  }
+break;
+case 133:
+{
+		      /* val > rn2(100) */
+		      add_opvars(splev, "iio",
+				 VA_PASS3((long)yyvsp[0].i, 100, SPO_RN2));
+		      yyval.i = SPO_JG;
+                  }
+break;
+case 134:
+{
+		      yyval.i = yyvsp[-2].i;
+                  }
+break;
+case 135:
+{
+		      /* boolean, explicit foo != 0 */
+		      add_opvars(splev, "i", VA_PASS1(0));
+		      yyval.i = SPO_JNE;
+                  }
+break;
+case 136:
+{
+		      is_inconstant_number = 0;
+		  }
+break;
+case 137:
+{
+		      struct opvar *chkjmp;
+		      if (in_switch_statement > 0)
+			  lc_error("Cannot nest switch-statements.");
+
+		      in_switch_statement++;
+
+		      n_switch_case_list = 0;
+		      switch_default_case = NULL;
+
+		      if (!is_inconstant_number)
+			  add_opvars(splev, "o", VA_PASS1(SPO_RN2));
+		      is_inconstant_number = 0;
+
+		      chkjmp = New(struct opvar);
+		      set_opvar_int(chkjmp, splev->n_opcodes+1);
+		      switch_check_jump = chkjmp;
+		      add_opcode(splev, SPO_PUSH, chkjmp);
+		      add_opcode(splev, SPO_JMP, NULL);
+		      break_stmt_start();
+		  }
+break;
+case 138:
+{
+		      struct opvar *endjump = New(struct opvar);
+		      int i;
+
+		      set_opvar_int(endjump, splev->n_opcodes+1);
+
+		      add_opcode(splev, SPO_PUSH, endjump);
+		      add_opcode(splev, SPO_JMP, NULL);
+
+		      set_opvar_int(switch_check_jump,
+			     splev->n_opcodes - switch_check_jump->vardata.l);
+
+		      for (i = 0; i < n_switch_case_list; i++) {
+			  add_opvars(splev, "oio",
+				     VA_PASS3(SPO_COPY,
+					      switch_case_value[i], SPO_CMP));
+			  set_opvar_int(switch_case_list[i],
+			 switch_case_list[i]->vardata.l - splev->n_opcodes-1);
+			  add_opcode(splev, SPO_PUSH, switch_case_list[i]);
+			  add_opcode(splev, SPO_JE, NULL);
+		      }
+
+		      if (switch_default_case) {
+			  set_opvar_int(switch_default_case,
+			 switch_default_case->vardata.l - splev->n_opcodes-1);
+			  add_opcode(splev, SPO_PUSH, switch_default_case);
+			  add_opcode(splev, SPO_JMP, NULL);
+		      }
+
+		      set_opvar_int(endjump, splev->n_opcodes - endjump->vardata.l);
+
+		      break_stmt_end(splev);
+
+		      add_opcode(splev, SPO_POP, NULL); /* get rid of the value in stack */
+		      in_switch_statement--;
+
+
+		  }
+break;
+case 141:
+{
+		      if (n_switch_case_list < MAX_SWITCH_CASES) {
+			  struct opvar *tmppush = New(struct opvar);
+			  set_opvar_int(tmppush, splev->n_opcodes);
+			  switch_case_value[n_switch_case_list] = yyvsp[-1].i;
+			  switch_case_list[n_switch_case_list++] = tmppush;
+		      } else lc_error("Too many cases in a switch.");
+		  }
+break;
+case 142:
+{
+		  }
+break;
+case 143:
+{
+		      struct opvar *tmppush = New(struct opvar);
+
+		      if (switch_default_case)
+			  lc_error("Switch default case already used.");
+
+		      set_opvar_int(tmppush, splev->n_opcodes);
+		      switch_default_case = tmppush;
+		  }
+break;
+case 144:
+{
+		  }
+break;
+case 145:
+{
+		      if (!allow_break_statements)
+			  lc_error("Cannot use BREAK outside a statement block.");
+		      else {
+			  break_stmt_new(splev, splev->n_opcodes);
+		      }
+		  }
+break;
+case 148:
+{
+		      char buf[256], buf2[256];
+
+		      if (n_forloops >= MAX_NESTED_IFS) {
+			  lc_error("FOR: Too deeply nested loops.");
+			  n_forloops = MAX_NESTED_IFS - 1;
+		      }
+
+		      /* first, define a variable for the for-loop end value */
+		      snprintf(buf, 255, "%s end", yyvsp[-4].map);
+		      /* the value of which is already in stack (the 2nd math_expr) */
+		      add_opvars(splev, "iso", VA_PASS3(0, buf, SPO_VAR_INIT));
+
+		      variable_definitions = add_vardef_type(variable_definitions,
+							     yyvsp[-4].map, SPOVAR_INT);
+		      /* define the for-loop variable. value is in stack (1st math_expr) */
+		      add_opvars(splev, "iso", VA_PASS3(0, yyvsp[-4].map, SPO_VAR_INIT));
+
+		      /* calculate value for the loop "step" variable */
+		      snprintf(buf2, 255, "%s step", yyvsp[-4].map);
+		      /* end - start */
+		      add_opvars(splev, "vvo",
+				 VA_PASS3(buf, yyvsp[-4].map, SPO_MATH_SUB));
+		      /* sign of that */
+		      add_opvars(splev, "o", VA_PASS1(SPO_MATH_SIGN));
+		      /* save the sign into the step var */
+		      add_opvars(splev, "iso",
+				 VA_PASS3(0, buf2, SPO_VAR_INIT));
+
+		      forloop_list[n_forloops].varname = strdup(yyvsp[-4].map);
+		      forloop_list[n_forloops].jmp_point = splev->n_opcodes;
+
+		      n_forloops++;
+		      Free(yyvsp[-4].map);
+		  }
+break;
+case 149:
+{
+		      /* nothing */
+		      break_stmt_start();
+		  }
+break;
+case 150:
+{
+		      char buf[256], buf2[256];
+		      n_forloops--;
+		      snprintf(buf, 255, "%s step", forloop_list[n_forloops].varname);
+		      snprintf(buf2, 255, "%s end", forloop_list[n_forloops].varname);
+		      /* compare for-loop var to end value */
+		      add_opvars(splev, "vvo",
+				 VA_PASS3(forloop_list[n_forloops].varname,
+					  buf2, SPO_CMP));
+		      /* var + step */
+		      add_opvars(splev, "vvo",
+				VA_PASS3(buf, forloop_list[n_forloops].varname,
+					 SPO_MATH_ADD));
+		      /* for-loop var = (for-loop var + step) */
+		      add_opvars(splev, "iso",
+				 VA_PASS3(0, forloop_list[n_forloops].varname,
+					  SPO_VAR_INIT));
+		      /* jump back if compared values were not equal */
+		      add_opvars(splev, "io",
+				 VA_PASS2(
+		    forloop_list[n_forloops].jmp_point - splev->n_opcodes - 1,
+					  SPO_JNE));
+		      Free(forloop_list[n_forloops].varname);
+		      break_stmt_end(splev);
+		  }
+break;
+case 151:
+{
+		      struct opvar *tmppush = New(struct opvar);
+
+		      if (n_if_list >= MAX_NESTED_IFS) {
+			  lc_error("LOOP: Too deeply nested conditionals.");
+			  n_if_list = MAX_NESTED_IFS - 1;
+		      }
+		      set_opvar_int(tmppush, splev->n_opcodes);
+		      if_list[n_if_list++] = tmppush;
+
+		      add_opvars(splev, "o", VA_PASS1(SPO_DEC));
+		      break_stmt_start();
+		  }
+break;
+case 152:
+{
+		      struct opvar *tmppush;
+
+		      add_opvars(splev, "oio", VA_PASS3(SPO_COPY, 0, SPO_CMP));
+
+		      tmppush = (struct opvar *) if_list[--n_if_list];
+		      set_opvar_int(tmppush, tmppush->vardata.l - splev->n_opcodes-1);
+		      add_opcode(splev, SPO_PUSH, tmppush);
+		      add_opcode(splev, SPO_JG, NULL);
+		      add_opcode(splev, SPO_POP, NULL); /* get rid of the count value in stack */
+		      break_stmt_end(splev);
+		  }
+break;
+case 153:
+{
+		      struct opvar *tmppush2 = New(struct opvar);
+
+		      if (n_if_list >= MAX_NESTED_IFS) {
+			  lc_error("IF: Too deeply nested conditionals.");
+			  n_if_list = MAX_NESTED_IFS - 1;
+		      }
+
+		      add_opcode(splev, SPO_CMP, NULL);
+
+		      set_opvar_int(tmppush2, splev->n_opcodes+1);
+
+		      if_list[n_if_list++] = tmppush2;
+
+		      add_opcode(splev, SPO_PUSH, tmppush2);
+
+		      add_opcode(splev, reverse_jmp_opcode( yyvsp[-1].i ), NULL);
+
+		  }
+break;
+case 154:
+{
+		      if (n_if_list > 0) {
+			  struct opvar *tmppush;
+			  tmppush = (struct opvar *) if_list[--n_if_list];
+			  set_opvar_int(tmppush, splev->n_opcodes - tmppush->vardata.l);
+		      } else lc_error("IF: Huh?!  No start address?");
+		  }
+break;
+case 155:
+{
+		      struct opvar *tmppush2 = New(struct opvar);
+
+		      if (n_if_list >= MAX_NESTED_IFS) {
+			  lc_error("IF: Too deeply nested conditionals.");
+			  n_if_list = MAX_NESTED_IFS - 1;
+		      }
+
+		      add_opcode(splev, SPO_CMP, NULL);
+
+		      set_opvar_int(tmppush2, splev->n_opcodes+1);
+
+		      if_list[n_if_list++] = tmppush2;
+
+		      add_opcode(splev, SPO_PUSH, tmppush2);
+
+		      add_opcode(splev, reverse_jmp_opcode( yyvsp[0].i ), NULL);
+
+		  }
+break;
+case 156:
+{
+		     /* do nothing */
+		  }
+break;
+case 157:
+{
+		      if (n_if_list > 0) {
+			  struct opvar *tmppush;
+			  tmppush = (struct opvar *) if_list[--n_if_list];
+			  set_opvar_int(tmppush, splev->n_opcodes - tmppush->vardata.l);
+		      } else lc_error("IF: Huh?!  No start address?");
+		  }
+break;
+case 158:
+{
+		      if (n_if_list > 0) {
+			  struct opvar *tmppush = New(struct opvar);
+			  struct opvar *tmppush2;
+
+			  set_opvar_int(tmppush, splev->n_opcodes+1);
+			  add_opcode(splev, SPO_PUSH, tmppush);
+
+			  add_opcode(splev, SPO_JMP, NULL);
+
+			  tmppush2 = (struct opvar *) if_list[--n_if_list];
+
+			  set_opvar_int(tmppush2, splev->n_opcodes - tmppush2->vardata.l);
+			  if_list[n_if_list++] = tmppush;
+		      } else lc_error("IF: Huh?!  No else-part address?");
+		  }
+break;
+case 159:
+{
+		      if (n_if_list > 0) {
+			  struct opvar *tmppush;
+			  tmppush = (struct opvar *) if_list[--n_if_list];
+			  set_opvar_int(tmppush, splev->n_opcodes - tmppush->vardata.l);
+		      } else lc_error("IF: Huh?! No end address?");
+		  }
+break;
+case 160:
+{
+		      add_opvars(splev, "o", VA_PASS1(SPO_MESSAGE));
+		  }
+break;
+case 161:
+{
+		      add_opvars(splev, "iiiiiio",
+			      VA_PASS7(-1,  0, -1, -1, -1, -1, SPO_CORRIDOR));
+		  }
+break;
+case 162:
+{
+		      add_opvars(splev, "iiiiiio",
+			      VA_PASS7(-1, yyvsp[0].i, -1, -1, -1, -1, SPO_CORRIDOR));
+		  }
+break;
+case 163:
+{
+		      add_opvars(splev, "iiiiiio",
+			      VA_PASS7(-1, -1, -1, -1, -1, -1, SPO_CORRIDOR));
+		  }
+break;
+case 164:
+{
+		      add_opvars(splev, "iiiiiio",
+				 VA_PASS7(yyvsp[-2].corpos.room, yyvsp[-2].corpos.door, yyvsp[-2].corpos.wall,
+					  yyvsp[0].corpos.room, yyvsp[0].corpos.door, yyvsp[0].corpos.wall,
+					  SPO_CORRIDOR));
+		  }
+break;
+case 165:
+{
+		      add_opvars(splev, "iiiiiio",
+				 VA_PASS7(yyvsp[-2].corpos.room, yyvsp[-2].corpos.door, yyvsp[-2].corpos.wall,
+					  -1, -1, (long)yyvsp[0].i,
+					  SPO_CORRIDOR));
+		  }
+break;
+case 166:
+{
 			yyval.corpos.room = yyvsp[-5].i;
 			yyval.corpos.wall = yyvsp[-3].i;
 			yyval.corpos.door = yyvsp[-1].i;
 		  }
 break;
-case 37:
-{
-			store_room();
-		  }
-break;
-case 38:
-{
-			store_room();
-		  }
-break;
-case 39:
-{
-			tmproom[nrooms] = New(room);
-			tmproom[nrooms]->parent = yyvsp[-1].map;
-			tmproom[nrooms]->name = (char *) 0;
-			tmproom[nrooms]->rtype = yyvsp[-9].i;
-			tmproom[nrooms]->rlit = yyvsp[-7].i;
-			tmproom[nrooms]->filled = yyvsp[0].i;
-			tmproom[nrooms]->xalign = ERR;
-			tmproom[nrooms]->yalign = ERR;
-			tmproom[nrooms]->x = current_coord.x;
-			tmproom[nrooms]->y = current_coord.y;
-			tmproom[nrooms]->w = current_size.width;
-			tmproom[nrooms]->h = current_size.height;
-			in_room = 1;
-		  }
-break;
-case 40:
-{
-			tmproom[nrooms] = New(room);
-			tmproom[nrooms]->name = (char *) 0;
-			tmproom[nrooms]->parent = (char *) 0;
-			tmproom[nrooms]->rtype = yyvsp[-9].i;
-			tmproom[nrooms]->rlit = yyvsp[-7].i;
-			tmproom[nrooms]->filled = yyvsp[0].i;
-			tmproom[nrooms]->xalign = current_align.x;
-			tmproom[nrooms]->yalign = current_align.y;
-			tmproom[nrooms]->x = current_coord.x;
-			tmproom[nrooms]->y = current_coord.y;
-			tmproom[nrooms]->w = current_size.width;
-			tmproom[nrooms]->h = current_size.height;
-			in_room = 1;
-		  }
-break;
-case 41:
-{
-			yyval.i = 1;
-		  }
-break;
-case 42:
-{
-			yyval.i = yyvsp[0].i;
-		  }
-break;
-case 43:
-{
-			if ( yyvsp[-3].i < 1 || yyvsp[-3].i > 5 ||
-			    yyvsp[-1].i < 1 || yyvsp[-1].i > 5 ) {
-			    yyerror("Room position should be between 1 & 5!");
-			} else {
-			    current_coord.x = yyvsp[-3].i;
-			    current_coord.y = yyvsp[-1].i;
-			}
-		  }
-break;
-case 44:
-{
-			current_coord.x = current_coord.y = ERR;
-		  }
-break;
-case 45:
-{
-			if ( yyvsp[-3].i < 0 || yyvsp[-1].i < 0) {
-			    yyerror("Invalid subroom position !");
-			} else {
-			    current_coord.x = yyvsp[-3].i;
-			    current_coord.y = yyvsp[-1].i;
-			}
-		  }
-break;
-case 46:
-{
-			current_coord.x = current_coord.y = ERR;
-		  }
-break;
-case 47:
-{
-			current_align.x = yyvsp[-3].i;
-			current_align.y = yyvsp[-1].i;
-		  }
-break;
-case 48:
-{
-			current_align.x = current_align.y = ERR;
-		  }
-break;
-case 49:
-{
-			current_size.width = yyvsp[-3].i;
-			current_size.height = yyvsp[-1].i;
-		  }
-break;
-case 50:
-{
-			current_size.height = current_size.width = ERR;
-		  }
-break;
-case 66:
-{
-			if (tmproom[nrooms]->name)
-			    yyerror("This room already has a name!");
-			else
-			    tmproom[nrooms]->name = yyvsp[0].map;
-		  }
-break;
-case 67:
-{
-			if (tmproom[nrooms]->chance)
-			    yyerror("This room already assigned a chance!");
-			else if (tmproom[nrooms]->rtype == OROOM)
-			    yyerror("Only typed rooms can have a chance!");
-			else if (yyvsp[0].i < 1 || yyvsp[0].i > 99)
-			    yyerror("The chance is supposed to be percentile.");
-			else
-			    tmproom[nrooms]->chance = yyvsp[0].i;
-		   }
-break;
-case 68:
-{
-			/* ERR means random here */
-			if (yyvsp[-2].i == ERR && yyvsp[0].i != ERR) {
-		     yyerror("If the door wall is random, so must be its pos!");
-			} else {
-			    tmprdoor[ndoor] = New(room_door);
-			    tmprdoor[ndoor]->secret = yyvsp[-6].i;
-			    tmprdoor[ndoor]->mask = yyvsp[-4].i;
-			    tmprdoor[ndoor]->wall = yyvsp[-2].i;
-			    tmprdoor[ndoor]->pos = yyvsp[0].i;
-			    ndoor++;
-			    if (ndoor >= MAX_OF_TYPE) {
-				    yyerror("Too many doors in room!");
-				    ndoor--;
-			    }
-			}
-		  }
-break;
-case 75:
-{
-			maze.filling = (schar) yyvsp[0].i;
-			if (index(yyvsp[-2].map, '.'))
-			    yyerror("Invalid dot ('.') in level name.");
-			if ((int) strlen(yyvsp[-2].map) > 8)
-			    yyerror("Level names limited to 8 characters.");
-			yyval.map = yyvsp[-2].map;
-			in_room = 0;
-			n_plist = n_mlist = n_olist = 0;
-		  }
-break;
-case 76:
-{
-			yyval.i = get_floor_type((char)yyvsp[0].i);
-		  }
-break;
-case 77:
-{
-			yyval.i = -1;
-		  }
-break;
-case 80:
-{
-			store_part();
-		  }
-break;
-case 81:
-{
-			tmppart[npart] = New(mazepart);
-			tmppart[npart]->halign = 1;
-			tmppart[npart]->valign = 1;
-			tmppart[npart]->nrobjects = 0;
-			tmppart[npart]->nloc = 0;
-			tmppart[npart]->nrmonst = 0;
-			tmppart[npart]->xsize = 1;
-			tmppart[npart]->ysize = 1;
-			tmppart[npart]->map = (char **) alloc(sizeof(char *));
-			tmppart[npart]->map[0] = (char *) alloc(1);
-			tmppart[npart]->map[0][0] = STONE;
-			max_x_map = COLNO-1;
-			max_y_map = ROWNO;
-		  }
-break;
-case 82:
-{
-			tmppart[npart] = New(mazepart);
-			tmppart[npart]->halign = yyvsp[-1].i % 10;
-			tmppart[npart]->valign = yyvsp[-1].i / 10;
-			tmppart[npart]->nrobjects = 0;
-			tmppart[npart]->nloc = 0;
-			tmppart[npart]->nrmonst = 0;
-			scan_map(yyvsp[0].map);
-			Free(yyvsp[0].map);
-		  }
-break;
-case 83:
-{
-			yyval.i = yyvsp[-2].i + (yyvsp[0].i * 10);
-		  }
-break;
-case 90:
-{
-			if (tmppart[npart]->nrobjects) {
-			    yyerror("Object registers already initialized!");
-			} else {
-			    tmppart[npart]->robjects = (char *)alloc(n_olist);
-			    (void) memcpy((genericptr_t)tmppart[npart]->robjects,
-					  (genericptr_t)olist, n_olist);
-			    tmppart[npart]->nrobjects = n_olist;
-			}
-		  }
-break;
-case 91:
-{
-			if (tmppart[npart]->nloc) {
-			    yyerror("Location registers already initialized!");
-			} else {
-			    register int i;
-			    tmppart[npart]->rloc_x = (char *) alloc(n_plist);
-			    tmppart[npart]->rloc_y = (char *) alloc(n_plist);
-			    for(i=0;i<n_plist;i++) {
-				tmppart[npart]->rloc_x[i] = plist[i].x;
-				tmppart[npart]->rloc_y[i] = plist[i].y;
-			    }
-			    tmppart[npart]->nloc = n_plist;
-			}
-		  }
-break;
-case 92:
-{
-			if (tmppart[npart]->nrmonst) {
-			    yyerror("Monster registers already initialized!");
-			} else {
-			    tmppart[npart]->rmonst = (char *) alloc(n_mlist);
-			    (void) memcpy((genericptr_t)tmppart[npart]->rmonst,
-					  (genericptr_t)mlist, n_mlist);
-			    tmppart[npart]->nrmonst = n_mlist;
-			}
-		  }
-break;
-case 93:
-{
-			if (n_olist < MAX_REGISTERS)
-			    olist[n_olist++] = yyvsp[0].i;
-			else
-			    yyerror("Object list too long!");
-		  }
-break;
-case 94:
-{
-			if (n_olist < MAX_REGISTERS)
-			    olist[n_olist++] = yyvsp[-2].i;
-			else
-			    yyerror("Object list too long!");
-		  }
-break;
-case 95:
-{
-			if (n_mlist < MAX_REGISTERS)
-			    mlist[n_mlist++] = yyvsp[0].i;
-			else
-			    yyerror("Monster list too long!");
-		  }
-break;
-case 96:
-{
-			if (n_mlist < MAX_REGISTERS)
-			    mlist[n_mlist++] = yyvsp[-2].i;
-			else
-			    yyerror("Monster list too long!");
-		  }
-break;
-case 97:
-{
-			if (n_plist < MAX_REGISTERS)
-			    plist[n_plist++] = current_coord;
-			else
-			    yyerror("Location list too long!");
-		  }
-break;
-case 98:
-{
-			if (n_plist < MAX_REGISTERS)
-			    plist[n_plist++] = current_coord;
-			else
-			    yyerror("Location list too long!");
-		  }
-break;
-case 122:
-{
-			tmpmonst[nmons] = New(monster);
-			tmpmonst[nmons]->x = current_coord.x;
-			tmpmonst[nmons]->y = current_coord.y;
-			tmpmonst[nmons]->class = yyvsp[-4].i;
-			tmpmonst[nmons]->peaceful = -1; /* no override */
-			tmpmonst[nmons]->asleep = -1;
-			tmpmonst[nmons]->align = - MAX_REGISTERS - 2;
-			tmpmonst[nmons]->name.str = 0;
-			tmpmonst[nmons]->appear = 0;
-			tmpmonst[nmons]->appear_as.str = 0;
-			tmpmonst[nmons]->chance = yyvsp[-6].i;
-			tmpmonst[nmons]->id = NON_PM;
-			if (!in_room)
-			    check_coord(current_coord.x, current_coord.y,
-					"Monster");
-			if (yyvsp[-2].map) {
-			    int token = get_monster_id(yyvsp[-2].map, (char) yyvsp[-4].i);
-			    if (token == ERR)
-				yywarning(
-			      "Invalid monster name!  Making random monster.");
-			    else
-				tmpmonst[nmons]->id = token;
-			    Free(yyvsp[-2].map);
-			}
-		  }
-break;
-case 123:
-{
-			if (++nmons >= MAX_OF_TYPE) {
-			    yyerror("Too many monsters in room or mazepart!");
-			    nmons--;
-			}
-		  }
-break;
-case 126:
-{
-			tmpmonst[nmons]->name.str = yyvsp[0].map;
-		  }
-break;
-case 127:
-{
-			tmpmonst[nmons]->peaceful = yyvsp[0].i;
-		  }
-break;
-case 128:
-{
-			tmpmonst[nmons]->asleep = yyvsp[0].i;
-		  }
-break;
-case 129:
-{
-			tmpmonst[nmons]->align = yyvsp[0].i;
-		  }
-break;
-case 130:
-{
-			tmpmonst[nmons]->appear = yyvsp[-1].i;
-			tmpmonst[nmons]->appear_as.str = yyvsp[0].map;
-		  }
-break;
-case 131:
-{
-		  }
-break;
-case 132:
-{
-			/* 1: is contents of preceeding object with 2 */
-			/* 2: is a container */
-			/* 0: neither */
-			tmpobj[nobj-1]->containment = 2;
-		  }
-break;
-case 133:
-{
-			tmpobj[nobj] = New(object);
-			tmpobj[nobj]->class = yyvsp[-2].i;
-			tmpobj[nobj]->corpsenm = NON_PM;
-			tmpobj[nobj]->curse_state = -1;
-			tmpobj[nobj]->name.str = 0;
-			tmpobj[nobj]->chance = yyvsp[-4].i;
-			tmpobj[nobj]->id = -1;
-			if (yyvsp[0].map) {
-			    int token = get_object_id(yyvsp[0].map, yyvsp[-2].i);
-			    if (token == ERR)
-				yywarning(
-				"Illegal object name!  Making random object.");
-			     else
-				tmpobj[nobj]->id = token;
-			    Free(yyvsp[0].map);
-			}
-		  }
-break;
-case 134:
-{
-			if (++nobj >= MAX_OF_TYPE) {
-			    yyerror("Too many objects in room or mazepart!");
-			    nobj--;
-			}
-		  }
-break;
-case 135:
-{
-			tmpobj[nobj]->containment = 0;
-			tmpobj[nobj]->x = current_coord.x;
-			tmpobj[nobj]->y = current_coord.y;
-			if (!in_room)
-			    check_coord(current_coord.x, current_coord.y,
-					"Object");
-		  }
-break;
-case 136:
-{
-			tmpobj[nobj]->containment = 1;
-			/* random coordinate, will be overridden anyway */
-			tmpobj[nobj]->x = -MAX_REGISTERS-1;
-			tmpobj[nobj]->y = -MAX_REGISTERS-1;
-		  }
-break;
-case 137:
-{
-			tmpobj[nobj]->spe = -127;
-	/* Note below: we're trying to make as many of these optional as
-	 * possible.  We clearly can't make curse_state, enchantment, and
-	 * monster_id _all_ optional, since ",random" would be ambiguous.
-	 * We can't even just make enchantment mandatory, since if we do that
-	 * alone, ",random" requires too much lookahead to parse.
-	 */
-		  }
-break;
-case 138:
-{
-		  }
-break;
-case 139:
-{
-		  }
-break;
-case 140:
-{
-		  }
-break;
-case 141:
-{
-			tmpobj[nobj]->curse_state = -1;
-		  }
-break;
-case 142:
-{
-			tmpobj[nobj]->curse_state = yyvsp[0].i;
-		  }
-break;
-case 143:
-{
-			int token = get_monster_id(yyvsp[0].map, (char)0);
-			if (token == ERR)	/* "random" */
-			    tmpobj[nobj]->corpsenm = NON_PM - 1;
-			else
-			    tmpobj[nobj]->corpsenm = token;
-			Free(yyvsp[0].map);
-		  }
-break;
-case 144:
-{
-			tmpobj[nobj]->spe = -127;
-		  }
-break;
-case 145:
-{
-			tmpobj[nobj]->spe = yyvsp[0].i;
-		  }
-break;
-case 147:
-{
-		  }
-break;
-case 148:
-{
-			tmpobj[nobj]->name.str = yyvsp[0].map;
-		  }
-break;
-case 149:
-{
-			tmpdoor[ndoor] = New(door);
-			tmpdoor[ndoor]->x = current_coord.x;
-			tmpdoor[ndoor]->y = current_coord.y;
-			tmpdoor[ndoor]->mask = yyvsp[-2].i;
-			if(current_coord.x >= 0 && current_coord.y >= 0 &&
-			   tmpmap[current_coord.y][current_coord.x] != DOOR &&
-			   tmpmap[current_coord.y][current_coord.x] != SDOOR)
-			    yyerror("Door decl doesn't match the map");
-			ndoor++;
-			if (ndoor >= MAX_OF_TYPE) {
-				yyerror("Too many doors in mazepart!");
-				ndoor--;
-			}
-		  }
-break;
-case 150:
-{
-			tmptrap[ntrap] = New(trap);
-			tmptrap[ntrap]->x = current_coord.x;
-			tmptrap[ntrap]->y = current_coord.y;
-			tmptrap[ntrap]->type = yyvsp[-2].i;
-			tmptrap[ntrap]->chance = yyvsp[-4].i;
-			if (!in_room)
-			    check_coord(current_coord.x, current_coord.y,
-					"Trap");
-			if (++ntrap >= MAX_OF_TYPE) {
-				yyerror("Too many traps in room or mazepart!");
-				ntrap--;
-			}
-		  }
-break;
-case 151:
-{
-		        int x, y, dir;
-
-			tmpdb[ndb] = New(drawbridge);
-			x = tmpdb[ndb]->x = current_coord.x;
-			y = tmpdb[ndb]->y = current_coord.y;
-			/* convert dir from a DIRECTION to a DB_DIR */
-			dir = yyvsp[-2].i;
-			switch(dir) {
-			case W_NORTH: dir = DB_NORTH; y--; break;
-			case W_SOUTH: dir = DB_SOUTH; y++; break;
-			case W_EAST:  dir = DB_EAST;  x++; break;
-			case W_WEST:  dir = DB_WEST;  x--; break;
-			default:
-			    yyerror("Invalid drawbridge direction");
-			    break;
-			}
-			tmpdb[ndb]->dir = dir;
-			if (current_coord.x >= 0 && current_coord.y >= 0 &&
-			    !IS_WALL(tmpmap[y][x])) {
-			    char ebuf[60];
-			    Sprintf(ebuf,
-				    "Wall needed for drawbridge (%02d, %02d)",
-				    current_coord.x, current_coord.y);
-			    yyerror(ebuf);
-			}
-
-			if ( yyvsp[0].i == D_ISOPEN )
-			    tmpdb[ndb]->db_open = 1;
-			else if ( yyvsp[0].i == D_CLOSED )
-			    tmpdb[ndb]->db_open = 0;
-			else
-			    yyerror("A drawbridge can only be open or closed!");
-			ndb++;
-			if (ndb >= MAX_OF_TYPE) {
-				yyerror("Too many drawbridges in mazepart!");
-				ndb--;
-			}
-		   }
-break;
-case 152:
-{
-			tmpwalk[nwalk] = New(walk);
-			tmpwalk[nwalk]->x = current_coord.x;
-			tmpwalk[nwalk]->y = current_coord.y;
-			tmpwalk[nwalk]->dir = yyvsp[0].i;
-			nwalk++;
-			if (nwalk >= MAX_OF_TYPE) {
-				yyerror("Too many mazewalks in mazepart!");
-				nwalk--;
-			}
-		  }
-break;
-case 153:
-{
-			wallify_map();
-		  }
-break;
-case 154:
-{
-			tmplad[nlad] = New(lad);
-			tmplad[nlad]->x = current_coord.x;
-			tmplad[nlad]->y = current_coord.y;
-			tmplad[nlad]->up = yyvsp[0].i;
-			if (!in_room)
-			    check_coord(current_coord.x, current_coord.y,
-					"Ladder");
-			nlad++;
-			if (nlad >= MAX_OF_TYPE) {
-				yyerror("Too many ladders in mazepart!");
-				nlad--;
-			}
-		  }
-break;
-case 155:
-{
-			tmpstair[nstair] = New(stair);
-			tmpstair[nstair]->x = current_coord.x;
-			tmpstair[nstair]->y = current_coord.y;
-			tmpstair[nstair]->up = yyvsp[0].i;
-			if (!in_room)
-			    check_coord(current_coord.x, current_coord.y,
-					"Stairway");
-			nstair++;
-			if (nstair >= MAX_OF_TYPE) {
-				yyerror("Too many stairs in room or mazepart!");
-				nstair--;
-			}
-		  }
-break;
-case 156:
-{
-			tmplreg[nlreg] = New(lev_region);
-			tmplreg[nlreg]->in_islev = yyvsp[0].i;
-			tmplreg[nlreg]->inarea.x1 = current_region.x1;
-			tmplreg[nlreg]->inarea.y1 = current_region.y1;
-			tmplreg[nlreg]->inarea.x2 = current_region.x2;
-			tmplreg[nlreg]->inarea.y2 = current_region.y2;
-		  }
-break;
-case 157:
-{
-			tmplreg[nlreg]->del_islev = yyvsp[-2].i;
-			tmplreg[nlreg]->delarea.x1 = current_region.x1;
-			tmplreg[nlreg]->delarea.y1 = current_region.y1;
-			tmplreg[nlreg]->delarea.x2 = current_region.x2;
-			tmplreg[nlreg]->delarea.y2 = current_region.y2;
-			if(yyvsp[0].i)
-			    tmplreg[nlreg]->rtype = LR_UPSTAIR;
-			else
-			    tmplreg[nlreg]->rtype = LR_DOWNSTAIR;
-			tmplreg[nlreg]->rname.str = 0;
-			nlreg++;
-			if (nlreg >= MAX_OF_TYPE) {
-				yyerror("Too many levregions in mazepart!");
-				nlreg--;
-			}
-		  }
-break;
-case 158:
-{
-			tmplreg[nlreg] = New(lev_region);
-			tmplreg[nlreg]->in_islev = yyvsp[0].i;
-			tmplreg[nlreg]->inarea.x1 = current_region.x1;
-			tmplreg[nlreg]->inarea.y1 = current_region.y1;
-			tmplreg[nlreg]->inarea.x2 = current_region.x2;
-			tmplreg[nlreg]->inarea.y2 = current_region.y2;
-		  }
-break;
-case 159:
-{
-			tmplreg[nlreg]->del_islev = yyvsp[-2].i;
-			tmplreg[nlreg]->delarea.x1 = current_region.x1;
-			tmplreg[nlreg]->delarea.y1 = current_region.y1;
-			tmplreg[nlreg]->delarea.x2 = current_region.x2;
-			tmplreg[nlreg]->delarea.y2 = current_region.y2;
-			tmplreg[nlreg]->rtype = LR_PORTAL;
-			tmplreg[nlreg]->rname.str = yyvsp[0].map;
-			nlreg++;
-			if (nlreg >= MAX_OF_TYPE) {
-				yyerror("Too many levregions in mazepart!");
-				nlreg--;
-			}
-		  }
-break;
-case 160:
-{
-			tmplreg[nlreg] = New(lev_region);
-			tmplreg[nlreg]->in_islev = yyvsp[0].i;
-			tmplreg[nlreg]->inarea.x1 = current_region.x1;
-			tmplreg[nlreg]->inarea.y1 = current_region.y1;
-			tmplreg[nlreg]->inarea.x2 = current_region.x2;
-			tmplreg[nlreg]->inarea.y2 = current_region.y2;
-		  }
-break;
-case 161:
-{
-			tmplreg[nlreg]->del_islev = yyvsp[0].i;
-			tmplreg[nlreg]->delarea.x1 = current_region.x1;
-			tmplreg[nlreg]->delarea.y1 = current_region.y1;
-			tmplreg[nlreg]->delarea.x2 = current_region.x2;
-			tmplreg[nlreg]->delarea.y2 = current_region.y2;
-		  }
-break;
-case 162:
-{
-			switch(yyvsp[0].i) {
-			case -1: tmplreg[nlreg]->rtype = LR_TELE; break;
-			case 0: tmplreg[nlreg]->rtype = LR_DOWNTELE; break;
-			case 1: tmplreg[nlreg]->rtype = LR_UPTELE; break;
-			}
-			tmplreg[nlreg]->rname.str = 0;
-			nlreg++;
-			if (nlreg >= MAX_OF_TYPE) {
-				yyerror("Too many levregions in mazepart!");
-				nlreg--;
-			}
-		  }
-break;
-case 163:
-{
-			tmplreg[nlreg] = New(lev_region);
-			tmplreg[nlreg]->in_islev = yyvsp[0].i;
-			tmplreg[nlreg]->inarea.x1 = current_region.x1;
-			tmplreg[nlreg]->inarea.y1 = current_region.y1;
-			tmplreg[nlreg]->inarea.x2 = current_region.x2;
-			tmplreg[nlreg]->inarea.y2 = current_region.y2;
-		  }
-break;
-case 164:
-{
-			tmplreg[nlreg]->del_islev = yyvsp[0].i;
-			tmplreg[nlreg]->delarea.x1 = current_region.x1;
-			tmplreg[nlreg]->delarea.y1 = current_region.y1;
-			tmplreg[nlreg]->delarea.x2 = current_region.x2;
-			tmplreg[nlreg]->delarea.y2 = current_region.y2;
-			tmplreg[nlreg]->rtype = LR_BRANCH;
-			tmplreg[nlreg]->rname.str = 0;
-			nlreg++;
-			if (nlreg >= MAX_OF_TYPE) {
-				yyerror("Too many levregions in mazepart!");
-				nlreg--;
-			}
-		  }
-break;
-case 165:
-{
-			yyval.i = -1;
-		  }
-break;
-case 166:
-{
-			yyval.i = yyvsp[0].i;
-		  }
-break;
 case 167:
 {
-			yyval.i = 0;
-		  }
+		      if ((yyvsp[-2].i < 100) && (yyvsp[-3].i == OROOM))
+			  lc_error("Only typed rooms can have a chance.");
+		      else {
+			  add_opvars(splev, "iii",
+				     VA_PASS3((long)yyvsp[-3].i, (long)yyvsp[-2].i, (long)yyvsp[0].i));
+		      }
+                  }
 break;
 case 168:
 {
-/* This series of if statements is a hack for MSC 5.1.  It seems that its
-   tiny little brain cannot compile if these are all one big if statement. */
-			if (yyvsp[-7].i <= 0 || yyvsp[-7].i >= COLNO)
-				yyerror("Region out of level range!");
-			else if (yyvsp[-5].i < 0 || yyvsp[-5].i >= ROWNO)
-				yyerror("Region out of level range!");
-			else if (yyvsp[-3].i <= 0 || yyvsp[-3].i >= COLNO)
-				yyerror("Region out of level range!");
-			else if (yyvsp[-1].i < 0 || yyvsp[-1].i >= ROWNO)
-				yyerror("Region out of level range!");
-			current_region.x1 = yyvsp[-7].i;
-			current_region.y1 = yyvsp[-5].i;
-			current_region.x2 = yyvsp[-3].i;
-			current_region.y2 = yyvsp[-1].i;
-			yyval.i = 1;
+		      long rflags = yyvsp[0].i;
+
+		      if (rflags == -1) rflags = (1 << 0);
+		      add_opvars(splev, "iiiiiiio",
+				 VA_PASS8(rflags, ERR, ERR,
+					  yyvsp[-3].crd.x, yyvsp[-3].crd.y, yyvsp[-1].sze.width, yyvsp[-1].sze.height,
+					  SPO_SUBROOM));
+		      break_stmt_start();
 		  }
 break;
 case 169:
 {
-			tmpfountain[nfountain] = New(fountain);
-			tmpfountain[nfountain]->x = current_coord.x;
-			tmpfountain[nfountain]->y = current_coord.y;
-			if (!in_room)
-			    check_coord(current_coord.x, current_coord.y,
-					"Fountain");
-			nfountain++;
-			if (nfountain >= MAX_OF_TYPE) {
-			    yyerror("Too many fountains in room or mazepart!");
-			    nfountain--;
-			}
+		      break_stmt_end(splev);
+		      add_opcode(splev, SPO_ENDROOM, NULL);
 		  }
 break;
 case 170:
 {
-			tmpsink[nsink] = New(sink);
-			tmpsink[nsink]->x = current_coord.x;
-			tmpsink[nsink]->y = current_coord.y;
-			nsink++;
-			if (nsink >= MAX_OF_TYPE) {
-				yyerror("Too many sinks in room!");
-				nsink--;
-			}
+		      long rflags = yyvsp[-2].i;
+
+		      if (rflags == -1) rflags = (1 << 0);
+		      add_opvars(splev, "iiiiiiio",
+				 VA_PASS8(rflags,
+					  yyvsp[-3].crd.x, yyvsp[-3].crd.y, yyvsp[-5].crd.x, yyvsp[-5].crd.y,
+					  yyvsp[-1].sze.width, yyvsp[-1].sze.height, SPO_ROOM));
+		      break_stmt_start();
 		  }
 break;
 case 171:
 {
-			tmppool[npool] = New(pool);
-			tmppool[npool]->x = current_coord.x;
-			tmppool[npool]->y = current_coord.y;
-			npool++;
-			if (npool >= MAX_OF_TYPE) {
-				yyerror("Too many pools in room!");
-				npool--;
-			}
+		      break_stmt_end(splev);
+		      add_opcode(splev, SPO_ENDROOM, NULL);
 		  }
 break;
 case 172:
 {
-			tmpdig[ndig] = New(digpos);
-			tmpdig[ndig]->x1 = current_region.x1;
-			tmpdig[ndig]->y1 = current_region.y1;
-			tmpdig[ndig]->x2 = current_region.x2;
-			tmpdig[ndig]->y2 = current_region.y2;
-			ndig++;
-			if (ndig >= MAX_OF_TYPE) {
-				yyerror("Too many diggables in mazepart!");
-				ndig--;
-			}
+			yyval.i = 1;
 		  }
 break;
 case 173:
 {
-			tmppass[npass] = New(digpos);
-			tmppass[npass]->x1 = current_region.x1;
-			tmppass[npass]->y1 = current_region.y1;
-			tmppass[npass]->x2 = current_region.x2;
-			tmppass[npass]->y2 = current_region.y2;
-			npass++;
-			if (npass >= 32) {
-				yyerror("Too many passwalls in mazepart!");
-				npass--;
-			}
+			yyval.i = yyvsp[0].i;
 		  }
 break;
 case 174:
 {
-			tmpreg[nreg] = New(region);
-			tmpreg[nreg]->x1 = current_region.x1;
-			tmpreg[nreg]->y1 = current_region.y1;
-			tmpreg[nreg]->x2 = current_region.x2;
-			tmpreg[nreg]->y2 = current_region.y2;
-			tmpreg[nreg]->rlit = yyvsp[-3].i;
-			tmpreg[nreg]->rtype = yyvsp[-1].i;
-			if(yyvsp[0].i & 1) tmpreg[nreg]->rtype += MAXRTYPE+1;
-			tmpreg[nreg]->rirreg = ((yyvsp[0].i & 2) != 0);
-			if(current_region.x1 > current_region.x2 ||
-			   current_region.y1 > current_region.y2)
-			   yyerror("Region start > end!");
-			if(tmpreg[nreg]->rtype == VAULT &&
-			   (tmpreg[nreg]->rirreg ||
-			    (tmpreg[nreg]->x2 - tmpreg[nreg]->x1 != 1) ||
-			    (tmpreg[nreg]->y2 - tmpreg[nreg]->y1 != 1)))
-				yyerror("Vaults must be exactly 2x2!");
-			if(want_warnings && !tmpreg[nreg]->rirreg &&
-			   current_region.x1 > 0 && current_region.y1 > 0 &&
-			   current_region.x2 < (int)max_x_map &&
-			   current_region.y2 < (int)max_y_map) {
-			    /* check for walls in the room */
-			    char ebuf[60];
-			    register int x, y, nrock = 0;
-
-			    for(y=current_region.y1; y<=current_region.y2; y++)
-				for(x=current_region.x1;
-				    x<=current_region.x2; x++)
-				    if(IS_ROCK(tmpmap[y][x]) ||
-				       IS_DOOR(tmpmap[y][x])) nrock++;
-			    if(nrock) {
-				Sprintf(ebuf,
-					"Rock in room (%02d,%02d,%02d,%02d)?!",
-					current_region.x1, current_region.y1,
-					current_region.x2, current_region.y2);
-				yywarning(ebuf);
-			    }
-			    if (
-		!IS_ROCK(tmpmap[current_region.y1-1][current_region.x1-1]) ||
-		!IS_ROCK(tmpmap[current_region.y2+1][current_region.x1-1]) ||
-		!IS_ROCK(tmpmap[current_region.y1-1][current_region.x2+1]) ||
-		!IS_ROCK(tmpmap[current_region.y2+1][current_region.x2+1])) {
-				Sprintf(ebuf,
-				"NonRock edge in room (%02d,%02d,%02d,%02d)?!",
-					current_region.x1, current_region.y1,
-					current_region.x2, current_region.y2);
-				yywarning(ebuf);
-			    }
-			} else if(tmpreg[nreg]->rirreg &&
-		!IS_ROOM(tmpmap[current_region.y1][current_region.x1])) {
-			    char ebuf[60];
-			    Sprintf(ebuf,
-				    "Rock in irregular room (%02d,%02d)?!",
-				    current_region.x1, current_region.y1);
-			    yyerror(ebuf);
-			}
-			nreg++;
-			if (nreg >= MAX_OF_TYPE) {
-				yyerror("Too many regions in mazepart!");
-				nreg--;
+			if ( yyvsp[-3].i < 1 || yyvsp[-3].i > 5 ||
+			    yyvsp[-1].i < 1 || yyvsp[-1].i > 5 ) {
+			    lc_error("Room positions should be between 1-5: (%li,%li)!", yyvsp[-3].i, yyvsp[-1].i);
+			} else {
+			    yyval.crd.x = yyvsp[-3].i;
+			    yyval.crd.y = yyvsp[-1].i;
 			}
 		  }
 break;
 case 175:
 {
-			tmpaltar[naltar] = New(altar);
-			tmpaltar[naltar]->x = current_coord.x;
-			tmpaltar[naltar]->y = current_coord.y;
-			tmpaltar[naltar]->align = yyvsp[-2].i;
-			tmpaltar[naltar]->shrine = yyvsp[0].i;
-			if (!in_room)
-			    check_coord(current_coord.x, current_coord.y,
-					"Altar");
-			naltar++;
-			if (naltar >= MAX_OF_TYPE) {
-				yyerror("Too many altars in room or mazepart!");
-				naltar--;
-			}
+			yyval.crd.x = yyval.crd.y = ERR;
 		  }
 break;
 case 176:
 {
-			tmpgold[ngold] = New(gold);
-			tmpgold[ngold]->x = current_coord.x;
-			tmpgold[ngold]->y = current_coord.y;
-			tmpgold[ngold]->amount = yyvsp[-2].i;
-			if (!in_room)
-			    check_coord(current_coord.x, current_coord.y,
-					"Gold");
-			ngold++;
-			if (ngold >= MAX_OF_TYPE) {
-				yyerror("Too many golds in room or mazepart!");
-				ngold--;
+			if ( yyvsp[-3].i < 0 || yyvsp[-1].i < 0) {
+			    lc_error("Invalid subroom position (%li,%li)!", yyvsp[-3].i, yyvsp[-1].i);
+			} else {
+			    yyval.crd.x = yyvsp[-3].i;
+			    yyval.crd.y = yyvsp[-1].i;
 			}
 		  }
 break;
 case 177:
 {
-			tmpengraving[nengraving] = New(engraving);
-			tmpengraving[nengraving]->x = current_coord.x;
-			tmpengraving[nengraving]->y = current_coord.y;
-			tmpengraving[nengraving]->engr.str = yyvsp[0].map;
-			tmpengraving[nengraving]->etype = yyvsp[-2].i;
-			if (!in_room)
-			    check_coord(current_coord.x, current_coord.y,
-					"Engraving");
-			nengraving++;
-			if (nengraving >= MAX_OF_TYPE) {
-			    yyerror("Too many engravings in room or mazepart!");
-			    nengraving--;
-			}
+			yyval.crd.x = yyval.crd.y = ERR;
+		  }
+break;
+case 178:
+{
+		      yyval.crd.x = yyvsp[-3].i;
+		      yyval.crd.y = yyvsp[-1].i;
 		  }
 break;
 case 179:
 {
-			yyval.i = - MAX_REGISTERS - 1;
+		      yyval.crd.x = yyval.crd.y = ERR;
+		  }
+break;
+case 180:
+{
+			yyval.sze.width = yyvsp[-3].i;
+			yyval.sze.height = yyvsp[-1].i;
+		  }
+break;
+case 181:
+{
+			yyval.sze.height = yyval.sze.width = ERR;
 		  }
 break;
 case 182:
 {
-			yyval.i = - MAX_REGISTERS - 1;
+			/* ERR means random here */
+			if (yyvsp[-2].i == ERR && yyvsp[0].i != ERR) {
+			    lc_error("If the door wall is random, so must be its pos!");
+			} else {
+			    add_opvars(splev, "iiiio",
+				       VA_PASS5((long)yyvsp[0].i, (long)yyvsp[-4].i, (long)yyvsp[-6].i,
+						(long)yyvsp[-2].i, SPO_ROOM_DOOR));
+			}
 		  }
 break;
-case 185:
+case 183:
 {
-			yyval.map = (char *) 0;
-		  }
-break;
-case 187:
-{
-			yyval.map = (char *) 0;
+		      add_opvars(splev, "io", VA_PASS2((long)yyvsp[-2].i, SPO_DOOR));
 		  }
 break;
 case 188:
 {
+		      yyval.i = yyvsp[0].i;
+		  }
+break;
+case 189:
+{
+		      yyval.i = (yyvsp[-2].i | yyvsp[0].i);
+		  }
+break;
+case 192:
+{
+		      add_opvars(splev, "ciisiio",
+				 VA_PASS7(0, 0, 1, (char *)0, 0, 0, SPO_MAP));
+		      max_x_map = COLNO-1;
+		      max_y_map = ROWNO;
+		  }
+break;
+case 193:
+{
+		      add_opvars(splev, "cii",
+				 VA_PASS3(SP_COORD_PACK((yyvsp[-4].i),(yyvsp[-2].i)),
+					  1, (long)yyvsp[-1].i));
+		      scan_map(yyvsp[0].map, splev);
+		      Free(yyvsp[0].map);
+		  }
+break;
+case 194:
+{
+		      add_opvars(splev, "ii", VA_PASS2(2, (long)yyvsp[-1].i));
+		      scan_map(yyvsp[0].map, splev);
+		      Free(yyvsp[0].map);
+		  }
+break;
+case 199:
+{
+		      add_opvars(splev, "io", VA_PASS2(0, SPO_MONSTER));
+		  }
+break;
+case 200:
+{
+		      add_opvars(splev, "io", VA_PASS2(1, SPO_MONSTER));
+		      in_container_obj++;
+		      break_stmt_start();
+		  }
+break;
+case 201:
+{
+		     break_stmt_end(splev);
+		     in_container_obj--;
+		     add_opvars(splev, "o", VA_PASS1(SPO_END_MONINVENT));
+		 }
+break;
+case 202:
+{
+		      /* nothing */
+		  }
+break;
+case 203:
+{
+		      struct opvar *stopit = New(struct opvar);
+		      set_opvar_int(stopit, SP_M_V_END);
+		      add_opcode(splev, SPO_PUSH, stopit);
+		      yyval.i = 0x0000;
+		  }
+break;
+case 204:
+{
+		      if (( yyvsp[-2].i & yyvsp[0].i ))
+			  lc_error("MONSTER extra info defined twice.");
+		      yyval.i = ( yyvsp[-2].i | yyvsp[0].i );
+		  }
+break;
+case 205:
+{
+		      add_opvars(splev, "i", VA_PASS1(SP_M_V_NAME));
+		      yyval.i = 0x0001;
+		  }
+break;
+case 206:
+{
+		      add_opvars(splev, "ii",
+				 VA_PASS2((long)yyvsp[0].i, SP_M_V_PEACEFUL));
+		      yyval.i = 0x0002;
+		  }
+break;
+case 207:
+{
+		      add_opvars(splev, "ii",
+				 VA_PASS2((long)yyvsp[0].i, SP_M_V_ASLEEP));
+		      yyval.i = 0x0004;
+		  }
+break;
+case 208:
+{
+		      add_opvars(splev, "ii",
+				 VA_PASS2((long)yyvsp[0].i, SP_M_V_ALIGN));
+		      yyval.i = 0x0008;
+		  }
+break;
+case 209:
+{
+		      add_opvars(splev, "ii",
+				 VA_PASS2((long)yyvsp[-1].i, SP_M_V_APPEAR));
+		      yyval.i = 0x0010;
+		  }
+break;
+case 210:
+{
+		      add_opvars(splev, "ii", VA_PASS2(1, SP_M_V_FEMALE));
+		      yyval.i = 0x0020;
+		  }
+break;
+case 211:
+{
+		      add_opvars(splev, "ii", VA_PASS2(1, SP_M_V_INVIS));
+		      yyval.i = 0x0040;
+		  }
+break;
+case 212:
+{
+		      add_opvars(splev, "ii", VA_PASS2(1, SP_M_V_CANCELLED));
+		      yyval.i = 0x0080;
+		  }
+break;
+case 213:
+{
+		      add_opvars(splev, "ii", VA_PASS2(1, SP_M_V_REVIVED));
+		      yyval.i = 0x0100;
+		  }
+break;
+case 214:
+{
+		      add_opvars(splev, "ii", VA_PASS2(1, SP_M_V_AVENGE));
+		      yyval.i = 0x0200;
+		  }
+break;
+case 215:
+{
+		      add_opvars(splev, "i", VA_PASS1(SP_M_V_FLEEING));
+		      yyval.i = 0x0400;
+		  }
+break;
+case 216:
+{
+		      add_opvars(splev, "i", VA_PASS1(SP_M_V_BLINDED));
+		      yyval.i = 0x0800;
+		  }
+break;
+case 217:
+{
+		      add_opvars(splev, "i", VA_PASS1(SP_M_V_PARALYZED));
+		      yyval.i = 0x1000;
+		  }
+break;
+case 218:
+{
+		      add_opvars(splev, "ii", VA_PASS2(1, SP_M_V_STUNNED));
+		      yyval.i = 0x2000;
+		  }
+break;
+case 219:
+{
+		      add_opvars(splev, "ii", VA_PASS2(1, SP_M_V_CONFUSED));
+		      yyval.i = 0x4000;
+		  }
+break;
+case 220:
+{
+		      add_opvars(splev, "ii",
+				 VA_PASS2((long)yyvsp[0].i, SP_M_V_SEENTRAPS));
+		      yyval.i = 0x8000;
+		  }
+break;
+case 221:
+{
+		      int token = get_trap_type(yyvsp[0].map);
+		      if (token == ERR || token == 0)
+			  lc_error("Unknown trap type '%s'!", yyvsp[0].map);
+                      Free(yyvsp[0].map);
+		      yyval.i = (1L << (token - 1));
+		  }
+break;
+case 222:
+{
+		      yyval.i = (long) ~0;
+		  }
+break;
+case 223:
+{
+		      int token = get_trap_type(yyvsp[-2].map);
+		      if (token == ERR || token == 0)
+			  lc_error("Unknown trap type '%s'!", yyvsp[-2].map);
+
+		      if ((1L << (token - 1)) & yyvsp[0].i)
+			  lc_error("Monster seen_traps, trap '%s' listed twice.", yyvsp[-2].map);
+                      Free(yyvsp[-2].map);
+		      yyval.i = ((1L << (token - 1)) | yyvsp[0].i);
+		  }
+break;
+case 224:
+{
+		      long cnt = 0;
+		      if (in_container_obj) cnt |= SP_OBJ_CONTENT;
+		      add_opvars(splev, "io", VA_PASS2(cnt, SPO_OBJECT));
+		  }
+break;
+case 225:
+{
+		      long cnt = SP_OBJ_CONTAINER;
+		      if (in_container_obj) cnt |= SP_OBJ_CONTENT;
+		      add_opvars(splev, "io", VA_PASS2(cnt, SPO_OBJECT));
+		      in_container_obj++;
+		      break_stmt_start();
+		  }
+break;
+case 226:
+{
+		     break_stmt_end(splev);
+		     in_container_obj--;
+		     add_opcode(splev, SPO_POP_CONTAINER, NULL);
+		 }
+break;
+case 227:
+{
+		      if (( yyvsp[0].i & 0x4000) && in_container_obj)
+                          lc_error("Object cannot have a coord when contained.");
+		      else if (!( yyvsp[0].i & 0x4000) && !in_container_obj)
+                          lc_error("Object needs a coord when not contained.");
+		  }
+break;
+case 228:
+{
+		      struct opvar *stopit = New(struct opvar);
+		      set_opvar_int(stopit, SP_O_V_END);
+		      add_opcode(splev, SPO_PUSH, stopit);
+		      yyval.i = 0x00;
+		  }
+break;
+case 229:
+{
+		      if (( yyvsp[-2].i & yyvsp[0].i ))
+			  lc_error("OBJECT extra info '%s' defined twice.", curr_token);
+		      yyval.i = ( yyvsp[-2].i | yyvsp[0].i );
+		  }
+break;
+case 230:
+{
+		      add_opvars(splev, "ii",
+				 VA_PASS2((long)yyvsp[0].i, SP_O_V_CURSE));
+		      yyval.i = 0x0001;
+		  }
+break;
+case 231:
+{
+		      add_opvars(splev, "i", VA_PASS1(SP_O_V_CORPSENM));
+		      yyval.i = 0x0002;
+		  }
+break;
+case 232:
+{
+		      add_opvars(splev, "i", VA_PASS1(SP_O_V_SPE));
+		      yyval.i = 0x0004;
+		  }
+break;
+case 233:
+{
+		      add_opvars(splev, "i", VA_PASS1(SP_O_V_NAME));
+		      yyval.i = 0x0008;
+		  }
+break;
+case 234:
+{
+		      add_opvars(splev, "i", VA_PASS1(SP_O_V_QUAN));
+		      yyval.i = 0x0010;
+		  }
+break;
+case 235:
+{
+		      add_opvars(splev, "ii", VA_PASS2(1, SP_O_V_BURIED));
+		      yyval.i = 0x0020;
+		  }
+break;
+case 236:
+{
+		      add_opvars(splev, "ii", VA_PASS2((long)yyvsp[0].i, SP_O_V_LIT));
+		      yyval.i = 0x0040;
+		  }
+break;
+case 237:
+{
+		      add_opvars(splev, "i", VA_PASS1(SP_O_V_ERODED));
+		      yyval.i = 0x0080;
+		  }
+break;
+case 238:
+{
+		      add_opvars(splev, "ii", VA_PASS2(-1, SP_O_V_ERODED));
+		      yyval.i = 0x0080;
+		  }
+break;
+case 239:
+{
+		      if (yyvsp[0].i == D_LOCKED) {
+			  add_opvars(splev, "ii", VA_PASS2(1, SP_O_V_LOCKED));
+			  yyval.i = 0x0100;
+		      } else if (yyvsp[0].i == D_BROKEN) {
+			  add_opvars(splev, "ii", VA_PASS2(1, SP_O_V_BROKEN));
+			  yyval.i = 0x0200;
+		      } else
+			  lc_error("DOOR state can only be locked or broken.");
+		  }
+break;
+case 240:
+{
+		      add_opvars(splev, "ii", VA_PASS2(yyvsp[0].i, SP_O_V_TRAPPED));
+		      yyval.i = 0x0400;
+		  }
+break;
+case 241:
+{
+		      add_opvars(splev, "i", VA_PASS1(SP_O_V_RECHARGED));
+		      yyval.i = 0x0800;
+		  }
+break;
+case 242:
+{
+		      add_opvars(splev, "ii", VA_PASS2(1, SP_O_V_INVIS));
+		      yyval.i = 0x1000;
+		  }
+break;
+case 243:
+{
+		      add_opvars(splev, "ii", VA_PASS2(1, SP_O_V_GREASED));
+		      yyval.i = 0x2000;
+		  }
+break;
+case 244:
+{
+		      add_opvars(splev, "i", VA_PASS1(SP_O_V_COORD));
+		      yyval.i = 0x4000;
+		  }
+break;
+case 245:
+{
+		      add_opvars(splev, "io", VA_PASS2((long)yyvsp[-2].i, SPO_TRAP));
+		  }
+break;
+case 246:
+{
+		       long dir, state = 0;
+
+		       /* convert dir from a DIRECTION to a DB_DIR */
+		       dir = yyvsp[-2].i;
+		       switch (dir) {
+		       case W_NORTH: dir = DB_NORTH; break;
+		       case W_SOUTH: dir = DB_SOUTH; break;
+		       case W_EAST:  dir = DB_EAST;  break;
+		       case W_WEST:  dir = DB_WEST;  break;
+		       default:
+			   lc_error("Invalid drawbridge direction.");
+			   break;
+		       }
+
+		       if ( yyvsp[0].i == D_ISOPEN )
+			   state = 1;
+		       else if ( yyvsp[0].i == D_CLOSED )
+			   state = 0;
+		       else if ( yyvsp[0].i == -1 )
+			   state = -1;
+		       else
+			   lc_error("A drawbridge can only be open, closed or random!");
+		       add_opvars(splev, "iio",
+				  VA_PASS3(state, dir, SPO_DRAWBRIDGE));
+		   }
+break;
+case 247:
+{
+		      add_opvars(splev, "iiio",
+				 VA_PASS4((long)yyvsp[0].i, 1, 0, SPO_MAZEWALK));
+		  }
+break;
+case 248:
+{
+		      add_opvars(splev, "iiio",
+				 VA_PASS4((long)yyvsp[-3].i, (long)yyvsp[-1].i,
+					  (long)yyvsp[0].i, SPO_MAZEWALK));
+		  }
+break;
+case 249:
+{
+		      add_opvars(splev, "rio",
+				 VA_PASS3(SP_REGION_PACK(-1,-1,-1,-1),
+					  0, SPO_WALLIFY));
+		  }
+break;
+case 250:
+{
+		      add_opvars(splev, "io", VA_PASS2(1, SPO_WALLIFY));
+		  }
+break;
+case 251:
+{
+		      add_opvars(splev, "io",
+				 VA_PASS2((long)yyvsp[0].i, SPO_LADDER));
+		  }
+break;
+case 252:
+{
+		      add_opvars(splev, "io",
+				 VA_PASS2((long)yyvsp[0].i, SPO_STAIR));
+		  }
+break;
+case 253:
+{
+		      add_opvars(splev, "iiiii iiiii iiso",
+				 VA_PASS14(yyvsp[-4].lregn.x1, yyvsp[-4].lregn.y1, yyvsp[-4].lregn.x2, yyvsp[-4].lregn.y2, yyvsp[-4].lregn.area,
+					   yyvsp[-2].lregn.x1, yyvsp[-2].lregn.y1, yyvsp[-2].lregn.x2, yyvsp[-2].lregn.y2, yyvsp[-2].lregn.area,
+				      (long)((yyvsp[0].i) ? LR_UPSTAIR : LR_DOWNSTAIR),
+					   0, (char *)0, SPO_LEVREGION));
+		  }
+break;
+case 254:
+{
+		      add_opvars(splev, "iiiii iiiii iiso",
+				 VA_PASS14(yyvsp[-4].lregn.x1, yyvsp[-4].lregn.y1, yyvsp[-4].lregn.x2, yyvsp[-4].lregn.y2, yyvsp[-4].lregn.area,
+					   yyvsp[-2].lregn.x1, yyvsp[-2].lregn.y1, yyvsp[-2].lregn.x2, yyvsp[-2].lregn.y2, yyvsp[-2].lregn.area,
+					   LR_PORTAL, 0, yyvsp[0].map, SPO_LEVREGION));
+		      Free(yyvsp[0].map);
+		  }
+break;
+case 255:
+{
+		      long rtyp = 0;
+		      switch(yyvsp[0].i) {
+		      case -1: rtyp = LR_TELE; break;
+		      case  0: rtyp = LR_DOWNTELE; break;
+		      case  1: rtyp = LR_UPTELE; break;
+		      }
+		      add_opvars(splev, "iiiii iiiii iiso",
+				 VA_PASS14(yyvsp[-3].lregn.x1, yyvsp[-3].lregn.y1, yyvsp[-3].lregn.x2, yyvsp[-3].lregn.y2, yyvsp[-3].lregn.area,
+					   yyvsp[-1].lregn.x1, yyvsp[-1].lregn.y1, yyvsp[-1].lregn.x2, yyvsp[-1].lregn.y2, yyvsp[-1].lregn.area,
+					   rtyp, 0, (char *)0, SPO_LEVREGION));
+		  }
+break;
+case 256:
+{
+		      add_opvars(splev, "iiiii iiiii iiso",
+				 VA_PASS14(yyvsp[-2].lregn.x1, yyvsp[-2].lregn.y1, yyvsp[-2].lregn.x2, yyvsp[-2].lregn.y2, yyvsp[-2].lregn.area,
+					   yyvsp[0].lregn.x1, yyvsp[0].lregn.y1, yyvsp[0].lregn.x2, yyvsp[0].lregn.y2, yyvsp[0].lregn.area,
+					   (long)LR_BRANCH, 0,
+					   (char *)0, SPO_LEVREGION));
+		  }
+break;
+case 257:
+{
+			yyval.i = -1;
+		  }
+break;
+case 258:
+{
+			yyval.i = yyvsp[0].i;
+		  }
+break;
+case 259:
+{
+		      add_opvars(splev, "o", VA_PASS1(SPO_FOUNTAIN));
+		  }
+break;
+case 260:
+{
+		      add_opvars(splev, "o", VA_PASS1(SPO_SINK));
+		  }
+break;
+case 261:
+{
+		      add_opvars(splev, "o", VA_PASS1(SPO_POOL));
+		  }
+break;
+case 262:
+{
+		      yyval.terr.lit = -2;
+		      yyval.terr.ter = what_map_char((char) yyvsp[0].i);
+		  }
+break;
+case 263:
+{
+		      yyval.terr.lit = yyvsp[-1].i;
+		      yyval.terr.ter = what_map_char((char) yyvsp[-3].i);
+		  }
+break;
+case 264:
+{
+		      add_opvars(splev, "io",
+				 VA_PASS2(yyvsp[0].i, SPO_REPLACETERRAIN));
+		  }
+break;
+case 265:
+{
+		     add_opvars(splev, "o", VA_PASS1(SPO_TERRAIN));
+		 }
+break;
+case 266:
+{
+		      add_opvars(splev, "o", VA_PASS1(SPO_NON_DIGGABLE));
+		  }
+break;
+case 267:
+{
+		      add_opvars(splev, "o", VA_PASS1(SPO_NON_PASSWALL));
+		  }
+break;
+case 268:
+{
+		      long irr;
+		      long rt = yyvsp[-1].i;
+		      long rflags = yyvsp[0].i;
+
+		      if (rflags == -1) rflags = (1 << 0);
+		      if (!(rflags & 1)) rt += MAXRTYPE+1;
+		      irr = ((rflags & 2) != 0);
+		      add_opvars(splev, "iiio",
+				 VA_PASS4((long)yyvsp[-3].i, rt, rflags, SPO_REGION));
+		      yyval.i = (irr || (rflags & 1) || rt != OROOM);
+		      break_stmt_start();
+		  }
+break;
+case 269:
+{
+		      break_stmt_end(splev);
+		      if ( yyvsp[-1].i ) {
+			  add_opcode(splev, SPO_ENDROOM, NULL);
+		      } else if ( yyvsp[0].i )
+			  lc_error("Cannot use lev statements in non-permanent REGION");
+		  }
+break;
+case 270:
+{
+		      yyval.i = 0;
+		  }
+break;
+case 271:
+{
+		      yyval.i = yyvsp[0].i;
+		  }
+break;
+case 272:
+{
+		      add_opvars(splev, "iio",
+				 VA_PASS3((long)yyvsp[0].i, (long)yyvsp[-2].i, SPO_ALTAR));
+		  }
+break;
+case 273:
+{
+		      add_opvars(splev, "io", VA_PASS2(2, SPO_GRAVE));
+		  }
+break;
+case 274:
+{
+		      add_opvars(splev, "sio",
+				 VA_PASS3((char *)0, 1, SPO_GRAVE));
+		  }
+break;
+case 275:
+{
+		      add_opvars(splev, "sio",
+				 VA_PASS3((char *)0, 0, SPO_GRAVE));
+		  }
+break;
+case 276:
+{
+		      add_opvars(splev, "o", VA_PASS1(SPO_GOLD));
+		  }
+break;
+case 277:
+{
+		      add_opvars(splev, "io",
+				 VA_PASS2((long)yyvsp[-2].i, SPO_ENGRAVING));
+		  }
+break;
+case 278:
+{
+		      add_opvars(splev, "o", VA_PASS1(SPO_MINERALIZE));
+		  }
+break;
+case 279:
+{
+		      add_opvars(splev, "iiiio",
+				 VA_PASS5(-1L, -1L, -1L, -1L, SPO_MINERALIZE));
+		  }
+break;
+case 280:
+{
 			int token = get_trap_type(yyvsp[0].map);
 			if (token == ERR)
-				yyerror("Unknown trap type!");
+			    lc_error("Unknown trap type '%s'!", yyvsp[0].map);
 			yyval.i = token;
 			Free(yyvsp[0].map);
 		  }
 break;
-case 190:
+case 282:
 {
 			int token = get_room_type(yyvsp[0].map);
 			if (token == ERR) {
-				yywarning("Unknown room type!  Making ordinary room...");
+			    lc_warning("Unknown room type \"%s\"!  Making ordinary room...", yyvsp[0].map);
 				yyval.i = OROOM;
 			} else
 				yyval.i = token;
 			Free(yyvsp[0].map);
 		  }
 break;
-case 192:
+case 284:
 {
-			yyval.i = 0;
+			yyval.i = -1;
 		  }
 break;
-case 193:
+case 285:
 {
 			yyval.i = yyvsp[0].i;
 		  }
 break;
-case 194:
+case 286:
 {
-			yyval.i = yyvsp[-2].i + (yyvsp[0].i << 1);
+			yyval.i = yyvsp[0].i;
 		  }
 break;
-case 197:
+case 287:
 {
-			current_coord.x = current_coord.y = -MAX_REGISTERS-1;
+			yyval.i = yyvsp[-2].i | yyvsp[0].i;
 		  }
 break;
-case 204:
+case 288:
+{
+		      yyval.i = (yyvsp[0].i << 0);
+		  }
+break;
+case 289:
+{
+		      yyval.i = (yyvsp[0].i << 1);
+		  }
+break;
+case 290:
+{
+		      yyval.i = (yyvsp[0].i << 2);
+		  }
+break;
+case 297:
 {
 			yyval.i = - MAX_REGISTERS - 1;
 		  }
 break;
-case 207:
+case 300:
 {
-			if ( yyvsp[-1].i >= MAX_REGISTERS )
-				yyerror("Register Index overflow!");
-			else
-				current_coord.x = current_coord.y = - yyvsp[-1].i - 1;
+			yyval.i = - MAX_REGISTERS - 1;
 		  }
 break;
-case 208:
-{
-			if ( yyvsp[-1].i >= MAX_REGISTERS )
-				yyerror("Register Index overflow!");
-			else
-				yyval.i = - yyvsp[-1].i - 1;
-		  }
-break;
-case 209:
-{
-			if ( yyvsp[-1].i >= MAX_REGISTERS )
-				yyerror("Register Index overflow!");
-			else
-				yyval.i = - yyvsp[-1].i - 1;
-		  }
-break;
-case 210:
+case 303:
 {
 			if ( yyvsp[-1].i >= 3 )
-				yyerror("Register Index overflow!");
+				lc_error("Register Index overflow!");
 			else
 				yyval.i = - yyvsp[-1].i - 1;
 		  }
 break;
-case 212:
+case 304:
 {
-			if (check_monster_char((char) yyvsp[0].i))
-				yyval.i = yyvsp[0].i ;
+		      add_opvars(splev, "s", VA_PASS1(yyvsp[0].map));
+		      Free(yyvsp[0].map);
+		  }
+break;
+case 305:
+{
+		      check_vardef_type(variable_definitions, yyvsp[0].map, SPOVAR_STRING);
+		      vardef_used(variable_definitions, yyvsp[0].map);
+		      add_opvars(splev, "v", VA_PASS1(yyvsp[0].map));
+		      Free(yyvsp[0].map);
+		  }
+break;
+case 306:
+{
+		      check_vardef_type(variable_definitions, yyvsp[-3].map, SPOVAR_STRING|SPOVAR_ARRAY);
+		      vardef_used(variable_definitions, yyvsp[-3].map);
+		      add_opvars(splev, "v", VA_PASS1(yyvsp[-3].map));
+		      Free(yyvsp[-3].map);
+		  }
+break;
+case 307:
+{
+		      /* nothing */
+		  }
+break;
+case 308:
+{
+		      add_opvars(splev, "c", VA_PASS1(yyvsp[0].i));
+		  }
+break;
+case 309:
+{
+		      add_opvars(splev, "o", VA_PASS1(SPO_SEL_RNDCOORD));
+		  }
+break;
+case 310:
+{
+		      check_vardef_type(variable_definitions, yyvsp[0].map, SPOVAR_COORD);
+		      vardef_used(variable_definitions, yyvsp[0].map);
+		      add_opvars(splev, "v", VA_PASS1(yyvsp[0].map));
+		      Free(yyvsp[0].map);
+		  }
+break;
+case 311:
+{
+		      check_vardef_type(variable_definitions, yyvsp[-3].map, SPOVAR_COORD|SPOVAR_ARRAY);
+		      vardef_used(variable_definitions, yyvsp[-3].map);
+		      add_opvars(splev, "v", VA_PASS1(yyvsp[-3].map));
+		      Free(yyvsp[-3].map);
+		  }
+break;
+case 312:
+{
+		      if (yyvsp[-3].i < 0 || yyvsp[-1].i < 0 || yyvsp[-3].i >= COLNO || yyvsp[-1].i >= ROWNO)
+			  lc_error("Coordinates (%li,%li) out of map range!", yyvsp[-3].i, yyvsp[-1].i);
+		      yyval.i = SP_COORD_PACK(yyvsp[-3].i, yyvsp[-1].i);
+		  }
+break;
+case 313:
+{
+		      yyval.i = SP_COORD_PACK_RANDOM(0);
+		  }
+break;
+case 314:
+{
+		      yyval.i = SP_COORD_PACK_RANDOM( yyvsp[-1].i );
+		  }
+break;
+case 315:
+{
+		      yyval.i = yyvsp[0].i;
+		  }
+break;
+case 316:
+{
+		      if ((yyvsp[-2].i & yyvsp[0].i))
+			  lc_warning("Humidity flag used twice.");
+		      yyval.i = (yyvsp[-2].i | yyvsp[0].i);
+		  }
+break;
+case 317:
+{
+		      /* nothing */
+		  }
+break;
+case 318:
+{
+		      check_vardef_type(variable_definitions, yyvsp[0].map, SPOVAR_REGION);
+		      vardef_used(variable_definitions, yyvsp[0].map);
+		      add_opvars(splev, "v", VA_PASS1(yyvsp[0].map));
+		      Free(yyvsp[0].map);
+		  }
+break;
+case 319:
+{
+		      check_vardef_type(variable_definitions, yyvsp[-3].map, SPOVAR_REGION|SPOVAR_ARRAY);
+		      vardef_used(variable_definitions, yyvsp[-3].map);
+		      add_opvars(splev, "v", VA_PASS1(yyvsp[-3].map));
+		      Free(yyvsp[-3].map);
+		  }
+break;
+case 320:
+{
+		      long r = SP_REGION_PACK(yyvsp[-7].i, yyvsp[-5].i, yyvsp[-3].i, yyvsp[-1].i);
+		      if ( yyvsp[-7].i > yyvsp[-3].i || yyvsp[-5].i > yyvsp[-1].i )
+			  lc_error("Region start > end: (%li,%li,%li,%li)!", yyvsp[-7].i, yyvsp[-5].i, yyvsp[-3].i, yyvsp[-1].i);
+
+		      add_opvars(splev, "r", VA_PASS1(r));
+		      yyval.i = r;
+		  }
+break;
+case 321:
+{
+		      add_opvars(splev, "m", VA_PASS1(yyvsp[0].i));
+		  }
+break;
+case 322:
+{
+		      check_vardef_type(variable_definitions, yyvsp[0].map, SPOVAR_MAPCHAR);
+		      vardef_used(variable_definitions, yyvsp[0].map);
+		      add_opvars(splev, "v", VA_PASS1(yyvsp[0].map));
+		      Free(yyvsp[0].map);
+		  }
+break;
+case 323:
+{
+		      check_vardef_type(variable_definitions, yyvsp[-3].map, SPOVAR_MAPCHAR|SPOVAR_ARRAY);
+		      vardef_used(variable_definitions, yyvsp[-3].map);
+		      add_opvars(splev, "v", VA_PASS1(yyvsp[-3].map));
+		      Free(yyvsp[-3].map);
+		  }
+break;
+case 324:
+{
+		      if (what_map_char((char) yyvsp[0].i) != INVALID_TYPE)
+			  yyval.i = SP_MAPCHAR_PACK(what_map_char((char) yyvsp[0].i), -2);
+		      else {
+			  lc_error("Unknown map char type '%c'!", yyvsp[0].i);
+			  yyval.i = SP_MAPCHAR_PACK(STONE, -2);
+		      }
+		  }
+break;
+case 325:
+{
+		      if (what_map_char((char) yyvsp[-3].i) != INVALID_TYPE)
+			  yyval.i = SP_MAPCHAR_PACK(what_map_char((char) yyvsp[-3].i), yyvsp[-1].i);
+		      else {
+			  lc_error("Unknown map char type '%c'!", yyvsp[-3].i);
+			  yyval.i = SP_MAPCHAR_PACK(STONE, yyvsp[-1].i);
+		      }
+		  }
+break;
+case 326:
+{
+		      add_opvars(splev, "M", VA_PASS1(yyvsp[0].i));
+		  }
+break;
+case 327:
+{
+		      check_vardef_type(variable_definitions, yyvsp[0].map, SPOVAR_MONST);
+		      vardef_used(variable_definitions, yyvsp[0].map);
+		      add_opvars(splev, "v", VA_PASS1(yyvsp[0].map));
+		      Free(yyvsp[0].map);
+		  }
+break;
+case 328:
+{
+		      check_vardef_type(variable_definitions, yyvsp[-3].map, SPOVAR_MONST|SPOVAR_ARRAY);
+		      vardef_used(variable_definitions, yyvsp[-3].map);
+		      add_opvars(splev, "v", VA_PASS1(yyvsp[-3].map));
+		      Free(yyvsp[-3].map);
+		  }
+break;
+case 329:
+{
+                      long m = get_monster_id(yyvsp[0].map, (char)0);
+                      if (m == ERR) {
+                          lc_error("Unknown monster \"%s\"!", yyvsp[0].map);
+                          yyval.i = -1;
+                      } else
+                          yyval.i = SP_MONST_PACK(m, def_monsyms[(int)mons[m].mlet].sym);
+                      Free(yyvsp[0].map);
+                  }
+break;
+case 330:
+{
+                        if (check_monster_char((char) yyvsp[0].i))
+                            yyval.i = SP_MONST_PACK(-1, yyvsp[0].i);
+                        else {
+                            lc_error("Unknown monster class '%c'!", yyvsp[0].i);
+                            yyval.i = -1;
+                        }
+                  }
+break;
+case 331:
+{
+                      long m = get_monster_id(yyvsp[-1].map, (char) yyvsp[-3].i);
+                      if (m == ERR) {
+                          lc_error("Unknown monster ('%c', \"%s\")!", yyvsp[-3].i, yyvsp[-1].map);
+                          yyval.i = -1;
+                      } else
+                          yyval.i = SP_MONST_PACK(m, yyvsp[-3].i);
+                      Free(yyvsp[-1].map);
+                  }
+break;
+case 332:
+{
+                      yyval.i = -1;
+                  }
+break;
+case 333:
+{
+		      add_opvars(splev, "O", VA_PASS1(yyvsp[0].i));
+		  }
+break;
+case 334:
+{
+		      check_vardef_type(variable_definitions, yyvsp[0].map, SPOVAR_OBJ);
+		      vardef_used(variable_definitions, yyvsp[0].map);
+		      add_opvars(splev, "v", VA_PASS1(yyvsp[0].map));
+		      Free(yyvsp[0].map);
+		  }
+break;
+case 335:
+{
+		      check_vardef_type(variable_definitions, yyvsp[-3].map, SPOVAR_OBJ|SPOVAR_ARRAY);
+		      vardef_used(variable_definitions, yyvsp[-3].map);
+		      add_opvars(splev, "v", VA_PASS1(yyvsp[-3].map));
+		      Free(yyvsp[-3].map);
+		  }
+break;
+case 336:
+{
+		      long m = get_object_id(yyvsp[0].map, (char)0);
+		      if (m == ERR) {
+			  lc_error("Unknown object \"%s\"!", yyvsp[0].map);
+			  yyval.i = -1;
+		      } else
+			  yyval.i = SP_OBJ_PACK(m, 1); /* obj class != 0 to force generation of a specific item */
+                      Free(yyvsp[0].map);
+		  }
+break;
+case 337:
+{
+			if (check_object_char((char) yyvsp[0].i))
+			    yyval.i = SP_OBJ_PACK(-1, yyvsp[0].i);
 			else {
-				yyerror("Unknown monster class!");
-				yyval.i = ERR;
+			    lc_error("Unknown object class '%c'!", yyvsp[0].i);
+			    yyval.i = -1;
 			}
 		  }
 break;
-case 213:
+case 338:
 {
-			char c = yyvsp[0].i;
-			if (check_object_char(c))
-				yyval.i = c;
-			else {
-				yyerror("Unknown char class!");
-				yyval.i = ERR;
-			}
+		      long m = get_object_id(yyvsp[-1].map, (char) yyvsp[-3].i);
+		      if (m == ERR) {
+			  lc_error("Unknown object ('%c', \"%s\")!", yyvsp[-3].i, yyvsp[-1].map);
+			  yyval.i = -1;
+		      } else
+			  yyval.i = SP_OBJ_PACK(m, yyvsp[-3].i);
+                      Free(yyvsp[-1].map);
 		  }
 break;
-case 217:
+case 339:
 {
-			yyval.i = 100;	/* default is 100% */
+		      yyval.i = -1;
 		  }
 break;
-case 218:
+case 340:
+{ }
+break;
+case 341:
 {
-			if (yyvsp[0].i <= 0 || yyvsp[0].i > 100)
-			    yyerror("Expected percentile chance.");
-			yyval.i = yyvsp[0].i;
+		      add_opvars(splev, "o", VA_PASS1(SPO_MATH_ADD));
 		  }
 break;
-case 221:
+case 342:
 {
-			if (!in_room && !init_lev.init_present &&
-			    (yyvsp[-3].i < 0 || yyvsp[-3].i > (int)max_x_map ||
-			     yyvsp[-1].i < 0 || yyvsp[-1].i > (int)max_y_map))
-			    yyerror("Coordinates out of map range!");
-			current_coord.x = yyvsp[-3].i;
-			current_coord.y = yyvsp[-1].i;
+		      add_opvars(splev, "i", VA_PASS1(yyvsp[0].i));
 		  }
 break;
-case 222:
+case 343:
+{
+		      is_inconstant_number = 1;
+		  }
+break;
+case 344:
+{
+		      add_opvars(splev, "i", VA_PASS1(yyvsp[-1].i));
+		  }
+break;
+case 345:
+{
+		      check_vardef_type(variable_definitions, yyvsp[0].map, SPOVAR_INT);
+		      vardef_used(variable_definitions, yyvsp[0].map);
+		      add_opvars(splev, "v", VA_PASS1(yyvsp[0].map));
+		      Free(yyvsp[0].map);
+		      is_inconstant_number = 1;
+		  }
+break;
+case 346:
+{
+		      check_vardef_type(variable_definitions,
+					yyvsp[-3].map, SPOVAR_INT|SPOVAR_ARRAY);
+		      vardef_used(variable_definitions, yyvsp[-3].map);
+		      add_opvars(splev, "v", VA_PASS1(yyvsp[-3].map));
+		      Free(yyvsp[-3].map);
+		      is_inconstant_number = 1;
+		  }
+break;
+case 347:
+{
+		      add_opvars(splev, "o", VA_PASS1(SPO_MATH_ADD));
+		  }
+break;
+case 348:
+{
+		      add_opvars(splev, "o", VA_PASS1(SPO_MATH_SUB));
+		  }
+break;
+case 349:
+{
+		      add_opvars(splev, "o", VA_PASS1(SPO_MATH_MUL));
+		  }
+break;
+case 350:
+{
+		      add_opvars(splev, "o", VA_PASS1(SPO_MATH_DIV));
+		  }
+break;
+case 351:
+{
+		      add_opvars(splev, "o", VA_PASS1(SPO_MATH_MOD));
+		  }
+break;
+case 352:
+{ }
+break;
+case 353:
+{
+		      if (!strcmp("int", yyvsp[0].map) || !strcmp("integer", yyvsp[0].map)) {
+			  yyval.i = (int)'i';
+		      } else
+			  lc_error("Unknown function parameter type '%s'", yyvsp[0].map);
+		  }
+break;
+case 354:
+{
+		      if (!strcmp("str", yyvsp[0].map) || !strcmp("string", yyvsp[0].map)) {
+			  yyval.i = (int)'s';
+		      } else
+			  lc_error("Unknown function parameter type '%s'", yyvsp[0].map);
+		  }
+break;
+case 355:
+{
+		      struct lc_funcdefs_parm *tmp = New(struct lc_funcdefs_parm);
+
+		      if (!curr_function) {
+			  lc_error("Function parameters outside function definition.");
+		      } else if (!tmp) {
+			  lc_error("Could not alloc function params.");
+		      } else {
+			  long vt;
+			  tmp->name = strdup(yyvsp[-2].map);
+			  tmp->parmtype = (char) yyvsp[0].i;
+			  tmp->next = curr_function->params;
+			  curr_function->params = tmp;
+			  curr_function->n_params++;
+			  switch (tmp->parmtype) {
+			  case 'i': vt = SPOVAR_INT; break;
+			  case 's': vt = SPOVAR_STRING; break;
+			  default: lc_error("Unknown func param conversion."); break;
+			  }
+			  variable_definitions = add_vardef_type(
+							 variable_definitions,
+								 yyvsp[-2].map, vt);
+		      }
+		      Free(yyvsp[-2].map);
+		  }
+break;
+case 360:
+{
+			      yyval.i = (int)'i';
+			  }
+break;
+case 361:
+{
+			      yyval.i = (int)'s';
+			  }
+break;
+case 362:
+{
+			      char tmpbuf[2];
+			      tmpbuf[0] = (char) yyvsp[0].i;
+			      tmpbuf[1] = '\0';
+			      yyval.map = strdup(tmpbuf);
+			  }
+break;
+case 363:
+{
+			      long len = strlen( yyvsp[-2].map );
+			      char *tmp = (char *)alloc(len + 2);
+			      sprintf(tmp, "%c%s", (char) yyvsp[0].i, yyvsp[-2].map );
+			      Free( yyvsp[-2].map );
+			      yyval.map = tmp;
+			  }
+break;
+case 364:
+{
+			      yyval.map = strdup("");
+			  }
+break;
+case 365:
+{
+			      char *tmp = strdup( yyvsp[0].map );
+			      Free( yyvsp[0].map );
+			      yyval.map = tmp;
+			  }
+break;
+case 366:
+{
+		      add_opvars(splev, "o", VA_PASS1(SPO_SEL_POINT));
+		  }
+break;
+case 367:
+{
+		      add_opvars(splev, "o", VA_PASS1(SPO_SEL_RECT));
+		  }
+break;
+case 368:
+{
+		      add_opvars(splev, "o", VA_PASS1(SPO_SEL_FILLRECT));
+		  }
+break;
+case 369:
+{
+		      add_opvars(splev, "o", VA_PASS1(SPO_SEL_LINE));
+		  }
+break;
+case 370:
+{
+		      /* randline (x1,y1),(x2,y2), roughness */
+		      add_opvars(splev, "o", VA_PASS1(SPO_SEL_RNDLINE));
+		  }
+break;
+case 371:
+{
+		      add_opvars(splev, "io", VA_PASS2(W_ANY, SPO_SEL_GROW));
+		  }
+break;
+case 372:
+{
+		      add_opvars(splev, "io", VA_PASS2(yyvsp[-3].i, SPO_SEL_GROW));
+		  }
+break;
+case 373:
+{
+		      add_opvars(splev, "iio",
+			     VA_PASS3(yyvsp[-3].i, SPOFILTER_PERCENT, SPO_SEL_FILTER));
+		  }
+break;
+case 374:
+{
+		      add_opvars(splev, "io",
+			       VA_PASS2(SPOFILTER_SELECTION, SPO_SEL_FILTER));
+		  }
+break;
+case 375:
+{
+		      add_opvars(splev, "io",
+				 VA_PASS2(SPOFILTER_MAPCHAR, SPO_SEL_FILTER));
+		  }
+break;
+case 376:
+{
+		      add_opvars(splev, "o", VA_PASS1(SPO_SEL_FLOOD));
+		  }
+break;
+case 377:
+{
+		      add_opvars(splev, "oio",
+				 VA_PASS3(SPO_COPY, 1, SPO_SEL_ELLIPSE));
+		  }
+break;
+case 378:
+{
+		      add_opvars(splev, "oio",
+				 VA_PASS3(SPO_COPY, yyvsp[-1].i, SPO_SEL_ELLIPSE));
+		  }
+break;
+case 379:
+{
+		      add_opvars(splev, "io", VA_PASS2(1, SPO_SEL_ELLIPSE));
+		  }
+break;
+case 380:
+{
+		      add_opvars(splev, "io", VA_PASS2(yyvsp[-1].i, SPO_SEL_ELLIPSE));
+		  }
+break;
+case 381:
+{
+		      add_opvars(splev, "iio",
+				 VA_PASS3(yyvsp[-5].i, yyvsp[-11].i, SPO_SEL_GRADIENT));
+		  }
+break;
+case 382:
+{
+		      add_opvars(splev, "o", VA_PASS1(SPO_SEL_COMPLEMENT));
+		  }
+break;
+case 383:
+{
+		      check_vardef_type(variable_definitions, yyvsp[0].map, SPOVAR_SEL);
+		      vardef_used(variable_definitions, yyvsp[0].map);
+		      add_opvars(splev, "v", VA_PASS1(yyvsp[0].map));
+		      Free(yyvsp[0].map);
+		  }
+break;
+case 384:
+{
+		      /* nothing */
+		  }
+break;
+case 385:
+{
+		      /* nothing */
+		  }
+break;
+case 386:
+{
+		      add_opvars(splev, "o", VA_PASS1(SPO_SEL_ADD));
+		  }
+break;
+case 387:
+{
+		      add_opvars(splev, "iio",
+				 VA_PASS3(yyvsp[0].dice.num, yyvsp[0].dice.die, SPO_DICE));
+		  }
+break;
+case 391:
+{
+		      add_opvars(splev, "i", VA_PASS1(yyvsp[0].i));
+		  }
+break;
+case 392:
+{
+		      add_opvars(splev, "i", VA_PASS1(yyvsp[0].i));
+		  }
+break;
+case 393:
+{
+		      add_opvars(splev, "i", VA_PASS1(yyvsp[0].i));
+		  }
+break;
+case 394:
+{
+		      /* nothing */
+		  }
+break;
+case 403:
+{
+			yyval.lregn = yyvsp[0].lregn;
+		  }
+break;
+case 404:
+{
+			if (yyvsp[-7].i <= 0 || yyvsp[-7].i >= COLNO)
+			    lc_error("Region (%li,%li,%li,%li) out of level range (x1)!", yyvsp[-7].i, yyvsp[-5].i, yyvsp[-3].i, yyvsp[-1].i);
+			else if (yyvsp[-5].i < 0 || yyvsp[-5].i >= ROWNO)
+			    lc_error("Region (%li,%li,%li,%li) out of level range (y1)!", yyvsp[-7].i, yyvsp[-5].i, yyvsp[-3].i, yyvsp[-1].i);
+			else if (yyvsp[-3].i <= 0 || yyvsp[-3].i >= COLNO)
+			    lc_error("Region (%li,%li,%li,%li) out of level range (x2)!", yyvsp[-7].i, yyvsp[-5].i, yyvsp[-3].i, yyvsp[-1].i);
+			else if (yyvsp[-1].i < 0 || yyvsp[-1].i >= ROWNO)
+			    lc_error("Region (%li,%li,%li,%li) out of level range (y2)!", yyvsp[-7].i, yyvsp[-5].i, yyvsp[-3].i, yyvsp[-1].i);
+			yyval.lregn.x1 = yyvsp[-7].i;
+			yyval.lregn.y1 = yyvsp[-5].i;
+			yyval.lregn.x2 = yyvsp[-3].i;
+			yyval.lregn.y2 = yyvsp[-1].i;
+			yyval.lregn.area = 1;
+		  }
+break;
+case 405:
 {
 /* This series of if statements is a hack for MSC 5.1.  It seems that its
    tiny little brain cannot compile if these are all one big if statement. */
 			if (yyvsp[-7].i < 0 || yyvsp[-7].i > (int)max_x_map)
-				yyerror("Region out of map range!");
+			    lc_error("Region (%li,%li,%li,%li) out of map range (x1)!", yyvsp[-7].i, yyvsp[-5].i, yyvsp[-3].i, yyvsp[-1].i);
 			else if (yyvsp[-5].i < 0 || yyvsp[-5].i > (int)max_y_map)
-				yyerror("Region out of map range!");
+			    lc_error("Region (%li,%li,%li,%li) out of map range (y1)!", yyvsp[-7].i, yyvsp[-5].i, yyvsp[-3].i, yyvsp[-1].i);
 			else if (yyvsp[-3].i < 0 || yyvsp[-3].i > (int)max_x_map)
-				yyerror("Region out of map range!");
+			    lc_error("Region (%li,%li,%li,%li) out of map range (x2)!", yyvsp[-7].i, yyvsp[-5].i, yyvsp[-3].i, yyvsp[-1].i);
 			else if (yyvsp[-1].i < 0 || yyvsp[-1].i > (int)max_y_map)
-				yyerror("Region out of map range!");
-			current_region.x1 = yyvsp[-7].i;
-			current_region.y1 = yyvsp[-5].i;
-			current_region.x2 = yyvsp[-3].i;
-			current_region.y2 = yyvsp[-1].i;
+			    lc_error("Region (%li,%li,%li,%li) out of map range (y2)!", yyvsp[-7].i, yyvsp[-5].i, yyvsp[-3].i, yyvsp[-1].i);
+			yyval.lregn.area = 0;
+			yyval.lregn.x1 = yyvsp[-7].i;
+			yyval.lregn.y1 = yyvsp[-5].i;
+			yyval.lregn.x2 = yyvsp[-3].i;
+			yyval.lregn.y2 = yyvsp[-1].i;
 		  }
 break;
     }

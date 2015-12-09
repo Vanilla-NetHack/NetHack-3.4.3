@@ -1,5 +1,5 @@
 %{
-/*	SCCS Id: @(#)dgn_lex.c	3.4	2002/03/27	*/
+/* NetHack 3.6  dgn_comp.l	$NHDT-Date: 1449385184 2015/12/06 06:59:44 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.12 $ */
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /*	Copyright (c) 1990 by M. Stephenson	     */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -55,14 +55,19 @@ void FDECL(yyoutput, (int));
 int FDECL(yyunput, (int));
 int FDECL(yyoutput, (int));
 # endif
-#endif	/* !FLEX_SCANNER && !FLEXHACK_SCANNER */
 
-#ifdef FLEX_SCANNER
-#define YY_MALLOC_DECL \
-	       genericptr_t FDECL(malloc, (size_t)); \
-	       genericptr_t FDECL(realloc, (genericptr_t,size_t));
+#else	/* !FLEX_SCANNER && !FLEXHACK_SCANNER */
+/* most recent flex allows suppressing yyunput() altogether when not needed */
+#define YY_NO_UNPUT
 #endif
 
+#if defined(FLEX_SCANNER) || defined(FLEXHACK_SCANNER)
+/* older flex wants this */
+#define YY_MALLOC_DECL  genericptr_t FDECL(malloc, (size_t)); \
+                        genericptr_t FDECL(realloc, (genericptr_t, size_t));
+/* newer flex assumes <stdlib.h> so needs this in case it's been suppressed */
+YY_MALLOC_DECL
+#endif
 
 void FDECL(init_yyin, (FILE *));
 void FDECL(init_yyout, (FILE *));
@@ -70,10 +75,9 @@ void FDECL(init_yyout, (FILE *));
 /* this doesn't always get put in dgn_comp.h
  * (esp. when using older versions of bison)
  */
-
 extern YYSTYPE yylval;
 
-int line_number = 1;
+int nh_line_number = 1;
 
 %}
 %%
@@ -106,32 +110,34 @@ RNDLEVEL	return(RNDLEVEL);
 CHAINLEVEL	return(CHLEVEL);
 RNDCHLEVEL	return(RNDCHLEVEL);
 [-0-9]+		{ yylval.i=atoi(yytext); return(INTEGER); }
-\"[^"]*\"	{ yytext[yyleng-1] = 0; /* Discard the trailing \" */
-		  yylval.str = (char *) alloc(strlen(yytext+1)+1);
-		  Strcpy(yylval.str, yytext+1); /* Discard the first \" */
-		  return(STRING); }
-^#.*\n		{ line_number++; }
-\r?\n		{ line_number++; }
+\"[^"]*\"	{ yytext[yyleng - 1] = '\0'; /* discard the trailing \" */
+		  yylval.str = dupstr(yytext + 1); /* skip the first \" */
+		  return STRING; }
+^#.*\n		{ nh_line_number++; }
+\r?\n		{ nh_line_number++; }
 [ \t]+		;	/* skip trailing tabs & spaces */
 .		{ return yytext[0]; }
 %%
 
 /* routine to switch to another input file; needed for flex */
-void init_yyin( input_f )
+void
+init_yyin( input_f )
 FILE *input_f;
 {
 #if defined(FLEX_SCANNER) || defined(FLEXHACK_SCANNER)
-	if (yyin)
-	    yyrestart(input_f);
-	else
+    if (yyin)
+        yyrestart(input_f);
+    else
 #endif
-	    yyin = input_f;
+        yyin = input_f;
 }
+
 /* analogous routine (for completeness) */
-void init_yyout( output_f )
+void
+init_yyout( output_f )
 FILE *output_f;
 {
-	yyout = output_f;
+    yyout = output_f;
 }
 
 /*dgn_comp.l*/

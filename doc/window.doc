@@ -1,3 +1,5 @@
+NetHack 3.6  window.doc	$NHDT-Date: 1433901374 2015/06/10 01:56:14 $  $NHDT-Branch: master $:$NHDT-Revision: 1.42 $
+
 Introduction
 
 This file documents the support for various windowing systems in
@@ -6,6 +8,9 @@ main NetHack code from window-system specific code.  The implementation
 supports multiple window systems in the same binary.  Even if you only
 wish to support one window-port on your port, you will need to follow
 the instructions in Section IX to get a compilable binary.
+
+Copyright 2003, David Cohrs
+NetHack may be freely redistributed.  See license for details.
 
 Contents:
 	I.    Window Types and Terminology
@@ -17,18 +22,22 @@ Contents:
 	VII.  Game startup
 	VIII. Conventions
 	IX.   Implementation and Multi-window support
+	X.    WINCHAIN
 
 I.  Window Types and Terminology
 
-There are 5 basic window types, used to call create_nhwindow():
+There are 4 basic window types, used to call create_nhwindow():
 
 	NHW_MESSAGE	(top line)
-	NHW_STATUS	(bottom lines)
 	NHW_MAP		(main dungeon)
 	NHW_MENU	(inventory or other "corner" windows)
 	NHW_TEXT	(help/text, full screen paged window)
 
 The tty window-port also uses NHW_BASE (the base display) internally.
+
+(The genl_status_* routines use NHW_STATUS for backward compatibility
+ when displaying status information on the bottom lines.  New code
+ should not use NHW_STATUS. NHW_STATUS will be phased out over time.)
 
 NHW_MENU windows can be used for either menu or text display.  Their
 basic feature is that for the tty-port, if the window is small enough,
@@ -53,11 +62,15 @@ integer, but doesn't necessarily have to be done that way.  There are
 a few fixed window names that are known throughout the code:
 
 	WIN_MESSAGE	(top line)
-	WIN_STATUS	(bottom lines)
 	WIN_MAP		(main dungeon)
 	WIN_INVEN	(inventory)
 
 Other windows are created and destroyed as needed.
+
+(The genl_status_* routines use WIN_STATUS for backward compatibility
+ when displaying status information on the bottom lines.  New code
+ should not use WIN_STATUS, or assume its presence. NHW_STATUS will 
+ be phased out over time.)
 
 "Port" in this document refers to a CPU/OS/hardware platform (UNIX, MSDOS
 TOS, etc.)  "window-port" refers to the windowing platform.  This is
@@ -85,12 +98,12 @@ curs(window, x, y)
 		   displayable cursor to (x,y).  For backward compatibility,
 		   1 <= x < cols, 0 <= y < rows, where cols and rows are
 		   the size of window.
-		-- For variable sized windows, like the status window, the
+		-- For variable sized windows, like the old status window, the
 		   behavior when curs() is called outside the window's limits
 		   is unspecified. The mac port wraps to 0, with the status
 		   window being 2 lines high and 80 columns wide.
-		-- Still used by curs_on_u(), status updates, screen locating
-		   (identify, teleport).
+		-- Still used by curs_on_u(), obsolete status updates, 
+		   screen locating (identify, teleport).
 		-- NHW_MESSAGE, NHW_MENU and NHW_TEXT windows do not
 		   currently support curs in the tty window-port.
 putstr(window, attr, str)
@@ -113,6 +126,39 @@ putstr(window, attr, str)
 		   are done consecutively the user will see the first and
 		   then the second.  In the tty port, pline() achieves this
 		   by calling more() or displaying both on the same line.
+putmixed(window, attr, str)
+		-- Print str on the window with the given attribute.  In
+		   addition to printable ASCII characters (040-0126), 
+		   sequences of encoded glyph values are supported.
+		   The glyph encoding sequence is \GXXXXNNNN, where:
+			XXXX is a hexadecimal value. The value must match
+			     the randomly generated value for the current 
+			     game in progress in order to be decoded. 
+			     The value for the game in progress is stored in 
+			     context.rndencode. This field minimizes 
+			     unintentional decoding of player-supplied strings 
+			     such as pet names, etc.
+			NNNN is a hexadecimal value representing the glyph.
+		   If a window port does not yet support special handling of
+		   the glyph value, it can use genl_putmixed (mapglyph.c)
+		   which converts the encoded glyph into a character symbol.
+
+		   Multiple putmixed()s are output on separate lines.  Attributes
+		   can be one of
+			ATR_NONE (or 0)
+			ATR_ULINE
+			ATR_BOLD
+			ATR_BLINK
+			ATR_INVERSE
+		   If a window-port does not support all of these, it may map
+		   unsupported attributes to a supported one (e.g. map them
+		   all to ATR_INVERSE).  putmixed() may compress spaces out of
+		   str, break str, or truncate str, if necessary for the
+		   display.  Where putmixed() breaks a line, it has to clear
+		   to end-of-line.
+		-- putstr should be implemented such that if two putmixed()s
+		   are done consecutively the user will see the first and
+		   then the second.
 get_nh_event()	-- Does window event processing (e.g. exposure events).
 		   A noop for the tty and X window-ports.
 int nhgetch()	-- Returns a single character input from the user.
@@ -120,6 +166,15 @@ int nhgetch()	-- Returns a single character input from the user.
 		   will be the routine the OS provides to read a character.
 		   Returned character _must_ be non-zero and it must be
                    non meta-zero too (zero with the meta-bit set).
+		-- If platform uses it, should check program_state.done_hup
+		   and immediately return ASCII 033 (escape) if it is.
+		   This is required if the window-port supports SAFERHANGUP.
+		-- ASCII 033 must also be returned rather than EOF (applies
+		   mainly to the tty window-port).
+		-- The program_state.done_hup flag can be set asynchronously
+		   when SAFERHANGUP is defined and in that case, nhgetch()
+		   needs to detect that the value of program_state.done_hup
+		   changed and also return ASCII 033 in this case.
 int nh_poskey(int *x, int *y, int *mod)
 		-- Returns a single character input from the user or a
 		   a positioning event (perhaps from a mouse).  If the
@@ -133,14 +188,21 @@ int nh_poskey(int *x, int *y, int *mod)
 		   The different click types can map to whatever the
 		   hardware supports.  If no mouse is supported, this
 		   routine always returns a non-zero character.
+		-- Otherwise follows the same behavior as nhgetch().
 
 B.  High-level routines:
 
-print_glyph(window, x, y, glyph)
+print_glyph(window, x, y, glyph, bkglyph)
 		-- Print the glyph at (x,y) on the given window.  Glyphs are
 		   integers at the interface, mapped to whatever the window-
 		   port wants (symbol, font, color, attributes, ...there's
 		   a 1-1 map between glyphs and distinct things on the map).
+		-- bkglyph is a background glyph for potential use by some
+		   graphical or tiled environments to allow the depiction
+		   to fall against a background consistent with the grid 
+		   around x,y. If bkglyph is NO_GLYPH, then the parameter
+		   should be ignored (do nothing with it).
+                   
 char yn_function(const char *ques, const char *choices, char default)
 		-- Print a prompt made up of ques, choices and default.
 		   Read a single character response that is contained in
@@ -162,6 +224,7 @@ char yn_function(const char *ques, const char *choices, char default)
 		   returned, preserving case (upper or lower.) This means that
 		   if the calling function needs an exact match, it must handle
 		   user input correctness itself.
+		-- ques should not be more than QBUFSZ-1 characters long.
 getlin(const char *ques, char *input)
 		-- Prints ques as a prompt and reads a single line of text,
 		   up to a newline.  The string entered is returned without the
@@ -321,7 +384,93 @@ char message_menu(char let, int how, const char *mesg)
 		   windows typically won't need this functionality, so can
 		   substitute genl_message_menu (windows.c) instead.
 
-D.  Misc. Routines
+D.  Status Display Routines
+
+status_init()   -- core calls this to notify the window port that a status
+		   display is required. The window port should perform 
+		   the necessary initialization in here, allocate memory, etc.
+status_enablefield(int fldindex, char fldname, char fieldfmt, boolean enable)   
+                -- notifies the window port which fields it is authorized to
+		   display.
+		-- This may be called at any time, and is used
+		   to disable as well as enable fields, depending on the 
+		   value of the final argument (TRUE = enable).
+		-- fldindex could be one of the following from botl.h:
+		   BL_TITLE, BL_STR, BL_DX, BL_CO, BL_IN, BL_WI, BL_CH, 
+		   BL_ALIGN, BL_SCORE, BL_CAP, BL_GOLD, BL_ENE, BL_ENEMAX, 
+		   BL_XP, BL_AC, BL_HD, BL_TIME, BL_HUNGER, BL_HP, BL_HPMAX, 
+		   BL_LEVELDESC, BL_EXP, BL_CONDITION
+		-- There are MAXBLSTATS status fields (from botl.h)
+status_update(int fldindex, genericptr_t ptr, int chg, int percentage)
+		-- update the value of a status field.
+		-- the fldindex identifies which field is changing and
+		   is an integer index value from botl.h
+		-- fldindex could be any one of the following from botl.h:
+		   BL_TITLE, BL_STR, BL_DX, BL_CO, BL_IN, BL_WI, BL_CH, 
+		   BL_ALIGN, BL_SCORE, BL_CAP, BL_GOLD, BL_ENE, BL_ENEMAX, 
+		   BL_XP, BL_AC, BL_HD, BL_TIME, BL_HUNGER, BL_HP, BL_HPMAX, 
+		   BL_LEVELDESC, BL_EXP, BL_CONDITION
+		-- fldindex could also be BL_FLUSH (-1), which is not really
+		   a field index, but is a special trigger to tell the 
+		   windowport that it should redisplay all its status fields,
+		   even if no changes have been presented to it.
+		-- ptr is usually a "char *", unless fldindex is BL_CONDITION.
+		   If fldindex is BL_CONDITION, then ptr is a long value with
+		   any or none of the following bits set (from botl.h):
+			BL_MASK_BLIND		0x00000001L
+			BL_MASK_CONF		0x00000002L
+			BL_MASK_FOODPOIS	0x00000004L
+			BL_MASK_ILL		0x00000008L
+			BL_MASK_HALLU		0x00000010L
+			BL_MASK_STUNNED		0x00000020L
+			BL_MASK_SLIMED		0x00000040L
+		-- The value passed for BL_GOLD includes a leading
+		   symbol for GOLD "$:nnn". If the window port needs to use 
+		   the textual gold amount without the leading "$:" the port 
+		   will have to add 2 to the passed "ptr" for the BL_GOLD case.
+
+status_finish() -- called when it is time for the window port to tear down
+		   the status display and free allocated memory, etc.
+
+status_threshold(int fldidx, int threshholdtype, anything threshold, 
+					int behavior, int under, int over)
+		-- called when a hiliting preference is added, changed, or
+		   removed.
+		-- the fldindex identifies which field is having its hiliting
+		   preference set. It is an integer index value from botl.h
+		-- fldindex could be any one of the following from botl.h:
+		   BL_TITLE, BL_STR, BL_DX, BL_CO, BL_IN, BL_WI, BL_CH, 
+		   BL_ALIGN, BL_SCORE, BL_CAP, BL_GOLD, BL_ENE, BL_ENEMAX, 
+		   BL_XP, BL_AC, BL_HD, BL_TIME, BL_HUNGER, BL_HP, BL_HPMAX, 
+		   BL_LEVELDESC, BL_EXP, BL_CONDITION
+		-- datatype is P_INT, P_UINT, P_LONG, or P_MASK.
+		-- threshold is an "anything" union which can contain the 
+		   datatype value.
+		-- behavior is used to define how threshold is used and can
+		   be BL_TH_NONE, BL_TH_VAL_PERCENTAGE, BL_TH_VAL_ABSOLUTE,
+		   or BL_TH_UPDOWN. BL_TH_NONE means don't do anything above
+		   or below the threshold.  BL_TH_VAL_PERCENTAGE treats the
+		   threshold value as a precentage of the maximum possible
+		   value. BL_TH_VAL_ABSOLUTE means that the threshold is an
+		   actual value. BL_TH_UPDOWN means that threshold is not
+		   used, and the two below/above hilite values indicate how
+		   to display something going down (under) or rising (over).		    
+		-- under is the hilite attribute used if value is below the 
+		   threshold. The attribute can be BL_HILITE_NONE, 
+		   BL_HILITE_INVERSE, BL_HILITE_BOLD (-1, -2, or -3), or one 
+		   of the color indexes of CLR_BLACK, CLR_RED, CLR_GREEN, 
+		   CLR_BROWN, CLR_BLUE, CLR_MAGENTA, CLR_CYAN, CLR_GRAY, 
+		   CLR_ORANGE, CLR_BRIGHT_GREEN, CLR_YELLOW, CLR_BRIGHT_BLUE, 
+		   CLR_BRIGHT_MAGENTA, CLR_BRIGHT_CYAN, or CLR_WHITE (0 - 15).
+		-- over is the hilite attribute used if value is at or above 
+		   the threshold. The attribute can be BL_HILITE_NONE, 
+		   BL_HILITE_INVERSE, BL_HILITE_BOLD (-1, -2, or -3), or one 
+		   of the color indexes of CLR_BLACK, CLR_RED, CLR_GREEN, 
+		   CLR_BROWN, CLR_BLUE, CLR_MAGENTA, CLR_CYAN, CLR_GRAY, 
+		   CLR_ORANGE, CLR_BRIGHT_GREEN, CLR_YELLOW, CLR_BRIGHT_BLUE, 
+		   CLR_BRIGHT_MAGENTA, CLR_BRIGHT_CYAN, or CLR_WHITE (0 - 15).
+
+E.  Misc. Routines
 
 make_sound(???) -- To be determined later.  THIS IS CURRENTLY UN-IMPLEMENTED.
 nhbell()	-- Beep at user.  [This will exist at least until sounds are
@@ -346,6 +495,9 @@ suspend_nhwindows(str)
 		-- Prepare the window to be suspended.
 resume_nhwindows()
 		-- Restore the windows after being suspended.
+can_suspend()   -- Tell the core if the window system will allow the game
+                   to be suspended now.  If unconditionally yes or no, use
+		   genl_can_suspend_yes() or genl_can_suspend_no().
 
 start_screen()	-- Only used on Unix tty ports, but must be declared for
 		   completeness.  Sets up the tty to work in full-screen
@@ -355,7 +507,7 @@ start_screen()	-- Only used on Unix tty ports, but must be declared for
 end_screen()	-- Only used on Unix tty ports, but must be declared for
 		   completeness.  The complement of start_screen().
 
-outrip(winid, int)
+outrip(winid, int, time_t)
 		-- The tombstone code.  If you want the traditional code use
 		   genl_outrip for the value and check the #if in rip.c.
 
@@ -368,6 +520,35 @@ preference_update(preference)
 		   change if it indicated that it wants to be by setting the 
 		   corresponding bit in the wincap mask.
 
+getmsghistory(init) 
+		-- This is used to preserve message history between games by
+		   obtaining the messages from the window port so that the core
+		   can put them into the savefile.
+		   The routine is called repeatedly from the core save routine,
+		   and the window port routine is expected to successively return
+		   each message that it wants the game to store in the savefile, 
+		   starting with the oldest message first, finishing
+		   with the most recent.
+		   If init is TRUE, start over again from most recent message.
+
+putmsghistory(msg)
+		-- The is the counterpart to getmsghistory() for restores
+		   used to reload the port's message recall buffer.
+		   The routine is called repeatedly from the core restore 
+		   routine, starting with the oldest message first, and
+		   finishing with the most recent one that it read from the savefile.
+		   The window port routine is expected to load the message 
+		   recall buffers in such a way that the ordering remains correct.
+		   The window port routine should make no assumptions about how 
+		   many messages are forthcoming, nor should it assume that
+		   another message will follow this one, so it must be careful
+		   to keep all pointers/indexes intact at the end of each call.
+		   If the window port receives more messages that can fit in
+		   its buffers, it is expected to scroll away the oldest from
+		   its buffers, much like it would with new messages being
+		   produced.
+
+
 III.  Global variables
 
 The following global variables are defined in decl.c and must be used by
@@ -375,10 +556,13 @@ the window interface to the rest of NetHack.
 
 char toplines[BUFSZ]	Contains the last message printed to the WIN_MESSAGE
 			window, used by Norep().
-winid WIN_MESSAGE, WIN_MAP, WIN_STATUS, WIN_INVEN
-			The four standard windows.
-char *AE, *AS;		Checked in options.c to see if we should switch
-			to DEC_GRAPHICS.  It is #ifdefed VMS and UNIX.
+winid WIN_MESSAGE, WIN_MAP, WIN_INVEN
+			The three standard windows.
+			There is also a window called WIN_STATUS that is used
+			only for backward compatibility in the genl_status_*
+			set of generic status display functions.
+char *AE, *AS;		Checked in options.c to see if we should load and 
+			switch to DECGraphics symset.  It is #ifdefed VMS and UNIX.
 int LI, CO;		Set in sys/unix/ioctl.c.
 
 The following appears to be Unix specific.  Other ports using the tty
@@ -518,10 +702,11 @@ to support:
   |  fullscreen        | WC2_FULLSCREEN     | wc2_fullscreen     |boolean |
   |  softkeyboard      | WC2_SOFTKEYBOARD   | wc2_softkeyboard   |boolean |
   |  wraptext          | WC2_WRAPTEXT       | wc2_wraptext       |boolean |
+  |  selectsaved       | WC2_SELECTSAVED    | wc2_selectsaved    |boolean |
   +--------------------+--------------------+--------------------+--------+
 
 align_message	-- where to place message window (top, bottom, left, right)
-align_status	-- where to place status window (top, bottom, left, right).
+align_status	-- where to place status display (top, bottom, left, right).
 ascii_map	-- port should display an ascii map if it can.
 color		-- port should display color if it can.
 eight_bit_tty	-- port should allow eight bit input.
@@ -532,9 +717,9 @@ font_size_map	-- port should use this size font for the map window.
 font_size_menu	-- port should use this size font for menu windows.
 font_size_message 
 		-- port should use this size font for the message window.
-font_size_status-- port should use this size font for the status window.
+font_size_status-- port should use this size font for the status display.
 font_size_text	-- port should use this size font for text windows.
-font_status	-- port should use a font by this name for status window.
+font_status	-- port should use a font by this name for status display.
 font_text	-- port should use a font by this name for text windows.
 fullscreen      -- port should try to use the whole screen.
 hilite_pet	-- port should mark pets in some special way on the map.
@@ -546,6 +731,7 @@ preload_tiles	-- port should preload tiles into memory.
 scroll_amount   -- scroll this amount when scroll_margin is reached.
 scroll_margin	-- port should scroll the display when the hero or cursor
 		   is this number of cells away from the edge of the window.
+selectsaved     -- if port can display a menu of the user's saved games do so.
 softkeyboard    -- handhelds should display an on-screen keyboard if possible.
 splash_screen   -- port should/should not display an opening splashscreen.
 tiled_map	-- port should display a tiled map if it can.
@@ -647,12 +833,24 @@ These are not part of the interface. They may be called by your
 window port routines to perform the desired task, instead of duplicating
 the necessary code in each window port.
 
-mapglyph(int glyph, int *ochar, int *ocolor, unsigned *special, int x, int y)
+int mapglyph(int glyph, int *ochar, int *ocolor, unsigned *special, int x, int y)
 		-- Maps glyph at x,y to NetHack ascii character and color.
-		   If it represents something special such as a pet, that
-		   information is returned as set bits in "special." 
+		   The return value is an index into the showsyms[] array, in
+		   case a port wants to index into its own alternative 
+		   set of display symbols (such as a unicode set) instead of 
+		   the default set.
+
+		   If the glyph represents something special such as a pet, 
+		   that information is returned as set bits in "special.":
+			MG_CORPSE	0x01
+			MG_INVIS	0x02
+			MG_DETECT	0x04
+			MG_PET		0x08
+			MG_RIDDEN	0x10
+			MG_STATUE	0x20
+			MG_OBJPILE	0x40
 		   Usually called from the window port's print_glyph() 
-		   routine.
+		   routine. 
 
 VII.  Game startup
 
@@ -678,10 +876,16 @@ Choose_windows() is a common routine, and calling it in main() is necessary
 to initialize the function pointer table to _something_ so that calls to
 raw_print() will not fail.  Choose_windows() should be called almost
 immediately upon entering main().  Look at unixmain.c for an example.
+Choose_windows will call an (optional) ini_routine with a single argument
+of WININIT to allow any needed setup.  Because choose_windows() may be called
+multiple times during argument and option processing, to handle the case where
+ini_routines have side effects that need to be undone, the old ini_routine (if
+any) will be called with an argument of WININIT_UNDO before the new
+ini_routine (if any) is called (with WININIT).
 
-Display_gamewindows() is a common routine that displays the three standard
-game windows (WIN_MESSAGE, WIN_MAP, and WIN_STATUS).  It is normally called
-just before the "Hello, welcome" message.
+Display_gamewindows() is a common routine that displays the two standard
+game windows (WIN_MESSAGE, WIN_MAP), and the status display.  It is normally 
+called just before the "Hello, welcome" message.
 
 Process_options() is currently still unique to each port.  There may be need
 in the future to make it possible to replace this on a per window-port basis.
@@ -691,14 +895,15 @@ VIII.  Conventions
 
 init_nhwindows() is expected to display a gee-whiz banner window, including
 the Copyright message.  It is recommended that the COPYRIGHT_BANNER_A,
-COPYRIGHT_BANNER_B, and COPYRIGHT_BANNER_C macros from patchlevel.h be used
-for constructing the Copyright message.  COPYRIGHT_BANNER_A is a 
-quoted string that has the NetHack copyright declaration, 
-COPYRIGHT_BANNER_B is a quoted string that states who the copyright 
-belongs to, and COPYRIGHT_BANNER_C simply says "See License for
-details." Be sure to #include "patchlevel.h" to define these macros.
-Using the macros will prevent having to update the Copyright information
-in each window-port prior to each release.
+COPYRIGHT_BANNER_B, COPYRIGHT_BANNER_C, and COPYRIGHT_BANNER_D macros from
+patchlevel.h and date.h be used for constructing the Copyright message.
+COPYRIGHT_BANNER_A is a quoted string that has the NetHack copyright declaration,
+COPYRIGHT_BANNER_B is a quoted string that states who the copyright belongs to,
+COPYRIGHT_BANNER_C is a quoted string generated by makedefs that includes version
+and build information.  and COPYRIGHT_BANNER_D simply says "See License for details."
+Be sure to #include "patchlevel.h" and date.h to define these macros.  Using the
+macros will prevent having to update the Copyright information in each window-port
+prior to each release.
 
 Ports (MSDOS, TOS, MAC, etc) _may_ use window-port specific routines in
 their port specific files, _AT_THEIR_OWN_RISK_.  Since "port" and
@@ -803,3 +1008,33 @@ One caveat.  Unfortunately, if you incorrectly specify the
 DEFAULT_WINDOW_SYS, NetHack will dump core (or whatever) without
 printing any message, because raw_print() cannot function without first
 setting the window-port.
+
+
+X. WINCHAIN
+
+WINCHAIN is an optional facility that allows the SYSCF_FILE to specify a
+series of processors that will see each call from the core to the window
+port (and the resulting return chain).  Processors are specified one at a
+time from the start of the chain (the core end) towards the window port as:
+    OPTIONS=windowchain:+PROC
+where PROC is the name of the processor to add to the chain.  The '+' is
+required and is part of the name of the processor (this distinguishes
+processors from window ports; in addition the '-' character is reserved for
+WINCHAIN internals).
+
+If WINCHAIN is not compiled into the NetHack binary, there is no overhead.
+
+If WINCHAIN is compiled into the NetHack binary but not used, overhead is
+limited to one function call during game setup and a trivial amount of data.
+
+Note that raw_print* calls will not go through the chain until initialization
+is complete (when *main.c calls commit_windowchain()).
+
+The only processor currently available is '+trace' which is a debugging
+facility for window ports.  See the code in win/chain/wc_trace.c for
+details on where to find the log file and how to write to it from other parts
+of the code.
+
+A processor may be specified more than once; this is expected to be most
+useful for surrounding a processor being developed with before and after
+calls to +trace.

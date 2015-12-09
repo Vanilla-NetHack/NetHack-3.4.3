@@ -1,5 +1,8 @@
 #	Makefile for NetHack's utility programs.
-#	SCCS Id: @(#)Makefile.utl	3.4	1997/04/19
+# NetHack 3.6  Makefile.utl	$NHDT-Date: 1449386560 2015/12/06 07:22:40 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.27 $
+
+# Root of source tree:
+NHSROOT=..
 
 # newer makes predefine $(MAKE) to 'make' and do smarter processing of
 # recursive make calls if $(MAKE) is used
@@ -20,7 +23,7 @@
 #	For Bull DPX/2 systems at B.O.S. 2.0 or higher use the following:
 #
 # CC = gcc -ansi -D_BULL_SOURCE -D_XOPEN_SOURCE -D_POSIX_SOURCE
-# 
+#
 #	If you are using GCC 2.2.2 or higher on a DPX/2, just use:
 #
 # CC = gcc -ansi
@@ -89,11 +92,11 @@
 # flags for debugging:
 # CFLAGS = -g -I../include
 
-CFLAGS = -O -I../include
-LFLAGS =
+#CFLAGS = -O -I../include
+#LFLAGS =
 
 LIBS =
- 
+
 # If you are cross-compiling, you must use this:
 #OBJDIR = .
 # otherwise, you can save a little bit of disk space with this:
@@ -106,7 +109,7 @@ LEX      = lex
 # YACC     = bison -y
 # YACC     = byacc
 # LEX      = flex
- 
+
 # these are the names of the output files from YACC/LEX. Under MS-DOS
 # and similar systems, they may differ
 YTABC = y.tab.c
@@ -174,7 +177,7 @@ YACCDIST =
 
 #	dependencies for makedefs
 #
-makedefs:	$(MAKEOBJS)
+makedefs:	$(MAKEOBJS) mdgrep.h
 	$(CC) $(LFLAGS) -o makedefs $(MAKEOBJS)
 
 makedefs.o: makedefs.c $(CONFIG_H) ../include/permonst.h \
@@ -182,6 +185,10 @@ makedefs.o: makedefs.c $(CONFIG_H) ../include/permonst.h \
 		../include/artilist.h ../include/dungeon.h ../include/obj.h \
 		../include/monst.h ../include/you.h ../include/flag.h \
 		../include/dlb.h ../include/patchlevel.h ../include/qtext.h
+
+# Don't require perl to build; that is why mdgrep.h is spelled wrong below.
+mdgreph: mdgrep.pl
+	perl mdgrep.pl
 
 ../include/onames.h: makedefs
 	./makedefs -o
@@ -223,16 +230,24 @@ lev_lex.o:   lev_lex.c $(HACK_H) ../include/lev_comp.h ../include/sp_lev.h
 	@echo $(CC) -c $(CFLAGS) lev_lex.c
 	@$(CC) -c $(CFLAGS) -DWEIRD_LEX=`egrep -c _cplusplus lev_lex.c` lev_lex.c
 
+# '$(YACC) -d' generates both $(YTABC) and $(YTABH) in one run
 ../include/lev_comp.h: lev_yacc.c
 
 lev_yacc.c: lev_comp.y
 	$(YACC) $(YACCDIST) -d lev_comp.y
-	mv $(YTABC) lev_yacc.c
-	mv $(YTABH) ../include/lev_comp.h
+	sed -e 's#"$(YTABC)"#"$@"#' -e 's#$(YTABC):#$@:#' $(YTABC) > $@ \
+		&& rm $(YTABC)
+	sed -e 's#"$(YTABH)"#"lev_comp.h"#' $(YTABH) > ../include/lev_comp.h \
+		&& rm $(YTABH)
 
 lev_lex.c: lev_comp.l
 	$(LEX) $(FLEXDIST) lev_comp.l
-	mv $(LEXYYC) lev_lex.c
+	sed -e 's#"$(LEXYYC)"#"$@"#' -e 's#  *$$##' $(LEXYYC) > $@ \
+		&& rm $(LEXYYC)
+#	note: flex code construction using m4 macros results in some trailing
+#	spaces; <space><space><star> is basic RE substitute for <space><plus>
+#	and we don't bother stripping trailing tabs because that gets messy;
+#	make expands <dollar><dollar> into <dollar> which is RE end-of-line.
 
 # with all of extern.h's functions to complain about, we drown in
 # 'defined but not used' without -u
@@ -249,21 +264,25 @@ dgn_yacc.o:  dgn_yacc.c $(CONFIG_H) ../include/dgn_file.h ../include/date.h
 dgn_main.o:  dgn_main.c $(CONFIG_H) ../include/dlb.h
 
 # see dgn_comp.l for WEIRD_LEX discussion
-dgn_lex.o:   dgn_lex.c $(CONFIG.H) ../include/dgn_comp.h ../include/dgn_file.h
+dgn_lex.o:   dgn_lex.c $(CONFIG_H) ../include/dgn_comp.h ../include/dgn_file.h
 	@echo $(CC) -c $(CFLAGS) dgn_lex.c
 	@$(CC) -c $(CFLAGS) -DWEIRD_LEX=`egrep -c _cplusplus dgn_lex.c` dgn_lex.c
 
-
+# '$(YACC) -d' generates both $(YTABC) and $(YTABH) in one run
 ../include/dgn_comp.h: dgn_yacc.c
 
 dgn_yacc.c: dgn_comp.y
 	$(YACC) $(YACCDIST) -d dgn_comp.y
-	mv $(YTABC) dgn_yacc.c
-	mv $(YTABH) ../include/dgn_comp.h
+	sed -e 's#"$(YTABC)"#"$@"#' -e 's#$(YTABC):#$@:#' $(YTABC) > $@ \
+		&& rm $(YTABC)
+	sed -e 's#"$(YTABH)"#"dgn_comp.h"#' $(YTABH) > ../include/dgn_comp.h \
+		&& rm $(YTABH)
 
 dgn_lex.c: dgn_comp.l
 	$(LEX) $(FLEXDIST) dgn_comp.l
-	mv $(LEXYYC) dgn_lex.c
+	sed -e 's#"$(LEXYYC)"#"$@"#' -e 's#  *$$##' $(LEXYYC) > $@ \
+		&& rm $(LEXYYC)
+#	note: <space><space><star> is basic RE substitute for <space><plus>
 
 # with all of extern.h's functions to complain about, we drown in
 # 'defined but not used' without -u
@@ -317,8 +336,13 @@ xpm2img.ttp: xpm2img.o bitmfile.o
 tile2beos: tile2beos.o $(TEXT_IO)
 	$(CC) $(LFLAGS) -o tile2beos tile2beos.o $(TEXT_IO) -lbe
 
-tilemap: ../win/share/tilemap.c $(HACK_H)
-	$(CC) $(CFLAGS) $(LFLAGS) -o tilemap ../win/share/tilemap.c $(LIBS)
+#--compiling and linking in one step leaves extra debugging files (in their
+#  own subdirectories!) on OSX; compile and link separately to suppress
+#  that without mucking about with extra OS-specific CFLAGS and/or LFLAGS
+#tilemap: ../win/share/tilemap.c $(HACK_H)
+#	$(CC) $(CFLAGS) $(LFLAGS) -o tilemap ../win/share/tilemap.c $(LIBS)
+tilemap: tilemap.o
+	$(CC) $(LFLAGS) -o tilemap tilemap.o $(LIBS)
 ../src/tile.c: tilemap
 	./tilemap
 
@@ -326,9 +350,17 @@ tilemap: ../win/share/tilemap.c $(HACK_H)
 	cp ../win/share/tile.h ../include/tile.h
 tiletext.o: ../win/share/tiletext.c $(CONFIG_H) ../include/tile.h
 	$(CC) $(CFLAGS) -c ../win/share/tiletext.c
-tiletxt.o: ../win/share/tilemap.c $(HACK_H)
-	$(CC) $(CFLAGS) -c -DTILETEXT ../win/share/tilemap.c
-	mv tilemap.o tiletxt.o
+tiletxt.c: ./Makefile
+	echo '/* alternate compilation for tilemap.c to create tiletxt.o' > tiletxt.c
+	echo '   that does not rely on "cc -c -o tiletxt.o tilemap.c"'	 >> tiletxt.c
+	echo '   since many pre-POSIX compilers did not support that */' >> tiletxt.c
+	echo '#define TILETEXT'			 >> tiletxt.c
+	echo '#include "../win/share/tilemap.c"' >> tiletxt.c
+	echo '/*tiletxt.c*/'			 >> tiletxt.c
+tiletxt.o: tiletxt.c ../win/share/tilemap.c $(HACK_H)
+	$(CC) $(CFLAGS) -c tiletxt.c
+tilemap.o: ../win/share/tilemap.c $(HACK_H)
+	$(CC) $(CFLAGS) -c ../win/share/tilemap.c
 
 gifread.o: ../win/share/gifread.c $(CONFIG_H) ../include/tile.h
 	$(CC) $(CFLAGS) -c ../win/share/gifread.c
@@ -352,6 +384,11 @@ bitmfile.o: ../win/gem/bitmfile.c ../include/bitmfile.h
 
 tile2beos.o: ../win/BeOS/tile2beos.cpp $(HACK_H) ../include/tile.h
 	$(CXX) $(CFLAGS) -c ../win/BeOS/tile2beos.cpp
+
+tileedit: tileedit.cpp $(TEXT_IO)
+	$(QTDIR)/bin/moc -o tileedit.moc tileedit.h
+	$(CC) -o tileedit -I../include -I$(QTDIR)/include -L$(QTDIR)/lib \
+		tileedit.cpp $(TEXT_IO) -lqt
 
 # using dependencies like
 #	../src/foo::
@@ -385,6 +422,25 @@ $(HACK_H): $(CONFIG_H)
 $(CONFIG_H): ../include/config.h
 	@( cd ../src ; $(MAKE) $(CONFIG_H) )
 
+# 'make dist' => put generated lex and yacc sources into place for distribution
+SYSSHARE=../sys/share/
+$(SYSSHARE)lev_lex.c: lev_lex.c
+	cp lev_lex.c $@
+$(SYSSHARE)lev_yacc.c: lev_yacc.c
+	cp lev_yacc.c $@
+$(SYSSHARE)lev_comp.h: ../include/lev_comp.h
+	cp ../include/lev_comp.h $@
+$(SYSSHARE)dgn_lex.c: dgn_lex.c
+	cp dgn_lex.c $@
+$(SYSSHARE)dgn_yacc.c: dgn_yacc.c
+	cp dgn_yacc.c $@
+$(SYSSHARE)dgn_comp.h: ../include/dgn_comp.h
+	cp ../include/dgn_comp.h $@
+
+dist:	$(SYSSHARE)lev_lex.c $(SYSSHARE)lev_yacc.c $(SYSSHARE)lev_comp.h \
+	$(SYSSHARE)dgn_lex.c $(SYSSHARE)dgn_yacc.c $(SYSSHARE)dgn_comp.h
+	@echo 'pre-generated lex and yacc sources are in place in sys/share'
+
 tags: $(UTILSRCS)
 	@ctags -tw $(UTILSRCS)
 
@@ -394,10 +450,7 @@ clean:
 spotless: clean
 	-rm -f lev_lex.c lev_yacc.c dgn_lex.c dgn_yacc.c
 	-rm -f ../include/lev_comp.h ../include/dgn_comp.h
-	-rm -f ../include/tile.h
+	-rm -f ../include/tile.h tiletxt.c
 	-rm -f makedefs lev_comp dgn_comp recover dlb
-	-rm -f gif2txt txt2ppm tile2x11 tile2img.ttp xpm2img.ttp tilemap
-
-tileedit: tileedit.cpp $(TEXT_IO)
-	$(QTDIR)/bin/moc -o tileedit.moc tileedit.h
-	$(CC) -o tileedit -I../include -I$(QTDIR)/include -L$(QTDIR)/lib tileedit.cpp $(TEXT_IO) -lqt
+	-rm -f gif2txt txt2ppm tile2x11 tile2img.ttp xpm2img.ttp \
+		tilemap tileedit

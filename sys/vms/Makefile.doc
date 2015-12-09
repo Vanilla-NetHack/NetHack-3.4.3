@@ -1,5 +1,5 @@
 #	NetHack Makefile (VMS) - for the [Unix] documentation.
-#	SCCS Id: @(#)Makefile.doc	3.4	1993/01/06
+#	NetHack 3.6	Makefile.doc	$NHDT-Date: 1432512790 2015/05/25 00:13:10 $	$NHDT-Branch: master $:$NHDT-Revision: 1.8 $
 
 #  Copy this file to [.doc]Makefile. and edit it if needed.
 
@@ -17,7 +17,7 @@ Guidebook :	$(GUIDEBOOK)
 
 # the basic guidebook
 #Guidebook. :	Guidebook.mn
-#	#tbl tmac.n Guidebook.mn | nroff | col > Guidebook
+#	#tbl tmac.n Guidebook.mn | nroff | col -bx > Guidebook
 #	write sys$output "Guidebook.mn cannot be processed under VMS."
 Guidebook. :	Guidebook.txt		# distributed version of plain text
 	copy Guidebook.txt Guidebook.
@@ -32,7 +32,9 @@ Guidebook.ps :	Guidebook.dvi		# generated with LaTeX
 # Guidebook.tex is the same as Guidebook.mn but formatted with LaTeX.
 # - The invocation command for LaTeX may vary in different installations.
 # - To print Guidebook.dvi you need to use a suitable dvi-driver.
+# - LaTeX needs to be run twice; second pass uses Guidebook.aux made by first.
 Guidebook.dvi :  Guidebook.tex
+	latex Guidebook.tex
 	latex Guidebook.tex
 
 all : $(ALLDOCS)
